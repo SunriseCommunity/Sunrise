@@ -1,8 +1,5 @@
 using Sunrise.Enums;
-using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
-using HOPEless.osu;
-using osu.Shared.Serialization;
 
 namespace Sunrise.Objects;
 
@@ -24,7 +21,7 @@ public class Player
     public double Longitude;
     public PlayModes PlayMode;
     public BanchoUserStatus PlayerStatus = new();
-    private PacketQueue _queue = new();
+    public PacketQueue _queue = new();
 
     public Player(int id, string username, ushort country,
         short timezone, UserPrivileges privilege)

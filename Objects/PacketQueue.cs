@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
-using HOPEless.Bancho.Objects;
 using osu.Shared.Serialization;
 
 namespace Sunrise.Objects;
@@ -8,7 +7,7 @@ namespace Sunrise.Objects;
 public class PacketQueue
 {
     private ConcurrentQueue<BanchoPacket> _queue = new ConcurrentQueue<BanchoPacket>();
-
+    
     public int Size => _queue.Count;
 
     public void EnqueuePacket(BanchoPacket packet) => _queue.Enqueue(packet);
@@ -24,5 +23,4 @@ public class PacketQueue
 
         return ((MemoryStream)writer.BaseStream).ToArray();
     }
-    
 }

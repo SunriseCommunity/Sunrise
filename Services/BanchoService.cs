@@ -9,9 +9,9 @@ namespace Sunrise.Services;
 public class BanchoService
 {
     private readonly PlayerRepository _playerRepository;
-    private PacketQueue _queue = new PacketQueue();
-
-    public Player Player;
+    
+    public Player Player = null!;
+    private PacketQueue _queue => Player._queue;
 
     public BanchoService(PlayerRepository playerRepository)
     {
@@ -41,10 +41,7 @@ public class BanchoService
 
     public void SendUserData(Player? otherPlayer = null)
     {
-        var player = Player;
-
-        if (otherPlayer != null)
-            player = otherPlayer;
+        var player = otherPlayer ?? Player;
         
         using var writer = new SerializationWriter(new MemoryStream());
 
@@ -64,10 +61,7 @@ public class BanchoService
 
     public void SendUserStats(Player? otherPlayer = null)
     {
-        var player = Player;
-
-        if (otherPlayer != null)
-            player = otherPlayer;
+        var player = otherPlayer ?? Player;
         
         using var writer = new SerializationWriter(new MemoryStream());
         
@@ -112,6 +106,16 @@ public class BanchoService
         _queue.EnqueuePacket(packet);
     }
     
+    //have no idea how to use it or where to use this method
+    public void LockPlayer(int seconds)
+    {
+        using var writer = new SerializationWriter(new MemoryStream());
+        writer.Write(seconds);
+
+        var packet = new BanchoPacket(PacketType.ServerRtx, ((MemoryStream)writer.BaseStream).ToArray());
+        _queue.EnqueuePacket(packet);
+    }
+    
     public void SendUserDataBundle(int except)
     {
         using var ms = new MemoryStream();
@@ -129,15 +133,35 @@ public class BanchoService
         _queue.EnqueuePacket(packet);
     }
     
-    public void ListingChannelComplete()
+    public void SendAllChannels()
     {
         var packet = new BanchoPacket(PacketType.ServerChatChannelListingComplete, BitConverter.GetBytes(0));
         
         _queue.EnqueuePacket(packet);
     }
+
+    public void HandleQuit()
+    {
+        var writer = new SerializationWriter(new MemoryStream());
+
+        writer.Write(new BanchoUserQuit(Player.Id));
+
+        var packet = new BanchoPacket(PacketType.ServerUserQuit, ((MemoryStream)writer.BaseStream).ToArray());
+        
+        EnqueuePacketForEveryone(packet);
+        _playerRepository.RemovePlayer(Player.Id);
+    }
     
     public byte[] GetPacketBytes()
     {
         return _queue.GetBytesToSend();
+    }
+    
+    public void EnqueuePacketForEveryone(BanchoPacket packet)
+    {
+        foreach (var player in _playerRepository.GetAllPlayers())
+        {
+            player._queue.EnqueuePacket(packet);
+        }
     }
 }
