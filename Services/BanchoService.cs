@@ -1,5 +1,6 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using osu.Shared;
 using osu.Shared.Serialization;
 using Sunrise.Enums;
 using Sunrise.Objects;
@@ -84,11 +85,6 @@ public class BanchoService
         _queue.EnqueuePacket(packet);
     }
 
-    public void UpdateUserStatus(BanchoUserStatus status)
-    {
-        Player.PlayerStatus = status;
-    }
-
     public void SendNotification(string notification)
     {
         using var writer = new SerializationWriter(new MemoryStream());
@@ -133,23 +129,11 @@ public class BanchoService
         _queue.EnqueuePacket(packet);
     }
     
-    public void SendAllChannels()
+    public void SendExistingChannels()
     {
         var packet = new BanchoPacket(PacketType.ServerChatChannelListingComplete, BitConverter.GetBytes(0));
         
         _queue.EnqueuePacket(packet);
-    }
-
-    public void HandleQuit()
-    {
-        var writer = new SerializationWriter(new MemoryStream());
-
-        writer.Write(new BanchoUserQuit(Player.Id));
-
-        var packet = new BanchoPacket(PacketType.ServerUserQuit, ((MemoryStream)writer.BaseStream).ToArray());
-        
-        EnqueuePacketForEveryone(packet);
-        _playerRepository.RemovePlayer(Player.Id);
     }
     
     public byte[] GetPacketBytes()

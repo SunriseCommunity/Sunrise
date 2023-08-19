@@ -1,11 +1,10 @@
 using HOPEless.Bancho;
-using HOPEless.Bancho.Objects;
 using Microsoft.AspNetCore.Mvc;
-using osu.Shared.Serialization;
 using Sunrise.Helpers;
 using Sunrise.Objects;
 using Sunrise.Services;
 using Sunrise.Enums;
+using Sunrise.Handlers;
 
 namespace Sunrise.Controllers;
 
@@ -16,6 +15,7 @@ public class PlayerController : ControllerBase
     private readonly BanchoService _bancho;
     private readonly PlayerRepository _playerRepository;
     private readonly ILogger<PlayerController> _logger;
+    private Dictionary<PacketType, IHandler> _hDictionary = HandlerDictionary.Handlers; 
 
     public PlayerController(BanchoService bancho, PlayerRepository player, ILogger<PlayerController> logger)
     {
@@ -23,10 +23,9 @@ public class PlayerController : ControllerBase
         _playerRepository = player;
         _logger = logger;
     }
-
-
+    
     [HttpGet]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get() 
     {
         return Ok("hello world");
     }
@@ -42,52 +41,26 @@ public class PlayerController : ControllerBase
             
             await Request.Body.CopyToAsync(ms);
             ms.Position = 0;
+            
             try
             {
                 player = _playerRepository.GetPlayer(token);
                 _bancho.Player = player;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                return BadRequest();
+                return BadRequest("Cannot find a player.");
             }
             
             foreach (var packet in BanchoSerializer.DeserializePackets(ms))
             {
                 #if DEBUG
-                _logger.LogError(packet.Type.ToString());
+                    _logger.LogError(packet.Type.ToString());
                 #endif
-                
-                //don't like this big switch:case so need to remake this somehow
-                switch (packet.Type)
-                {
-                    case PacketType.ClientStatusRequestOwn:
-                        _bancho.SendUserStats();
-                        break;
-                    case PacketType.ClientDisconnect:
-                        _bancho.HandleQuit();
-                        break;
-                    case PacketType.ClientUserStatsRequest:
-                        var msa = new MemoryStream(packet.Data);
-                        var reader = new SerializationReader(msa);
-                        
-                        var ids = new List<int>();
 
-                        int length = reader.ReadInt16();
-                        for (var i = 0; i < length; i++) 
-                            ids.Add(reader.ReadInt32());
-                        
-                        foreach (var value in ids.Where(value => _playerRepository.ContainsPlayer(value)))
-                        {
-                            _bancho.SendUserStats(_playerRepository.GetPlayer(value));
-                        }
-                        break;
-                    case PacketType.ClientUserStatus:
-                        var status = new BanchoUserStatus(packet.Data);
-                        _bancho.UpdateUserStatus(status);
-                        break;
-                    case PacketType.ClientPong:
-                        break;
+                if (_hDictionary.TryGetValue(packet.Type, out var handler))
+                {
+                    handler.Handle(packet, player, _bancho, _playerRepository);
                 }
             }
 
@@ -121,7 +94,7 @@ public class PlayerController : ControllerBase
             _bancho.SendUserData(player);
         }
 
-        _bancho.SendAllChannels();
+        _bancho.SendExistingChannels();
         
         var bytesToSend = _bancho.GetPacketBytes();
 
