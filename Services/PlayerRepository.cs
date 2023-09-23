@@ -44,6 +44,17 @@ public class PlayerRepository
         return player!;
     }
     
+    public Player GetPlayerByUsername(string username)
+    {
+        var player = _players.FirstOrDefault(x => x.Value.Username == username).Value;
+
+        if (player == null)
+            throw new Exception("No player with that Token could be found.");
+
+        return player;
+    }
+    
+    
     public Player GetPlayer(string token)
     {
         var player = _players.FirstOrDefault(x => x.Value.Token == token).Value;

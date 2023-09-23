@@ -1,9 +1,14 @@
+using HOPEless.Bancho.Objects;
+using Sunrise.Enums;
+using Sunrise.Objects;
+using Sunrise.Services;
+
 namespace Sunrise.Helpers;
 
-public static class LoginParser
+public static class Parsers
 {
     //need to rewrite it ;>
-    public static (string username, string passHash, string version, short utcOffset) Parse(string strToParse)
+    public static (string username, string passHash, string version, short utcOffset) ParseLogin(string strToParse)
     {
         var splittedString = strToParse.Split("\n");
         var strings = splittedString[2].Split("|");

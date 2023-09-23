@@ -55,7 +55,8 @@ public class PlayerController : ControllerBase
             foreach (var packet in BanchoSerializer.DeserializePackets(ms))
             {
                 #if DEBUG
-                    _logger.LogError(packet.Type.ToString());
+                if (packet.Type != PacketType.ClientPong)
+                    _logger.LogError("Time: " + DateTime.Now.TimeOfDay + $" (Code: {(int)packet.Type} | String: {packet.Type})");
                 #endif
 
                 if (_hDictionary.TryGetValue(packet.Type, out var handler))
@@ -70,7 +71,7 @@ public class PlayerController : ControllerBase
         }
 
         var sr = await new StreamReader(Request.Body).ReadToEndAsync();
-        var loginRequest = LoginParser.Parse(sr);
+        var loginRequest = Parsers.ParseLogin(sr);
 
         //only for testing
         player = new Player(new Random().Next(5000000, 11_000_000), loginRequest.username, 69, loginRequest.utcOffset, UserPrivileges.Peppy);
