@@ -99,3 +99,6 @@ ScaffoldingReadMe.txt
 
 # Azure DevOps
 azureScripts
+
+# Database
+*.db
