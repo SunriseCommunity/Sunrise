@@ -1,10 +1,9 @@
 using HOPEless.Bancho;
-using Sunrise.Database.Sqlite;
 using Sunrise.Services;
 
-namespace Sunrise.Handlers;
+namespace Sunrise.Types.Interfaces;
 
 public interface IHandler
 {
-    void Handle(BanchoPacket packet, BanchoService banchoSession, SqliteDatabase database);
+    void Handle(BanchoPacket packet, BanchoService banchoSession, ServicesProvider servicesProvider);
 }
