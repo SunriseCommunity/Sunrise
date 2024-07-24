@@ -1,21 +1,27 @@
 ﻿using HOPEless.Bancho.Objects;
-using Sunrise.Enums;
-using Sunrise.GameClient.Types.Objects;
+using Sunrise.Database;
+using Sunrise.Types.Enums;
+using Sunrise.Types.Objects;
 
 namespace Sunrise.Types.Classes;
 
 public class Player
 {
-    public Player(string username, string hashedPassword, short country, short timezone, UserPrivileges privilege)
+    public Player(UserSchema userSchema)
     {
-        Username = username;
-        HashedPassword = hashedPassword;
-        Country = country;
-        Timezone = timezone;
-        Privilege = privilege;
-        Token = Guid.NewGuid().ToString();
-
-        GenerateRandomStats(); // TODO: Remove this line after implementing the database
+        Id = userSchema.Id;
+        Username = userSchema.Username;
+        HashedPassword = userSchema.Passhash;
+        Country = userSchema.Country;
+        Privilege = userSchema.Privilege;
+        Token = userSchema.Token;
+        Accuracy = userSchema.Accuracy;
+        TotalScore = userSchema.TotalScore;
+        PlayCount = userSchema.PlayCount;
+        RankedScore = userSchema.RankedScore;
+        PerformancePoints = userSchema.PerformancePoints;
+        PlayerStatus = new BanchoUserStatus();
+        Queue = new PacketQueue();
     }
 
     public int Id { get; set; }
