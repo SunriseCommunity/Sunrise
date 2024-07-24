@@ -1,14 +1,20 @@
 using Microsoft.Extensions.FileProviders;
-using Sunrise.Database.Sqlite;
+using Sunrise;
+using Sunrise.Database;
 using Sunrise.Services;
+using Sunrise.WebServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<PlayerRepository>();
-builder.Services.AddSingleton<SqliteDatabase>();
+
+builder.Services.AddSingleton<PlayersPoolService>();
+builder.Services.AddSingleton<Database>();
+builder.Services.AddSingleton<ServicesProvider>();
+builder.Services.AddSingleton<ScoreService>();
+builder.Services.AddSingleton<FileService>();
 builder.Services.AddScoped<BanchoService>();
 
 var app = builder.Build();
@@ -28,11 +34,5 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-
-app.Use(async (context, next) =>
-{
-    Console.WriteLine(context.Request.Path);
-    await next(context);
-});
 
 app.Run();
