@@ -1,7 +1,8 @@
 using HOPEless.Bancho;
 using Sunrise.Handlers;
+using Sunrise.Types.Interfaces;
 
-namespace Sunrise.Utils;
+namespace Sunrise.GameClient;
 
 public static class HandlerDictionary
 {
