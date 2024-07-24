@@ -49,7 +49,7 @@ public class Files
     {
         const string basePath = "./Database/Files/SeasonalBackgrounds";
 
-        var files = Directory.GetFiles(basePath);
+        var files = Directory.GetFiles(basePath).Where(x => x.EndsWith(".jpg")).ToArray();
 
         var titles = new string[files.Length];
 
