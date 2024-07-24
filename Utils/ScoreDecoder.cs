@@ -12,10 +12,10 @@ public static class ScoreDecoder
 {
     private const string STABLEKEY = "osu!-scoreburgr---------";
 
-    public static string Decode(string encodedString, string iv, string osuVer, string? key)
+    public static string Decode(string encodedString, string iv, string osuVer)
     {
         // use key if has, use STABLEKEY if none
-        var keyConcatenated = (key ?? STABLEKEY) + osuVer;
+        var keyConcatenated = STABLEKEY + osuVer;
         var keyBytes = Encoding.Default.GetBytes(keyConcatenated);
 
         var ivBytes = Convert.FromBase64String(iv);
@@ -44,8 +44,6 @@ public static class ScoreDecoder
 
         // Get the plain text
         string plainText = Encoding.UTF8.GetString(outputBytes);
-
-        Console.WriteLine(plainText);
 
         return plainText;
     }

@@ -1,5 +1,4 @@
-namespace Sunrise.Enums;
-
+namespace Sunrise.Types.Enums;
 public enum UserPrivileges
 {
     None = 0,

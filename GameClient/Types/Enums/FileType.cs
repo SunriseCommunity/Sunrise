@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Database.Types.Enums;
+﻿namespace Sunrise.Types.Enums;
 
 public enum FileType
 {

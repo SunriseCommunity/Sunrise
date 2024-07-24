@@ -1,4 +1,4 @@
-namespace Sunrise.Enums;
+namespace Sunrise.Types.Enums;
 
 public enum PlayModes
 {

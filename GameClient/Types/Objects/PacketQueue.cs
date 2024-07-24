@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using osu.Shared.Serialization;
 
-namespace Sunrise.GameClient.Types.Objects;
+namespace Sunrise.Types.Objects;
 
 public class PacketQueue
 {

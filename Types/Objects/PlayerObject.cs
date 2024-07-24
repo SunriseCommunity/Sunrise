@@ -1,4 +1,5 @@
 using HOPEless.Bancho.Objects;
+using Sunrise.Database;
 using Sunrise.Types.Classes;
 
 namespace Sunrise.Types.Objects;
@@ -7,9 +8,9 @@ public class PlayerObject
 {
     public Player Player { get; private set; }
 
-    public PlayerObject(Player player)
+    public PlayerObject(UserSchema user)
     {
-        Player = player;
+        Player = new Player(user);
     }
 
     public Player GetPlayer()

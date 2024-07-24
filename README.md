@@ -20,7 +20,7 @@ Sunrise/
 ├── Properties/        # Project properties
 ├── Database/          # Files (SQLite with c# classes)
 ├────── Files/         # Files stored in the  (e.g. avatars, beatmaps, backgrounds)
-├────── Sqlite/        # SQLite database files
+├────── Schemas/       # Database schemas
 ├────── Types/         # Custom types used in database
 ├── GameClient/        # Game client logic (e.g. c.ppy.sh requests)
 ├────── Controllers/   # Game client controllers - Endpoints for game client
@@ -29,7 +29,10 @@ Sunrise/
 ├────── Types/         # Game client types
 ├── WebServer/         # Website logic (e.g. a.ppy.sh, osu.ppy.sh requests)
 ├────── Controllers/   # Website controllers (endpoints)
+├────── Services/      # Website services (e.g. user service)
 ├── Utils/             # Utility classes (e.g. parsers, decoders)
+├── Types/             # Custom types used in the project
+├── Sunrise.csproj     # Project file
 ```
 
 > [!WARNING]
