@@ -1,9 +1,9 @@
 using HOPEless.Bancho;
-using Sunrise.Services;
+using Sunrise.GameClient.Objects;
 
-namespace Sunrise.Types.Interfaces;
+namespace Sunrise.GameClient.Types.Interfaces;
 
 public interface IHandler
 {
-    void Handle(BanchoPacket packet, BanchoService banchoSession, ServicesProvider servicesProvider);
+    void Handle(BanchoPacket packet, Session session, ServicesProvider services);
 }
