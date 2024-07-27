@@ -1,10 +1,10 @@
-﻿using Sunrise.Types.Enums;
+﻿using Sunrise.GameClient.Types.Enums;
 using Watson.ORM.Core;
 
-namespace Sunrise.Database;
+namespace Sunrise.Database.Schemas;
 
 [Table("file")]
-public class FileSchema
+public class File
 {
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }

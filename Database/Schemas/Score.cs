@@ -1,10 +1,11 @@
-using Sunrise.Types.Enums;
+using Sunrise.GameClient.Types.Enums;
+
 using Watson.ORM.Core;
 
-namespace Sunrise.Database;
+namespace Sunrise.Database.Schemas;
 
 [Table("score")]
-public class ScoreSchema
+public class Score
 {
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
@@ -72,11 +73,11 @@ public class ScoreSchema
     [Column(DataTypes.Int, false)]
     public int Accuracy { get; set; }
 
-    public ScoreSchema()
+    public Score()
     {
     }
 
-    public async Task<ScoreSchema> SetScoreFromString(string scoreString, ServicesProvider services)
+    public async Task<Score> SetScoreFromString(string scoreString, ServicesProvider services)
     {
         var split = scoreString.Split(':');
         var user = await services.Database.GetUser(username: split[1].Trim());
@@ -114,11 +115,10 @@ public class ScoreSchema
     public async Task<string> GetString(int rank, ServicesProvider services)
     {
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
+        var username = (await services.Database.GetUser(UserId))?.Username;
+        var hasReplay = "0"; // TODO: Check if replay exists
 
-        var username = (await services.Database.GetUser(UserId)).Username;
-
-        var has_replay = "0"; // TODO: Check if replay exists
-        return $"{UserId}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{Mods}|{UserId}|{rank}|{time}|{has_replay}";
+        return $"{UserId}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{Mods}|{UserId}|{rank}|{time}|{hasReplay}";
     }
 
 }
