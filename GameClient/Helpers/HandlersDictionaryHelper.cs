@@ -25,12 +25,13 @@ public static class HandlersDictionaryHelper
     private static Dictionary<PacketType, IHandler> GetDictionary()
     {
         return new Dictionary<PacketType, IHandler>
-            {
+            { 
             { PacketType.ClientUserPresenceRequest, new ClientUserPresenceRequest() },
             { PacketType.ClientStatusRequestOwn, new StatusRequestOwnHandler() },
             { PacketType.ClientDisconnect, new DisconnectHandler() },
             { PacketType.ClientUserStatsRequest, new UserStatsRequestHandler() },
             { PacketType.ClientUserStatus, new UserStatusHandler() },
+            { PacketType.ClientPong, new PongHandler() },
   };
     }
 }
