@@ -1,22 +1,16 @@
 using HOPEless.Bancho;
-using Sunrise.Services;
-using Sunrise.Types.Interfaces;
+using Sunrise.GameClient.Objects;
+using Sunrise.GameClient.Types.Interfaces;
 
-namespace Sunrise.Handlers;
+namespace Sunrise.GameClient.Handlers;
 
 public class DisconnectHandler : IHandler
 {
-
-
-    public void Handle(BanchoPacket packet, BanchoService banchoSession, ServicesProvider services)
+    public void Handle(BanchoPacket packet, Session session, ServicesProvider services)
     {
-        if (banchoSession.PlayerObject != null)
-        {
-            Console.WriteLine($"Player {banchoSession.PlayerObject.Player.Id} disconnected.");
+        session.SendUserQuit();
 
-            services.Players.RemovePlayer(banchoSession.PlayerObject.Player.Id);
-        }
-
-        banchoSession.EnqueuePacketForEveryone(packet);
+        services.Sessions.WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
+        services.Sessions.RemoveSession(session.User.Id);
     }
 }
