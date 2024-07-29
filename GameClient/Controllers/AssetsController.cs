@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.WebServer.Services;
+using Sunrise.GameClient.Services;
 
-namespace Sunrise.WebServer.Controllers;
+namespace Sunrise.GameClient.Controllers;
 
-[Controller]
-[Route("/api")]
+[ApiController]
+[Route("/assets")]
 public class AssetsController : ControllerBase
 {
     private readonly FileService _fileService;
@@ -29,14 +29,15 @@ public class AssetsController : ControllerBase
         }
     }
 
-    [HttpPost]
-    [Route("avatar/upload/{id}")]
-    public async Task<IActionResult> SetAvatar(int id)
+    [HttpGet]
+    [Route("menu-content.json")]
+    public IActionResult GetMenuContent()
     {
-        await _fileService.SetAvatar(id, Request);
+        const string eventImageUri = "https://osu.ppy.sh/api/events/EventBanner.jpg";
 
-        return new OkResult();
+        var json = """{ "images": [{ "image": "{img}", "url": "https://github.com/SunriseCommunity/Sunrise", "IsCurrent": true, "begins": null, "expires": "2099-06-01T12:00:00+00:00"}] }""";
+        json = json.Replace("{img}", eventImageUri);
+
+        return Ok(json);
     }
-
-
 }

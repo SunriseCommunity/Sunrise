@@ -1,15 +1,14 @@
-using Sunrise.Services;
-
+using Sunrise.GameClient.Repositories;
 namespace Sunrise;
 
 public class ServicesProvider
 {
-    public PlayersPoolService Players { get; }
+    public SessionRepository Sessions { get; }
     public Database.Database Database { get; }
 
-    public ServicesProvider(PlayersPoolService playersPoolService, Database.Database database)
+    public ServicesProvider(SessionRepository sessions, Database.Database database)
     {
-        Players = playersPoolService;
+        Sessions = sessions;
         Database = database;
     }
 }

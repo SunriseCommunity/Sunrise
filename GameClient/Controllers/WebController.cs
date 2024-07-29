@@ -1,26 +1,25 @@
 ﻿using System.ComponentModel;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.WebServer.Services;
+using Sunrise.GameClient.Services;
 
-namespace Sunrise.WebServer.Controllers;
+namespace Sunrise.GameClient.Controllers;
 
-[Controller]
+[ApiController]
 [Route("/web")]
 public class WebController : ControllerBase
 {
     private readonly ScoreService _scoreService;
     private readonly FileService _fileService;
 
+    // TODO: Enhance this response
     private const string StaticVersionResponse =
         "[{\"file_version\":\"3\",\"filename\":\"avcodec-51.dll\",\"file_hash\":\"b22bf1e4ecd4be3d909dc68ccab74eec\",\"filesize\":\"4409856\",\"timestamp\":\"2014-08-18 16:16:59\",\"patch_id\":\"1349\",\"url_full\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/f_b22bf1e4ecd4be3d909dc68ccab74eec\",\"url_patch\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/p_b22bf1e4ecd4be3d909dc68ccab74eec_734e450dd85c16d62c1844f10c6203c0\"}]";
-
 
     public WebController(ScoreService scoreService, FileService fileService)
     {
         _scoreService = scoreService;
         _fileService = fileService;
     }
-
 
     [HttpPost]
     [Route("osu-submit-modular-selector.php")]
@@ -56,9 +55,9 @@ public class WebController : ControllerBase
 
     [HttpGet]
     [Route("bancho_connect.php")]
-    public IActionResult BanchoConnect(string v, string u, string h, string fail = "", string fx = "", string ch = "", string retry = "")
+    public IActionResult BanchoConnect()
     {
-        return Ok("fi");
+        return Ok();
     }
 
     [HttpPost]

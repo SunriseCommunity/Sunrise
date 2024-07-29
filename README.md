@@ -21,17 +21,18 @@ Sunrise/
 ├── Database/          # Files (SQLite with c# classes)
 ├────── Files/         # Files stored in the  (e.g. avatars, beatmaps, backgrounds)
 ├────── Schemas/       # Database schemas
-├────── Types/         # Custom types used in database
-├── GameClient/        # Game client logic (e.g. c.ppy.sh requests)
+├── GameClient/        # Game client logic (e.g. c.ppy.sh, a.ppy.sh, osu.ppy.sh requests)
 ├────── Controllers/   # Game client controllers - Endpoints for game client
 ├────── Handlers/      # Game client handlers - Handlers for controllers (e.g. login, register)
+├────── Helpers/       # Game client helpers - Helper classes for game client
+├────── Objects/       # Game client objects - Objects used in game client (e.g. session, location)
+├────── Repositories/  # Game client repositories - Right now contains SessionRepository for all user's sessions
 ├────── Services/      # Game client services - Microservices for game client
 ├────── Types/         # Game client types
-├── WebServer/         # Website logic (e.g. a.ppy.sh, osu.ppy.sh requests)
+├── WebServer/         # Website logic (e.g. API calls)
 ├────── Controllers/   # Website controllers (endpoints)
 ├────── Services/      # Website services (e.g. user service)
 ├── Utils/             # Utility classes (e.g. parsers, decoders)
-├── Types/             # Custom types used in the project
 ├── Sunrise.csproj     # Project file
 ```
 

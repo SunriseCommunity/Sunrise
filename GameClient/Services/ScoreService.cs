@@ -1,8 +1,11 @@
-﻿using Sunrise.Database;
+﻿﻿using Sunrise.Database;
+using Sunrise.Database.Schemas;
 using Sunrise.Utils;
 
-namespace Sunrise.WebServer.Services;
+namespace Sunrise.GameClient.Services;
 
+
+[Obsolete("This class is going to be refactored. Please do not edit it.")]
 public class ScoreService
 {
     private readonly ServicesProvider _services;
@@ -26,11 +29,11 @@ public class ScoreService
 
         // Get score from encoded string
         var decodedString = ScoreDecoder.Decode(scoreEncoded!, iv!, osuver!);
-        var scoreschema = new ScoreSchema();
+        var scoreschema = new Score();
         var schema = await scoreschema.SetScoreFromString(decodedString, _services);
         var scores = await _services.Database.GetScores(schema.BeatmapHash);
 
-        ScoreSchema? prevPersonalBest = null;
+        Score? prevPersonalBest = null;
 
         if (scores.Count > 0)
         {
@@ -51,6 +54,10 @@ public class ScoreService
 
             // TODO: Implement proper calculation for accuracy
             // user.Accuracy = (user.Accuracy * (user.PlayCount - 1) + schema.Accuracy) / user.PlayCount;
+        }
+        else if (prevPersonalBest == null)
+        {
+            user.RankedScore += schema.TotalScore; // First score
         }
 
         user.PlayCount += 1;
@@ -76,7 +83,7 @@ public class ScoreService
         return response;
     }
 
-    private string GetScoreSubmitResponse(ScoreSchema score, UserSchema user, UserSchema prevUser, ScoreSchema? prevScore, int mapRankBefore, int mapRankAfter)
+    private string GetScoreSubmitResponse(Score score, User user, User prevUser, Score? prevScore, int mapRankBefore, int mapRankAfter)
     {
         // TODO: This is a mock response. Implement proper response
         const int beatmapId = 1;
@@ -152,9 +159,9 @@ public class ScoreService
 
         scores = scores.Take(50).ToList();
 
-        var userId = (await _services.Database.GetUser(username: username)).Id;
+        var user = await _services.Database.GetUser(username: username);
 
-        var personalBest = scores.FindIndex(x => x.UserId == userId);
+        var personalBest = scores.FindIndex(x => x.UserId == user?.Id);
         if (personalBest != -1)
         {
             var score = scores[personalBest];
@@ -174,11 +181,4 @@ public class ScoreService
 
         return string.Join("\n", responses);
     }
-
-
-
-
-
-
-
 }

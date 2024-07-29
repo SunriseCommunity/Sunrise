@@ -1,36 +1,25 @@
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.GameClient;
-using Sunrise.Services;
-using Sunrise.Types.Enums;
-using Sunrise.Types.Interfaces;
+using Sunrise.GameClient.Helpers;
+using Sunrise.GameClient.Objects;
+using Sunrise.GameClient.Services;
+using Sunrise.GameClient.Types.Interfaces;
 
-namespace Sunrise.Controllers;
+namespace Sunrise.GameClient.Controllers;
 
-[Controller]
+[ApiController]
 [Route("/")]
 public class BanchoController : ControllerBase
 {
-    private readonly ConnectionService _connectionService;
-    private readonly ServicesProvider _services;
-    private readonly BanchoService _banchoSession;
-
+    private readonly Dictionary<PacketType, IHandler> _hDictionary = HandlersDictionaryHelper.Handlers;
+    private readonly List<PacketType> _hSuppressed = HandlersDictionaryHelper.Suppressed;
     private readonly ILogger<BanchoController> _logger;
-    private readonly Dictionary<PacketType, IHandler> _hDictionary = HandlerDictionary.Handlers;
+    private readonly ServicesProvider _services;
 
-    public BanchoController(ServicesProvider services, BanchoService banchoSession, ILogger<BanchoController> logger)
+    public BanchoController(ServicesProvider services, ILogger<BanchoController> logger)
     {
-        Console.WriteLine("BanchoController created");
         _services = services;
         _logger = logger;
-        _banchoSession = banchoSession;
-        _connectionService = new ConnectionService(banchoSession, services.Players, services);
-    }
-
-    [HttpGet]
-    public Task<IActionResult> Get()
-    {
-        return Task.FromResult<IActionResult>(Ok("Hello, world!"));
     }
 
     [HttpPost]
@@ -38,48 +27,42 @@ public class BanchoController : ControllerBase
     {
         string? sessionToken = Request.Headers["osu-token"];
 
-        // If no session token, then we need to log in
         if (sessionToken == null)
-        {
-            Console.WriteLine("No session token");
-            return await _connectionService.SendLoginResponse(Request, Response);
-        }
+            return await new LoginService(_services).Handle(Request, Response);
 
+        Session? session = _services.Sessions.GetSession(sessionToken);
+
+        if (session == null)
+            return new LoginService(_services).Reject(Response);
+
+        // Deserialize packets and handle them
         await using var ms = new MemoryStream();
         await Request.Body.CopyToAsync(ms);
         ms.Position = 0;
 
-        // Try to get the player from the database
-        var player = await _services.Database.GetUser(token: sessionToken);
-
-        if (player == null)
-        {
-            _logger.LogWarning($"Player not found in the database with token: {sessionToken}");
-
-            _banchoSession.SendLoginResponse(LoginResponses.InvalidCredentials);
-            return new FileContentResult(_banchoSession.GetPacketBytes(), "application/octet-stream");
-        }
-
-        _banchoSession.SetPlayer(player);
-
-        // Deserialize packets and handle them
         foreach (var packet in BanchoSerializer.DeserializePackets(ms))
         {
-            Console.WriteLine($"Packet type: {packet.Type}");
 
-            if (packet.Type != PacketType.ClientPong)
+            if (!_hSuppressed.Contains(packet.Type))
                 _logger.LogInformation($"Time: {DateTime.Now} | (Code: {(int)packet.Type} | String: {packet.Type})");
 
             if (_hDictionary.TryGetValue(packet.Type, out var handler))
             {
-                handler.Handle(packet, _banchoSession, _services);
+                handler.Handle(packet, session, _services);
             }
             else
             {
-                _logger.LogWarning("Handler not found for packet type: " + packet.Type);
+                if (!_hSuppressed.Contains(packet.Type))
+                    _logger.LogWarning($"Handler not found for packet type: {packet.Type}");
             }
         }
 
-        return new FileContentResult(_banchoSession.GetPacketBytes(), "application/octet-stream");
+        return new FileContentResult(session.GetContent(), "application/octet-stream");
+    }
+
+    [HttpGet]
+    public Task<IActionResult> Get()
+    {
+        return Task.FromResult<IActionResult>(Ok("Hello, world!"));
     }
 }

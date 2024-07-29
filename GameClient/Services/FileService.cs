@@ -1,4 +1,4 @@
-﻿namespace Sunrise.WebServer.Services;
+﻿namespace Sunrise.GameClient.Services;
 
 public class FileService
 {
@@ -36,15 +36,5 @@ public class FileService
         }
 
         return avatar;
-    }
-
-
-    public async Task SetAvatar(int userId, HttpRequest request)
-    {
-        using var buffer = new System.IO.MemoryStream();
-        await request.Body.CopyToAsync(buffer, request.HttpContext.RequestAborted);
-
-        var avatar = buffer.ToArray();
-        await _services.Database.SetAvatar(userId, avatar);
     }
 }
