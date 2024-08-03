@@ -4,18 +4,18 @@ using HOPEless.Bancho.Objects;
 using HOPEless.Extensions;
 using osu.Shared;
 using osu.Shared.Serialization;
-using Sunrise.GameClient.Types.Enums;
+using Sunrise.Server.Types.Enums;
 
-namespace Sunrise.GameClient.Objects;
+namespace Sunrise.Server.Helpers;
 
-public class PacketWriter
+public class PacketHelper
 {
     private readonly ConcurrentQueue<BanchoPacket> _packets = new ConcurrentQueue<BanchoPacket>();
 
     [Obsolete("Use WritePacket instead.")]
     public void EnqueuePacket(BanchoPacket packet) => _packets.Enqueue(packet);
 
-    private void WritePacket<T>(PacketType type, T data) where T : ISerializable
+    private void WritePacket(PacketType type, ISerializable data)
     {
         _packets.Enqueue(new BanchoPacket(type, data.Serialize()));
     }
@@ -55,19 +55,19 @@ public class PacketWriter
         WritePacket(type, ((MemoryStream)w.BaseStream).ToArray());
     }
 
-    public void WritePacket(PacketType type, object data)
+    public void WritePacket<T>(PacketType type, T data)
     {
         switch (data)
         {
-            case int i: WritePacket(type, i); break;
-            case string s: WritePacket(type, s); break;
-            case List<int> il: WritePacket(type, il); break;
-            case List<string> sl: WritePacket(type, sl); break;
-            case PlayerRank pr: WritePacket(type, (int)pr); break;
-            case LoginResponses lr: WritePacket(type, (int)lr); break;
-            case ISerializable serializable: WritePacket(type, serializable); break;
-            case byte[] bytes: WritePacket(type, bytes); break;
-            default: throw new ArgumentException("Invalid data type: " + data.GetType().Name);
+            case int i: WritePacket(type, i); return;
+            case string s: WritePacket(type, s); return;
+            case List<int> il: WritePacket(type, il); return;
+            case List<string> sl: WritePacket(type, sl); return;
+            case PlayerRank pr: WritePacket(type, (int)pr); return;
+            case LoginResponses lr: WritePacket(type, (int)lr); return;
+            case ISerializable serializable: WritePacket(type, serializable); return;
+            case byte[] bytes: WritePacket(type, bytes); return;
+            default: throw new ArgumentException("Invalid data type: " + data?.GetType().Name);
         }
     }
 
