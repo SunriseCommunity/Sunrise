@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Sunrise.GameClient.Objects.Serializable;
+namespace Sunrise.Server.Objects.Serializable;
 
 public class Location
 {
