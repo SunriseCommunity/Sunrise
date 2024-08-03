@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.GameClient.Helpers;
@@ -9,10 +10,11 @@ namespace Sunrise.GameClient.Controllers;
 
 [ApiController]
 [Route("/")]
+[Description("c.ppy.sh controller")]
 public class BanchoController : ControllerBase
 {
-    private readonly Dictionary<PacketType, IHandler> _hDictionary = HandlersDictionaryHelper.Handlers;
-    private readonly List<PacketType> _hSuppressed = HandlersDictionaryHelper.Suppressed;
+    private readonly Dictionary<PacketType, IHandler> _hDictionary = HandlersDictionary.Handlers;
+    private readonly List<PacketType> _hSuppressed = HandlersDictionary.Suppressed;
     private readonly ILogger<BanchoController> _logger;
     private readonly ServicesProvider _services;
 
@@ -35,20 +37,21 @@ public class BanchoController : ControllerBase
         if (session == null)
             return new LoginService(_services).Reject(Response);
 
+        session.Attributes.LastPingRequest = DateTime.UtcNow;
+
         // Deserialize packets and handle them
-        await using var ms = new MemoryStream();
-        await Request.Body.CopyToAsync(ms);
+              await using var ms = new MemoryStream();
+           await Request.Body.CopyToAsync(ms);
         ms.Position = 0;
 
         foreach (var packet in BanchoSerializer.DeserializePackets(ms))
         {
-
             if (!_hSuppressed.Contains(packet.Type))
                 _logger.LogInformation($"Time: {DateTime.Now} | (Code: {(int)packet.Type} | String: {packet.Type})");
 
             if (_hDictionary.TryGetValue(packet.Type, out var handler))
             {
-                handler.Handle(packet, session, _services);
+                await handler.Handle(packet, session, _services);
             }
             else
             {
