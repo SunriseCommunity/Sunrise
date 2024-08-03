@@ -4,7 +4,7 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:17705",
+      "applicationUrl": "http://0.0.0.0:17705",
       "sslPort": 44343
     }
   },
@@ -14,7 +14,7 @@
       "dotnetRunMessages": true,
       "launchBrowser": false,
       "launchUrl": "swagger",
-      "applicationUrl": "http://localhost:5147",
+      "applicationUrl": "http://0.0.0.0:5147",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -24,9 +24,11 @@
       "dotnetRunMessages": true,
       "launchBrowser": false,
       "launchUrl": "swagger",
-      "applicationUrl": "https://localhost:7165;http://localhost:5147",
+      "applicationUrl": "https://0.0.0.0:443",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "./sunrise.local.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
       }
     },
     "IIS Express": {

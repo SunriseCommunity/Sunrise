@@ -1,0 +1,20 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+
+namespace Sunrise.Server.Utils;
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class SubdomainAttribute(params string[] allowedSubdomains) : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        var subdomain = context.HttpContext.Request.Host.Host.Split('.')[0];
+
+        if (!allowedSubdomains.Contains(subdomain))
+        {
+            context.Result = new NotFoundResult();
+        }
+
+        base.OnActionExecuting(context);
+    }
+}
