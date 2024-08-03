@@ -1,13 +1,14 @@
 using HOPEless.Bancho;
 using osu.Shared.Serialization;
-using Sunrise.GameClient.Objects;
-using Sunrise.GameClient.Types.Interfaces;
+using Sunrise.Server.Objects;
+using Sunrise.Server.Types.Interfaces;
+using Sunrise.Server.Utils;
 
-namespace Sunrise.GameClient.Handlers;
+namespace Sunrise.Server.Services.Handlers.Client;
 
 public class UserStatsRequestHandler : IHandler
 {
-    public void Handle(BanchoPacket packet, Session session, ServicesProvider services)
+    public async Task Handle(BanchoPacket packet, Session session, ServicesProvider services)
     {
         var msa = new MemoryStream(packet.Data);
         var reader = new SerializationReader(msa);
@@ -18,9 +19,13 @@ public class UserStatsRequestHandler : IHandler
         for (var i = 0; i < length; i++)
             ids.Add(reader.ReadInt32());
 
+        ids.Remove(session.User.Id);
+
         foreach (var player in ids.Select(id => services.Sessions.GetSessionByUserId(id)))
             if (player != null)
-                session.WritePacket(PacketType.ServerUserData, player.Attributes.GetPlayerData());
+            {
+                session.WritePacket(PacketType.ServerUserData, await player.Attributes.GetPlayerData());
+            }
     }
 }
 
