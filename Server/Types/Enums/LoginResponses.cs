@@ -1,4 +1,4 @@
-namespace Sunrise.GameClient.Types.Enums;
+namespace Sunrise.Server.Types.Enums;
 
 public enum LoginResponses
 {
