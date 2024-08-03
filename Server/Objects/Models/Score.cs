@@ -1,8 +1,9 @@
-using Sunrise.GameClient.Types.Enums;
-
+using osu.Shared;
+using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
-namespace Sunrise.Database.Schemas;
+namespace Sunrise.Server.Objects.Models;
 
 [Table("score")]
 public class Score
@@ -19,11 +20,8 @@ public class Score
     [Column(DataTypes.Nvarchar, 64, false)]
     public string BeatmapHash { get; set; }
 
-    [Column(DataTypes.Nvarchar, 64, false)]
-    public string ReplayChecksum { get; set; }
-
-    [Column(DataTypes.Nvarchar, 64, false)]
-    public string FileChecksum { get; set; }
+    [Column(DataTypes.Int)]
+    public int? ReplayFileId { get; set; }
 
     [Column(DataTypes.Int, false)]
     public int TotalScore { get; set; }
@@ -53,7 +51,7 @@ public class Score
     public bool Perfect { get; set; }
 
     [Column(DataTypes.Int, false)]
-    public int Mods { get; set; }
+    public Mods Mods { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Grade { get; set; }
@@ -62,7 +60,7 @@ public class Score
     public bool IsPassed { get; set; }
 
     [Column(DataTypes.Int, false)]
-    public PlayModes PlayMode { get; set; }
+    public GameMode GameMode { get; set; }
 
     [Column(DataTypes.DateTime, false)]
     public DateTime WhenPlayed { get; set; }
@@ -70,28 +68,30 @@ public class Score
     [Column(DataTypes.Nvarchar, 64, false)]
     public string OsuVersion { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int Accuracy { get; set; }
+    [Column(DataTypes.Decimal, 100, 2, false)]
+    public double Accuracy { get; set; }
 
-    public Score()
-    {
-    }
+    [Column(DataTypes.Decimal, 100, 2, false)]
+    public double PerformancePoints { get; set; }
 
-    public async Task<Score> SetScoreFromString(string scoreString, ServicesProvider services)
+    // Local properties
+    public Beatmap Beatmap { get; set; }
+    public string FileChecksum { get; set; }
+    public int? LeaderboardRank { get; set; }
+
+    public async Task<Score> SetScoreFromString(string scoreString, ServicesProvider services, Beatmap beatmap, string version)
     {
         var split = scoreString.Split(':');
         var user = await services.Database.GetUser(username: split[1].Trim());
+        var calculators = new Calculators(services);
 
         if (user == null)
-        {
-            Console.WriteLine("User not found");
-            return null;
-        }
+            throw new Exception("User not found");
 
         BeatmapHash = split[0];
         UserId = user.Id;
-        ReplayChecksum = split[2];
-        FileChecksum = split[2]; // Placeholder
+        BeatmapId = beatmap.Id;
+        FileChecksum = split[2]; // TODO: Check file checksum
         Count300 = int.Parse(split[3]);
         Count100 = int.Parse(split[4]);
         Count50 = int.Parse(split[5]);
@@ -102,23 +102,23 @@ public class Score
         MaxCombo = int.Parse(split[10]);
         Perfect = bool.Parse(split[11]);
         Grade = split[12];
-        Mods = int.Parse(split[13]);
+        Mods = (Mods)int.Parse(split[13]);
         IsPassed = bool.Parse(split[14]);
-        PlayMode = (PlayModes)int.Parse(split[15]);
+        GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
-        OsuVersion = split[17];
-        Accuracy = 0; // TODO: CALCULATE 
-
+        OsuVersion = version;
+        Accuracy = calculators.CalculateAccuracy(this);
+        PerformancePoints = calculators.CalculatePerformancePoints(this);
+        Beatmap = beatmap;
         return this;
     }
 
-    public async Task<string> GetString(int rank, ServicesProvider services)
+    public async Task<string> GetString(ServicesProvider services)
     {
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await services.Database.GetUser(UserId))?.Username;
-        var hasReplay = "0"; // TODO: Check if replay exists
+        var username = (await services.Database.GetUser(UserId))?.Username ?? "Unknown";
+        var hasReplay = ReplayFileId != null ? "1" : "0";
 
-        return $"{UserId}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{Mods}|{UserId}|{rank}|{time}|{hasReplay}";
+        return $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
     }
-
 }
