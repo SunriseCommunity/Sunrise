@@ -198,7 +198,7 @@ public sealed class SunriseDb
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, id);
-        exp.PrependAnd("Type", OperatorEnum.Equals, FileType.Avatar);
+        exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Avatar);
 
         var file = await _orm.SelectFirstAsync<UserFile?>(exp);
 
@@ -242,7 +242,7 @@ public sealed class SunriseDb
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
-        exp.PrependAnd("Type", OperatorEnum.Equals, FileType.Banner);
+        exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
 
         var file = await _orm.SelectFirstAsync<UserFile?>(exp);
 
