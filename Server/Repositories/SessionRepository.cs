@@ -15,14 +15,14 @@ public class SessionRepository
     public SessionRepository(SunriseDb database)
     {
         _database = database;
-        const int oneMinute = 60 * 1000;
+        const int second = 1000;
 
         Task.Run(async () =>
         {
             while (true)
             {
                 ClearInactiveSessions();
-                await Task.Delay(oneMinute);
+                await Task.Delay(30 * second);
             }
         });
     }
@@ -78,7 +78,7 @@ public class SessionRepository
     {
         foreach (var session in _sessions.Values)
         {
-            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1))
+            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddSeconds(-30))
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
