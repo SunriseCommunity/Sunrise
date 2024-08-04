@@ -1,4 +1,4 @@
-# [🌅 Sunrise] - osu! private server :shipit:
+# 🌅 Sunrise - osu! private server
 
 <p align="center">
   <img src="./readme.jpg" alt="Artwork made by torekka. We don't own the rights to this image.">
@@ -8,7 +8,7 @@ Sunrise is a private server for osu! written in C#. This repository has both end
 website. The server is currently in development and is not yet ready for public use.
 
 > [!NOTE]
-> Why C#? Well, because owner of this project has allergies to non-typed languages. Sad, I know.
+> Why C#? :shipit: Well, because owner of this project has allergies to non-typed languages. Sad, I know.  
 
 ## Features 🌟
 
