@@ -22,7 +22,7 @@ public class SessionRepository
             while (true)
             {
                 ClearInactiveSessions();
-                await Task.Delay(30 * second);
+                await Task.Delay(60 * second);
             }
         });
     }
@@ -78,7 +78,7 @@ public class SessionRepository
     {
         foreach (var session in _sessions.Values)
         {
-            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddSeconds(-30))
+            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1))
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
