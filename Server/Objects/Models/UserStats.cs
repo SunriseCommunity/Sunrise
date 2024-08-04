@@ -60,6 +60,10 @@ public class UserStats
 
         if (score.Beatmap.Status < BeatmapStatus.Ranked) return;
 
+        UpdateMaxCombo(score.MaxCombo);
+
+        if (score.Beatmap.Status > BeatmapStatus.Approved) return;
+
         var calculator = new Calculators(services);
 
         if (isNewScore || isBetterScore)
@@ -69,8 +73,6 @@ public class UserStats
             PerformancePoints = (short)await calculator.CalculateUserWeightedPerformance(score);
             Accuracy = await calculator.CalculateUserWeightedAccuracy(score);
         }
-
-        UpdateMaxCombo(score.MaxCombo);
     }
 
     private void UpdateMaxCombo(int combo)
