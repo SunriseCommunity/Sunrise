@@ -27,7 +27,7 @@ public class BanchoController(ServicesProvider services, ILogger<BanchoControlle
 
         if (session == null)
         {
-            return new LoginService(services).Reject(Response);
+            return new LoginService(services).Relogin(Response);
         }
 
         session.Attributes.LastPingRequest = DateTime.UtcNow;

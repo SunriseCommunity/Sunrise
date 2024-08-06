@@ -78,6 +78,14 @@ public class LoginService(ServicesProvider services)
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
+    public IActionResult Relogin(HttpResponse response, string? reason = null)
+    {
+        var writer = new PacketHelper();
+        writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin
+
+        return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
+    }
+
     private async Task<IActionResult> Proceed(Session session)
     {
         session.SendLoginResponse(LoginResponses.Success);
