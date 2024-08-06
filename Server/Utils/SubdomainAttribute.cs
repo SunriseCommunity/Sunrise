@@ -12,7 +12,13 @@ public class SubdomainAttribute(params string[] allowedSubdomains) : ActionFilte
 
         if (!allowedSubdomains.Contains(subdomain))
         {
-            context.Result = new NotFoundResult();
+            context.Result = new JsonResult(new
+            {
+                error = "No data exists for the requested endpoint"
+            })
+            {
+                StatusCode = 400
+            };
         }
 
         base.OnActionExecuting(context);
