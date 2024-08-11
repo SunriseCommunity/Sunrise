@@ -20,6 +20,7 @@ website. The server is currently in development and is not yet ready for public 
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [ ] osu!Direct
 - [ ] Spectating
+- [ ] Stats page (with heart-beat system and operations per minute???)
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
