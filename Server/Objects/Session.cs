@@ -1,5 +1,6 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
@@ -39,7 +40,14 @@ public class Session
 
     public void SendBanchoMaintenance()
     {
-        const string message = "Bancho is currently in maintenance mode. Please try again later.";
+        var message = "Server going down for maintenance.";
+
+        if (User.Privilege >= PlayerRank.SuperMod)
+        {
+            return;
+        }
+
+        message += " You will be disconnected shortly.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.ServerError);
         _helper.WritePacket(PacketType.ServerNotification, message);

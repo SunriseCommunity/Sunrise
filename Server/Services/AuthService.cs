@@ -53,6 +53,11 @@ public static class AuthService
             return RejectLogin(response, "User is already logged in. Try again later.");
         }
 
+        if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
+        {
+            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
+        }
+
         var session = sessions.CreateSession(user, location, loginRequest);
 
         response.Headers["cho-token"] = session.Token;
@@ -60,7 +65,7 @@ public static class AuthService
         return await ProceedWithLogin(session);
     }
 
-    private static IActionResult RejectLogin(HttpResponse response, string? reason = null)
+    private static IActionResult RejectLogin(HttpResponse response, string? reason = null, LoginResponses code = LoginResponses.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
 
@@ -71,7 +76,7 @@ public static class AuthService
             writer.WritePacket(PacketType.ServerNotification, reason);
         }
 
-        writer.WritePacket(PacketType.ServerLoginReply, LoginResponses.InvalidCredentials);
+        writer.WritePacket(PacketType.ServerLoginReply, code);
 
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
@@ -118,6 +123,11 @@ public static class AuthService
         await session.SendUserPresence();
 
         session.SendNotification(Configuration.WelcomeMessage);
+
+        if (Configuration.OnMaintenance)
+        {
+            session.SendNotification("Server is currently in maintenance mode. Please keep in mind that some features may not work properly.");
+        }
 
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }

@@ -10,7 +10,7 @@ namespace Sunrise.Server.Repositories.Chat;
 
 public static class CommandRepository
 {
-    private static readonly Dictionary<string, IChatCommand> Handlers = new();
+    private static readonly Dictionary<string, ChatCommand> Handlers = new();
 
     public static async Task HandleCommand(string message, Session session)
     {
@@ -45,13 +45,25 @@ public static class CommandRepository
             return;
         }
 
+        if (handler.RequiredPrivileges > session.User.Privilege)
+        {
+            SendMessage(session, "You don't have permission to use this command.");
+            return;
+        }
+
         await handler.Handle(session, args);
     }
 
-    public static string[] GetCurrentCommands()
+    public static string[] GetAvailableCommands(Session session)
     {
-        return Handlers.Keys.ToArray();
+        var privilege = session.User.Privilege;
+
+        return Handlers
+            .Where(x => x.Value.RequiredPrivileges <= privilege)
+            .Select(x => x.Key)
+            .ToArray();
     }
+
 
     public static void SendMessage(Session session, string message)
     {
@@ -91,11 +103,12 @@ public static class CommandRepository
                 continue;
             }
 
-            Handlers.Add(attribute.Command, instance);
+            var command = new ChatCommand(instance, attribute.RequiredRank);
+            Handlers.Add(attribute.Command, command);
         }
     }
 
-    private static IChatCommand? GetHandler(string command)
+    private static ChatCommand? GetHandler(string command)
     {
         return Handlers.GetValueOrDefault(command);
     }

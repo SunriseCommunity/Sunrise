@@ -10,7 +10,7 @@ public class HelpCommand : IChatCommand
 {
     public Task Handle(Session session, string[]? args)
     {
-        CommandRepository.SendMessage(session, $"Available commands: {Configuration.BotPrefix}" + string.Join($", {Configuration.BotPrefix}", CommandRepository.GetCurrentCommands()));
+        CommandRepository.SendMessage(session, $"Available commands: {Configuration.BotPrefix}" + string.Join($", {Configuration.BotPrefix}", CommandRepository.GetAvailableCommands(session)));
         return Task.CompletedTask;
     }
 }

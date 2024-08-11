@@ -8,4 +8,5 @@ public static class Configuration
     public static string BotUsername { get; set; } = "Sunshine Bot";
     public static string BotPrefix { get; set; } = "!";
     public static string Domain { get; set; } = "sunrise.local";
+    public static bool OnMaintenance { get; set; } = false;
 }
