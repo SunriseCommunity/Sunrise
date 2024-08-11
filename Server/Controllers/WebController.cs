@@ -18,9 +18,6 @@ public class WebController : ControllerBase
     [HttpPost("osu-submit-modular-selector.php")]
     public async Task<IActionResult> Submit()
     {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
         var result = await ScoreService.SubmitScore(Request);
         return await Task.FromResult<IActionResult>(Ok(result));
     }

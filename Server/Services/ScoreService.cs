@@ -48,6 +48,11 @@ public static class ScoreService
             throw new Exception("Invalid request: UserStats not found");
         }
 
+        if (user.Passhash != data.PassHash || user.IsRestricted)
+        {
+            return "error: no";
+        }
+
         var prevUserStats = userStats.Clone();
         var prevPBest = scores.GetPersonalBestOf(score.UserId);
 

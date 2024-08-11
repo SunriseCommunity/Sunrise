@@ -8,8 +8,13 @@ public static class AuthorizationHelper
 {
     public static async Task<bool> IsAuthorized(HttpRequest request)
     {
-        var username = request.Method == "POST" ? request.Form["us"] : request.Query["us"];
-        var passhash = request.Method == "POST" ? request.Form["pass"] : request.Query["ha"];
+        if (request.Method == "POST")
+        {
+            throw new Exception("Invalid request: POST method is not allowed for this endpoint.");
+        }
+
+        var username = request.Query["us"];
+        var passhash = request.Query["ha"];
 
         if (string.IsNullOrEmpty(username) && request.Method == "GET" || string.IsNullOrEmpty(passhash))
         {
@@ -18,14 +23,14 @@ public static class AuthorizationHelper
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
-        var user = await database.GetUser(username: username, token: passhash);
+        var user = await database.GetUser(username: username);
 
         if (user == null)
         {
             return false;
         }
 
-        if (user.Passhash != passhash)
+        if (user.Passhash != passhash || user.IsRestricted)
         {
             return false;
         }
