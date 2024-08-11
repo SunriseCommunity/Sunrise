@@ -122,6 +122,11 @@ public static class AuthService
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
 
+        if (session.User.SilencedUntil > DateTime.UtcNow)
+        {
+            session.SendSilenceStatus((int)(session.User.SilencedUntil - DateTime.UtcNow).TotalSeconds);
+        }
+
         sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence());
         sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
 

@@ -33,6 +33,9 @@ public class User
     [Column(DataTypes.Boolean, false)]
     public bool IsRestricted { get; set; } = false;
 
+    [Column(DataTypes.DateTime, false)]
+    public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
+
     public List<int> FriendsList => Friends.Split(',')
         .Where(x => !string.IsNullOrEmpty(x))
         .Select(int.Parse)

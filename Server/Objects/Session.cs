@@ -88,6 +88,12 @@ public class Session
         _helper.WritePacket(PacketType.ServerUserPermissions, User.Privilege);
     }
 
+    public void SendSilenceStatus(int time = 0, string? reason = null)
+    {
+        _helper.WritePacket(PacketType.ServerNotification, $"You have been {(time == 0 ? "un" : "")}silenced. {(reason != null ? $"Reason: {reason}" : "")}");
+        _helper.WritePacket(PacketType.ServerLockClient, time);
+    }
+
     public async Task SendUserPresence()
     {
         var userPresence = await Attributes.GetPlayerPresence();
