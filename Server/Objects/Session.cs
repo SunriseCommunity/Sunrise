@@ -89,6 +89,17 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, text);
     }
 
+    public void SendChannelMessage(string channel, string message, string? sender = null)
+    {
+        _helper.WritePacket(PacketType.ServerChatMessage,
+            new BanchoChatMessage
+            {
+                Message = message,
+                Sender = sender ?? Configuration.BotUsername,
+                Channel = channel
+            });
+    }
+
     public void SendExistingChannels()
     {
         _helper.WritePacket(PacketType.ServerChatChannelListingComplete, 0);

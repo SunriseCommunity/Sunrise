@@ -164,10 +164,27 @@ public sealed class SunriseDb
         return scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
     }
 
-    public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode, bool pbOnly = true)
+    public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode, LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null, bool pbOnly = true)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode);
+
+        if (type is LeaderboardType.GlobalWithMods) exp.PrependAnd("Mods", OperatorEnum.Equals, (int)mods);
+        if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
+
         var scores = await _orm.SelectManyAsync<Score>(exp);
+
+        if (type is LeaderboardType.Country)
+        {
+            foreach (var score in scores.ToList())
+            {
+                var scoreUser = await GetUser(score.UserId);
+
+                if (scoreUser?.Country != user?.Country)
+                {
+                    scores.Remove(score);
+                }
+            }
+        }
 
         return pbOnly ? ScoresHelper.GetSortedScores(scores) : scores;
     }
