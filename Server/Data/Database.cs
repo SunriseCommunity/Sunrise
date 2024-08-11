@@ -163,6 +163,15 @@ public sealed class SunriseDb
         return scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
     }
 
+    public async Task<Score?> GetUserLastScore(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+
+        var scores = await _orm.SelectManyAsync<Score>(exp);
+
+        return scores.Count == 0 ? null : scores.OrderBy(x => x.WhenPlayed).ToList().Last();
+    }
+
     public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode, LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode);

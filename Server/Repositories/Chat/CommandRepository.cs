@@ -93,6 +93,11 @@ public static class CommandRepository
 
         if (action?.StartsWith("is listening to") == true || action?.StartsWith("is watching") == true)
         {
+            if (message.Split('/').Length < 6)
+            {
+                return (null, null);
+            }
+
             var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0] ?? string.Empty, out var id) ? id : 0;
             return ("beatmap", [beatmapId.ToString()]);
         }

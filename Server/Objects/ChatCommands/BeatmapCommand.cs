@@ -29,7 +29,7 @@ public class BeatmapCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == beatmapId);
 
-        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(beatmapId, (int)session.Attributes.Status.PlayMode, precision: false);
+        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(beatmapId, beatmap?.ModeInt ?? 0, precision: false);
 
         CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] | 95%: {pp95}pp | 98%: {pp98}pp | 99%: {pp99}pp | 100%: {pp100}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
     }
