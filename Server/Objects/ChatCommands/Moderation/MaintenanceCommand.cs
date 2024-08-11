@@ -5,7 +5,7 @@ using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Objects.ChatCommands;
+namespace Sunrise.Server.Objects.ChatCommands.Moderation;
 
 [ChatCommand("maintenance", PlayerRank.SuperMod)]
 public class MaintenanceCommand : IChatCommand

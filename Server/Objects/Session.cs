@@ -53,6 +53,14 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
+    public void SendRestriction()
+    {
+        const string message = "You have been restricted. Please contact a staff member for more information.";
+
+        _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
+        _helper.WritePacket(PacketType.ServerNotification, message);
+    }
+
     public void SendJoinChannel(string channel)
     {
         _helper.WritePacket(PacketType.ServerChatChannelAvailableAutojoin, channel);

@@ -30,6 +30,9 @@ public class User
     [Column(DataTypes.Nvarchar, 1024, false)]
     public string Friends { get; set; } = string.Empty;
 
+    [Column(DataTypes.Boolean, false)]
+    public bool IsRestricted { get; set; } = false;
+
     public List<int> FriendsList => Friends.Split(',')
         .Where(x => !string.IsNullOrEmpty(x))
         .Select(int.Parse)

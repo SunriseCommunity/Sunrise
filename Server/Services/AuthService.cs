@@ -46,6 +46,16 @@ public static class AuthService
             return RejectLogin(response, "Invalid credentials.");
         }
 
+        if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
+        {
+            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
+        }
+
+        if (user.IsRestricted)
+        {
+            return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
+        }
+
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         if (sessions.IsUserOnline(user.Id))
@@ -53,10 +63,6 @@ public static class AuthService
             return RejectLogin(response, "User is already logged in. Try again later.");
         }
 
-        if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
-        {
-            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
-        }
 
         var session = sessions.CreateSession(user, location, loginRequest);
 
