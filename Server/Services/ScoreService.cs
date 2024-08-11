@@ -72,7 +72,7 @@ public static class ScoreService
         var newPBest = scores.GetNewPersonalScore(score);
         userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
 
-        if (newPBest.LeaderboardRank == 1 && newPBest.TotalScore > prevPBest?.TotalScore)
+        if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
             var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
