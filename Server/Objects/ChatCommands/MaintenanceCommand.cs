@@ -10,7 +10,7 @@ namespace Sunrise.Server.Objects.ChatCommands;
 [ChatCommand("maintenance", PlayerRank.SuperMod)]
 public class MaintenanceCommand : IChatCommand
 {
-    public Task Handle(Session session, string[]? args)
+    public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (args == null || args.Length == 0)
         {

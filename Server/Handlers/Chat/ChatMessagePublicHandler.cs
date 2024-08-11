@@ -3,6 +3,7 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -18,6 +19,11 @@ public class ChatMessagePublicHandler : IHandler
             Sender = session.User.Username,
             SenderId = session.User.Id
         };
+
+        if (message.Message.StartsWith(Configuration.BotPrefix))
+        {
+            return CommandRepository.HandleCommand(message, session);
+        }
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 

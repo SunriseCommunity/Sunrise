@@ -9,7 +9,7 @@ namespace Sunrise.Server.Objects.ChatCommands;
 [ChatCommand("beatmap")]
 public class BeatmapCommand : IChatCommand
 {
-    public async Task Handle(Session session, string[]? args)
+    public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (args == null || args.Length < 1)
         {

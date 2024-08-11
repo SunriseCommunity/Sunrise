@@ -26,7 +26,7 @@ public class ChatMessagePrivateHandler : IHandler
         {
             if (message.Message.StartsWith(Configuration.BotPrefix) || message.Message.StartsWith(Action))
             {
-                return CommandRepository.HandleCommand(message.Message, session);
+                return CommandRepository.HandleCommand(message, session);
             }
         }
 
@@ -45,8 +45,8 @@ public class ChatMessagePrivateHandler : IHandler
                 });
             return Task.CompletedTask;
         }
-        
-        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver!.User.FriendsList.Contains(session.User.Id))
+
+        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver?.User.FriendsList.Contains(session.User.Id) == true)
         {
             receiver.WritePacket(PacketType.ServerChatMessage, message);
         }

@@ -8,9 +8,12 @@ namespace Sunrise.Server.Objects.ChatCommands;
 [ChatCommand("help")]
 public class HelpCommand : IChatCommand
 {
-    public Task Handle(Session session, string[]? args)
+    public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        CommandRepository.SendMessage(session, $"Available commands: {Configuration.BotPrefix}" + string.Join($", {Configuration.BotPrefix}", CommandRepository.GetAvailableCommands(session)));
+        var message = $"Available commands: {Configuration.BotPrefix}" + string.Join($", {Configuration.BotPrefix}", CommandRepository.GetAvailableCommands(session));
+
+        CommandRepository.SendMessage(session, message);
+
         return Task.CompletedTask;
     }
 }
