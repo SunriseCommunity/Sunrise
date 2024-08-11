@@ -99,5 +99,5 @@ public class Beatmap
     public string Checksum { get; set; }
 
     [JsonPropertyName("max_combo")]
-    public int MaxCombo { get; set; }
+    public int? MaxCombo { get; set; }
 }

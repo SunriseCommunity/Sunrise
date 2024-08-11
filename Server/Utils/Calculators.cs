@@ -13,7 +13,7 @@ public static class Calculators
 {
     public static double CalculatePerformancePoints(Score score)
     {
-        var beatmapBytes = BeatmapService.GetBeatmapFileBy(score.BeatmapId).Result;
+        var beatmapBytes = BeatmapService.GetBeatmapFile(score.BeatmapId).Result;
 
         if (beatmapBytes == null)
         {
@@ -39,7 +39,7 @@ public static class Calculators
 
     public static async Task<(double, double, double, double)> CalculatePerformancePoints(int beatmapId, int mode, Mods mods = Mods.None, bool precision = true)
     {
-        var beatmapBytes = await BeatmapService.GetBeatmapFileBy(beatmapId);
+        var beatmapBytes = await BeatmapService.GetBeatmapFile(beatmapId);
 
         if (beatmapBytes == null)
         {

@@ -51,7 +51,7 @@ public class WebController : ControllerBase
     [HttpGet("maps/{filename}")]
     public async Task<IActionResult> GetMap(string filename)
     {
-        var file = await BeatmapService.GetBeatmapFileBy(filename);
+        var file = await BeatmapService.GetBeatmapFile(filename);
 
         if (file == null)
             return NotFound("Beatmap not found");
