@@ -1,4 +1,5 @@
 ﻿using osu.Shared;
+using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
@@ -8,17 +9,17 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(ServicesProvider services)
+public static class ScoreService
 {
 
-    public async Task<string> SubmitScore(HttpRequest request)
+    public static async Task<string> SubmitScore(HttpRequest request)
     {
 
         var data = new SubmitScoreRequest(request);
 
         data.ThrowIfHasEmptyFields();
 
-        var beatmap = await new BeatmapService(services).GetBeatmap(data.BeatmapHash!);
+        var beatmap = await BeatmapService.GetBeatmap(data.BeatmapHash!);
 
         if (beatmap == null)
         {
@@ -27,14 +28,19 @@ public class ScoreService(ServicesProvider services)
 
         var decryptedScore = Parsers.ParseSubmittedScore(data);
 
-        var score = await new Score().SetScoreFromString(decryptedScore, services, beatmap, data.OsuVersion ?? "");
+        var score = await new Score().SetScoreFromString(decryptedScore, beatmap, data.OsuVersion ?? "");
 
-        ThrowIfInvalidMods(score.Mods);
+        if (IsHasInvalidMods(score.Mods))
+        {
+            return "error: no";
+        }
 
-        var rawScores = await services.Database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var rawScores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         var scores = new ScoresHelper(rawScores);
 
-        var userStats = await services.Database.GetUserStats(score.UserId, score.GameMode);
+        var userStats = await database.GetUserStats(score.UserId, score.GameMode);
 
         if (userStats == null)
         {
@@ -42,46 +48,55 @@ public class ScoreService(ServicesProvider services)
         }
 
         var prevUserStats = userStats.Clone();
-        var prevPBest = scores.GetPersonalBestOf(score.UserId);
+        var prevPBest = ScoresHelper.GetPersonalBestOf(score.UserId);
 
-        var prevUserRank = await services.Database.GetUserRank(userStats.UserId, userStats.GameMode);
+        var prevUserRank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
         prevUserStats.Rank = prevUserRank;
 
         var timeElapsed = GetTimeElapsed(score, data);
-        await userStats.UpdateWithScore(score, prevPBest, timeElapsed, services);
+        await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
 
         if (IsScoreFailed(score))
         {
-            await services.Database.UpdateUserStats(userStats);
+            await database.UpdateUserStats(userStats);
             return "error: no"; // Don't submit failed scores
         }
 
-        var replayFile = await services.Database.UploadReplay(userStats.UserId, data.Replay!);
+        var replayFile = await database.UploadReplay(userStats.UserId, data.Replay!);
         score.ReplayFileId = replayFile.Id;
 
-        await services.Database.InsertScore(score);
-        await services.Database.UpdateUserStats(userStats);
+        await database.InsertScore(score);
+        await database.UpdateUserStats(userStats);
 
-        var newPBest = scores.GetNewPersonalScore(score);
-        userStats.Rank = await services.Database.GetUserRank(userStats.UserId, userStats.GameMode);
+        var newPBest = ScoresHelper.GetNewPersonalScore(score);
+        userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
 
         return GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public async Task<string> GetBeatmapScores(HttpRequest request)
+    public static async Task<string> GetBeatmapScores(HttpRequest request)
     {
         var data = new GetScoresRequest(request);
 
         data.ThrowIfHasEmptyFields();
 
-        var rawScores = await services.Database.GetBeatmapScores(data.Hash!, data.Mode);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var rawScores = await database.GetBeatmapScores(data.Hash!, data.Mode);
         var scores = new ScoresHelper(rawScores);
 
-        var beatmap = await new BeatmapService(services).GetBeatmap(data.Hash!);
+        var beatmap = await BeatmapService.GetBeatmap(data.Hash!);
 
         if (beatmap == null)
         {
-            return $"{(int)BeatmapStatus.NotSubmitted}|false";
+            if (data.BeatmapSetId == null)
+            {
+                return $"{(int)BeatmapStatus.NotSubmitted}|false";
+            }
+
+            var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId));
+
+            return beatmapSet == null ? $"{(int)BeatmapStatus.NotSubmitted}|false" : $"{(int)BeatmapStatus.NeedsUpdate}|false";
         }
 
         if (beatmap.Status < BeatmapStatus.Ranked)
@@ -89,35 +104,33 @@ public class ScoreService(ServicesProvider services)
             return $"{(int)beatmap.Status}|false";
         }
 
-        // TODO: Handle if needs update 
-
         var responses = new List<string>
         {
-            $"{(int)beatmap.Status}|false|{beatmap.Id}|{beatmap.BeatmapsetId}|{scores.Count}",
+            $"{(int)beatmap.Status}|false|{beatmap.Id}|{beatmap.BeatmapsetId}|{ScoresHelper.Count}",
             $"0\n{data.BeatmapName?.Replace(".osu", "")}\n10.0"
         };
 
-        var user = await services.Database.GetUser(username: data.Username);
+        var user = await database.GetUser(username: data.Username);
 
-        if (user == null || scores.Count == 0)
+        if (user == null || ScoresHelper.Count == 0)
         {
             return string.Join("\n", responses);
         }
 
-        var personalBest = scores.GetPersonalBestOf(user.Id);
-        responses.Add(personalBest != null ? await personalBest.GetString(services) : "");
+        var personalBest = ScoresHelper.GetPersonalBestOf(user.Id);
+        responses.Add(personalBest != null ? await personalBest.GetString() : "");
 
-        var leaderboardScores = scores.GetTopScores(50);
+        var leaderboardScores = ScoresHelper.GetTopScores(50);
 
         foreach (var score in leaderboardScores)
         {
-            responses.Add(await score.GetString(services));
+            responses.Add(await score.GetString());
         }
 
         return string.Join("\n", responses);
     }
 
-    private string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)
+    private static string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
 
@@ -145,7 +158,7 @@ public class ScoreService(ServicesProvider services)
 
         foreach (var entry in chartEntries)
         {
-            var lowerFirst = char.ToLower(entry[0]) + entry.Substring(1);
+            var lowerFirst = char.ToLower(entry[0]) + entry[1..];
 
             var obj = entry switch
             {
@@ -166,16 +179,13 @@ public class ScoreService(ServicesProvider services)
         return $"{name}Before:{before?.ToString() ?? string.Empty}|{name}After:{after?.ToString() ?? string.Empty}";
     }
 
-    private void ThrowIfInvalidMods(Mods mods)
+    private static bool IsHasInvalidMods(Mods mods)
     {
-        if (mods.HasFlag(Mods.Relax) || mods.HasFlag(Mods.Autoplay) || mods.HasFlag(Mods.Target) ||
-            mods.HasFlag(Mods.ScoreV2))
-        {
-            throw new Exception("Invalid request: Invalid mods");
-        }
+        return mods.HasFlag(Mods.Relax) || mods.HasFlag(Mods.Autoplay) || mods.HasFlag(Mods.Target) ||
+               mods.HasFlag(Mods.ScoreV2);
     }
 
-    private int GetTimeElapsed(Score score, SubmitScoreRequest data)
+    private static int GetTimeElapsed(Score score, SubmitScoreRequest data)
     {
         var isPassed = score.IsPassed || score.Mods.HasFlag(Mods.NoFail);
 
@@ -187,7 +197,7 @@ public class ScoreService(ServicesProvider services)
         return isPassed ? int.Parse(data.ScoreTime) : int.Parse(data.ScoreFailTime);
     }
 
-    private bool IsScoreFailed(Score score)
+    private static bool IsScoreFailed(Score score)
     {
         return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
     }

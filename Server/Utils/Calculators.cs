@@ -1,17 +1,19 @@
 using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
+using Sunrise.Server.Data;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Services;
 using Beatmap = RosuPP.Beatmap;
+using Mods = osu.Shared.Mods;
 
 namespace Sunrise.Server.Utils;
 
-public class Calculators(ServicesProvider services)
+public static class Calculators
 {
-    public double CalculatePerformancePoints(Score score)
+    public static double CalculatePerformancePoints(Score score)
     {
-        var beatmapBytes = new BeatmapService(services).GetBeatmapFileById(score.BeatmapId).Result;
+        var beatmapBytes = BeatmapService.GetBeatmapFileBy(score.BeatmapId).Result;
 
         if (beatmapBytes == null)
         {
@@ -35,13 +37,13 @@ public class Calculators(ServicesProvider services)
         };
     }
 
-    public async Task<(double, double, double)> CalculatePerformancePoints(int beatmapId, int mode)
+    public static async Task<(double, double, double, double)> CalculatePerformancePoints(int beatmapId, int mode, Mods mods = Mods.None, bool precision = true)
     {
-        var beatmapBytes = await new BeatmapService(services).GetBeatmapFileById(beatmapId);
+        var beatmapBytes = await BeatmapService.GetBeatmapFileBy(beatmapId);
 
         if (beatmapBytes == null)
         {
-            return (0, 0, 0);
+            return (0, 0, 0, 0);
         }
 
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
@@ -54,6 +56,7 @@ public class Calculators(ServicesProvider services)
         var accuracyCalculate = new List<double>
         {
             100,
+            99,
             98,
             95
         };
@@ -62,6 +65,7 @@ public class Calculators(ServicesProvider services)
         {
             var performance = Performance.New();
             performance.Accuracy((uint)accuracy);
+            performance.IMods((uint)mods);
             var result = performance.Calculate(beatmap.Context);
             ppList.Add(result.mode switch
             {
@@ -73,13 +77,16 @@ public class Calculators(ServicesProvider services)
             });
         }
 
-        return (ppList[0], ppList[1], ppList[2]);
+        return precision ? (ppList[0], ppList[1], ppList[2], ppList[3]) : (Math.Round(ppList[0]), Math.Round(ppList[1]), Math.Round(ppList[2]), Math.Round(ppList[3]));
+
     }
 
 
-    public async Task<double> CalculateUserWeightedAccuracy(Score score)
+    public static async Task<double> CalculateUserWeightedAccuracy(Score score)
     {
-        var userBests = await services.Database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
         userBests.Add(score);
 
         var weightedAccuracy = userBests
@@ -90,12 +97,14 @@ public class Calculators(ServicesProvider services)
         return weightedAccuracy * bonusAccuracy / 100;
     }
 
-    public async Task<double> CalculateUserWeightedPerformance(Score score)
+    public static async Task<double> CalculateUserWeightedPerformance(Score score)
     {
-        var userBests = await services.Database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
         userBests.Add(score);
 
-        var bonusNumber = 416.6667;
+        const double bonusNumber = 416.6667;
         var weightedPp = userBests
             .Select((s, i) => Math.Pow(0.95, i) * s.PerformancePoints)
             .Sum();
@@ -105,7 +114,7 @@ public class Calculators(ServicesProvider services)
     }
 
 
-    public float CalculateAccuracy(Score score)
+    public static float CalculateAccuracy(Score score)
     {
         var totalHits = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
 
@@ -129,7 +138,7 @@ public class Calculators(ServicesProvider services)
         };
     }
 
-    private Performance GetUserPerformance(Score score)
+    private static Performance GetUserPerformance(Score score)
     {
         var performance = Performance.New();
         performance.Accuracy((uint)score.Accuracy);

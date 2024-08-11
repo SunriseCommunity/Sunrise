@@ -1,10 +1,12 @@
+using Sunrise.Server.Data;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Helpers;
 
-public class AuthorizationHelper(ServicesProvider services)
+public static class AuthorizationHelper
 {
-    public async Task<bool> IsAuthorized(HttpRequest request)
+    public static async Task<bool> IsAuthorized(HttpRequest request)
     {
         var username = request.Method == "POST" ? request.Form["us"] : request.Query["us"];
         var passhash = request.Method == "POST" ? request.Form["pass"] : request.Query["ha"];
@@ -14,7 +16,9 @@ public class AuthorizationHelper(ServicesProvider services)
             return false;
         }
 
-        var user = await services.Database.GetUser(username: username, token: passhash);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var user = await database.GetUser(username: username, token: passhash);
 
         if (user == null)
         {
@@ -26,7 +30,9 @@ public class AuthorizationHelper(ServicesProvider services)
             return false;
         }
 
-        var player = services.Sessions.GetSessionByUserId(user.Id);
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        var player = sessions.GetSessionBy(user.Id);
 
         if (player == null)
         {

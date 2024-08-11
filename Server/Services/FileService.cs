@@ -1,12 +1,15 @@
-﻿using Sunrise.Server.Utils;
+﻿using Sunrise.Server.Data;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Services;
 
-public class FileService(ServicesProvider services)
+public static class FileService
 {
-    public async Task<byte[]> GetOsuReplayBytes(int scoreId)
+    public static async Task<byte[]> GetOsuReplayBytes(int scoreId)
     {
-        var replay = await services.Database.GetReplay(scoreId);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var replay = await database.GetReplay(scoreId);
 
         if (replay == null)
         {
@@ -16,7 +19,7 @@ public class FileService(ServicesProvider services)
         return replay;
     }
 
-    public string[] GetSeasonalBackgrounds()
+    public static string[] GetSeasonalBackgrounds()
     {
         const string basePath = "./Data/Files/SeasonalBackgrounds";
 
@@ -33,9 +36,11 @@ public class FileService(ServicesProvider services)
         return seasonalBackgrounds;
     }
 
-    public async Task<byte[]> GetAvatarBytes(int id)
+    public static async Task<byte[]> GetAvatarBytes(int id)
     {
-        var avatar = await services.Database.GetAvatar(id);
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var avatar = await database.GetAvatar(id);
 
         if (avatar == null)
         {

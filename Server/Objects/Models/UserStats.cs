@@ -46,7 +46,7 @@ public class UserStats
         return (UserStats)MemberwiseClone();
     }
 
-    public async Task UpdateWithScore(Score score, Score? prevScore, int timeElapsed, ServicesProvider services)
+    public async Task UpdateWithScore(Score score, Score? prevScore, int timeElapsed)
     {
         var isNewScore = prevScore == null;
         var isBetterScore = !isNewScore && score.TotalScore > prevScore!.TotalScore;
@@ -64,14 +64,12 @@ public class UserStats
 
         if (score.Beatmap.Status > BeatmapStatus.Approved) return;
 
-        var calculator = new Calculators(services);
-
         if (isNewScore || isBetterScore)
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
-            PerformancePoints = (short)await calculator.CalculateUserWeightedPerformance(score);
-            Accuracy = await calculator.CalculateUserWeightedAccuracy(score);
+            PerformancePoints = (short)await Calculators.CalculateUserWeightedPerformance(score);
+            Accuracy = await Calculators.CalculateUserWeightedAccuracy(score);
         }
     }
 

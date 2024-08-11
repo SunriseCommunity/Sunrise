@@ -1,18 +1,19 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
 [ApiController]
-[SubdomainAttribute("a", "assets")]
-public class AssetsController(FileService fileService) : ControllerBase
+[Subdomain("a", "assets")]
+public class AssetsController : ControllerBase
 {
     [HttpGet]
     [Route("{id:int}")]
     public async Task<IActionResult> GetAvatar(int id)
     {
-        var result = await fileService.GetAvatarBytes(id);
+        var result = await FileService.GetAvatarBytes(id);
         return new FileContentResult(result, "image/png");
     }
 
