@@ -48,7 +48,7 @@ public sealed class SunriseDb
         return user;
     }
 
-    public async Task<User?> GetUser(int? id = null, string? username = null, string? token = null, string? email = null)
+    public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null)
     {
         var cachedUser = await Redis.Get<User?>(string.Format(RedisKey.User, id));
 
@@ -59,7 +59,6 @@ public sealed class SunriseDb
 
         var exp = new Expr("Id", OperatorEnum.Equals, id ?? -1);
         if (username != null) exp.PrependOr(new Expr("Username", OperatorEnum.Equals, username));
-        if (token != null) exp.PrependOr(new Expr("Passhash", OperatorEnum.Equals, token));
         if (email != null) exp.PrependOr(new Expr("Email", OperatorEnum.Equals, email));
 
         var user = await _orm.SelectFirstAsync<User?>(exp);
@@ -164,7 +163,7 @@ public sealed class SunriseDb
         return scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
     }
 
-    public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode, LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null, bool pbOnly = true)
+    public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode, LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode);
 
@@ -172,21 +171,19 @@ public sealed class SunriseDb
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
 
         var scores = await _orm.SelectManyAsync<Score>(exp);
+        scores = ScoresHelper.GetSortedScores(scores);
 
-        if (type is LeaderboardType.Country)
+        foreach (var score in scores.ToList())
         {
-            foreach (var score in scores.ToList())
-            {
-                var scoreUser = await GetUser(score.UserId);
+            var scoreUser = await GetUser(score.UserId);
 
-                if (scoreUser?.Country != user?.Country)
-                {
-                    scores.Remove(score);
-                }
+            if (type == LeaderboardType.Country && scoreUser?.Country != user?.Country || scoreUser?.IsRestricted == true)
+            {
+                scores.Remove(score);
             }
         }
 
-        return pbOnly ? ScoresHelper.GetSortedScores(scores) : scores;
+        return scores;
     }
 
     public async Task SetAvatar(int id, byte[] avatar)
@@ -339,7 +336,6 @@ public sealed class SunriseDb
 
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
-
         return (int)(await Redis.Redis.SortedSetRankAsync(string.Format(RedisKey.LeaderboardGlobal, (int)mode), userId, Order.Descending))! + 1;
     }
 
