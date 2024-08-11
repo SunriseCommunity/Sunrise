@@ -1,8 +1,8 @@
 ﻿namespace Sunrise.Server.Types.Enums;
+
 public enum CountryCodes : short
 {
     XX = 0,
-    BL = 0,
     AD = 3,
     AF = 5,
     AI = 7,
@@ -162,6 +162,7 @@ public enum CountryCodes : short
     QA = 182,
     RE = 183,
     RO = 184,
+    RU = 185,
     RW = 186,
     SA = 187,
     SB = 188,
@@ -217,5 +218,4 @@ public enum CountryCodes : short
     IM = 249,
     JE = 250,
     MF = 252
-
 }

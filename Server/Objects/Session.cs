@@ -1,4 +1,5 @@
 using HOPEless.Bancho;
+using HOPEless.Bancho.Objects;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
@@ -40,6 +41,23 @@ public class Session
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.ServerError);
         _helper.WritePacket(PacketType.ServerNotification, message);
+    }
+
+    public void SendJoinChannel(string channel)
+    {
+        _helper.WritePacket(PacketType.ServerChatChannelAvailableAutojoin, channel);
+        _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel);
+    }
+
+    public void SendChannelAvailable(ChatChannel channel)
+    {
+        _helper.WritePacket(PacketType.ServerChatChannelAvailable,
+            new BanchoChatChannel
+            {
+                Name = channel.Name,
+                Topic = channel.Description,
+                UserCount = (short)channel.UsersCount()
+            });
     }
 
     public void SendProtocolVersion(int version = 19)

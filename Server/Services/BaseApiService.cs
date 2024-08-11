@@ -1,32 +1,37 @@
-﻿using Sunrise.Server.Utils;
+﻿using Sunrise.Server.Data;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Services;
 
-public class BaseApiService(ServicesProvider services)
+public static class BaseApiService
 {
     private const int MegaByte = 1024 * 1024;
 
-    public async Task SetAvatar(int userId, HttpRequest request)
+    public static async Task SetAvatar(int userId, HttpRequest request)
     {
         using var buffer = new MemoryStream();
         await request.Body.CopyToAsync(buffer, request.HttpContext.RequestAborted);
 
         ThrowIfInvalidImageFile(request, buffer);
 
-        await services.Database.SetAvatar(userId, buffer.ToArray());
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        await database.SetAvatar(userId, buffer.ToArray());
     }
 
-    public async Task SetBanner(int userId, HttpRequest request)
+    public static async Task SetBanner(int userId, HttpRequest request)
     {
         using var buffer = new MemoryStream();
         await request.Body.CopyToAsync(buffer, request.HttpContext.RequestAborted);
 
         ThrowIfInvalidImageFile(request, buffer);
 
-        await services.Database.SetBanner(userId, buffer.ToArray());
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        await database.SetBanner(userId, buffer.ToArray());
     }
 
-    private void ThrowIfInvalidImageFile(HttpRequest request, MemoryStream buffer)
+    private static void ThrowIfInvalidImageFile(HttpRequest request, MemoryStream buffer)
     {
         if (buffer.Length > 5 * MegaByte)
         {

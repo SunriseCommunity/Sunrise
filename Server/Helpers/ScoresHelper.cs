@@ -11,9 +11,9 @@ public class ScoresHelper
         _scores = GetSortedScores(scores);
     }
 
-    public int Count => _scores.Count;
+    public static int Count => _scores.Count;
 
-    public List<Score> GetTopScores(int? count = null)
+    public static List<Score> GetTopScores(int? count = null)
     {
         var leaderboard = _scores;
 
@@ -28,7 +28,7 @@ public class ScoresHelper
         return personalBests;
     }
 
-    public Score GetNewPersonalScore(Score score)
+    public static Score GetNewPersonalScore(Score score)
     {
         var leaderboard = new List<Score>(_scores);
 
@@ -48,7 +48,7 @@ public class ScoresHelper
         return newPBest;
     }
 
-    public Score? GetPersonalBestOf(int userId)
+    public static Score? GetPersonalBestOf(int userId)
     {
         return GetTopScores()?.Find(x => x.UserId == userId);
     }

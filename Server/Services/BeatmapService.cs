@@ -1,113 +1,112 @@
-using System.Text.Json;
+using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Services;
 
-public class BeatmapService(ServicesProvider services)
+public static class BeatmapService
 {
     private const string Api = "https://osu.direct/api/";
     private const string BeatmapMirror = "https://old.ppy.sh/osu/";
 
-    private static readonly HttpClient Client = new();
-
-    public async Task<Beatmap?> GetBeatmap(string hash)
+    public static async Task<Beatmap?> GetBeatmap(string hash)
     {
-        var cachedScores = await services.Redis.Get<Beatmap?>(string.Format(RedisKey.BeatmapHash, hash));
+        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+
+        var cachedScores = await redis.Get<Beatmap?>(string.Format(RedisKey.BeatmapHash, hash));
 
         if (cachedScores != null)
         {
             return cachedScores;
         }
 
-        var response = await Client.GetAsync($"{Api}v2/md5/{hash}");
+        var beatmap = await RequestsHelper.SendRequest<Beatmap>($"{Api}v2/md5/{hash}");
 
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new Exception("Beatmap not found or rate limited");
-        }
-
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (string.IsNullOrEmpty(content))
+        if (beatmap == null)
         {
             return null;
         }
 
-        var beatmap = JsonSerializer.Deserialize<Beatmap>(content);
-
-        if (Configuration.IgnoreBeatmapRanking && beatmap != null)
+        if (Configuration.IgnoreBeatmapRanking)
         {
             beatmap.StatusString = "ranked";
         }
 
-        if (beatmap != null)
-        {
-            await services.Redis.Set(string.Format(RedisKey.BeatmapHash, hash), beatmap, TimeSpan.FromMinutes(15));
-        }
+        await redis.Set(string.Format(RedisKey.BeatmapHash, hash), beatmap, TimeSpan.FromMinutes(15));
 
         return beatmap;
     }
 
-    public async Task<Beatmap?> GetBeatmapById(int id)
+    public static async Task<BeatmapSet?> GetBeatmapSet(int beatmapId = -1, int beatmapSetId = -1)
     {
-        var cachedScores = await services.Redis.Get<Beatmap?>(string.Format(RedisKey.Beatmap, id));
+        if (beatmapId == -1 && beatmapSetId == -1)
+        {
+            return null;
+        }
+
+        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+
+        var cachedScores = beatmapId != -1
+            ? await redis.Get<BeatmapSet?>(string.Format(RedisKey.BeatmapSet, beatmapId))
+            : await redis.Get<BeatmapSet?>(string.Format(RedisKey.BeatmapSetBySet, beatmapSetId));
 
         if (cachedScores != null)
         {
             return cachedScores;
         }
 
-        var response = await Client.GetAsync($"{Api}v2/b/{id}");
+        var beatmapSet = await RequestsHelper.SendRequest<BeatmapSet>(beatmapId != -1
+            ? $"{Api}v2/b/{beatmapId}?full=true"
+            : $"{Api}v2/s/{beatmapSetId}");
 
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new Exception("Beatmap not found or rate limited");
-        }
-
-        var content = await response.Content.ReadAsStringAsync();
-
-        if (string.IsNullOrEmpty(content))
+        if (beatmapSet == null)
         {
             return null;
         }
 
-        var beatmap = JsonSerializer.Deserialize<Beatmap>(content);
-
-        if (Configuration.IgnoreBeatmapRanking && beatmap != null)
+        if (Configuration.IgnoreBeatmapRanking)
         {
-            beatmap.StatusString = "ranked";
+            foreach (var t in beatmapSet.Beatmaps)
+            {
+                t.StatusString = "ranked";
+            }
         }
 
-        if (beatmap != null)
-        {
-            await services.Redis.Set(string.Format(RedisKey.Beatmap, id), beatmap, TimeSpan.FromMinutes(15));
-        }
+        await redis.Set(beatmapId != -1
+                ? string.Format(RedisKey.BeatmapSet, beatmapId)
+                : string.Format(RedisKey.BeatmapSetBySet, beatmapSetId),
+            beatmapSet);
 
-        return beatmap;
+        return beatmapSet;
     }
 
-    public async Task<byte[]?> GetBeatmapFileById(int id)
+    public static async Task<byte[]?> GetBeatmapFileBy(int id)
     {
-        var cachedBeatmap = await services.Redis.Get<byte[]>(string.Format(RedisKey.BeatmapFile, id));
+        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+
+        var cachedBeatmap = await redis.Get<byte[]>(string.Format(RedisKey.BeatmapFile, id));
 
         if (cachedBeatmap != null)
         {
             return cachedBeatmap;
         }
 
-        var response = await Client.GetAsync($"{BeatmapMirror}{id}");
+        var beatmap = await RequestsHelper.SendRequest<byte[]>(BeatmapMirror + id);
 
-        if (!response.IsSuccessStatusCode)
+        if (beatmap == null)
         {
-            throw new Exception("Beatmap not found or rate limited");
+            return null;
         }
 
-        var beatmap = await response.Content.ReadAsByteArrayAsync();
-
-        await services.Redis.Set(string.Format(RedisKey.BeatmapFile, id), beatmap, TimeSpan.FromMinutes(60));
+        await redis.Set(string.Format(RedisKey.BeatmapFile, id), beatmap, TimeSpan.FromMinutes(60));
 
         return beatmap;
+    }
+
+    public static async Task<byte[]?> GetBeatmapFileBy(string fileName)
+    {
+        return await RequestsHelper.SendRequest<byte[]>(BeatmapMirror + fileName);
     }
 }

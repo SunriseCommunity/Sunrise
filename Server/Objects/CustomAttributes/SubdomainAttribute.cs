@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace Sunrise.Server.Utils;
+namespace Sunrise.Server.Objects.CustomAttributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public class SubdomainAttribute(params string[] allowedSubdomains) : ActionFilterAttribute

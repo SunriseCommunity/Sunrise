@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Server.Data;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
@@ -79,11 +80,12 @@ public class Score
     public string FileChecksum { get; set; }
     public int? LeaderboardRank { get; set; }
 
-    public async Task<Score> SetScoreFromString(string scoreString, ServicesProvider services, Beatmap beatmap, string version)
+    public async Task<Score> SetScoreFromString(string scoreString, Beatmap beatmap, string version)
     {
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
         var split = scoreString.Split(':');
-        var user = await services.Database.GetUser(username: split[1].Trim());
-        var calculators = new Calculators(services);
+        var user = await database.GetUser(username: split[1].Trim());
 
         if (user == null)
             throw new Exception("User not found");
@@ -107,16 +109,18 @@ public class Score
         GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
         OsuVersion = version;
-        Accuracy = calculators.CalculateAccuracy(this);
-        PerformancePoints = calculators.CalculatePerformancePoints(this);
+        Accuracy = Calculators.CalculateAccuracy(this);
+        PerformancePoints = Calculators.CalculatePerformancePoints(this);
         Beatmap = beatmap;
         return this;
     }
 
-    public async Task<string> GetString(ServicesProvider services)
+    public async Task<string> GetString()
     {
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await services.Database.GetUser(UserId))?.Username ?? "Unknown";
+        var username = (await database.GetUser(UserId))?.Username ?? "Unknown";
         var hasReplay = ReplayFileId != null ? "1" : "0";
 
         return $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";

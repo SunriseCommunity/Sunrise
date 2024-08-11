@@ -48,7 +48,7 @@ public sealed class SunriseDb
         return user;
     }
 
-    public async Task<User?> GetUser(int? id = null, string? username = null, string? token = null)
+    public async Task<User?> GetUser(int? id = null, string? username = null, string? token = null, string? email = null)
     {
         var cachedUser = await Redis.Get<User?>(string.Format(RedisKey.User, id));
 
@@ -60,6 +60,7 @@ public sealed class SunriseDb
         var exp = new Expr("Id", OperatorEnum.Equals, id ?? -1);
         if (username != null) exp.PrependOr(new Expr("Username", OperatorEnum.Equals, username));
         if (token != null) exp.PrependOr(new Expr("Passhash", OperatorEnum.Equals, token));
+        if (email != null) exp.PrependOr(new Expr("Email", OperatorEnum.Equals, email));
 
         var user = await _orm.SelectFirstAsync<User?>(exp);
 
@@ -195,6 +196,13 @@ public sealed class SunriseDb
         if (cachedAvatar != null)
         {
             return cachedAvatar;
+        }
+
+        if (id == int.MaxValue)
+        {
+            var botAvatar = await File.ReadAllBytesAsync($"{DataPath}Files/Avatars/Bot.png");
+            await Redis.Set(string.Format(RedisKey.Avatar, id), botAvatar);
+            return botAvatar;
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, id);

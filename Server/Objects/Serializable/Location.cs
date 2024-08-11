@@ -4,13 +4,14 @@ namespace Sunrise.Server.Objects.Serializable;
 
 public class Location
 {
-    [JsonPropertyName("country")]
+    [JsonPropertyName("countryCode")]
     public string Country { get; set; } = "XX";
 
-    [JsonPropertyName("loc")]
-    public string Loc { get; set; } = "0,0";
+    [JsonPropertyName("lat")]
+    public float Latitude { get; set; } = 0;
+
+    [JsonPropertyName("lon")]
+    public float Longitude { get; set; } = 0;
 
     public int TimeOffset { get; set; } = 0;
 }
-
-

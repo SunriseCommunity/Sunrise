@@ -1,36 +1,22 @@
-using System.Text.Json;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Helpers;
 
-public class RegionHelper
+public static class RegionHelper
 {
-    private const string Api = "https://ip.zxq.co/";
-    private Location Location { get; set; } = new();
+    private const string Api = "http://ip-api.com/json/";
 
-    public async Task<Location> GetRegion(string ip)
+    public static async Task<Location> GetRegion(string ip)
     {
-        var client = new HttpClient();
-        var response = await client.GetAsync(Api + ip);
-        var content = await response.Content.ReadAsStringAsync();
+        var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}");
+        var region = new Location();
 
-        if (string.IsNullOrEmpty(content))
-        {
-            return Location;
-        }
+        return location ?? region;
 
-        var location = JsonSerializer.Deserialize<Location?>(content);
-
-        if (location != null)
-        {
-            Location = location;
-        }
-
-        return Location;
     }
 
-    public string GetUserIpAddress(HttpRequest request)
+    public static string GetUserIpAddress(HttpRequest request)
     {
         var ipAddress = string.Empty;
 
@@ -58,7 +44,7 @@ public class RegionHelper
         return ipAddress ?? string.Empty;
     }
 
-    public short GetCountryCode(string cc)
+    public static short GetCountryCode(string cc)
     {
         if (Enum.TryParse(typeof(CountryCodes), cc, true, out var result))
         {

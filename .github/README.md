@@ -8,14 +8,14 @@ Sunrise is a private server for osu! written in C#. This repository has both end
 website. The server is currently in development and is not yet ready for public use.
 
 > [!NOTE]
-> Why C#? :shipit: Well, because owner of this project has allergies to non-typed languages. Sad, I know.  
+> Why C#? :shipit: Well, because owner of this project has allergies to non-typed languages. Sad, I know.
 
 ## Features 🌟
 
 - [x] Login and registration system
 - [x] Score submission and leaderboards
-- [ ] IRC Server (for game-client)
-- [ ] IRC Bot (as a replacement for Bancho Bot)
+- [x] Chat implementation
+- [x] Chat Bot (as a replacement for Bancho Bot)
 - [ ] Multiplayer
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [ ] osu!Direct

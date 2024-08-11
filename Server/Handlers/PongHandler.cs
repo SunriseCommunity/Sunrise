@@ -1,13 +1,14 @@
 using HOPEless.Bancho;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Services.Handlers.Client;
+namespace Sunrise.Server.Handlers;
 
+[PacketHandler(PacketType.ClientPong, true)]
 public class PongHandler : IHandler
 {
-    public Task Handle(BanchoPacket packet, Session session, ServicesProvider services)
+    public Task Handle(BanchoPacket packet, Session session)
     {
         session.Attributes.LastPingRequest = DateTime.UtcNow;
         return Task.CompletedTask;

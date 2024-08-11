@@ -16,6 +16,7 @@ public class GetScoresRequest
         }
 
         Hash = request.Query["c"];
+        BeatmapSetId = request.Query["i"];
         BeatmapName = request.Query["f"];
         Username = request.Query["us"];
         Mode = gameMode;
@@ -23,6 +24,7 @@ public class GetScoresRequest
 
     public string? Hash { get; set; }
     public GameMode Mode { get; set; }
+    public string? BeatmapSetId { get; set; }
     public string? BeatmapName { get; set; }
     public string? Username { get; set; }
 

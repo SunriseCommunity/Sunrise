@@ -3,6 +3,7 @@ using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Objects;
 
@@ -13,37 +14,39 @@ public class UserAttributes
     public UserAttributes(User user, Location location, SunriseDb database)
     {
         _database = database;
-        var coordinates = location.Loc.Split(',');
 
-        Latitude = float.Parse(coordinates[0]);
-        Longitude = float.Parse(coordinates[1]);
+        Latitude = location.Latitude;
+        Longitude = location.Longitude;
         Timezone = location.TimeOffset;
+        Country = Enum.TryParse(location.Country, out CountryCodes country) ? (short)country != 0 ? (short)country : null : null;
         User = user;
-        LastLogin = DateTime.UtcNow;
-        LastPingRequest = DateTime.UtcNow;
-        Status = new BanchoUserStatus();
     }
 
+    private User User { get; }
     private int Timezone { get; }
     private float Longitude { get; }
     private float Latitude { get; }
-    private User User { get; }
-    public DateTime LastLogin { get; set; }
-    public DateTime LastPingRequest { get; set; }
-    public BanchoUserStatus Status { get; set; }
+    private short? Country { get; }
+    public DateTime LastLogin { get; set; } = DateTime.UtcNow;
+    public DateTime LastPingRequest { get; set; } = DateTime.UtcNow;
+    public bool IgnoreNonFriendPm { get; set; } = false;
+    public string? AwayMessage { get; set; } = null;
+    public bool ShowUserLocation { get; set; } = true;
+    public bool IsBot { get; set; } = false;
+    public BanchoUserStatus Status { get; set; } = new();
 
     public async Task<BanchoUserPresence> GetPlayerPresence()
     {
-        var userRank = await _database.GetUserRank(User.Id, GetCurrentGameMode());
+        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserPresence
         {
             UserId = User.Id,
             Username = User.Username,
             Timezone = Timezone,
-            Latitude = Latitude,
-            Longitude = Longitude,
-            CountryCode = byte.Parse(User.Country.ToString()),
+            Latitude = ShowUserLocation ? Latitude : 0,
+            Longitude = ShowUserLocation ? Longitude : 0,
+            CountryCode = byte.Parse((Country ?? User.Country).ToString()),
             Permissions = User.Privilege,
             Rank = (int)userRank,
             PlayMode = GetCurrentGameMode(),
@@ -53,8 +56,8 @@ public class UserAttributes
 
     public async Task<BanchoUserData> GetPlayerData()
     {
-        var userStats = await _database.GetUserStats(User.Id, GetCurrentGameMode());
-        var userRank = await _database.GetUserRank(User.Id, GetCurrentGameMode());
+        var userStats = IsBot ? new UserStats() : await _database.GetUserStats(User.Id, GetCurrentGameMode());
+        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserData
         {
