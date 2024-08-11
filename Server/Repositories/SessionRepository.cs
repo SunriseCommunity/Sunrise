@@ -1,22 +1,31 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
+using HOPEless.Bancho.Objects;
+using HOPEless.osu;
+using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories;
 
 public class SessionRepository
 {
+    private readonly ChannelRepository _channels;
     private readonly SunriseDb _database;
     private readonly ConcurrentDictionary<int, Session> _sessions = new();
 
-    public SessionRepository(SunriseDb database)
+    public SessionRepository(SunriseDb database, ChannelRepository channels)
     {
         _database = database;
-        const int second = 1000;
+        _channels = channels;
+        AddBotToSession();
 
+        const int second = 1000;
         Task.Run(async () =>
         {
             while (true)
@@ -27,17 +36,27 @@ public class SessionRepository
         });
     }
 
-    public void WriteToAllSessions(PacketType type, object data)
+    public void WriteToAllSessions(PacketType type, object data, int ignoreUserId = -1)
     {
         foreach (var session in _sessions.Values)
         {
+            if (session.User.Id == ignoreUserId)
+                continue;
+
             session.WritePacket(type, data);
         }
     }
 
-    public Session CreateSession(User user, Location location)
+    public Session CreateSession(User user, Location location, LoginRequest loginRequest)
     {
-        var session = new Session(user, location, _database);
+        var session = new Session(user, location, _database)
+        {
+            Attributes =
+            {
+                IgnoreNonFriendPm = loginRequest.BlockNonFriendPm,
+                ShowUserLocation = loginRequest.ShowCityLocation
+            }
+        };
 
         _sessions.TryAdd(user.Id, session);
         return session;
@@ -45,6 +64,11 @@ public class SessionRepository
 
     public void RemoveSession(int userId)
     {
+        foreach (var channel in _channels.GetChannels())
+        {
+            channel.RemoveUser(userId);
+        }
+
         _sessions.TryRemove(userId, out _);
     }
 
@@ -58,10 +82,16 @@ public class SessionRepository
         return _sessions.Values.Any(x => x.User.Id == userId);
     }
 
-    public Session? GetSessionByUserId(int userId)
+    public Session? GetSessionBy(int userId)
     {
         return _sessions.Values.FirstOrDefault(x => x.User.Id == userId);
     }
+
+    public Session? GetSessionBy(string username)
+    {
+        return _sessions.Values.FirstOrDefault(x => x.User.Username == username);
+    }
+
 
     public async Task SendCurrentPlayers(Session session)
     {
@@ -74,11 +104,43 @@ public class SessionRepository
         }
     }
 
+    private void AddBotToSession()
+    {
+        // TODO: On a side not, it's better to add the bot to the database and then retrieve it from there. Will do that later.
+
+        var bot = new User
+        {
+            Id = int.MaxValue,
+            Username = Configuration.BotUsername,
+            Country = (short)CountryCodes.AQ, // Antarctica, because our bot is "cool" :D
+            Privilege = PlayerRank.SuperMod,
+            RegisterDate = DateTime.Now
+        };
+
+        var session = new Session(bot, new Location(), _database)
+        {
+            Attributes =
+            {
+                IsBot = true,
+                ShowUserLocation = false,
+                Status = new BanchoUserStatus
+                {
+                    Action = BanchoAction.Idle
+                }
+            }
+        };
+
+        _sessions.TryAdd(bot.Id, session);
+    }
+
     private void ClearInactiveSessions()
     {
         foreach (var session in _sessions.Values)
         {
             if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1))
+                continue;
+
+            if (session.Attributes.IsBot)
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
