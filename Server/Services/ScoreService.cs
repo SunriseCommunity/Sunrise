@@ -100,7 +100,8 @@ public static class ScoreService
         var rawScores = await database.GetBeatmapScores(data.Hash, data.Mode, data.LeaderboardType, data.Mods, user);
         var scores = new ScoresHelper(rawScores);
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId));
+        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId)) ?? await BeatmapService.GetBeatmapSet(beatmapHash: data.Hash);
+
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.Hash);
 
         if (beatmapSet == null || beatmap == null)
