@@ -3,14 +3,17 @@ using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using osu.Shared;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.CustomAttributes;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Services.Handlers.Client;
+namespace Sunrise.Server.Handlers;
 
+[PacketHandler(PacketType.ClientUserStatus)]
 public class UserStatusHandler : IHandler
 {
-    public async Task Handle(BanchoPacket packet, Session session, ServicesProvider services)
+    public async Task Handle(BanchoPacket packet, Session session)
     {
         var status = new BanchoUserStatus(packet.Data);
 
@@ -21,6 +24,8 @@ public class UserStatusHandler : IHandler
 
         session.Attributes.Status = status;
 
-        services.Sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
     }
 }
