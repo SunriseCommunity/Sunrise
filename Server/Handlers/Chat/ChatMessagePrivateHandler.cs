@@ -45,9 +45,8 @@ public class ChatMessagePrivateHandler : IHandler
                 });
             return Task.CompletedTask;
         }
-
-        // TODO: check if the sender is in the receiver's friend list
-        if (receiver is { Attributes.IgnoreNonFriendPm: false })
+        
+        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver!.User.FriendsList.Contains(session.User.Id))
         {
             receiver.WritePacket(PacketType.ServerChatMessage, message);
         }

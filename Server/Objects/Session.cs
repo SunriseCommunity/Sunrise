@@ -5,6 +5,7 @@ using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
@@ -14,7 +15,6 @@ public class Session
     public readonly UserAttributes Attributes;
 
     public readonly string Token;
-    public readonly User User;
 
     public Session(User user, Location location, SunriseDb database)
     {
@@ -24,6 +24,8 @@ public class Session
         Token = Guid.NewGuid().ToString();
         Attributes = new UserAttributes(User, location, database);
     }
+
+    public User User { get; private set; }
 
     public void SendLoginResponse(LoginResponses response)
     {
@@ -87,6 +89,17 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, text);
     }
 
+    public void SendChannelMessage(string channel, string message, string? sender = null)
+    {
+        _helper.WritePacket(PacketType.ServerChatMessage,
+            new BanchoChatMessage
+            {
+                Message = message,
+                Sender = sender ?? Configuration.BotUsername,
+                Channel = channel
+            });
+    }
+
     public void SendExistingChannels()
     {
         _helper.WritePacket(PacketType.ServerChatChannelListingComplete, 0);
@@ -98,23 +111,21 @@ public class Session
     }
 
 
-    public void SendFriendsList()
+    public async void SendFriendsList()
     {
-        // TODO - Get friends from database upon implementation
-        var friends = new List<int>
-        {
-            1,
-            2,
-            3,
-            4,
-            5
-        };
+        await FetchUser();
 
-        _helper.WritePacket(PacketType.ServerFriendsList, friends);
+        _helper.WritePacket(PacketType.ServerFriendsList, User.FriendsList);
     }
 
     public byte[] GetContent()
     {
         return _helper.GetBytesToSend();
+    }
+
+    public async Task FetchUser()
+    {
+        var user = await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().GetUser(User.Id);
+        User = user ?? User;
     }
 }

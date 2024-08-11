@@ -4,6 +4,7 @@ using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -11,10 +12,8 @@ namespace Sunrise.Server.Services;
 
 public static class ScoreService
 {
-
     public static async Task<string> SubmitScore(HttpRequest request)
     {
-
         var data = new SubmitScoreRequest(request);
 
         data.ThrowIfHasEmptyFields();
@@ -41,6 +40,7 @@ public static class ScoreService
         var scores = new ScoresHelper(rawScores);
 
         var userStats = await database.GetUserStats(score.UserId, score.GameMode);
+        var user = await database.GetUser(score.UserId);
 
         if (userStats == null)
         {
@@ -48,7 +48,7 @@ public static class ScoreService
         }
 
         var prevUserStats = userStats.Clone();
-        var prevPBest = ScoresHelper.GetPersonalBestOf(score.UserId);
+        var prevPBest = scores.GetPersonalBestOf(score.UserId);
 
         var prevUserRank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
         prevUserStats.Rank = prevUserRank;
@@ -68,8 +68,18 @@ public static class ScoreService
         await database.InsertScore(score);
         await database.UpdateUserStats(userStats);
 
-        var newPBest = ScoresHelper.GetNewPersonalScore(score);
+        var newPBest = scores.GetNewPersonalScore(score);
         userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
+
+        // Can be simplified to just get beatmapset by hash with full and use it for beatmap too
+        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: beatmap.BeatmapsetId);
+
+        if (newPBest.LeaderboardRank == 1)
+        {
+            var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+            var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user?.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet?.Artist} - {beatmapSet?.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+            channels.GetChannel("#announce")!.SendToChannel(message);
+        }
 
         return GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
@@ -82,7 +92,14 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
-        var rawScores = await database.GetBeatmapScores(data.Hash!, data.Mode);
+        var user = await database.GetUser(username: data.Username);
+
+        if (user == null)
+        {
+            return $"{(int)BeatmapStatus.NotSubmitted}|false";
+        }
+
+        var rawScores = await database.GetBeatmapScores(data.Hash!, data.Mode, data.LeaderboardType, data.Mods, user);
         var scores = new ScoresHelper(rawScores);
 
         var beatmap = await BeatmapService.GetBeatmap(data.Hash!);
@@ -94,6 +111,7 @@ public static class ScoreService
                 return $"{(int)BeatmapStatus.NotSubmitted}|false";
             }
 
+            // Can be simplified to just get beatmapset by hash with full and use it for beatmap too
             var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId));
 
             return beatmapSet == null ? $"{(int)BeatmapStatus.NotSubmitted}|false" : $"{(int)BeatmapStatus.NeedsUpdate}|false";
@@ -106,21 +124,20 @@ public static class ScoreService
 
         var responses = new List<string>
         {
-            $"{(int)beatmap.Status}|false|{beatmap.Id}|{beatmap.BeatmapsetId}|{ScoresHelper.Count}",
+            $"{(int)beatmap.Status}|false|{beatmap.Id}|{beatmap.BeatmapsetId}|{scores.Count}",
             $"0\n{data.BeatmapName?.Replace(".osu", "")}\n10.0"
         };
 
-        var user = await database.GetUser(username: data.Username);
 
-        if (user == null || ScoresHelper.Count == 0)
+        if (scores.Count == 0)
         {
             return string.Join("\n", responses);
         }
 
-        var personalBest = ScoresHelper.GetPersonalBestOf(user.Id);
+        var personalBest = scores.GetPersonalBestOf(user.Id);
         responses.Add(personalBest != null ? await personalBest.GetString() : "");
 
-        var leaderboardScores = ScoresHelper.GetTopScores(50);
+        var leaderboardScores = scores.GetTopScores(50);
 
         foreach (var score in leaderboardScores)
         {

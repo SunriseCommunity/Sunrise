@@ -36,6 +36,11 @@ public class ChannelRepository
         channel.RemoveUser(session.User.Id);
     }
 
+    public ChatChannel? GetChannel(string name)
+    {
+        return _channels.GetValueOrDefault(name);
+    }
+
     public List<ChatChannel> GetChannels(Session? session = null)
     {
         if (session == null)

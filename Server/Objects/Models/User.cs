@@ -26,4 +26,28 @@ public class User
 
     [Column(DataTypes.DateTime, false)]
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
+
+    [Column(DataTypes.Nvarchar, 1024, false)]
+    public string Friends { get; set; } = string.Empty;
+
+    public List<int> FriendsList => Friends.Split(',')
+        .Where(x => !string.IsNullOrEmpty(x))
+        .Select(int.Parse)
+        .ToList();
+
+    public void AddFriend(int friendId)
+    {
+        if (FriendsList.Contains(friendId))
+            return;
+
+        Friends += $",{friendId}";
+    }
+
+    public void RemoveFriend(int friendId)
+    {
+        if (!FriendsList.Contains(friendId))
+            return;
+
+        Friends = string.Join(',', FriendsList.Where(x => x != friendId));
+    }
 }

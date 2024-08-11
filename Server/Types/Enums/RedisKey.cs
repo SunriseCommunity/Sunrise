@@ -7,7 +7,7 @@ public static class RedisKey
     public const string User = "user:{0}";
     public const string UserStats = "user:{0}:stats:{1}";
     public const string Score = "score:{0}";
-    public const string Scores = "scores:{0}";
+    public const string Scores = "scores:{0}:leaderboardtype:{1}";
     public const string BeatmapHash = "beatmap:hash:{0}";
     public const string Beatmap = "beatmap:{0}";
     public const string BeatmapSet = "beatmapset:{0}";

@@ -4,16 +4,16 @@ namespace Sunrise.Server.Helpers;
 
 public class ScoresHelper
 {
-    private static List<Score> _scores = [];
+    private readonly List<Score> _scores;
 
     public ScoresHelper(List<Score> scores)
     {
         _scores = GetSortedScores(scores);
     }
 
-    public static int Count => _scores.Count;
+    public int Count => _scores.Count;
 
-    public static List<Score> GetTopScores(int? count = null)
+    public List<Score> GetTopScores(int? count = null)
     {
         var leaderboard = _scores;
 
@@ -28,7 +28,7 @@ public class ScoresHelper
         return personalBests;
     }
 
-    public static Score GetNewPersonalScore(Score score)
+    public Score GetNewPersonalScore(Score score)
     {
         var leaderboard = new List<Score>(_scores);
 
@@ -48,7 +48,7 @@ public class ScoresHelper
         return newPBest;
     }
 
-    public static Score? GetPersonalBestOf(int userId)
+    public Score? GetPersonalBestOf(int userId)
     {
         return GetTopScores()?.Find(x => x.UserId == userId);
     }
