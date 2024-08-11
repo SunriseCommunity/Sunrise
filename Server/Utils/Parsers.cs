@@ -12,7 +12,7 @@ public static class Parsers
 {
     private const string StableKey = "osu!-scoreburgr---------";
 
-    public static (string username, string passHash, string version, short utcOffset) ParseLogin(string strToParse)
+    public static LoginRequest ParseLogin(string strToParse)
     {
         var lines = strToParse.Split('\n');
 
@@ -21,19 +21,14 @@ public static class Parsers
             throw new Exception("Login input string does not contain enough data.");
         }
 
-        var versionAndOffset = lines[2].Split('|');
+        var clientEssentials = lines[2].Split('|');
 
-        if (versionAndOffset.Length < 2)
+        if (clientEssentials.Length < 4)
         {
-            throw new Exception("Login third line does not contain the expected format 'version|utcOffset'.");
+            throw new Exception("Login input string does not contain enough client data.");
         }
 
-        return (
-            username: lines[0],
-            passHash: lines[1],
-            version: versionAndOffset[0],
-            utcOffset: short.Parse(versionAndOffset[1])
-        );
+        return new LoginRequest(lines[0], lines[1], clientEssentials[0], short.Parse(clientEssentials[1]), clientEssentials[2] == "1", clientEssentials[3], clientEssentials[4] == "1");
     }
 
     public static string ParseSubmittedScore(SubmitScoreRequest data)
@@ -57,5 +52,11 @@ public static class Parsers
 
         Array.Resize(ref outputBytes, len);
         return Encoding.UTF8.GetString(outputBytes);
+    }
+
+    public static string SecondsToString(int seconds)
+    {
+        var time = TimeSpan.FromSeconds(seconds);
+        return time.ToString(@"mm\:ss");
     }
 }
