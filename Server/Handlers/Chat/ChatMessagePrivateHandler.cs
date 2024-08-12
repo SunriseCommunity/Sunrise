@@ -14,7 +14,7 @@ public class ChatMessagePrivateHandler : IHandler
 {
     private const string Action = "ACTION";
 
-    public Task Handle(BanchoPacket packet, Session session)
+    public async Task Handle(BanchoPacket packet, Session session)
     {
         var message = new BanchoChatMessage(packet.Data)
         {
@@ -26,7 +26,8 @@ public class ChatMessagePrivateHandler : IHandler
         {
             if (message.Message.StartsWith(Configuration.BotPrefix) || message.Message.StartsWith(Action))
             {
-                return CommandRepository.HandleCommand(message.Message, session);
+                await CommandRepository.HandleCommand(message, session);
+                return;
             }
         }
 
@@ -34,7 +35,12 @@ public class ChatMessagePrivateHandler : IHandler
 
         var receiver = sessions.GetSessionBy(message.Channel);
 
-        if (receiver?.Attributes.AwayMessage is not null)
+        if (receiver is null)
+        {
+            return;
+        }
+
+        if (receiver.Attributes.AwayMessage is not null)
         {
             session.WritePacket(PacketType.ServerChatMessage,
                 new BanchoChatMessage
@@ -43,14 +49,23 @@ public class ChatMessagePrivateHandler : IHandler
                     Channel = Configuration.BotUsername,
                     Message = $"{receiver.User.Username} is away: {receiver.Attributes.AwayMessage}"
                 });
-            return Task.CompletedTask;
+            return;
         }
-        
-        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver!.User.FriendsList.Contains(session.User.Id))
+
+        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver?.User.FriendsList.Contains(session.User.Id) == true)
         {
             receiver.WritePacket(PacketType.ServerChatMessage, message);
         }
 
-        return Task.CompletedTask;
+        await receiver?.FetchUser()!;
+
+        if (receiver.User.SilencedUntil > DateTime.UtcNow)
+        {
+            session.WritePacket(PacketType.ServerChatPmTargetSilenced,
+                new BanchoChatMessage
+                {
+                    Channel = receiver.User.Username
+                });
+        }
     }
 }

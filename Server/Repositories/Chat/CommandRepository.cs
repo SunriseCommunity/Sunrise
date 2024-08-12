@@ -10,9 +10,9 @@ namespace Sunrise.Server.Repositories.Chat;
 
 public static class CommandRepository
 {
-    private static readonly Dictionary<string, IChatCommand> Handlers = new();
+    private static readonly Dictionary<string, ChatCommand> Handlers = new();
 
-    public static async Task HandleCommand(string message, Session session)
+    public static async Task HandleCommand(BanchoChatMessage message, Session session)
     {
         if (Handlers.Count == 0)
         {
@@ -22,9 +22,9 @@ public static class CommandRepository
         string? command;
         string[]? args;
 
-        if (message.StartsWith("ACTION"))
+        if (message.Message.StartsWith("ACTION") && message.Channel == Configuration.BotUsername)
         {
-            (command, args) = ActionToCommand(message);
+            (command, args) = ActionToCommand(message.Message);
 
             if (command == null)
             {
@@ -33,25 +33,48 @@ public static class CommandRepository
         }
         else
         {
-            command = message.Split(' ')[0][Configuration.BotPrefix.Length..].ToLower();
-            args = message.Split(' ').Skip(1).ToArray();
+            command = message.Message.Split(' ')[0][Configuration.BotPrefix.Length..].ToLower();
+            args = message.Message.Split(' ').Skip(1).ToArray();
         }
 
         var handler = GetHandler(command);
 
-        if (handler == null)
+        switch (handler)
         {
-            SendMessage(session, $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+            case null or { IsGlobal: false } when message.Channel != Configuration.BotUsername:
+                return;
+            case null:
+                SendMessage(session, $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+                return;
+        }
+
+        if (handler.RequiredPrivileges > session.User.Privilege)
+        {
+            SendMessage(session, "You don't have permission to use this command.");
             return;
         }
 
-        await handler.Handle(session, args);
+        ChatChannel? channel = null;
+
+        if (handler.IsGlobal && message.Channel != Configuration.BotUsername)
+        {
+            var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+            channel = channels.GetChannel(message.Channel);
+        }
+
+        await handler.Handle(session, channel, args);
     }
 
-    public static string[] GetCurrentCommands()
+    public static string[] GetAvailableCommands(Session session)
     {
-        return Handlers.Keys.ToArray();
+        var privilege = session.User.Privilege;
+
+        return Handlers
+            .Where(x => x.Value.RequiredPrivileges <= privilege)
+            .Select(x => x.Key)
+            .ToArray();
     }
+
 
     public static void SendMessage(Session session, string message)
     {
@@ -68,8 +91,13 @@ public static class CommandRepository
     {
         var action = message.Split(' ', 2).Length >= 2 ? message.Split(' ', 2)[1] : null;
 
-        if ((bool)action?.StartsWith("is listening to") || (bool)action?.StartsWith("is watching"))
+        if (action?.StartsWith("is listening to") == true || action?.StartsWith("is watching") == true)
         {
+            if (message.Split('/').Length < 6)
+            {
+                return (null, null);
+            }
+
             var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0] ?? string.Empty, out var id) ? id : 0;
             return ("beatmap", [beatmapId.ToString()]);
         }
@@ -91,11 +119,12 @@ public static class CommandRepository
                 continue;
             }
 
-            Handlers.Add(attribute.Command, instance);
+            var command = new ChatCommand(instance, attribute.RequiredRank, attribute.IsGlobal);
+            Handlers.Add(attribute.Command, command);
         }
     }
 
-    private static IChatCommand? GetHandler(string command)
+    private static ChatCommand? GetHandler(string command)
     {
         return Handlers.GetValueOrDefault(command);
     }

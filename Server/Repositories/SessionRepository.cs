@@ -104,6 +104,11 @@ public class SessionRepository
         }
     }
 
+    public List<Session> GetSessions()
+    {
+        return _sessions.Values.ToList();
+    }
+
     private void AddBotToSession()
     {
         // TODO: On a side not, it's better to add the bot to the database and then retrieve it from there. Will do that later.
@@ -125,7 +130,7 @@ public class SessionRepository
                 ShowUserLocation = false,
                 Status = new BanchoUserStatus
                 {
-                    Action = BanchoAction.Idle
+                    Action = BanchoAction.Unknown
                 }
             }
         };

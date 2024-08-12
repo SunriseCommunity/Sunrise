@@ -18,9 +18,6 @@ public class WebController : ControllerBase
     [HttpPost("osu-submit-modular-selector.php")]
     public async Task<IActionResult> Submit()
     {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
         var result = await ScoreService.SubmitScore(Request);
         return await Task.FromResult<IActionResult>(Ok(result));
     }
@@ -51,7 +48,7 @@ public class WebController : ControllerBase
     [HttpGet("maps/{filename}")]
     public async Task<IActionResult> GetMap(string filename)
     {
-        var file = await BeatmapService.GetBeatmapFileBy(filename);
+        var file = await BeatmapService.GetBeatmapFile(filename);
 
         if (file == null)
             return NotFound("Beatmap not found");

@@ -1,5 +1,6 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
@@ -39,9 +40,24 @@ public class Session
 
     public void SendBanchoMaintenance()
     {
-        const string message = "Bancho is currently in maintenance mode. Please try again later.";
+        var message = "Server going down for maintenance.";
+
+        if (User.Privilege >= PlayerRank.SuperMod)
+        {
+            return;
+        }
+
+        message += " You will be disconnected shortly.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.ServerError);
+        _helper.WritePacket(PacketType.ServerNotification, message);
+    }
+
+    public void SendRestriction()
+    {
+        const string message = "You have been restricted. Please contact a staff member for more information.";
+
+        _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
@@ -70,6 +86,12 @@ public class Session
     public void SendPrivilege()
     {
         _helper.WritePacket(PacketType.ServerUserPermissions, User.Privilege);
+    }
+
+    public void SendSilenceStatus(int time = 0, string? reason = null)
+    {
+        _helper.WritePacket(PacketType.ServerNotification, $"You have been {(time == 0 ? "un" : "")}silenced. {(reason != null ? $"Reason: {reason}" : "")}");
+        _helper.WritePacket(PacketType.ServerLockClient, time);
     }
 
     public async Task SendUserPresence()

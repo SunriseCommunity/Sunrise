@@ -27,18 +27,18 @@ public class GetScoresRequest
         Mode = gameMode;
     }
 
-    public string? Hash { get; set; }
+    public string Hash { get; set; }
     public GameMode Mode { get; set; }
     public Mods Mods { get; set; }
     public LeaderboardType LeaderboardType { get; set; }
-    public string? BeatmapSetId { get; set; }
-    public string? BeatmapName { get; set; }
-    public string? Username { get; set; }
+    public string BeatmapSetId { get; set; }
+    public string BeatmapName { get; set; }
+    public string Username { get; set; }
 
     public void ThrowIfHasEmptyFields()
     {
         if (string.IsNullOrEmpty(Hash) || string.IsNullOrEmpty(BeatmapName) ||
-            string.IsNullOrEmpty(Username))
+            string.IsNullOrEmpty(Username) || string.IsNullOrEmpty(BeatmapSetId))
         {
             throw new Exception("Invalid request: Missing parameters");
         }

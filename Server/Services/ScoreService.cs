@@ -18,9 +18,10 @@ public static class ScoreService
 
         data.ThrowIfHasEmptyFields();
 
-        var beatmap = await BeatmapService.GetBeatmap(data.BeatmapHash!);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapHash: data.BeatmapHash);
+        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.BeatmapHash);
 
-        if (beatmap == null)
+        if (beatmap == null || beatmapSet == null)
         {
             throw new Exception("Invalid request: BeatmapFile not found");
         }
@@ -42,9 +43,14 @@ public static class ScoreService
         var userStats = await database.GetUserStats(score.UserId, score.GameMode);
         var user = await database.GetUser(score.UserId);
 
-        if (userStats == null)
+        if (userStats == null || user == null)
         {
             throw new Exception("Invalid request: UserStats not found");
+        }
+
+        if (user.Passhash != data.PassHash || user.IsRestricted)
+        {
+            return "error: no";
         }
 
         var prevUserStats = userStats.Clone();
@@ -71,13 +77,10 @@ public static class ScoreService
         var newPBest = scores.GetNewPersonalScore(score);
         userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
 
-        // Can be simplified to just get beatmapset by hash with full and use it for beatmap too
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: beatmap.BeatmapsetId);
-
-        if (newPBest.LeaderboardRank == 1)
+        if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
-            var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user?.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet?.Artist} - {beatmapSet?.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+            var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
             channels.GetChannel("#announce")!.SendToChannel(message);
         }
 
@@ -99,22 +102,17 @@ public static class ScoreService
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
         }
 
-        var rawScores = await database.GetBeatmapScores(data.Hash!, data.Mode, data.LeaderboardType, data.Mods, user);
+        var rawScores = await database.GetBeatmapScores(data.Hash, data.Mode, data.LeaderboardType, data.Mods, user);
         var scores = new ScoresHelper(rawScores);
 
-        var beatmap = await BeatmapService.GetBeatmap(data.Hash!);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId)) ?? await BeatmapService.GetBeatmapSet(beatmapHash: data.Hash);
 
-        if (beatmap == null)
+        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.Hash);
+
+        if (beatmapSet == null || beatmap == null)
         {
-            if (data.BeatmapSetId == null)
-            {
-                return $"{(int)BeatmapStatus.NotSubmitted}|false";
-            }
-
-            // Can be simplified to just get beatmapset by hash with full and use it for beatmap too
-            var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId));
-
-            return beatmapSet == null ? $"{(int)BeatmapStatus.NotSubmitted}|false" : $"{(int)BeatmapStatus.NeedsUpdate}|false";
+            // TODO: Check with our db to find out if need's update
+            return $"{(int)BeatmapStatus.NotSubmitted}|false";
         }
 
         if (beatmap.Status < BeatmapStatus.Ranked)
@@ -125,9 +123,8 @@ public static class ScoreService
         var responses = new List<string>
         {
             $"{(int)beatmap.Status}|false|{beatmap.Id}|{beatmap.BeatmapsetId}|{scores.Count}",
-            $"0\n{data.BeatmapName?.Replace(".osu", "")}\n10.0"
+            $"0\n{beatmapSet.Artist} - {beatmapSet.Title}\n10.0"
         };
-
 
         if (scores.Count == 0)
         {
@@ -151,6 +148,7 @@ public static class ScoreService
     {
         var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
 
+        // TODO: Change playcount and passcount to be from out db
         var beatmapInfo = $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
         var scoreInfo = string.Join("|", GetChart(prevScore, newScore));

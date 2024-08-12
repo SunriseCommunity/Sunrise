@@ -8,10 +8,9 @@ public static class RedisKey
     public const string UserStats = "user:{0}:stats:{1}";
     public const string Score = "score:{0}";
     public const string Scores = "scores:{0}:leaderboardtype:{1}";
-    public const string BeatmapHash = "beatmap:hash:{0}";
-    public const string Beatmap = "beatmap:{0}";
-    public const string BeatmapSet = "beatmapset:{0}";
-    public const string BeatmapSetBySet = "beatmapset:byset:{0}"; // lol nice naming
+    public const string BeatmapSetByHash = "beatmapset:byhash:{0}";
+    public const string BeatmapSetByBeatmapId = "beatmapset:bybeatmap:{0}";
+    public const string BeatmapSetBySetId = "beatmapset:byset:{0}";
     public const string BeatmapSearch = "beatmapset:serach:{0}";
     public const string BeatmapFile = "beatmap:{0}:file";
 

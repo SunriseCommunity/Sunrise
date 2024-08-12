@@ -46,12 +46,23 @@ public static class AuthService
             return RejectLogin(response, "Invalid credentials.");
         }
 
+        if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
+        {
+            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
+        }
+
+        if (user.IsRestricted)
+        {
+            return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
+        }
+
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         if (sessions.IsUserOnline(user.Id))
         {
             return RejectLogin(response, "User is already logged in. Try again later.");
         }
+
 
         var session = sessions.CreateSession(user, location, loginRequest);
 
@@ -60,7 +71,7 @@ public static class AuthService
         return await ProceedWithLogin(session);
     }
 
-    private static IActionResult RejectLogin(HttpResponse response, string? reason = null)
+    private static IActionResult RejectLogin(HttpResponse response, string? reason = null, LoginResponses code = LoginResponses.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
 
@@ -71,7 +82,7 @@ public static class AuthService
             writer.WritePacket(PacketType.ServerNotification, reason);
         }
 
-        writer.WritePacket(PacketType.ServerLoginReply, LoginResponses.InvalidCredentials);
+        writer.WritePacket(PacketType.ServerLoginReply, code);
 
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
@@ -111,6 +122,11 @@ public static class AuthService
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
 
+        if (session.User.SilencedUntil > DateTime.UtcNow)
+        {
+            session.SendSilenceStatus((int)(session.User.SilencedUntil - DateTime.UtcNow).TotalSeconds);
+        }
+
         sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence());
         sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
 
@@ -118,6 +134,11 @@ public static class AuthService
         await session.SendUserPresence();
 
         session.SendNotification(Configuration.WelcomeMessage);
+
+        if (Configuration.OnMaintenance)
+        {
+            session.SendNotification("Server is currently in maintenance mode. Please keep in mind that some features may not work properly.");
+        }
 
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }

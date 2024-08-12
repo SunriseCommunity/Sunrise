@@ -4,5 +4,5 @@ namespace Sunrise.Server.Types.Interfaces;
 
 public interface IChatCommand
 {
-    Task Handle(Session session, string[]? args);
+    Task Handle(Session session, ChatChannel? channel, string[]? args);
 }
