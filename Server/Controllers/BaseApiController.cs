@@ -56,29 +56,6 @@ public class BaseApiController : ControllerBase
     }
 
     [HttpGet]
-    [Route("beatmap/pp/{id:int}")]
-    public async Task<IActionResult> GetPpCalc(int id, [FromQuery(Name = "mode")] int mode)
-    {
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-
-        if (isValidMode != true)
-        {
-            return BadRequest("Invalid mode parameter");
-        }
-
-        var pp = await Calculators.CalculatePerformancePoints(id, mode);
-        var data = JsonSerializer.SerializeToElement(new
-        {
-            acc100 = pp.Item1,
-            acc99 = pp.Item2,
-            acc98 = pp.Item3,
-            acc95 = pp.Item4
-        });
-
-        return Ok(data);
-    }
-
-    [HttpGet]
     [Route("score/{id:int}")]
     public async Task<IActionResult> GetScore(int id)
     {

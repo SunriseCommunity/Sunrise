@@ -9,11 +9,10 @@ public static class RegionHelper
 
     public static async Task<Location> GetRegion(string ip)
     {
-        var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}");
-        var region = new Location();
+        var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}") ?? new Location();
+        location.Ip = ip;
 
-        return location ?? region;
-
+        return location;
     }
 
     public static string GetUserIpAddress(HttpRequest request)

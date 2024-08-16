@@ -16,9 +16,31 @@ public class RedisRepository
         return value.HasValue ? JsonSerializer.Deserialize<T>(value!) : default;
     }
 
+    public async Task<T?> Get<T>(string[] keys)
+    {
+        var values = await Redis.StringGetAsync(keys.Select(x => (RedisKey)x).ToArray());
+
+        foreach (var value in values)
+        {
+            if (value.HasValue)
+            {
+                return JsonSerializer.Deserialize<T>(value);
+            }
+        }
+
+        return default;
+    }
+
     public async Task Set<T>(string key, T value, TimeSpan? cacheTime = null)
     {
-        await Redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromMinutes(15));
+        await Redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromMinutes(15), flags: CommandFlags.FireAndForget);
+    }
+
+    public async Task Set<T>(string[] keys, T value, TimeSpan? cacheTime = null)
+    {
+        var values = keys.Select(x => new KeyValuePair<RedisKey, RedisValue>((RedisKey)x, JsonSerializer.Serialize(value))).ToArray();
+
+        await Redis.StringSetAsync(values, flags: CommandFlags.FireAndForget);
     }
 
     public async Task Remove(string key)

@@ -19,7 +19,7 @@ public class BeatmapCommand : IChatCommand
 
         var beatmapId = int.Parse(args[0]);
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapId);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
 
         if (beatmapSet == null)
         {
@@ -29,8 +29,8 @@ public class BeatmapCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == beatmapId);
 
-        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(beatmapId, beatmap?.ModeInt ?? 0, precision: false);
+        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(session, beatmapId, beatmap?.ModeInt ?? 0);
 
-        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] | 95%: {pp95}pp | 98%: {pp98}pp | 99%: {pp99}pp | 100%: {pp100}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
+        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] | 95%: {pp95:0.00}pp | 98%: {pp98:0.00}pp | 99%: {pp99:0.00}pp | 100%: {pp100:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
     }
 }

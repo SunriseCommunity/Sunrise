@@ -13,5 +13,7 @@ public class Location
     [JsonPropertyName("lon")]
     public float Longitude { get; set; } = 0;
 
+    public string Ip { get; set; } = string.Empty;
+
     public int TimeOffset { get; set; } = 0;
 }

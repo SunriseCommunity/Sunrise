@@ -9,11 +9,11 @@ public class SubmitScoreRequest(HttpRequest request)
     public string? PassHash { get; set; } = request.Form["pass"];
     public string? ScoreTime { get; set; } = request.Form["st"];
     public string? ScoreFailTime { get; set; } = request.Form["ft"];
-    public  string? BeatmapHash { get; set; } = request.Form["bmk"];
-    
+    public string? BeatmapHash { get; set; } = request.Form["bmk"];
+
     public void ThrowIfHasEmptyFields()
     {
-        if (string.IsNullOrEmpty(ScoreEncoded) || string.IsNullOrEmpty(OsuVersion) || string.IsNullOrEmpty(Iv) || string.IsNullOrEmpty(PassHash)  || string.IsNullOrEmpty(BeatmapHash) || Replay == null)
+        if (string.IsNullOrEmpty(ScoreEncoded) || string.IsNullOrEmpty(OsuVersion) || string.IsNullOrEmpty(Iv) || string.IsNullOrEmpty(PassHash) || string.IsNullOrEmpty(BeatmapHash) || Replay == null)
         {
             throw new Exception("Invalid request: Missing parameters");
         }
