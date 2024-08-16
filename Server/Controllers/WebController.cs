@@ -45,17 +45,6 @@ public class WebController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("maps/{filename}")]
-    public async Task<IActionResult> GetMap(string filename)
-    {
-        var file = await BeatmapService.GetBeatmapFile(filename);
-
-        if (file == null)
-            return NotFound("Beatmap not found");
-
-        return new FileContentResult(file, "application/octet-stream");
-    }
-
     [HttpPost("osu-error.php")]
     public IActionResult OsuError()
     {

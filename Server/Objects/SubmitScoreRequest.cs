@@ -9,7 +9,13 @@ public class SubmitScoreRequest(HttpRequest request)
     public string? PassHash { get; set; } = request.Form["pass"];
     public string? ScoreTime { get; set; } = request.Form["st"];
     public string? ScoreFailTime { get; set; } = request.Form["ft"];
-    public  string? BeatmapHash { get; set; } = request.Form["bmk"];
+    public string? BeatmapHash { get; set; } = request.Form["bmk"];
+
+    public string? GetUsername()
+    {
+        return ScoreEncoded != null ? ScoreEncoded.Split(':')[1].Trim() : null;
+    }
+
     
     public void ThrowIfHasEmptyFields()
     {

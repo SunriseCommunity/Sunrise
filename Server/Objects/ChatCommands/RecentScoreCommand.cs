@@ -23,7 +23,7 @@ public class RecentScoreCommand : IChatCommand
             return;
         }
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapId: lastScore.BeatmapId);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapHash: lastScore.BeatmapHash);
 
         if (beatmapSet == null)
         {
@@ -33,6 +33,6 @@ public class RecentScoreCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == lastScore.BeatmapId);
 
-        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] Mods: {lastScore.Mods} | Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp| {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
+        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] Mods: {lastScore.Mods} | Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
     }
 }
