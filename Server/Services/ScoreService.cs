@@ -4,6 +4,7 @@ using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -18,7 +19,14 @@ public static class ScoreService
 
         data.ThrowIfHasEmptyFields();
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapHash: data.BeatmapHash);
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username: data.GetUsername() ?? "");
+
+        if (session == null)
+        {
+            return "error: no";
+        }
+
+        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapHash: data.BeatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.BeatmapHash);
 
         if (beatmap == null || beatmapSet == null)
@@ -28,7 +36,7 @@ public static class ScoreService
 
         var decryptedScore = Parsers.ParseSubmittedScore(data);
 
-        var score = await new Score().SetScoreFromString(decryptedScore, beatmap, data.OsuVersion ?? "");
+        var score = new Score().SetNewScoreFromString(decryptedScore, beatmap, data.OsuVersion ?? "");
 
         if (IsHasInvalidMods(score.Mods))
         {
@@ -95,17 +103,17 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
-        var user = await database.GetUser(username: data.Username);
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username: data.Username);
 
-        if (user == null)
+        if (session == null)
         {
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
         }
 
-        var rawScores = await database.GetBeatmapScores(data.Hash, data.Mode, data.LeaderboardType, data.Mods, user);
+        var rawScores = await database.GetBeatmapScores(data.Hash, data.Mode, data.LeaderboardType, data.Mods, session.User);
         var scores = new ScoresHelper(rawScores);
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(beatmapSetId: int.Parse(data.BeatmapSetId)) ?? await BeatmapService.GetBeatmapSet(beatmapHash: data.Hash);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(session, int.Parse(data.BeatmapSetId), data.Hash);
 
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.Hash);
 
@@ -131,7 +139,7 @@ public static class ScoreService
             return string.Join("\n", responses);
         }
 
-        var personalBest = scores.GetPersonalBestOf(user.Id);
+        var personalBest = scores.GetPersonalBestOf(session.User.Id);
         responses.Add(personalBest != null ? await personalBest.GetString() : "");
 
         var leaderboardScores = scores.GetTopScores(50);

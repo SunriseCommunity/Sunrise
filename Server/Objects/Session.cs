@@ -5,6 +5,7 @@ using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -149,5 +150,29 @@ public class Session
     {
         var user = await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().GetUser(User.Id);
         User = user ?? User;
+    }
+
+    public async Task<bool> IsRateLimited()
+    {
+        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+        var key = string.Format(RedisKey.UserRateLimit, User.Id);
+
+        var remaining = await redis.Get<int?>(key);
+
+        if (remaining != null)
+        {
+            if (remaining <= 0)
+            {
+                return true;
+            }
+
+            await redis.Set(key, remaining - 1, TimeSpan.FromMinutes(1));
+            return false;
+        }
+
+        remaining = Configuration.UserApiCallsInMinute;
+        await redis.Set(key, remaining - 1, TimeSpan.FromMinutes(1));
+
+        return false;
     }
 }

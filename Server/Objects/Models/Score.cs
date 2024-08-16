@@ -1,6 +1,7 @@
 using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
@@ -80,18 +81,18 @@ public class Score
     public string FileChecksum { get; set; }
     public int? LeaderboardRank { get; set; }
 
-    public async Task<Score> SetScoreFromString(string scoreString, Beatmap beatmap, string version)
+    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap, string version)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         var split = scoreString.Split(':');
-        var user = await database.GetUser(username: split[1].Trim());
+        var session = sessions.GetSessionBy(split[1]);
 
-        if (user == null)
-            throw new Exception("User not found");
+        if (session == null)
+            throw new Exception("Session not found for score submission");
 
         BeatmapHash = split[0];
-        UserId = user.Id;
+        UserId = session.User.Id;
         BeatmapId = beatmap.Id;
         FileChecksum = split[2]; // TODO: Check file checksum
         Count300 = int.Parse(split[3]);
@@ -110,7 +111,7 @@ public class Score
         WhenPlayed = DateTime.UtcNow;
         OsuVersion = version;
         Accuracy = Calculators.CalculateAccuracy(this);
-        PerformancePoints = Calculators.CalculatePerformancePoints(this);
+        PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
         Beatmap = beatmap;
         return this;
     }

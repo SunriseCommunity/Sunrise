@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
 using Sunrise.Server.Data;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Services;
 using Beatmap = RosuPP.Beatmap;
@@ -11,9 +12,9 @@ namespace Sunrise.Server.Utils;
 
 public static class Calculators
 {
-    public static double CalculatePerformancePoints(Score score)
+    public static double CalculatePerformancePoints(Session session, Score score)
     {
-        var beatmapBytes = BeatmapService.GetBeatmapFile(score.BeatmapId).Result;
+        var beatmapBytes = BeatmapService.GetBeatmapFile(session, score.BeatmapId).Result;
 
         if (beatmapBytes == null)
         {
@@ -37,9 +38,9 @@ public static class Calculators
         };
     }
 
-    public static async Task<(double, double, double, double)> CalculatePerformancePoints(int beatmapId, int mode, Mods mods = Mods.None, bool precision = true)
+    public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session, int beatmapId, int mode, Mods mods = Mods.None)
     {
-        var beatmapBytes = await BeatmapService.GetBeatmapFile(beatmapId);
+        var beatmapBytes = await BeatmapService.GetBeatmapFile(session, beatmapId);
 
         if (beatmapBytes == null)
         {
@@ -77,7 +78,7 @@ public static class Calculators
             });
         }
 
-        return precision ? (ppList[0], ppList[1], ppList[2], ppList[3]) : (Math.Round(ppList[0]), Math.Round(ppList[1]), Math.Round(ppList[2]), Math.Round(ppList[3]));
+        return (ppList[0], ppList[1], ppList[2], ppList[3]);
 
     }
 
