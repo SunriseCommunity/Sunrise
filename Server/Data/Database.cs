@@ -22,7 +22,9 @@ public sealed class SunriseDb
         Redis = redis;
 
         _orm.InitializeDatabase();
-        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(Score)]);
+        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(BeatmapFile), typeof(ExternalApi), typeof(Score)]);
+
+        InsertApiServersIfNotExists();
     }
 
     private RedisRepository Redis { get; }
@@ -195,6 +197,53 @@ public sealed class SunriseDb
         return scores;
     }
 
+    public async Task<List<ExternalApi>?> GetExternalApis(ApiType type)
+    {
+        var exp = new Expr("Type", OperatorEnum.Equals, (int)type);
+
+        var apis = await _orm.SelectManyAsync<ExternalApi>(exp);
+
+        return apis?.OrderBy(x => x.Priority).ToList();
+    }
+
+    public async Task SetBeatmapFile(int beatmapId, byte[] beatmap)
+    {
+        var path = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";
+        await File.WriteAllBytesAsync(path, beatmap);
+
+        var file = new BeatmapFile
+        {
+            BeatmapId = beatmapId,
+            Path = path
+        };
+
+        await _orm.InsertAsync(file);
+        await Redis.Set(string.Format(RedisKey.BeatmapFile, beatmapId), beatmap);
+    }
+
+    public async Task<byte[]?> GetBeatmapFile(int beatmapId)
+    {
+        var cachedBeatmap = await Redis.Get<byte[]?>(string.Format(RedisKey.BeatmapFile, beatmapId));
+
+        if (cachedBeatmap != null)
+        {
+            return cachedBeatmap;
+        }
+
+        var exp = new Expr("BeatmapId", OperatorEnum.Equals, beatmapId);
+        var beatmap = await _orm.SelectFirstAsync<BeatmapFile?>(exp);
+
+        if (beatmap == null)
+        {
+            return null;
+        }
+
+        var file = await File.ReadAllBytesAsync(beatmap.Path);
+
+        await Redis.Set(string.Format(RedisKey.BeatmapFile, beatmapId), file);
+        return file;
+    }
+
     public async Task SetAvatar(int id, byte[] avatar)
     {
         var path = $"{DataPath}Files/Avatars/{id}.png";
@@ -204,8 +253,7 @@ public sealed class SunriseDb
         {
             OwnerId = id,
             Path = path,
-            Type = FileType.Avatar,
-            CreatedAt = DateTime.UtcNow
+            Type = FileType.Avatar
         };
 
         await _orm.InsertAsync(file);
@@ -255,8 +303,7 @@ public sealed class SunriseDb
         {
             OwnerId = userId,
             Path = path,
-            Type = FileType.Banner,
-            CreatedAt = DateTime.UtcNow
+            Type = FileType.Banner
         };
 
         await _orm.InsertAsync(file);
@@ -303,8 +350,7 @@ public sealed class SunriseDb
         {
             OwnerId = userId,
             Path = path,
-            Type = FileType.Replay,
-            CreatedAt = DateTime.UtcNow
+            Type = FileType.Replay
         };
 
         file = await _orm.InsertAsync(file);
@@ -357,5 +403,67 @@ public sealed class SunriseDb
     public async Task RemoveUserRank(int userId, GameMode mode)
     {
         await Redis.Redis.SortedSetRemoveAsync(string.Format(RedisKey.LeaderboardGlobal, (int)mode), userId);
+    }
+
+    private void InsertApiServersIfNotExists()
+    {
+        var apis = new List<ExternalApi>
+        {
+            new()
+            {
+                Type = ApiType.BeatmapDownload,
+                Server = ApiServer.OldPpy,
+                Url = "https://old.ppy.sh/osu/{0}",
+                Priority = 0,
+                NumberOfRequiredArgs = 1
+            },
+            new()
+            {
+                Type = ApiType.BeatmapDownload,
+                Server = ApiServer.CatboyBest,
+                Url = "https://catboy.best/osu/{0}n",
+                Priority = 1,
+                NumberOfRequiredArgs = 1
+            },
+            new()
+            {
+                Type = ApiType.BeatmapDownload,
+                Server = ApiServer.OsuDirect,
+                Url = "https://osu.direct/api/osu/{0}",
+                Priority = 2,
+                NumberOfRequiredArgs = 1
+            },
+            new()
+            {
+                Type = ApiType.BeatmapSetDataById,
+                Server = ApiServer.OsuDirect,
+                Url = "https://osu.direct/api/v2/s/{0}",
+                Priority = 0,
+                NumberOfRequiredArgs = 1
+            },
+            new()
+            {
+                Type = ApiType.BeatmapSetDataByBeatmapId,
+                Server = ApiServer.OsuDirect,
+                Url = "https://osu.direct/api/v2/b/{0}?full=true",
+                Priority = 0,
+                NumberOfRequiredArgs = 1
+            },
+            new()
+            {
+                Type = ApiType.BeatmapSetDataByHash,
+                Server = ApiServer.OsuDirect,
+                Url = "https://osu.direct/api/v2/md5/{0}?full=true",
+                Priority = 0,
+                NumberOfRequiredArgs = 1
+            }
+        };
+
+        // TODO: Maybe move this to a separate file and add more mirrors (need also more serializers?)
+
+        foreach (var api in from api in apis let existingApi = _orm.SelectFirst<ExternalApi>(new Expr("Url", OperatorEnum.Equals, api.Url)) where existingApi == null select api)
+        {
+            _orm.Insert(api);
+        }
     }
 }
