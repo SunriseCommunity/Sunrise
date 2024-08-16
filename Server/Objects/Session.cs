@@ -166,6 +166,7 @@ public class Session
                 return true;
             }
 
+            // FIXME: If user spams 1 request each 59 seconds, they will never get back to their limit.
             await redis.Set(key, remaining - 1, TimeSpan.FromMinutes(1));
             return false;
         }
