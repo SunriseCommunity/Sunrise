@@ -86,7 +86,7 @@ public class Score
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         var split = scoreString.Split(':');
-        var session = sessions.GetSessionBy(split[1]);
+        var session = sessions.GetSessionBy(split[1].Trim());
 
         if (session == null)
             throw new Exception("Session not found for score submission");

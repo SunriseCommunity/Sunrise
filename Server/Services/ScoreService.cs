@@ -19,7 +19,11 @@ public static class ScoreService
 
         data.ThrowIfHasEmptyFields();
 
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username: data.GetUsername() ?? "");
+        var decryptedScore = Parsers.ParseSubmittedScore(data);
+
+        var username = decryptedScore.Split(':')[1].Trim() ?? "";
+
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username);
 
         if (session == null)
         {
@@ -33,8 +37,6 @@ public static class ScoreService
         {
             throw new Exception("Invalid request: BeatmapFile not found");
         }
-
-        var decryptedScore = Parsers.ParseSubmittedScore(data);
 
         var score = new Score().SetNewScoreFromString(decryptedScore, beatmap, data.OsuVersion ?? "");
 
