@@ -10,7 +10,7 @@ namespace Sunrise.Server.Helpers;
 
 public class PacketHelper
 {
-    private readonly ConcurrentQueue<BanchoPacket> _packets = new ConcurrentQueue<BanchoPacket>();
+    private readonly ConcurrentQueue<BanchoPacket> _packets = new();
 
     [Obsolete("Use WritePacket instead.")]
     public void EnqueuePacket(BanchoPacket packet) => _packets.Enqueue(packet);
