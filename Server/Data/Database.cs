@@ -23,11 +23,12 @@ public sealed class SunriseDb
 
         _orm.InitializeDatabase();
         _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(BeatmapFile), typeof(ExternalApi), typeof(Score)]);
-
-        InsertApiServersIfNotExists();
     }
 
     private RedisRepository Redis { get; }
+    
+    [Obsolete("Not recommended to use this method. Use other methods instead.")]
+    public WatsonORM GetOrm() => _orm;
 
     public async Task<User> InsertUser(User user)
     {
@@ -45,23 +46,23 @@ public sealed class SunriseDb
             await InsertUserStats(stats);
         }
 
-        await Redis.Set(string.Format(RedisKey.User, user.Id), user);
+        await Redis.Set(RedisKey.UserById(user.Id), user);
 
         return user;
     }
 
     public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null)
     {
-        var cachedUser = await Redis.Get<User?>(string.Format(RedisKey.User, id));
+        var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username), RedisKey.UserByEmail(email)]);
 
-        if (cachedUser != null && id != null)
+        if (cachedUser != null)
         {
             return cachedUser;
         }
 
         var exp = new Expr("Id", OperatorEnum.Equals, id ?? -1);
-        if (username != null) exp.PrependOr(new Expr("Username", OperatorEnum.Equals, username));
-        if (email != null) exp.PrependOr(new Expr("Email", OperatorEnum.Equals, email));
+        exp.PrependOr(new Expr("Username", OperatorEnum.Equals, username));
+        exp.PrependOr(new Expr("Email", OperatorEnum.Equals, email));
 
         var user = await _orm.SelectFirstAsync<User?>(exp);
 
@@ -69,39 +70,37 @@ public sealed class SunriseDb
         {
             return null;
         }
-
-        await Redis.Set(string.Format(RedisKey.User, id), user);
+        
+        await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
 
         return user;
     }
 
-    public async Task<User> UpdateUser(User user)
+    public async Task UpdateUser(User user)
     {
         await _orm.UpdateAsync(user);
-        await Redis.Set(string.Format(RedisKey.User, user.Id), user);
-
-        return user;
+        await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
     }
 
     public async Task<UserStats> InsertUserStats(UserStats stats)
     {
         stats = await _orm.InsertAsync(stats);
         await SetUserRank(stats.UserId, stats.GameMode);
-        await Redis.Set(string.Format(RedisKey.UserStats, stats.UserId, (int)stats.GameMode), stats);
+        await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
 
         return stats;
     }
 
-    public async Task<UserStats> GetUserStats(int id, GameMode mode)
+    public async Task<UserStats> GetUserStats(int userId, GameMode mode)
     {
-        var cachedStats = await Redis.Get<UserStats?>(string.Format(RedisKey.UserStats, id, (int)mode));
+        var cachedStats = await Redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
 
         if (cachedStats != null)
         {
             return cachedStats;
         }
 
-        var exp = new Expr("UserId", OperatorEnum.Equals, id).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
         var stats = await _orm.SelectFirstAsync<UserStats?>(exp);
 
         if (stats == null)
@@ -109,30 +108,27 @@ public sealed class SunriseDb
             throw new Exception("User stats not found");
         }
 
-        await Redis.Set(string.Format(RedisKey.UserStats, id, (int)mode), stats);
+        await Redis.Set(RedisKey.UserStats(userId, mode), stats);
 
         return stats;
     }
 
-    public async Task<UserStats> UpdateUserStats(UserStats stats)
+    public async Task UpdateUserStats(UserStats stats)
     {
         await _orm.UpdateAsync(stats);
-        await Redis.Set(string.Format(RedisKey.UserStats, stats.UserId, (int)stats.GameMode), stats);
-
         await SetUserRank(stats.UserId, stats.GameMode);
-        return stats;
+        await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
     }
 
-    public async Task<Score> InsertScore(Score score)
+    public async Task InsertScore(Score score)
     {
         score = await _orm.InsertAsync(score);
-        await Redis.Set(string.Format(RedisKey.Score, score.Id), score);
-        return score;
+        await Redis.Set(RedisKey.Score(score.Id), score);
     }
 
     public async Task<Score?> GetScore(int id)
     {
-        var cachedScore = await Redis.Get<Score?>(string.Format(RedisKey.Score, id));
+        var cachedScore = await Redis.Get<Score?>(RedisKey.Score(id));
 
         if (cachedScore != null)
         {
@@ -147,7 +143,7 @@ public sealed class SunriseDb
             throw new Exception("Score not found");
         }
 
-        await Redis.Set(string.Format(RedisKey.Score, id), score);
+        await Redis.Set(RedisKey.Score(id), score);
 
         return score;
     }
@@ -208,262 +204,201 @@ public sealed class SunriseDb
 
     public async Task SetBeatmapFile(int beatmapId, byte[] beatmap)
     {
-        var path = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";
-        await File.WriteAllBytesAsync(path, beatmap);
+        var filePath = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";
+        await File.WriteAllBytesAsync(filePath, beatmap);
 
-        var file = new BeatmapFile
+        var record = new BeatmapFile
         {
             BeatmapId = beatmapId,
-            Path = path
+            Path = filePath
         };
 
-        await _orm.InsertAsync(file);
-        await Redis.Set(string.Format(RedisKey.BeatmapFile, beatmapId), beatmap);
+        await _orm.InsertAsync(record);
+        await Redis.Set(RedisKey.BeatmapRecord(beatmapId), record);
     }
 
     public async Task<byte[]?> GetBeatmapFile(int beatmapId)
     {
-        var cachedBeatmap = await Redis.Get<byte[]?>(string.Format(RedisKey.BeatmapFile, beatmapId));
+        var cachedRecord = await Redis.Get<BeatmapFile?>(RedisKey.BeatmapRecord(beatmapId));
 
-        if (cachedBeatmap != null)
+        if (cachedRecord != null)
         {
-            return cachedBeatmap;
+            return await File.ReadAllBytesAsync(cachedRecord.Path);
         }
 
         var exp = new Expr("BeatmapId", OperatorEnum.Equals, beatmapId);
-        var beatmap = await _orm.SelectFirstAsync<BeatmapFile?>(exp);
+        var record = await _orm.SelectFirstAsync<BeatmapFile?>(exp);
 
-        if (beatmap == null)
+        if (record == null)
         {
             return null;
         }
 
-        var file = await File.ReadAllBytesAsync(beatmap.Path);
+        var file = await File.ReadAllBytesAsync(record.Path);
 
-        await Redis.Set(string.Format(RedisKey.BeatmapFile, beatmapId), file);
+        await Redis.Set(RedisKey.BeatmapRecord(beatmapId), record);
         return file;
     }
 
     public async Task SetAvatar(int id, byte[] avatar)
     {
-        var path = $"{DataPath}Files/Avatars/{id}.png";
-        await File.WriteAllBytesAsync(path, avatar);
+        var filePath = $"{DataPath}Files/Avatars/{id}.png";
+        await File.WriteAllBytesAsync(filePath, avatar);
 
-        var file = new UserFile
+        var record = new UserFile
         {
             OwnerId = id,
-            Path = path,
+            Path = filePath,
             Type = FileType.Avatar
         };
 
-        await _orm.InsertAsync(file);
-        await Redis.Set(string.Format(RedisKey.Avatar, id), avatar);
+        await _orm.InsertAsync(record );
+        await Redis.Set(RedisKey.AvatarRecord(id), record);
     }
 
-    public async Task<byte[]> GetAvatar(int id)
+    public async Task<byte[]> GetAvatar(int userId, bool fallToDefault = true)
     {
-        var cachedAvatar = await Redis.Get<byte[]>(string.Format(RedisKey.Avatar, id));
+        var cachedRecord = await Redis.Get<UserFile>(RedisKey.AvatarRecord(userId));
 
-        if (cachedAvatar != null)
+        if (cachedRecord != null)
         {
-            return cachedAvatar;
+            return await File.ReadAllBytesAsync(cachedRecord.Path);
         }
 
-        if (id == int.MaxValue)
+        // TODO: Remove this "костыль" (shit) when we will set bot record in DB. 
+        if (userId == int.MaxValue)
         {
             var botAvatar = await File.ReadAllBytesAsync($"{DataPath}Files/Avatars/Bot.png");
-            await Redis.Set(string.Format(RedisKey.Avatar, id), botAvatar);
             return botAvatar;
         }
 
-        var exp = new Expr("OwnerId", OperatorEnum.Equals, id);
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
         exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Avatar);
 
-        var file = await _orm.SelectFirstAsync<UserFile?>(exp);
+        var record = await _orm.SelectFirstAsync<UserFile?>(exp);
+        
+        if (record == null && !fallToDefault)
+        {
+            throw new Exception("Avatar not found in database");
+        }
 
-        var avatarPath = file?.Path ?? $"{DataPath}Files/Avatars/Default.png";
-        var avatar = await File.ReadAllBytesAsync(avatarPath);
+        var filePath = record?.Path ?? $"{DataPath}Files/Avatars/Default.png";
+        var file = await File.ReadAllBytesAsync(filePath);
 
-        if (avatar == null)
+        if (file == null)
         {
             throw new Exception("Avatar not found");
         }
 
-        await Redis.Set(string.Format(RedisKey.Avatar, id), avatar);
+        await Redis.Set(RedisKey.AvatarRecord(userId), record);
 
-        return avatar;
+        return file;
     }
-
     public async Task SetBanner(int userId, byte[] banner)
     {
-        var path = $"{DataPath}Files/Banners/{userId}.png";
-        await File.WriteAllBytesAsync(path, banner);
+        var filePath = $"{DataPath}Files/Banners/{userId}.png";
+        await File.WriteAllBytesAsync(filePath, banner);
 
-        var file = new UserFile
+        var record = new UserFile
         {
             OwnerId = userId,
-            Path = path,
+            Path = filePath,
             Type = FileType.Banner
         };
 
-        await _orm.InsertAsync(file);
-        await Redis.Set(string.Format(RedisKey.Banner, userId), banner);
+        await _orm.InsertAsync(record);
+        await Redis.Set(RedisKey.BannerRecord(userId), record);
     }
 
-    public async Task<byte[]> GetBanner(int userId)
+    public async Task<byte[]> GetBanner(int userId, bool fallToDefault = true)
     {
-        var cachedBanner = await Redis.Get<byte[]?>(string.Format(RedisKey.Banner, userId));
+        var cachedRecord = await Redis.Get<UserFile>(RedisKey.BannerRecord(userId));
 
-        if (cachedBanner != null)
+        if (cachedRecord != null)
         {
-            return cachedBanner;
+            return await File.ReadAllBytesAsync(cachedRecord.Path);
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
         exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
+        var record = await _orm.SelectFirstAsync<UserFile?>(exp);
+        
+        if (record == null && !fallToDefault)
+        {
+            throw new Exception("Banner not found in database");
+        }
 
-        var file = await _orm.SelectFirstAsync<UserFile?>(exp);
+        var filePath = record?.Path ?? $"{DataPath}Files/Banners/Default.png";
+        var file = await File.ReadAllBytesAsync(filePath);
 
-        var bannerPath = file?.Path ?? $"{DataPath}Files/Banners/Default.png";
-        var banner = await File.ReadAllBytesAsync(bannerPath);
-
-        if (banner == null)
+        if (file == null)
         {
             throw new Exception("Banner not found");
         }
 
-        await Redis.Set(string.Format(RedisKey.Banner, userId), banner);
+        await Redis.Set(RedisKey.BannerRecord(userId), record);
 
-        return banner;
+        return file;
     }
 
     public async Task<UserFile> UploadReplay(int userId, IFormFile replay)
     {
         var fileName = $"{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.osr";
-        var path = $"{DataPath}Files/Replays/{fileName}";
+        var filePath = $"{DataPath}Files/Replays/{fileName}";
 
-        await using var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+        await using var stream = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite);
         await replay.CopyToAsync(stream);
         stream.Close();
 
-        var file = new UserFile
+        var record = new UserFile
         {
             OwnerId = userId,
-            Path = path,
+            Path = filePath,
             Type = FileType.Replay
         };
 
-        file = await _orm.InsertAsync(file);
-        await Redis.Set(string.Format(RedisKey.Replay, userId), await File.ReadAllBytesAsync(path));
-
-        return file;
+        await _orm.InsertAsync(record);
+        
+        await Redis.Set(RedisKey.ReplayRecord(record.Id), record);
+        return record;
     }
 
-    public async Task<byte[]> GetReplay(int scoreId)
+    public async Task<byte[]> GetReplay(int replayId)
     {
-        var cachedReplay = await Redis.Get<byte[]>(string.Format(RedisKey.Replay, scoreId));
+        var cachedRecord = await Redis.Get<UserFile>(RedisKey.ReplayRecord(replayId));
 
-        if (cachedReplay != null)
+        if (cachedRecord != null)
         {
-            return cachedReplay;
+            return await File.ReadAllBytesAsync(cachedRecord.Path);
         }
 
-        var score = await GetScore(scoreId);
+        var exp = new Expr("Id", OperatorEnum.Equals, replayId);
+        var record = await _orm.SelectFirstAsync<UserFile?>(exp);
 
-        if (score == null)
-        {
-            throw new Exception("Score not found");
-        }
-
-        var exp = new Expr("Id", OperatorEnum.Equals, score.ReplayFileId);
-        var file = await _orm.SelectFirstAsync<UserFile?>(exp);
-
-        if (file == null)
+        if (record == null)
         {
             throw new Exception("Replay not found");
         }
 
-        var replay = await File.ReadAllBytesAsync(file.Path);
-        await Redis.Set(string.Format(RedisKey.Replay, scoreId), replay);
+        var file = await File.ReadAllBytesAsync(record.Path);
+        await Redis.Set(RedisKey.ReplayRecord(replayId), record);
 
-        return replay;
+        return file;
     }
 
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
-        return (int)(await Redis.Redis.SortedSetRankAsync(string.Format(RedisKey.LeaderboardGlobal, (int)mode), userId, Order.Descending))! + 1;
+        return (int)(await Redis.Redis.SortedSetRankAsync(RedisKey.LeaderboardGlobal(mode), userId, Order.Descending))! + 1;
     }
 
     public async Task SetUserRank(int userId, GameMode mode)
     {
         var userStats = await GetUserStats(userId, mode);
-        await Redis.Redis.SortedSetAddAsync(string.Format(RedisKey.LeaderboardGlobal, (int)mode), userId, userStats.PerformancePoints);
+        await Redis.Redis.SortedSetAddAsync(RedisKey.LeaderboardGlobal(mode), userId, userStats.PerformancePoints);
     }
 
     public async Task RemoveUserRank(int userId, GameMode mode)
     {
-        await Redis.Redis.SortedSetRemoveAsync(string.Format(RedisKey.LeaderboardGlobal, (int)mode), userId);
-    }
-
-    private void InsertApiServersIfNotExists()
-    {
-        var apis = new List<ExternalApi>
-        {
-            new()
-            {
-                Type = ApiType.BeatmapDownload,
-                Server = ApiServer.OldPpy,
-                Url = "https://old.ppy.sh/osu/{0}",
-                Priority = 0,
-                NumberOfRequiredArgs = 1
-            },
-            new()
-            {
-                Type = ApiType.BeatmapDownload,
-                Server = ApiServer.CatboyBest,
-                Url = "https://catboy.best/osu/{0}n",
-                Priority = 1,
-                NumberOfRequiredArgs = 1
-            },
-            new()
-            {
-                Type = ApiType.BeatmapDownload,
-                Server = ApiServer.OsuDirect,
-                Url = "https://osu.direct/api/osu/{0}",
-                Priority = 2,
-                NumberOfRequiredArgs = 1
-            },
-            new()
-            {
-                Type = ApiType.BeatmapSetDataById,
-                Server = ApiServer.OsuDirect,
-                Url = "https://osu.direct/api/v2/s/{0}",
-                Priority = 0,
-                NumberOfRequiredArgs = 1
-            },
-            new()
-            {
-                Type = ApiType.BeatmapSetDataByBeatmapId,
-                Server = ApiServer.OsuDirect,
-                Url = "https://osu.direct/api/v2/b/{0}?full=true",
-                Priority = 0,
-                NumberOfRequiredArgs = 1
-            },
-            new()
-            {
-                Type = ApiType.BeatmapSetDataByHash,
-                Server = ApiServer.OsuDirect,
-                Url = "https://osu.direct/api/v2/md5/{0}?full=true",
-                Priority = 0,
-                NumberOfRequiredArgs = 1
-            }
-        };
-
-        // TODO: Maybe move this to a separate file and add more mirrors (need also more serializers?)
-
-        foreach (var api in from api in apis let existingApi = _orm.SelectFirst<ExternalApi>(new Expr("Url", OperatorEnum.Equals, api.Url)) where existingApi == null select api)
-        {
-            _orm.Insert(api);
-        }
+        await Redis.Redis.SortedSetRemoveAsync(RedisKey.LeaderboardGlobal(mode), userId);
     }
 }
