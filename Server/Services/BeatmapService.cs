@@ -22,14 +22,14 @@ public static class BeatmapService
 
         var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
 
-        var beatmapSet = await redis.Get<BeatmapSet?>([string.Format(RedisKey.BeatmapSetBySetId, beatmapSetId), string.Format(RedisKey.BeatmapSetByHash, beatmapHash), string.Format(RedisKey.BeatmapSetByBeatmapId, beatmapId)]);
+        var beatmapSet = await redis.Get<BeatmapSet?>([RedisKey.BeatmapSetBySetId(beatmapSetId ?? -1), RedisKey.BeatmapSetByHash(beatmapHash), RedisKey.BeatmapSetByBeatmapId(beatmapId ?? -1)]);
 
         if (beatmapSet != null)
         {
             return beatmapSet;
         }
 
-        // TODO: Add beatmapSet in to DB with beatmaps.
+        // TODO: Add beatmapSet in to DB with beatmaps and move redis logic also to DB.
 
         if (beatmapId != null) beatmapSet = await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId]);
         if (beatmapHash != null && beatmapSet == null) beatmapSet = await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash]);
@@ -50,10 +50,10 @@ public static class BeatmapService
 
         foreach (var b in beatmapSet.Beatmaps)
         {
-            await redis.Set([string.Format(RedisKey.BeatmapSetByBeatmapId, b.Id), string.Format(RedisKey.BeatmapSetByHash, b.Checksum)], beatmapSet);
+            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)], beatmapSet);
         }
 
-        await redis.Set(string.Format(RedisKey.BeatmapSetBySetId, beatmapSet.Id), beatmapSet);
+        await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet);
 
         return beatmapSet;
     }

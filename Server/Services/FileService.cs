@@ -8,8 +8,15 @@ public static class FileService
     public static async Task<byte[]> GetOsuReplayBytes(int scoreId)
     {
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        
+        var score = await database.GetScore(scoreId);
+        
+        if (score == null)
+        {
+            throw new Exception("Score not found");
+        }
 
-        var replay = await database.GetReplay(scoreId);
+        var replay = await database.GetReplay(score.ReplayFileId);
 
         if (replay == null)
         {

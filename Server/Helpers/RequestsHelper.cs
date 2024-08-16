@@ -101,7 +101,7 @@ public class RequestsHelper
     private static async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri)
     {
         var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
-        var isServerRateLimited = await redis.Get<bool?>(string.Format(RedisKey.ApiServerRateLimited, server));
+        var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)
         {
@@ -132,14 +132,15 @@ public class RequestsHelper
 
         if (rateLimit is not null && rateLimit.Equals("1"))
         {
-            await redis.Set(string.Format(RedisKey.ApiServerRateLimited, server), true, TimeSpan.FromMinutes(1));
+            // TODO: Get rate limit reset time from headers.
+            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
         }
 
         if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
         {
             Logger.LogWarning($"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
 
-            await redis.Set(string.Format(RedisKey.ApiServerRateLimited, server), true, TimeSpan.FromMinutes(10));
+            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
 
             return (default, true);
         }
