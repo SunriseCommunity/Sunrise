@@ -28,8 +28,6 @@ public static class AuthService
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: loginRequest.Username);
-        var location = await RegionHelper.GetRegion(ip);
-        location.TimeOffset = loginRequest.UtcOffset;
 
         if (!CharactersFilter.IsValidString(loginRequest.Username, true))
         {
@@ -63,6 +61,8 @@ public static class AuthService
             return RejectLogin(response, "User is already logged in. Try again later.");
         }
 
+        var location = await RegionHelper.GetRegion(ip);
+        location.TimeOffset = loginRequest.UtcOffset;
 
         var session = sessions.CreateSession(user, location, loginRequest);
 
@@ -150,7 +150,11 @@ public static class AuthService
         var email = (string)request.Form["user[user_email]"]!;
 
         var ip = RegionHelper.GetUserIpAddress(request);
-        var location = await RegionHelper.GetRegion(ip);
+
+        if (string.IsNullOrEmpty(ip))
+        {
+            return new BadRequestObjectResult("Invalid request: Missing IP address");
+        }
 
         var errors = new Dictionary<string, List<string>>
         {
@@ -230,6 +234,7 @@ public static class AuthService
         }
 
         var passhash = sb.ToString();
+        var location = await RegionHelper.GetRegion(ip);
 
         user = new User
         {

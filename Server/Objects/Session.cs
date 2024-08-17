@@ -155,7 +155,7 @@ public class Session
     public async Task<bool> IsRateLimited()
     {
         var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
-        var key = string.Format(RedisKey.UserRateLimit, User.Id);
+        var key = RedisKey.UserRateLimit(User.Id);
 
         var remaining = await redis.Get<int?>(key);
 

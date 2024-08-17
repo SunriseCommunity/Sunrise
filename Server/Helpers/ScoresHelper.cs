@@ -2,14 +2,9 @@ using Sunrise.Server.Objects.Models;
 
 namespace Sunrise.Server.Helpers;
 
-public class ScoresHelper
+public class ScoresHelper(List<Score> scores)
 {
-    private readonly List<Score> _scores;
-
-    public ScoresHelper(List<Score> scores)
-    {
-        _scores = GetSortedScores(scores);
-    }
+    private readonly List<Score> _scores = GetSortedScores(scores);
 
     public int Count => _scores.Count;
 

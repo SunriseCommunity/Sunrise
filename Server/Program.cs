@@ -26,6 +26,8 @@ PacketRepository.GetHandlers();
 
 ServicesProviderHolder.ServiceProvider = app.Services;
 
+Configuration.InsertApiServersIfNotExists();
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Data/Files/SeasonalBackgrounds")),

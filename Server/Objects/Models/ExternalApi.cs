@@ -23,4 +23,14 @@ public class ExternalApi
 
     [Column(DataTypes.Int, false)]
     public int NumberOfRequiredArgs { get; set; }
+    
+    public ExternalApi Fill(ApiType type, ApiServer server, string url, int priority, int numberOfRequiredArgs)
+    {
+        Type = type;
+        Server = server;
+        Url = url;
+        Priority = priority;
+        NumberOfRequiredArgs = numberOfRequiredArgs;
+        return this;
+    }
 }
