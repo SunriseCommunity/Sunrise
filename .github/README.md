@@ -12,6 +12,7 @@ website. The server is currently in development and is not yet ready for public 
 
 ## Features 🌟
 
+### Core features
 - [x] Login and registration system
 - [x] Score submission and leaderboards
 - [x] Chat implementation
@@ -20,7 +21,12 @@ website. The server is currently in development and is not yet ready for public 
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [ ] osu!Direct
 - [ ] Spectating
-- [ ] Stats page (with heart-beat system and operations per minute???)
+
+### Additional features
+- [x] Prometheus metrics with Grafana dashboard
+- [x] Rate limiter for both internal and external requests
+- [x] Redis caching for faster response times
+- [ ] Docker support
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
