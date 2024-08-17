@@ -3,6 +3,7 @@ using HOPEless.Bancho;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories;
 
@@ -36,6 +37,8 @@ public class PacketRepository
         {
             Logger.LogInformation($"{DateTime.Now} | User {session.User.Username} (Id: {session.User.Id}) send {packet.Type}");
         }
+
+        SunriseMetrics.PacketHandlingCounterInc(packet, session);
 
         await handler.Handle(packet, session);
     }

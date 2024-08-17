@@ -47,6 +47,8 @@ public class RequestsHelper
 
             var requestUri = string.Format(api.Url, args);
 
+            SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
+
             var (response, isServerRateLimited) = await SendApiRequest<T>(api.Server, requestUri);
 
             if (isServerRateLimited)
@@ -134,7 +136,7 @@ public class RequestsHelper
                 break;
         }
 
-        if (rateLimit is not null && int.Parse(rateLimit) <= 5)
+        if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
         {
             await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.Parse(rateLimitReset)));
         }

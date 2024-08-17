@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.FileProviders;
+using Prometheus;
 using Sunrise.Server.Data;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Chat;
@@ -12,14 +13,13 @@ public static class Bootstrap
 {
     public static void Configure(this WebApplicationBuilder builder)
     {
-        builder.Services.AddAuthorization();
-        builder.Services.AddAuthentication();
         builder.Services.AddControllers();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
         builder.Services.AddProblemDetails();
+        builder.Services.AddMetrics();
 
         builder.Services.AddW3CLogging(logging =>
         {
@@ -87,11 +87,17 @@ public static class Bootstrap
             app.UseSwaggerUI();
         }
 
+        app.UseRouting();
         app.UseW3CLogging();
+        app.UseMetricServer().UseHttpMetrics();
 
-        app.UseHttpsRedirection();
-        app.UseAuthorization();
-        app.MapControllers();
+#pragma warning disable ASP0014
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+            endpoints.MapMetrics();
+        });
+#pragma warning restore ASP0014
     }
 
     public static void Setup(this WebApplication app)

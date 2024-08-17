@@ -20,6 +20,12 @@ public sealed class Middleware(
             return;
         }
 
+        if (context.Request.Path.StartsWithSegments("/metrics") && !Equals(ip, IPAddress.Loopback))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
         var limiter = GetRateLimiter(ip);
         using var lease = await limiter.AcquireAsync(1, context.RequestAborted);
 
