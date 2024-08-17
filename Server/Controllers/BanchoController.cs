@@ -11,7 +11,6 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("c", "c4", "cho")]
 public class BanchoController : ControllerBase
 {
-
     [HttpPost("/")]
     public async Task<IActionResult> Connect()
     {

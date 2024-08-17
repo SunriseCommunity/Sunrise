@@ -113,6 +113,7 @@ public class RequestsHelper
 
         var response = await Client.GetAsync(requestUri);
         var rateLimit = string.Empty;
+        var rateLimitReset = "60";
 
         switch (server)
         {
@@ -122,6 +123,7 @@ public class RequestsHelper
                 break;
             case ApiServer.OsuDirect:
                 rateLimit = response.Headers.GetValues("RateLimit-Remaining").FirstOrDefault();
+                rateLimitReset = response.Headers.GetValues("RateLimit-Reset").FirstOrDefault() ?? "60";
                 break;
             case ApiServer.OldPpy:
                 break;
@@ -132,10 +134,9 @@ public class RequestsHelper
                 break;
         }
 
-        if (rateLimit is not null && rateLimit.Equals("1"))
+        if (rateLimit is not null && int.Parse(rateLimit) <= 5)
         {
-            // TODO: Get rate limit reset time from headers.
-            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
+            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.Parse(rateLimitReset)));
         }
 
         if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))

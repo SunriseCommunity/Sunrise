@@ -1,3 +1,4 @@
+using System.Net;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 
@@ -7,15 +8,15 @@ public static class RegionHelper
 {
     private const string Api = "http://ip-api.com/json/";
 
-    public static async Task<Location> GetRegion(string ip)
+    public static async Task<Location> GetRegion(IPAddress ip)
     {
         var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}") ?? new Location();
-        location.Ip = ip;
+        location.Ip = ip.ToString();
 
         return location;
     }
 
-    public static string GetUserIpAddress(HttpRequest request)
+    public static IPAddress GetUserIpAddress(HttpRequest request)
     {
         var ipAddress = string.Empty;
 
@@ -40,7 +41,7 @@ public static class RegionHelper
             ipAddress = request.HttpContext.Connection.RemoteIpAddress?.ToString();
         }
 
-        return ipAddress ?? string.Empty;
+        return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
     }
 
     public static short GetCountryCode(string cc)
