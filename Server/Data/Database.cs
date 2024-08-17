@@ -1,7 +1,6 @@
 ﻿using DatabaseWrapper.Core;
 using ExpressionTree;
 using osu.Shared;
-using StackExchange.Redis;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
@@ -26,9 +25,12 @@ public sealed class SunriseDb
     }
 
     private RedisRepository Redis { get; }
-    
+
     [Obsolete("Not recommended to use this method. Use other methods instead.")]
-    public WatsonORM GetOrm() => _orm;
+    public WatsonORM GetOrm()
+    {
+        return _orm;
+    }
 
     public async Task<User> InsertUser(User user)
     {
@@ -53,16 +55,18 @@ public sealed class SunriseDb
 
     public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null)
     {
-        var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username), RedisKey.UserByEmail(email)]);
+        var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username ?? ""), RedisKey.UserByEmail(email ?? "")]);
 
         if (cachedUser != null)
         {
             return cachedUser;
         }
 
-        var exp = new Expr("Id", OperatorEnum.Equals, id ?? -1);
-        exp.PrependOr(new Expr("Username", OperatorEnum.Equals, username));
-        exp.PrependOr(new Expr("Email", OperatorEnum.Equals, email));
+
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        if (id != null) exp = exp.PrependAnd("Id", OperatorEnum.Equals, id);
+        if (username != null) exp = exp.PrependAnd("Username", OperatorEnum.Equals, username);
+        if (email != null) exp = exp.PrependAnd("Email", OperatorEnum.Equals, email);
 
         var user = await _orm.SelectFirstAsync<User?>(exp);
 
@@ -70,7 +74,7 @@ public sealed class SunriseDb
         {
             return null;
         }
-        
+
         await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
 
         return user;
@@ -91,11 +95,11 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<UserStats> GetUserStats(int userId, GameMode mode)
+    public async Task<UserStats> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await Redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
 
-        if (cachedStats != null)
+        if (cachedStats != null && useCache)
         {
             return cachedStats;
         }
@@ -153,10 +157,9 @@ public sealed class SunriseDb
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId);
 
         var scores = await _orm.SelectManyAsync<Score>(exp,
-            new ResultOrder[]
-            {
-                new("TotalScore", OrderDirectionEnum.Descending)
-            });
+        [
+            new ResultOrder("TotalScore", OrderDirectionEnum.Descending)
+        ]);
 
         return scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
     }
@@ -213,7 +216,7 @@ public sealed class SunriseDb
             Path = filePath
         };
 
-        await _orm.InsertAsync(record);
+        record = await _orm.InsertAsync(record);
         await Redis.Set(RedisKey.BeatmapRecord(beatmapId), record);
     }
 
@@ -252,7 +255,7 @@ public sealed class SunriseDb
             Type = FileType.Avatar
         };
 
-        await _orm.InsertAsync(record );
+        record = await _orm.InsertAsync(record);
         await Redis.Set(RedisKey.AvatarRecord(id), record);
     }
 
@@ -276,7 +279,7 @@ public sealed class SunriseDb
         exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Avatar);
 
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
-        
+
         if (record == null && !fallToDefault)
         {
             throw new Exception("Avatar not found in database");
@@ -294,6 +297,7 @@ public sealed class SunriseDb
 
         return file;
     }
+
     public async Task SetBanner(int userId, byte[] banner)
     {
         var filePath = $"{DataPath}Files/Banners/{userId}.png";
@@ -306,7 +310,7 @@ public sealed class SunriseDb
             Type = FileType.Banner
         };
 
-        await _orm.InsertAsync(record);
+        record = await _orm.InsertAsync(record);
         await Redis.Set(RedisKey.BannerRecord(userId), record);
     }
 
@@ -322,7 +326,7 @@ public sealed class SunriseDb
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
         exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
-        
+
         if (record == null && !fallToDefault)
         {
             throw new Exception("Banner not found in database");
@@ -357,8 +361,7 @@ public sealed class SunriseDb
             Type = FileType.Replay
         };
 
-        await _orm.InsertAsync(record);
-        
+        record = await _orm.InsertAsync(record);
         await Redis.Set(RedisKey.ReplayRecord(record.Id), record);
         return record;
     }
@@ -388,17 +391,18 @@ public sealed class SunriseDb
 
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
-        return (int)(await Redis.Redis.SortedSetRankAsync(RedisKey.LeaderboardGlobal(mode), userId, Order.Descending))! + 1;
+        var rank = await Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), userId);
+        return rank.HasValue ? rank.Value + 1 : -1;
     }
 
     public async Task SetUserRank(int userId, GameMode mode)
     {
-        var userStats = await GetUserStats(userId, mode);
-        await Redis.Redis.SortedSetAddAsync(RedisKey.LeaderboardGlobal(mode), userId, userStats.PerformancePoints);
+        var userStats = await GetUserStats(userId, mode, false);
+        await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(mode), userId, userStats.PerformancePoints);
     }
 
     public async Task RemoveUserRank(int userId, GameMode mode)
     {
-        await Redis.Redis.SortedSetRemoveAsync(RedisKey.LeaderboardGlobal(mode), userId);
+        await Redis.SortedSetRemove(RedisKey.LeaderboardGlobal(mode), userId);
     }
 }

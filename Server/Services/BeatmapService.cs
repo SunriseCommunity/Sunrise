@@ -22,7 +22,7 @@ public static class BeatmapService
 
         var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
 
-        var beatmapSet = await redis.Get<BeatmapSet?>([RedisKey.BeatmapSetBySetId(beatmapSetId ?? -1), RedisKey.BeatmapSetByHash(beatmapHash), RedisKey.BeatmapSetByBeatmapId(beatmapId ?? -1)]);
+        var beatmapSet = await redis.Get<BeatmapSet?>([RedisKey.BeatmapSetBySetId(beatmapSetId ?? -1), RedisKey.BeatmapSetByHash(beatmapHash ?? ""), RedisKey.BeatmapSetByBeatmapId(beatmapId ?? -1)]);
 
         if (beatmapSet != null)
         {
@@ -37,6 +37,7 @@ public static class BeatmapService
 
         if (beatmapSet == null)
         {
+            // TODO: Save null to cache if it requested map not found.
             return null;
         }
 
