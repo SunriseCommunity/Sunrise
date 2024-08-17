@@ -12,7 +12,7 @@ namespace Sunrise.Server.Controllers;
 public class BanchoController : ControllerBase
 {
     [HttpPost("/")]
-    public async Task<IActionResult> Connect()
+    public async Task<IActionResult> Process()
     {
         string? sessionToken = Request.Headers["osu-token"];
 
