@@ -119,3 +119,6 @@ Data/Files/Avatars/*
 Data/Files/Banners/*
 Data/Files/Replays/*
 Data/Files/SeasonalBackgrounds/*
+
+# Logs
+logs/*

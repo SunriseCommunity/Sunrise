@@ -15,8 +15,12 @@ public static class Configuration
     public static string Domain => "sunrise.local";
     public static bool OnMaintenance { get; set; } = false;
     public static int UserApiCallsInMinute => 50;
-    
- public static void InsertApiServersIfNotExists()
+    public static int ServerRateLimit => 100;
+    public static int ServerRateLimitWindow => 10;
+    public static string[] BannedIps => [];
+    public static bool IncludeUserTokenInLogs => false;
+
+    public static void InsertApiServersIfNotExists()
     {
         var apis = new List<ExternalApi>
         {
@@ -29,14 +33,14 @@ public static class Configuration
         };
 
         // TODO: Add more mirrors (need also more serializers?)
-        
+
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().GetOrm();
-        
+
         if (database == null)
         {
             throw new Exception("Don't try to call this method before the database is initialized.");
         }
-        
+
         foreach (var api in from api in apis let existingApi = database.SelectFirst<ExternalApi>(new Expr("Url", OperatorEnum.Equals, api.Url)) where existingApi == null select api)
         {
             database.Insert(api);
