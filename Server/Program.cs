@@ -24,9 +24,9 @@ var app = builder.Build();
 CommandRepository.GetHandlers();
 PacketRepository.GetHandlers();
 
-Configuration.InsertApiServersIfNotExists();
-
 ServicesProviderHolder.ServiceProvider = app.Services;
+
+Configuration.InsertApiServersIfNotExists();
 
 app.UseStaticFiles(new StaticFileOptions
 {
