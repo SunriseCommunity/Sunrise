@@ -70,6 +70,8 @@ public class RequestsHelper
     {
         var response = await Client.GetAsync(requestUri);
 
+        // TODO: Can be refactored to has multiple urls to try and also cache the response.
+
         if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
         {
             Logger.LogWarning($"Request to {requestUri} failed with status code {response.StatusCode}");
