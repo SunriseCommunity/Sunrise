@@ -13,16 +13,18 @@ website. The server is currently in development and is not yet ready for public 
 ## Features 🌟
 
 ### Core features
+
 - [x] Login and registration system
 - [x] Score submission and leaderboards
 - [x] Chat implementation
 - [x] Chat Bot (as a replacement for Bancho Bot)
 - [ ] Multiplayer
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
-- [ ] osu!Direct
+- [x] osu!Direct
 - [ ] Spectating
 
 ### Additional features
+
 - [x] Prometheus metrics with Grafana dashboard
 - [x] Rate limiter for both internal and external requests
 - [x] Redis caching for faster response times

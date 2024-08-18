@@ -5,6 +5,8 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Utils;
 
@@ -58,5 +60,26 @@ public static class Parsers
     {
         var time = TimeSpan.FromSeconds(seconds);
         return time.ToString(@"mm\:ss");
+    }
+
+    public static string ToSearchResult(this BeatmapSet set, Session session)
+    {
+        var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",
+            (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
+        var hasVideo = set.HasVideo ? "1" : "0";
+
+        Dictionary<string, BeatmapStatusSearch> statusMap = new()
+        {
+            ["loved"] = BeatmapStatusSearch.Loved,
+            ["qualified"] = BeatmapStatusSearch.Qualified,
+            ["approved"] = BeatmapStatusSearch.Approved,
+            ["ranked"] = BeatmapStatusSearch.Ranked,
+            ["pending"] = BeatmapStatusSearch.Pending,
+            ["graveyard"] = BeatmapStatusSearch.Pending
+        };
+
+        var lastUpdatedTime = (statusMap[set.StatusString ?? "graveyard"] >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
+
+        return $"{set.Id}.osz|{set.Artist}|{set.Title}|{set.Creator}|{(int)statusMap[set.StatusString ?? "graveyard"]}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
     }
 }

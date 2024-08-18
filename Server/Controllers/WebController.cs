@@ -12,10 +12,8 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("osu")]
 public class WebController : ControllerBase
 {
-
     private const string StaticVersionResponse =
         "[{\"file_version\":\"3\",\"filename\":\"avcodec-51.dll\",\"file_hash\":\"b22bf1e4ecd4be3d909dc68ccab74eec\",\"filesize\":\"4409856\",\"timestamp\":\"2014-08-18 16:16:59\",\"patch_id\":\"1349\",\"url_full\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/f_b22bf1e4ecd4be3d909dc68ccab74eec\",\"url_patch\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/p_b22bf1e4ecd4be3d909dc68ccab74eec_734e450dd85c16d62c1844f10c6203c0\"}]";
-
 
     [HttpPost("osu-submit-modular-selector.php")]
     public async Task<IActionResult> Submit()
@@ -45,6 +43,13 @@ public class WebController : ControllerBase
 
         var result = await ScoreService.GetBeatmapScores(Request);
         return Ok(result);
+    }
+
+    [HttpGet("osu-search.php")]
+    public async Task<IActionResult> Search()
+    {
+        var result = await BeatmapService.SearchBeatmapSet(Request);
+        return result;
     }
 
     [HttpGet("osu-getfriends.php")]

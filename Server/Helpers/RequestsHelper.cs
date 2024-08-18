@@ -116,16 +116,17 @@ public class RequestsHelper
         var response = await Client.GetAsync(requestUri);
         var rateLimit = string.Empty;
         var rateLimitReset = "60";
+        IEnumerable<string>? rateLimitHeader;
 
         switch (server)
         {
             case ApiServer.Ppy:
             case ApiServer.CatboyBest:
-                rateLimit = response.Headers.GetValues("X-RateLimit-Remaining").FirstOrDefault();
+                rateLimit = response.Headers.TryGetValues("X-RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
                 break;
             case ApiServer.OsuDirect:
-                rateLimit = response.Headers.GetValues("RateLimit-Remaining").FirstOrDefault();
-                rateLimitReset = response.Headers.GetValues("RateLimit-Reset").FirstOrDefault() ?? "60";
+                rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
                 break;
             case ApiServer.OldPpy:
                 break;
@@ -138,7 +139,7 @@ public class RequestsHelper
 
         if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
         {
-            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.Parse(rateLimitReset)));
+            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt) ? rateLimitResetInt : 60));
         }
 
         if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))

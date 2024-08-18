@@ -23,7 +23,7 @@ public class UserAttributes
     }
 
     private User User { get; }
-    private int Timezone { get; }
+    public int Timezone { get; }
     private float Longitude { get; }
     private float Latitude { get; }
     private short? Country { get; }
