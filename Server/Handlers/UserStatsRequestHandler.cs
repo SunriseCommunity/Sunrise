@@ -29,7 +29,7 @@ public class UserStatsRequestHandler : IHandler
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        foreach (var player in ids.Select(id => sessions.GetSessionBy(id)))
+        foreach (var player in ids.Select(id => sessions.GetSession(id)))
         {
             if (player != null)
             {

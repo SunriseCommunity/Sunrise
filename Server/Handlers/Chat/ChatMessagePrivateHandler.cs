@@ -33,7 +33,7 @@ public class ChatMessagePrivateHandler : IHandler
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        var receiver = sessions.GetSessionBy(message.Channel);
+        var receiver = sessions.GetSession(username: message.Channel);
 
         if (receiver is null)
         {

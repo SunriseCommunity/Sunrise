@@ -45,7 +45,7 @@ public class UnsilenceCommand : IChatCommand
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        var player = sessions.GetSessionBy(user.Id);
+        var player = sessions.GetSession(user.Id);
 
         player?.SendSilenceStatus();
 

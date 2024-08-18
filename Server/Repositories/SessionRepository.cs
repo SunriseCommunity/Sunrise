@@ -72,9 +72,9 @@ public class SessionRepository
         _sessions.TryRemove(userId, out _);
     }
 
-    public Session? GetSession(string token)
+    public Session? GetSession(string? token = null, string? username = null)
     {
-        return _sessions.Values.FirstOrDefault(x => x.Token == token);
+        return _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username);
     }
 
     public bool IsUserOnline(int userId)
@@ -82,16 +82,10 @@ public class SessionRepository
         return _sessions.Values.Any(x => x.User.Id == userId);
     }
 
-    public Session? GetSessionBy(int userId)
+    public Session? GetSession(int userId)
     {
         return _sessions.Values.FirstOrDefault(x => x.User.Id == userId);
     }
-
-    public Session? GetSessionBy(string username)
-    {
-        return _sessions.Values.FirstOrDefault(x => x.User.Username == username);
-    }
-
 
     public async Task SendCurrentPlayers(Session session)
     {

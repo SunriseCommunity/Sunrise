@@ -23,7 +23,7 @@ public static class ScoreService
 
         var username = decryptedScore.Split(':')[1].Trim() ?? "";
 
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username);
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username);
 
         if (session == null)
         {
@@ -105,7 +105,7 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSessionBy(username: data.Username);
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username: data.Username);
 
         if (session == null)
         {

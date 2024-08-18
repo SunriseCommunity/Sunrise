@@ -37,7 +37,7 @@ public static class AuthorizationHelper
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        var player = sessions.GetSessionBy(user.Id);
+        var player = sessions.GetSession(user.Id);
 
         if (player == null)
         {
