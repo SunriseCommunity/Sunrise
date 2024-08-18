@@ -23,7 +23,7 @@ public static class ScoreService
 
         var username = decryptedScore.Split(':')[1].Trim() ?? "";
 
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username);
+        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username: username);
 
         if (session == null)
         {

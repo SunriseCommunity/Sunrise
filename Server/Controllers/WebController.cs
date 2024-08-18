@@ -115,6 +115,13 @@ public class WebController : ControllerBase
         return Ok(result);
     }
 
+    [Route("/d/{id}")]
+    [HttpGet]
+    public IActionResult DownloadBeatmapset(int id)
+    {
+        return Redirect($"https://catboy.best/d/{id}");
+    }
+
     [Route("/users")]
     [HttpPost]
     public async Task<IActionResult> Register()
