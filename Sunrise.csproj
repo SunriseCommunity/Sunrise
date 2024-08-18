@@ -11,6 +11,7 @@
         <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.9"/>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.7"/>
+        <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
         <PackageReference Include="Rijndael256" Version="3.2.0"/>
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8"/>
         <PackageReference Include="StackExchange.Redis" Version="2.8.0"/>

@@ -392,6 +392,13 @@ public sealed class SunriseDb
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
         var rank = await Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), userId);
+
+        if (!rank.HasValue)
+        {
+            await SetUserRank(userId, mode);
+            rank = await Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), userId);
+        }
+
         return rank.HasValue ? rank.Value + 1 : -1;
     }
 

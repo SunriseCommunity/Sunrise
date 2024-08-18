@@ -151,7 +151,7 @@ public static class AuthService
 
         var ip = RegionHelper.GetUserIpAddress(request);
 
-        if (string.IsNullOrEmpty(ip))
+        if (string.IsNullOrEmpty(ip.ToString()))
         {
             return new BadRequestObjectResult("Invalid request: Missing IP address");
         }

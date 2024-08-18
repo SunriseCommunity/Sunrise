@@ -1,7 +1,10 @@
 ﻿using System.Text.Json;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using osu.Shared;
 using Sunrise.Server.Data;
+using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
@@ -10,13 +13,28 @@ namespace Sunrise.Server.Controllers;
 
 [ApiController]
 [Subdomain("api")]
-public class BaseApiController : ControllerBase
+public class ApiController(IMemoryCache cache) : ControllerBase
 {
     [HttpGet]
     [Route("/ping")]
     public IActionResult Index()
     {
         return Ok("Sunrise API");
+    }
+
+    [HttpGet]
+    [Route("/limits")]
+    public IActionResult GetLimits()
+    {
+        var key = RegionHelper.GetUserIpAddress(Request);
+        var limiter = cache.Get(key) as RateLimiter;
+        var statistics = limiter?.GetStatistics();
+
+        return Ok(new
+        {
+            Limit = Configuration.ServerRateLimit,
+            Remaining = statistics?.CurrentAvailablePermits
+        });
     }
 
     [HttpGet]
