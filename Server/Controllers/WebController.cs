@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -45,8 +47,40 @@ public class WebController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("osu-getfriends.php")]
+    public async Task<IActionResult> OsuGetFriends()
+    {
+        var username = Request.Query["u"];
+        var passhash = Request.Query["h"];
+
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
+            return BadRequest("Invalid request: Missing parameters");
+
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(username: username, passhash: passhash);
+
+        if (user == null)
+            return BadRequest("Invalid request: Invalid credentials");
+
+        var friends = user.FriendsList;
+
+        return Ok(string.Join("\n", friends));
+    }
+
     [HttpPost("osu-error.php")]
     public IActionResult OsuError()
+    {
+        return Ok();
+    }
+
+    [HttpGet("lastfm.php")]
+    public IActionResult LastFm()
+    {
+        return Ok();
+    }
+
+    [HttpGet("osu-markasread.php")]
+    public IActionResult OsuMarkAsRead()
     {
         return Ok();
     }

@@ -53,7 +53,7 @@ public sealed class SunriseDb
         return user;
     }
 
-    public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null)
+    public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null, string? passhash = null)
     {
         var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username ?? ""), RedisKey.UserByEmail(email ?? "")]);
 
@@ -62,11 +62,16 @@ public sealed class SunriseDb
             return cachedUser;
         }
 
+        if (passhash != null && id == null && username == null && email == null)
+        {
+            throw new Exception("Passhash provided without any other parameters");
+        }
 
         var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
         if (id != null) exp = exp.PrependAnd("Id", OperatorEnum.Equals, id);
         if (username != null) exp = exp.PrependAnd("Username", OperatorEnum.Equals, username);
         if (email != null) exp = exp.PrependAnd("Email", OperatorEnum.Equals, email);
+        if (passhash != null) exp = exp.PrependAnd("Passhash", OperatorEnum.Equals, passhash);
 
         var user = await _orm.SelectFirstAsync<User?>(exp);
 
