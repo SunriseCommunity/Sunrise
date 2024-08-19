@@ -136,8 +136,6 @@ public class Session
 
     public async void SendFriendsList()
     {
-        await FetchUser();
-
         _helper.WritePacket(PacketType.ServerFriendsList, User.FriendsList);
     }
 
@@ -146,10 +144,14 @@ public class Session
         return _helper.GetBytesToSend();
     }
 
-    public async Task FetchUser()
+    public void UpdateUser(User user)
     {
-        var user = await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().GetUser(User.Id);
-        User = user ?? User;
+        if (User.Id != user.Id)
+        {
+            throw new InvalidOperationException("Cannot update user with different ID.");
+        }
+        
+        User = user;
     }
 
     public async Task<bool> IsRateLimited()

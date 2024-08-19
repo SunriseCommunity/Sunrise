@@ -57,9 +57,7 @@ public class ChatMessagePrivateHandler : IHandler
             receiver.WritePacket(PacketType.ServerChatMessage, message);
         }
 
-        await receiver?.FetchUser()!;
-
-        if (receiver.User.SilencedUntil > DateTime.UtcNow)
+        if (receiver != null && receiver.User.SilencedUntil > DateTime.UtcNow)
         {
             session.WritePacket(PacketType.ServerChatPmTargetSilenced,
                 new BanchoChatMessage
