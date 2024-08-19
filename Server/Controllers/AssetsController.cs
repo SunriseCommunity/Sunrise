@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -21,11 +20,7 @@ public class AssetsController : ControllerBase
     [Route("menu-content.json")]
     public IActionResult GetMenuContent()
     {
-        var eventImageUri = $"https://assets.{Configuration.Domain}/events/EventBanner.jpg";
-
-        var json = """{ "images": [{ "image": "{img}", "url": "https://github.com/SunriseCommunity/Sunrise", "IsCurrent": true, "begins": null, "expires": "2099-06-01T12:00:00+00:00"}] }""";
-        json = json.Replace("{img}", eventImageUri);
-
+        var json = BanchoService.GetCurrentEventJson();
         return Ok(json);
     }
 

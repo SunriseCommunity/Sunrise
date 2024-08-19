@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -55,21 +53,15 @@ public class WebController : ControllerBase
     [HttpGet("osu-getfriends.php")]
     public async Task<IActionResult> OsuGetFriends()
     {
-        var username = Request.Query["u"];
-        var passhash = Request.Query["h"];
+        if (await AuthorizationHelper.IsAuthorized(Request) == false)
+            return BadRequest("Invalid request: Unauthorized");
 
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
-            return BadRequest("Invalid request: Missing parameters");
+        var friends = await BanchoService.GetFriends(Request.Query["u"]!);
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(username: username, passhash: passhash);
+        if (friends == null)
+            return BadRequest("Invalid request: Invalid request");
 
-        if (user == null)
-            return BadRequest("Invalid request: Invalid credentials");
-
-        var friends = user.FriendsList;
-
-        return Ok(string.Join("\n", friends));
+        return Ok(friends);
     }
 
     [HttpPost("osu-error.php")]
