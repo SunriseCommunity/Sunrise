@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
@@ -84,42 +83,23 @@ public static class BeatmapService
         return beatmapSets;
     }
 
-    public static async Task<IActionResult> SearchBeatmapSet(HttpRequest request)
+    public static async Task<string?> SearchBeatmapSet(HttpRequest request)
     {
         var username = request.Query["u"];
         var passhash = request.Query["h"];
-        var ranked = int.TryParse(request.Query["r"], out var rankedInt) ? rankedInt : -1;
-        var query = Convert.ToString(request.Query["q"]) ?? "";
-        var mode = request.Query["m"];
         var page = request.Query["p"];
+        var query = Convert.ToString(request.Query["q"]) ?? "";
+        var mode = Convert.ToString(request.Query["m"]) == "-1" ? "" : Convert.ToString(request.Query["m"]);
+        var ranked = int.TryParse(request.Query["r"], out var rankedInt) ? rankedInt : -1;
 
         if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(page) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
-            return new BadRequestObjectResult("Invalid request: Missing parameters");
-
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(username: username, passhash: passhash);
-
-        if (user == null)
-            return new BadRequestObjectResult("Invalid request: Invalid credentials");
+            return null;
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var session = sessions.GetSession(user.Id);
 
+        var session = sessions.GetSession(username: username);
         if (session == null)
-            return new BadRequestObjectResult("Invalid request: Invalid session");
-
-        if (mode == "-1")
-            mode = "";
-
-        var rankedStatus = ranked switch
-        {
-            0 or 7 => BeatmapStatusSearch.Ranked,
-            8 => BeatmapStatusSearch.Loved,
-            3 => BeatmapStatusSearch.Qualified,
-            2 => BeatmapStatusSearch.Pending,
-            5 => BeatmapStatusSearch.Graveyard,
-            _ => BeatmapStatusSearch.Any
-        };
+            return null;
 
         query = query.Length switch
         {
@@ -129,18 +109,19 @@ public static class BeatmapService
             _ => query
         };
 
-        var rankedStatusString = ((int)rankedStatus).ToString() == "-2" ? "" : ((int)rankedStatus).ToString();
+        var parsedStatus = Parsers.WebStatusToSearchStatus(ranked);
+        var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
 
-        var beatmapSets = await SearchBeatmapSet(session, rankedStatusString, mode!, int.Parse(page!), query);
-
+        var beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, int.Parse(page!), query);
         if (beatmapSets == null)
-            return new OkObjectResult(0);
+            return "0";
 
-        List<string> result = [$"{(beatmapSets.Count == 100 ? 101 : beatmapSets.Count)}"];
+        var result = new List<string>
+        {
+            beatmapSets.Count == 100 ? "101" : beatmapSets.Count.ToString()
+        }.Concat(beatmapSets.Select(x => x.ToSearchResult(session))).ToList();
 
-        result.AddRange(beatmapSets.Select(x => x.ToSearchResult(session)));
-
-        return new OkObjectResult(string.Join("\n", result));
+        return string.Join("\n", result);
     }
 
     public static async Task<byte[]?> GetBeatmapFile(Session session, int beatmapId)

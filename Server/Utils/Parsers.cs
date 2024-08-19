@@ -66,20 +66,31 @@ public static class Parsers
     {
         var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",
             (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
+
         var hasVideo = set.HasVideo ? "1" : "0";
 
-        Dictionary<string, BeatmapStatusSearch> statusMap = new()
+        var beatmapStatus = GetBeatmapSearchStatus(set.StatusString);
+        var lastUpdatedTime = (beatmapStatus >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
+
+        return $"{set.Id}.osz|{set.Artist}|{set.Title}|{set.Creator}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
+    }
+
+    public static BeatmapStatusSearch GetBeatmapSearchStatus(string status)
+    {
+        var enumValue = Enum.TryParse(status, true, out BeatmapStatusSearch result) ? result : BeatmapStatusSearch.Pending;
+        return enumValue;
+    }
+
+    public static BeatmapStatusSearch WebStatusToSearchStatus(int ranked)
+    {
+        return ranked switch
         {
-            ["loved"] = BeatmapStatusSearch.Loved,
-            ["qualified"] = BeatmapStatusSearch.Qualified,
-            ["approved"] = BeatmapStatusSearch.Approved,
-            ["ranked"] = BeatmapStatusSearch.Ranked,
-            ["pending"] = BeatmapStatusSearch.Pending,
-            ["graveyard"] = BeatmapStatusSearch.Pending
+            0 or 7 => BeatmapStatusSearch.Ranked,
+            8 => BeatmapStatusSearch.Loved,
+            3 => BeatmapStatusSearch.Qualified,
+            2 => BeatmapStatusSearch.Pending,
+            5 => BeatmapStatusSearch.Graveyard,
+            _ => BeatmapStatusSearch.Any
         };
-
-        var lastUpdatedTime = (statusMap[set.StatusString ?? "graveyard"] >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
-
-        return $"{set.Id}.osz|{set.Artist}|{set.Title}|{set.Creator}|{(int)statusMap[set.StatusString ?? "graveyard"]}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
     }
 }

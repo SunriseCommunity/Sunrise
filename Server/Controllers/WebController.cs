@@ -46,8 +46,15 @@ public class WebController : ControllerBase
     [HttpGet("osu-search.php")]
     public async Task<IActionResult> Search()
     {
+        if (await AuthorizationHelper.IsAuthorized(Request) == false)
+            return BadRequest("Invalid request: Unauthorized");
+
         var result = await BeatmapService.SearchBeatmapSet(Request);
-        return result;
+
+        if (result == null)
+            return BadRequest("Invalid request: Invalid request");
+
+        return Ok(result);
     }
 
     [HttpGet("osu-getfriends.php")]
