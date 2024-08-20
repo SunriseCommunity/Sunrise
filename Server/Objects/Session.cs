@@ -16,6 +16,8 @@ public class Session
     private readonly PacketHelper _helper;
     public readonly UserAttributes Attributes;
 
+    public readonly List<Session> Spectators = [];
+
     public readonly string Token;
 
     public Session(User user, Location location, SunriseDb database)
@@ -26,6 +28,8 @@ public class Session
         Token = Guid.NewGuid().ToString();
         Attributes = new UserAttributes(User, location, database);
     }
+
+    public Session? Spectating { get; set; } = null;
 
     public User User { get; private set; }
 
@@ -112,6 +116,11 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, text);
     }
 
+    public void SendSpectatorMapless(Session session)
+    {
+        _helper.WritePacket(PacketType.ServerSpectateNoBeatmap, session.User.Id);
+    }
+
     public void SendChannelMessage(string channel, string message, string? sender = null)
     {
         _helper.WritePacket(PacketType.ServerChatMessage,
@@ -133,7 +142,6 @@ public class Session
         _helper.WritePacket(type, data);
     }
 
-
     public async void SendFriendsList()
     {
         _helper.WritePacket(PacketType.ServerFriendsList, User.FriendsList);
@@ -150,8 +158,32 @@ public class Session
         {
             throw new InvalidOperationException("Cannot update user with different ID.");
         }
-        
+
         User = user;
+    }
+
+    public void AddSpectator(Session session)
+    {
+        foreach (var spectator in Spectators)
+        {
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.User.Id);
+        }
+
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.User.Id);
+
+        Spectators.Add(session);
+    }
+
+    public void RemoveSpectator(Session session)
+    {
+        foreach (var spectator in Spectators)
+        {
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.User.Id);
+        }
+
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.User.Id);
+
+        Spectators.Remove(session);
     }
 
     public async Task<bool> IsRateLimited()
