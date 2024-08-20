@@ -118,6 +118,7 @@ azureScripts
 Data/Files/Avatars/*
 Data/Files/Banners/*
 Data/Files/Replays/*
+Data/Files/Screenshot/*
 Data/Files/SeasonalBackgrounds/*
 
 # Logs
