@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -12,10 +10,8 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("osu")]
 public class WebController : ControllerBase
 {
-
     private const string StaticVersionResponse =
         "[{\"file_version\":\"3\",\"filename\":\"avcodec-51.dll\",\"file_hash\":\"b22bf1e4ecd4be3d909dc68ccab74eec\",\"filesize\":\"4409856\",\"timestamp\":\"2014-08-18 16:16:59\",\"patch_id\":\"1349\",\"url_full\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/f_b22bf1e4ecd4be3d909dc68ccab74eec\",\"url_patch\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/p_b22bf1e4ecd4be3d909dc68ccab74eec_734e450dd85c16d62c1844f10c6203c0\"}]";
-
 
     [HttpPost("osu-submit-modular-selector.php")]
     public async Task<IActionResult> Submit()
@@ -47,24 +43,32 @@ public class WebController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("osu-search.php")]
+    public async Task<IActionResult> Search()
+    {
+        if (await AuthorizationHelper.IsAuthorized(Request) == false)
+            return BadRequest("Invalid request: Unauthorized");
+
+        var result = await BeatmapService.SearchBeatmapSet(Request);
+
+        if (result == null)
+            return BadRequest("Invalid request: Invalid request");
+
+        return Ok(result);
+    }
+
     [HttpGet("osu-getfriends.php")]
     public async Task<IActionResult> OsuGetFriends()
     {
-        var username = Request.Query["u"];
-        var passhash = Request.Query["h"];
+        if (await AuthorizationHelper.IsAuthorized(Request) == false)
+            return BadRequest("Invalid request: Unauthorized");
 
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
-            return BadRequest("Invalid request: Missing parameters");
+        var friends = await BanchoService.GetFriends(Request.Query["u"]!);
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(username: username, passhash: passhash);
+        if (friends == null)
+            return BadRequest("Invalid request: Invalid request");
 
-        if (user == null)
-            return BadRequest("Invalid request: Invalid credentials");
-
-        var friends = user.FriendsList;
-
-        return Ok(string.Join("\n", friends));
+        return Ok(friends);
     }
 
     [HttpPost("osu-error.php")]
@@ -108,6 +112,13 @@ public class WebController : ControllerBase
     {
         var result = FileService.GetSeasonalBackgrounds();
         return Ok(result);
+    }
+
+    [Route("/d/{id}")]
+    [HttpGet]
+    public IActionResult DownloadBeatmapset(int id)
+    {
+        return Redirect($"https://catboy.best/d/{id}");
     }
 
     [Route("/users")]

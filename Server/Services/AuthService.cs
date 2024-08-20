@@ -58,7 +58,7 @@ public static class AuthService
 
         if (sessions.IsUserOnline(user.Id))
         {
-            return RejectLogin(response, "User is already logged in. Try again later.");
+            return RejectLogin(response, "User is already logged in. Try again later in another minute.");
         }
 
         var location = await RegionHelper.GetRegion(ip);

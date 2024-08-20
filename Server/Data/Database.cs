@@ -5,6 +5,7 @@ using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;
 using RedisKey = Sunrise.Server.Types.Enums.RedisKey;
 
@@ -88,6 +89,12 @@ public sealed class SunriseDb
     public async Task UpdateUser(User user)
     {
         await _orm.UpdateAsync(user);
+        
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var session = sessions.GetSession(user.Id);
+
+        session?.UpdateUser(user);
+        
         await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
     }
 

@@ -15,8 +15,6 @@ public class FriendsAddHandler : IHandler
     {
         var friendId = new BanchoInt(packet.Data);
 
-        await session.FetchUser();
-
         session.User.AddFriend(friendId.Value);
 
         await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().UpdateUser(session.User);

@@ -5,6 +5,8 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Utils;
 
@@ -58,5 +60,37 @@ public static class Parsers
     {
         var time = TimeSpan.FromSeconds(seconds);
         return time.ToString(@"mm\:ss");
+    }
+
+    public static string ToSearchResult(this BeatmapSet set, Session session)
+    {
+        var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",
+            (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
+
+        var hasVideo = set.HasVideo ? "1" : "0";
+
+        var beatmapStatus = GetBeatmapSearchStatus(set.StatusString);
+        var lastUpdatedTime = (beatmapStatus >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
+
+        return $"{set.Id}.osz|{set.Artist}|{set.Title}|{set.Creator}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
+    }
+
+    public static BeatmapStatusSearch GetBeatmapSearchStatus(string status)
+    {
+        var enumValue = Enum.TryParse(status, true, out BeatmapStatusSearch result) ? result : BeatmapStatusSearch.Pending;
+        return enumValue;
+    }
+
+    public static BeatmapStatusSearch WebStatusToSearchStatus(int ranked)
+    {
+        return ranked switch
+        {
+            0 or 7 => BeatmapStatusSearch.Ranked,
+            8 => BeatmapStatusSearch.Loved,
+            3 => BeatmapStatusSearch.Qualified,
+            2 => BeatmapStatusSearch.Pending,
+            5 => BeatmapStatusSearch.Graveyard,
+            _ => BeatmapStatusSearch.Any
+        };
     }
 }

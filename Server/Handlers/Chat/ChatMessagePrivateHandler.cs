@@ -33,7 +33,7 @@ public class ChatMessagePrivateHandler : IHandler
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        var receiver = sessions.GetSessionBy(message.Channel);
+        var receiver = sessions.GetSession(username: message.Channel);
 
         if (receiver is null)
         {
@@ -57,9 +57,7 @@ public class ChatMessagePrivateHandler : IHandler
             receiver.WritePacket(PacketType.ServerChatMessage, message);
         }
 
-        await receiver?.FetchUser()!;
-
-        if (receiver.User.SilencedUntil > DateTime.UtcNow)
+        if (receiver != null && receiver.User.SilencedUntil > DateTime.UtcNow)
         {
             session.WritePacket(PacketType.ServerChatPmTargetSilenced,
                 new BanchoChatMessage

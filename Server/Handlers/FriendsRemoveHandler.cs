@@ -15,8 +15,6 @@ public class FriendsRemoveHandler : IHandler
     {
         var friendId = new BanchoInt(packet.Data);
 
-        await session.FetchUser();
-
         session.User.RemoveFriend(friendId.Value);
 
         await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().UpdateUser(session.User);

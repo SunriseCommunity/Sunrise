@@ -24,7 +24,7 @@ public class ChatChannel(string name, string description, bool isPublic = true)
     {
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        foreach (var session in UserIds.Select(userId => sessions.GetSessionBy(userId)))
+        foreach (var session in UserIds.Select(userId => sessions.GetSession(userId)))
         {
             session?.SendChannelMessage(Name, message);
         }

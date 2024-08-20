@@ -13,10 +13,10 @@ public static class AuthorizationHelper
             throw new Exception("Invalid request: POST method is not allowed for this endpoint.");
         }
 
-        var username = request.Query["us"];
-        var passhash = request.Query["ha"];
+        var username = !string.IsNullOrEmpty(request.Query["us"]) ? request.Query["us"] : request.Query["u"];
+        var passhash = !string.IsNullOrEmpty(request.Query["ha"]) ? request.Query["ha"] : request.Query["h"];
 
-        if (string.IsNullOrEmpty(username) && request.Method == "GET" || string.IsNullOrEmpty(passhash))
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
         {
             return false;
         }
@@ -37,7 +37,7 @@ public static class AuthorizationHelper
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
-        var player = sessions.GetSessionBy(user.Id);
+        var player = sessions.GetSession(user.Id);
 
         if (player == null)
         {

@@ -10,9 +10,6 @@ namespace Sunrise.Server.Services;
 
 public static class BeatmapService
 {
-    private const string Api = "https://osu.direct/api/";
-    private const string BeatmapMirror = "https://old.ppy.sh/osu/";
-
     public static async Task<BeatmapSet?> GetBeatmapSet(Session session, int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
@@ -57,6 +54,74 @@ public static class BeatmapService
         await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet);
 
         return beatmapSet;
+    }
+
+    public static async Task<List<BeatmapSet>?> SearchBeatmapSet(Session session, string? rankedStatus, string mode, int page, string query)
+    {
+        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session, ApiType.BeatmapSetSearch, [query, 100, page, rankedStatus, mode]);
+
+        if (beatmapSets == null)
+        {
+            return null;
+        }
+
+        // TODO: Save beatmapSets to DB with beatmaps and add redis logic.
+
+        if (Configuration.IgnoreBeatmapRanking)
+        {
+            foreach (var b in beatmapSets)
+            {
+                b.StatusString = "ranked";
+
+                foreach (var beatmap in b.Beatmaps)
+                {
+                    beatmap.StatusString = "ranked";
+                }
+            }
+        }
+
+        return beatmapSets;
+    }
+
+    public static async Task<string?> SearchBeatmapSet(HttpRequest request)
+    {
+        var username = request.Query["u"];
+        var passhash = request.Query["h"];
+        var page = request.Query["p"];
+        var query = Convert.ToString(request.Query["q"]) ?? "";
+        var mode = Convert.ToString(request.Query["m"]) == "-1" ? "" : Convert.ToString(request.Query["m"]);
+        var ranked = int.TryParse(request.Query["r"], out var rankedInt) ? rankedInt : -1;
+
+        if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(page) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
+            return null;
+
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        var session = sessions.GetSession(username: username);
+        if (session == null)
+            return null;
+
+        query = query.Length switch
+        {
+            >= 6 when query[..6] == "Newest" => query[6..],
+            >= 9 when query[..9] == "Top Rated" => query[9..],
+            >= 11 when query[..11] == "Most Played" => query[11..], // TODO: Get our own most played maps from db
+            _ => query
+        };
+
+        var parsedStatus = Parsers.WebStatusToSearchStatus(ranked);
+        var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
+
+        var beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, int.Parse(page!), query);
+        if (beatmapSets == null)
+            return "0";
+
+        var result = new List<string>
+        {
+            beatmapSets.Count == 100 ? "101" : beatmapSets.Count.ToString()
+        }.Concat(beatmapSets.Select(x => x.ToSearchResult(session))).ToList();
+
+        return string.Join("\n", result);
     }
 
     public static async Task<byte[]?> GetBeatmapFile(Session session, int beatmapId)
