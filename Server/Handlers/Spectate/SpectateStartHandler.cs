@@ -3,6 +3,7 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -20,6 +21,9 @@ public class SpectateStartHandler : IHandler
 
         targetSession?.AddSpectator(session);
         session.Spectating = targetSession;
+
+        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        chatChannels.JoinChannel($"#spectator_{targetSession?.User.Username}", session, true);
 
         return Task.CompletedTask;
     }

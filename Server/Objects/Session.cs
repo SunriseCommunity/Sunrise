@@ -66,10 +66,11 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
-    public void SendJoinChannel(string channel)
+    public void SendJoinChannel(ChatChannel channel)
     {
-        _helper.WritePacket(PacketType.ServerChatChannelAvailableAutojoin, channel);
-        _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel);
+        _helper.WritePacket(PacketType.ServerChatChannelAvailableAutojoin, channel.Name);
+        _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel.Name);
+        SendChannelAvailable(channel);
     }
 
     public void SendChannelAvailable(ChatChannel channel)
