@@ -129,7 +129,6 @@ public class WebController : ControllerBase
     [HttpGet]
     public IActionResult DownloadBeatmapset(string id)
     {
-        Console.WriteLine(id);
         return Redirect($"https://osu.direct/api/d/{id}");
     }
 
