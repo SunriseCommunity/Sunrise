@@ -21,7 +21,7 @@ website. The server is currently in development and is not yet ready for public 
 - [ ] Multiplayer
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
-- [ ] Spectating
+- [x] Spectating
 
 ### Additional features
 
