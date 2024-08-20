@@ -124,6 +124,27 @@ public static class BeatmapService
         return string.Join("\n", result);
     }
 
+    public static async Task<string?> SearchBeatmapSetByIds(HttpRequest request)
+    {
+        var username = request.Query["u"];
+        var passhash = request.Query["h"];
+        var setId = int.TryParse(request.Query["s"], out var setIdInt) ? setIdInt : -1;
+        var beatmapId = int.TryParse(request.Query["b"], out var beatmapIdInt) ? beatmapIdInt : -1;
+
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash) || setId == -1 && beatmapId == -1)
+            return null;
+
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        var session = sessions.GetSession(username: username);
+        if (session == null)
+            return null;
+
+        var beatmapSet = await GetBeatmapSet(session, setId == -1 ? null : setId, null, beatmapId == -1 ? null : beatmapId);
+
+        return beatmapSet != null ? beatmapSet.ToSearchResult(session) : "0";
+    }
+
     public static async Task<byte[]?> GetBeatmapFile(Session session, int beatmapId)
     {
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();

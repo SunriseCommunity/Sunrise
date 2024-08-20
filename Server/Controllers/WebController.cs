@@ -10,9 +10,6 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("osu")]
 public class WebController : ControllerBase
 {
-    private const string StaticVersionResponse =
-        "[{\"file_version\":\"3\",\"filename\":\"avcodec-51.dll\",\"file_hash\":\"b22bf1e4ecd4be3d909dc68ccab74eec\",\"filesize\":\"4409856\",\"timestamp\":\"2014-08-18 16:16:59\",\"patch_id\":\"1349\",\"url_full\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/f_b22bf1e4ecd4be3d909dc68ccab74eec\",\"url_patch\":\"http:\\/\\/m1.ppy.sh\\/r\\/avcodec-51.dll\\/p_b22bf1e4ecd4be3d909dc68ccab74eec_734e450dd85c16d62c1844f10c6203c0\"}]";
-
     [HttpPost("osu-submit-modular-selector.php")]
     public async Task<IActionResult> Submit()
     {
@@ -50,6 +47,20 @@ public class WebController : ControllerBase
             return BadRequest("Invalid request: Unauthorized");
 
         var result = await BeatmapService.SearchBeatmapSet(Request);
+
+        if (result == null)
+            return BadRequest("Invalid request: Invalid request");
+
+        return Ok(result);
+    }
+
+    [HttpGet("osu-search-set.php")]
+    public async Task<IActionResult> SearchBySetId()
+    {
+        if (await AuthorizationHelper.IsAuthorized(Request) == false)
+            return BadRequest("Invalid request: Unauthorized");
+
+        var result = await BeatmapService.SearchBeatmapSetByIds(Request);
 
         if (result == null)
             return BadRequest("Invalid request: Invalid request");
@@ -104,7 +115,7 @@ public class WebController : ControllerBase
     [HttpGet("check-updates.php")]
     public IActionResult CheckUpdates()
     {
-        return Ok(StaticVersionResponse);
+        return Redirect("https://osu.ppy.sh/web/check-updates.php");
     }
 
     [HttpGet("osu-getseasonal.php")]
@@ -118,7 +129,7 @@ public class WebController : ControllerBase
     [HttpGet]
     public IActionResult DownloadBeatmapset(int id)
     {
-        return Redirect($"https://catboy.best/d/{id}");
+        return Redirect($"https://osu.direct/d/{id}");
     }
 
     [Route("/users")]
