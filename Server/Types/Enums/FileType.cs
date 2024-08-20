@@ -6,4 +6,5 @@ public enum FileType
     Avatar = 1,
     Banner = 2,
     Replay = 3,
+    Screenshot = 4
 }

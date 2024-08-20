@@ -26,6 +26,7 @@ public static class RedisKey
     public static string AvatarRecord(int userId) => $"avatar:{userId}";
     public static string BannerRecord(int userId) => $"banner:{userId}";
     public static string ReplayRecord(int replayId) => $"replay:{replayId}";
+    public static string ScreenshotRecord(int screenshotId) => $"screenshot:{screenshotId}";
     
     // Sorted Set
     public static string LeaderboardGlobal(GameMode mode) => $"leaderboard:global:{(int)mode}";

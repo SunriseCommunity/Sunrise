@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -110,6 +112,31 @@ public class WebController : ControllerBase
     public IActionResult OsuConnect()
     {
         return Ok();
+    }
+
+    [HttpPost("osu-screenshot.php")]
+    public async Task<IActionResult> OsuScreenshot()
+    {
+        var username = Request.Form["u"];
+        var passhash = Request.Form["p"];
+
+        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
+        {
+            return BadRequest("Invalid request: Missing parameters");
+        }
+
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+
+        var user = await database.GetUser(username: username, passhash: passhash);
+
+        if (user == null)
+        {
+            return BadRequest("Invalid request: User not found");
+        }
+
+        var resultUrl = await FileService.SaveScreenshot(Request, user);
+
+        return Ok(resultUrl);
     }
 
     [HttpGet("check-updates.php")]

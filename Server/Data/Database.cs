@@ -7,7 +7,6 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;
-using RedisKey = Sunrise.Server.Types.Enums.RedisKey;
 
 namespace Sunrise.Server.Data;
 
@@ -89,12 +88,12 @@ public sealed class SunriseDb
     public async Task UpdateUser(User user)
     {
         await _orm.UpdateAsync(user);
-        
+
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
         var session = sessions.GetSession(user.Id);
 
         session?.UpdateUser(user);
-        
+
         await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
     }
 
@@ -306,6 +305,47 @@ public sealed class SunriseDb
         }
 
         await Redis.Set(RedisKey.AvatarRecord(userId), record);
+
+        return file;
+    }
+
+    public async Task<int> SetScreenshot(int userId, byte[] screenshot)
+    {
+        var filePath = $"{DataPath}Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.png";
+        await File.WriteAllBytesAsync(filePath, screenshot);
+
+        var record = new UserFile
+        {
+            OwnerId = userId,
+            Path = filePath,
+            Type = FileType.Screenshot
+        };
+
+        record = await _orm.InsertAsync(record);
+        await Redis.Set(RedisKey.ScreenshotRecord(userId), record);
+
+        return record.Id;
+    }
+
+    public async Task<byte[]?> GetScreenshot(int screenshotId)
+    {
+        var cachedRecord = await Redis.Get<UserFile>(RedisKey.ScreenshotRecord(screenshotId));
+
+        if (cachedRecord != null)
+        {
+            return await File.ReadAllBytesAsync(cachedRecord.Path);
+        }
+
+        var exp = new Expr("Id", OperatorEnum.Equals, screenshotId);
+        var record = await _orm.SelectFirstAsync<UserFile?>(exp);
+
+        if (record == null)
+        {
+            return null;
+        }
+
+        var file = await File.ReadAllBytesAsync(record.Path);
+        await Redis.Set(RedisKey.ScreenshotRecord(screenshotId), record);
 
         return file;
     }

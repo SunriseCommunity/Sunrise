@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Data;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Services;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -30,5 +32,20 @@ public class AssetsController : ControllerBase
     {
         var data = System.IO.File.ReadAllBytes("./Data/Files/EventBanner.png");
         return new FileContentResult(data, "image/jpeg");
+    }
+
+    [HttpGet]
+    [Route("/ss/{id:int}.jpg")]
+    public async Task<IActionResult> GetScreenshot(int id)
+    {
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var screenshot = await database.GetScreenshot(id);
+
+        if (screenshot == null)
+        {
+            return NotFound();
+        }
+
+        return new FileContentResult(screenshot, "image/png");
     }
 }
