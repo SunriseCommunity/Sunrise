@@ -127,9 +127,10 @@ public class WebController : ControllerBase
 
     [Route("/d/{id}")]
     [HttpGet]
-    public IActionResult DownloadBeatmapset(int id)
+    public IActionResult DownloadBeatmapset(string id)
     {
-        return Redirect($"https://osu.direct/d/{id}");
+        Console.WriteLine(id);
+        return Redirect($"https://osu.direct/api/d/{id}");
     }
 
     [Route("/users")]
