@@ -13,6 +13,7 @@ namespace Sunrise.Server.Handlers.Chat;
 public class ChatMessagePrivateHandler : IHandler
 {
     private const string Action = "ACTION";
+    private readonly RateLimiter _rateLimiter = new(10, TimeSpan.FromSeconds(5));
 
     public async Task Handle(BanchoPacket packet, Session session)
     {
@@ -21,6 +22,11 @@ public class ChatMessagePrivateHandler : IHandler
             Sender = session.User.Username,
             SenderId = session.User.Id
         };
+
+        if (!_rateLimiter.CanSend(session))
+        {
+            return;
+        }
 
         if (message.Channel == Configuration.BotUsername)
         {
