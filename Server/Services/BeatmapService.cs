@@ -1,3 +1,4 @@
+using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
@@ -83,6 +84,33 @@ public static class BeatmapService
         return beatmapSets;
     }
 
+    public static async Task<List<BeatmapSet>?> SearchBeatmapsByIds(Session session, List<int> ids)
+    {
+        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session, ApiType.BeatmapsByBeatmapIds, [string.Join(",", ids.Select(x => x.ToString()))]);
+
+        if (beatmapSets == null)
+        {
+            return null;
+        }
+
+        // TODO: Save beatmapSets to DB with beatmaps and add redis logic.
+
+        if (Configuration.IgnoreBeatmapRanking)
+        {
+            foreach (var b in beatmapSets)
+            {
+                b.StatusString = "ranked";
+
+                foreach (var beatmap in b.Beatmaps)
+                {
+                    beatmap.StatusString = "ranked";
+                }
+            }
+        }
+
+        return beatmapSets;
+    }
+
     public static async Task<string?> SearchBeatmapSet(HttpRequest request)
     {
         var username = request.Query["u"];
@@ -101,18 +129,31 @@ public static class BeatmapService
         if (session == null)
             return null;
 
+        var searchMostPlayed = query.Length >= 11 && query[..11] == "Most Played";
         query = query.Length switch
         {
             >= 6 when query[..6] == "Newest" => query[6..],
             >= 9 when query[..9] == "Top Rated" => query[9..],
-            >= 11 when query[..11] == "Most Played" => query[11..], // TODO: Get our own most played maps from db
+            >= 11 when query[..11] == "Most Played" => query[11..],
             _ => query
         };
 
         var parsedStatus = Parsers.WebStatusToSearchStatus(ranked);
         var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
 
-        var beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, int.Parse(page!), query);
+        List<BeatmapSet>? beatmapSets;
+
+        if (searchMostPlayed)
+        {
+            var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+            var ids = await database.GetMostPlayedBeatmapsIds(Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, int.TryParse(page, out var pageInt) ? pageInt : 1);
+            beatmapSets = await SearchBeatmapsByIds(session, ids);
+        }
+        else
+        {
+            beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, int.Parse(page!), query);
+        }
+
         if (beatmapSets == null)
             return "0";
 

@@ -7,6 +7,7 @@ public enum ApiType
     BeatmapSetDataByHash = 2,
 
     BeatmapSetSearch = 3,
+    BeatmapsByBeatmapIds = 4,
 
-    BeatmapDownload = 4
+    BeatmapDownload = 5
 }

@@ -207,6 +207,17 @@ public sealed class SunriseDb
         return scores;
     }
 
+    public async Task<List<int>> GetMostPlayedBeatmapsIds(GameMode? gameMode, int page = 1, int limit = 100)
+    {
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        if (gameMode != null) exp = exp.PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode);
+
+        var scores = await _orm.SelectManyAsync<Score>((page - 1) * limit, limit, exp);
+
+        return scores.GroupBy(x => x.BeatmapId).OrderBy(x => x.Count()).Select(x => x.First()).Select(x => x.BeatmapId).ToList();
+    }
+
+
     public async Task<List<ExternalApi>?> GetExternalApis(ApiType type)
     {
         var exp = new Expr("Type", OperatorEnum.Equals, (int)type);

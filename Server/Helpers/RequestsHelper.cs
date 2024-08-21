@@ -17,6 +17,9 @@ public class RequestsHelper
     {
         var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
         Logger = loggerFactory.CreateLogger<RequestsHelper>();
+
+        Client.DefaultRequestHeaders.Add("Accept", "application/json");
+        Client.DefaultRequestHeaders.Add("User-Agent", "Sunrise");
     }
 
     public static async Task<T?> SendRequest<T>(Session session, ApiType type, object?[] args)
@@ -129,8 +132,8 @@ public class RequestsHelper
                 rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
                 break;
             case ApiServer.OldPpy:
-                break;
             case ApiServer.Nerinyan:
+                break;
             case ApiServer.OsuOkayu:
             default:
                 Logger.LogWarning($"Server {server} rate limit headers wasn't set. Ignoring rate limit.");
