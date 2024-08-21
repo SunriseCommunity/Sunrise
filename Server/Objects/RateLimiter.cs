@@ -1,5 +1,6 @@
 using HOPEless.Bancho;
 using osu.Shared;
+using Sunrise.Server.Data;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;
 
@@ -31,7 +32,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         {
             if (actionOnLimit)
             {
-                SilenceUser(session);
+                _ = SilenceUser(session);
             }
 
             return false;
@@ -41,10 +42,13 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         return true;
     }
 
-    private static void SilenceUser(Session session)
+    private static async Task SilenceUser(Session session)
     {
         var silenceTime = TimeSpan.FromMinutes(5);
         session.User.SilencedUntil = DateTime.UtcNow + silenceTime;
+
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        await database.UpdateUser(session.User); // NOTE: I have no guarantee that we will not overwrite some db changes here. Just pointing out.
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
         session.SendSilenceStatus((int)silenceTime.TotalSeconds, "You are sending messages too fast. Slow down!");
