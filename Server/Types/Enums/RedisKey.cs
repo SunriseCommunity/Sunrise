@@ -5,30 +5,96 @@ namespace Sunrise.Server.Types.Enums;
 public static class RedisKey
 {
     // Primitives
-    public static string UserRateLimit(int userId) => $"ratelimit:user:{userId}";
-    public static string ApiServerRateLimited(ApiServer server) => $"api:{(int)server}:ratelimited";
-    public static string OsuVersion(string version) => $"osu:version:{version}"; 
+    public static string ApiServerRateLimited(ApiServer server)
+    {
+        return $"api:{(int)server}:ratelimited";
+    }
+
+    public static string OsuVersion(string version)
+    {
+        return $"osu:version:{version}";
+    }
 
     // Objects
-    public static string UserById(int userId) => $"user:id:{userId}";
-    public static string UserByUsername(string username) => $"user:username:{username}";
-    public static string UserByEmail(string email) => $"user:email:{email}";
-    public static string UserStats(int userId, GameMode mode) => $"user:{userId}:stats:{(int)mode}";
-    public static string BeatmapSetByHash(string hash) => $"beatmapset:hash:{hash}";
-    public static string BeatmapSetByBeatmapId(int id) => $"beatmapset:beatmap:{id}";
-    public static string BeatmapSetBySetId(int  id) => $"beatmapset:set:{id}";
-    public static string Score(int scoreId) => $"score:{scoreId}";
-    public static string Scores(string id, string type) => $"scores:{id}:leaderboardtype:{type}";
-    public static string BeatmapSearch(string search) => $"beatmapset:serach:{search}";
+    public static string UserById(int userId)
+    {
+        return $"user:id:{userId}";
+    }
+
+    public static string UserByUsername(string username)
+    {
+        return $"user:username:{username}";
+    }
+
+    public static string UserByEmail(string email)
+    {
+        return $"user:email:{email}";
+    }
+
+    public static string UserStats(int userId, GameMode mode)
+    {
+        return $"user:{userId}:stats:{(int)mode}";
+    }
+
+    public static string BeatmapSetByHash(string hash)
+    {
+        return $"beatmapset:hash:{hash}";
+    }
+
+    public static string BeatmapSetByBeatmapId(int id)
+    {
+        return $"beatmapset:beatmap:{id}";
+    }
+
+    public static string BeatmapSetBySetId(int id)
+    {
+        return $"beatmapset:set:{id}";
+    }
+
+    public static string Score(int scoreId)
+    {
+        return $"score:{scoreId}";
+    }
+
+    public static string Scores(string id, string type)
+    {
+        return $"scores:{id}:leaderboardtype:{type}";
+    }
+
+    public static string BeatmapSearch(string search)
+    {
+        return $"beatmapset:serach:{search}";
+    }
 
     // Records (Includes file paths)
-    public static string BeatmapRecord(int beatmapId) => $"beatmap:{beatmapId}";
-    public static string AvatarRecord(int userId) => $"avatar:{userId}";
-    public static string BannerRecord(int userId) => $"banner:{userId}";
-    public static string ReplayRecord(int replayId) => $"replay:{replayId}";
-    public static string ScreenshotRecord(int screenshotId) => $"screenshot:{screenshotId}";
-    
+    public static string BeatmapRecord(int beatmapId)
+    {
+        return $"beatmap:{beatmapId}";
+    }
+
+    public static string AvatarRecord(int userId)
+    {
+        return $"avatar:{userId}";
+    }
+
+    public static string BannerRecord(int userId)
+    {
+        return $"banner:{userId}";
+    }
+
+    public static string ReplayRecord(int replayId)
+    {
+        return $"replay:{replayId}";
+    }
+
+    public static string ScreenshotRecord(int screenshotId)
+    {
+        return $"screenshot:{screenshotId}";
+    }
+
     // Sorted Set
-    public static string LeaderboardGlobal(GameMode mode) => $"leaderboard:global:{(int)mode}";
-}    
-    
+    public static string LeaderboardGlobal(GameMode mode)
+    {
+        return $"leaderboard:global:{(int)mode}";
+    }
+}

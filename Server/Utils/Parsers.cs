@@ -65,14 +65,14 @@ public static class Parsers
     public static string ToSearchResult(this BeatmapSet set, Session session)
     {
         var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",
-            (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
+            (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version.Replace('|', 'I')} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
 
         var hasVideo = set.HasVideo ? "1" : "0";
 
         var beatmapStatus = GetBeatmapSearchStatus(set.StatusString);
         var lastUpdatedTime = (beatmapStatus >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
 
-        return $"{set.Id}.osz|{set.Artist}|{set.Title}|{set.Creator}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
+        return $"{set.Id}.osz|{set.Artist.Replace('|', 'I')}|{set.Title.Replace('|', 'I')}|{set.Creator.Replace('|', 'I')}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
     }
 
     public static BeatmapStatusSearch GetBeatmapSearchStatus(string status)

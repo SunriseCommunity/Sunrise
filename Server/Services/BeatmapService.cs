@@ -146,8 +146,10 @@ public static class BeatmapService
         if (searchMostPlayed)
         {
             var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-            var ids = await database.GetMostPlayedBeatmapsIds(Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, int.TryParse(page, out var pageInt) ? pageInt : 1);
-            beatmapSets = await SearchBeatmapsByIds(session, ids);
+            var ids = await database.GetMostPlayedBeatmapsIds(Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, int.TryParse(page, out var pageTemp) ? pageTemp : 1);
+
+            beatmapSets = await SearchBeatmapsByIds(session, ids.Take(50).ToList());
+            beatmapSets.AddRange(await SearchBeatmapsByIds(session, ids.Skip(50).Take(50).ToList())); // Not the best, but API ignores my page size parameter.
         }
         else
         {

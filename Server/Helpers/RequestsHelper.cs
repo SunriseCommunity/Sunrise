@@ -24,7 +24,7 @@ public class RequestsHelper
 
     public static async Task<T?> SendRequest<T>(Session session, ApiType type, object?[] args)
     {
-        if (await session.IsRateLimited())
+        if (session.IsRateLimited())
         {
             Logger.LogWarning($"User {session.User.Id} got rate limited. Ignoring request.");
             return default;

@@ -12,7 +12,8 @@ public class Beatmap
         ["approved"] = BeatmapStatus.Approved,
         ["ranked"] = BeatmapStatus.Ranked,
         ["pending"] = BeatmapStatus.Pending,
-        ["graveyard"] = BeatmapStatus.Pending
+        ["graveyard"] = BeatmapStatus.Pending,
+        ["wip"] = BeatmapStatus.Pending
     };
 
     [JsonPropertyName("id")]

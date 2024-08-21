@@ -212,11 +212,16 @@ public sealed class SunriseDb
         var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
         if (gameMode != null) exp = exp.PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode);
 
-        var scores = await _orm.SelectManyAsync<Score>((page - 1) * limit, limit, exp);
+        var scores = await _orm.SelectManyAsync<Score>(exp);
 
-        return scores.GroupBy(x => x.BeatmapId).OrderBy(x => x.Count()).Select(x => x.First()).Select(x => x.BeatmapId).ToList();
+        var uniqueScores = scores
+            .GroupBy(x => x.BeatmapId)
+            .OrderByDescending(x => x.Count())
+            .Skip((page - 1) * limit)
+            .Take(limit);
+
+        return uniqueScores.Select(x => x.Key).ToList();
     }
-
 
     public async Task<List<ExternalApi>?> GetExternalApis(ApiType type)
     {

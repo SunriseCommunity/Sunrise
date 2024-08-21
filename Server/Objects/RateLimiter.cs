@@ -5,11 +5,11 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
-public class RateLimiter(int messagesLimit, TimeSpan timeWindow)
+public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLimit = true, bool ignoreMods = true)
 {
-    private readonly Dictionary<int, List<DateTime>> _messageTimestamps = new();
+    private readonly Dictionary<int, List<DateTime>> _requestTimestamps = new();
 
-    public bool CanSend(Session session, bool actionOnLimit = true, bool ignoreMods = true)
+    public bool CanSend(Session session)
     {
         var userId = session.User.Id;
         var now = DateTime.UtcNow;
@@ -19,12 +19,12 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow)
             return true;
         }
 
-        if (!_messageTimestamps.ContainsKey(userId))
+        if (!_requestTimestamps.ContainsKey(userId))
         {
-            _messageTimestamps[userId] = [];
+            _requestTimestamps[userId] = [];
         }
 
-        var timestamps = _messageTimestamps[userId];
+        var timestamps = _requestTimestamps[userId];
         timestamps.RemoveAll(t => now - t > timeWindow);
 
         if (timestamps.Count >= messagesLimit)

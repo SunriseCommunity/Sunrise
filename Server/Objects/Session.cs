@@ -5,7 +5,6 @@ using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -14,6 +13,7 @@ namespace Sunrise.Server.Objects;
 public class Session
 {
     private readonly PacketHelper _helper;
+    private readonly RateLimiter _rateLimiter = new(Configuration.UserApiCallsInMinute, TimeSpan.FromMinutes(1), false, false);
     public readonly UserAttributes Attributes;
 
     public readonly List<Session> Spectators = [];
@@ -187,28 +187,8 @@ public class Session
         Spectators.Remove(session);
     }
 
-    public async Task<bool> IsRateLimited()
+    public bool IsRateLimited()
     {
-        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
-        var key = RedisKey.UserRateLimit(User.Id);
-
-        var remaining = await redis.Get<int?>(key);
-
-        if (remaining != null)
-        {
-            if (remaining <= 0)
-            {
-                return true;
-            }
-
-            // FIXME: If user spams 1 request each 59 seconds, they will never get back to their limit.
-            await redis.Set(key, remaining - 1, TimeSpan.FromMinutes(1));
-            return false;
-        }
-
-        remaining = Configuration.UserApiCallsInMinute;
-        await redis.Set(key, remaining - 1, TimeSpan.FromMinutes(1));
-
-        return false;
+        return !_rateLimiter.CanSend(this);
     }
 }
