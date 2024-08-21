@@ -91,7 +91,7 @@ public class Session
 
     public void SendPrivilege()
     {
-        _helper.WritePacket(PacketType.ServerUserPermissions, User.Privilege);
+        _helper.WritePacket(PacketType.ServerUserPermissions, User.Privilege >= PlayerRank.Supporter ? PlayerRank.Supporter : User.Privilege);
     }
 
     public void SendSilenceStatus(int time = 0, string? reason = null)
