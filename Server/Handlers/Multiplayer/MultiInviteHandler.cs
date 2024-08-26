@@ -28,6 +28,11 @@ public class MultiInviteHandler : IHandler
         if (inviteeSession == null)
             return Task.CompletedTask;
 
+        if (inviteeSession.User.Username == Configuration.BotUsername)
+        {
+            session.SendChannelMessage(Configuration.BotUsername, "Thanks for the invite, but if I join, who will moderate the chat?");
+        }
+
         var match = session.Match;
         if (match != null)
             inviteeSession.SendMultiInvite(match.Match, session);
