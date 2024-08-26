@@ -43,5 +43,6 @@ public class MultiStartCommand : IChatCommand
 
         session.Match.StartGame();
 
+        session.SendChannelMessage(channel.Name, "Match has started.");
     }
 }

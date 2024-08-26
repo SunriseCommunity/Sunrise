@@ -38,10 +38,10 @@ public class MultiplayerSlot(bool isLocked = false)
         IsSkipped = false;
     }
 
-    public void UpdateLock()
+    public void UpdateLock(bool? toLock = null)
     {
-        Status = Status == MultiSlotStatus.Locked ? MultiSlotStatus.Open : MultiSlotStatus.Locked;
-        UserId = -1;
+        Status = toLock ?? Status == MultiSlotStatus.Locked ? MultiSlotStatus.Open : MultiSlotStatus.Locked;
+        UserId = Status == MultiSlotStatus.Locked ? UserId : -1;
     }
 
     public void UpdateStatus(MultiSlotStatus status)

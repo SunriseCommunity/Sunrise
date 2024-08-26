@@ -13,7 +13,7 @@ public class MultiSlotLockHandler : IHandler
     {
         var slotId = new BanchoInt(packet.Data);
 
-        session.Match?.LockSlot(slotId.Value);
+        session.Match?.UpdateLock(slotId.Value);
 
         return Task.CompletedTask;
     }

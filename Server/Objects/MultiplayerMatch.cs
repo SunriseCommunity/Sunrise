@@ -25,6 +25,9 @@ public class MultiplayerMatch
         }
     }
 
+    // In the locked room players can’t change their team and slot.
+    public bool Locked { get; set; } = false;
+
     public BanchoMultiplayerMatch Match { get; private set; }
     private MatchRepository Matches { get; }
     public ConcurrentDictionary<int, Session> Players { get; } = new();
@@ -32,7 +35,7 @@ public class MultiplayerMatch
 
     public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session session)
     {
-        if (Match.MatchId != updatedMatch.MatchId || Match.HostId != session.User.Id)
+        if (Match.MatchId != updatedMatch.MatchId || !HasHostPrivileges(session))
             return;
 
         // Ignore invalid changes (Password cannot be changed with this method)
@@ -155,7 +158,7 @@ public class MultiplayerMatch
                 continue;
 
             if (slot.Status == MultiSlotStatus.NoMap)
-                return;
+                continue;
 
             slot.UpdateStatus(MultiSlotStatus.Playing);
         }
@@ -163,7 +166,7 @@ public class MultiplayerMatch
         Match.InProgress = true;
         ResetGameStatuses();
 
-        var excludedPlayers = Slots.Values.Where(s => s.UserId == -1).Select(s => s.UserId).ToArray();
+        var excludedPlayers = Slots.Values.Where(s => s.UserId == -1 || s.Status == MultiSlotStatus.NoMap).Select(s => s.UserId).ToArray();
         WriteToAllPlayers(PacketType.ServerMultiMatchStart, Match, excludedPlayers);
 
         ApplyNewChanges();
@@ -195,27 +198,30 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void LockSlot(int slotId)
+    public void UpdateLock(int slotId, bool? toLock = null)
     {
         var slot = GetSlot(id: slotId);
 
         if (slot == null || slot.UserId == Match.HostId || Match.InProgress)
             return;
 
-        slot.UpdateLock();
+        slot.UpdateLock(toLock);
 
         ApplyNewChanges();
     }
 
-    public void ChangeTeam(Session session)
+    public void ChangeTeam(Session session, SlotTeams? team = null, bool ignoreLock = false)
     {
+        if (Locked && !ignoreLock)
+            return;
+
         var slot = GetSlot(userId: session.User.Id);
         var matchInTeamMode = Match.MultiTeamType is MultiTeamTypes.TeamVs or MultiTeamTypes.TagTeamVs;
 
         if (slot == null || Match.InProgress || !matchInTeamMode)
             return;
 
-        slot.UpdateTeam();
+        slot.UpdateTeam(team);
 
         ApplyNewChanges(false);
     }
@@ -248,8 +254,11 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void MovePlayer(Session session, int slotId)
+    public void MovePlayer(Session session, int slotId, bool ignoreLock = false)
     {
+        if (Locked && !ignoreLock)
+            return;
+
         var slot = GetSlot(userId: session.User.Id);
         var newSlot = GetSlot(id: slotId);
 
