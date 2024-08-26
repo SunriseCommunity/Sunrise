@@ -45,12 +45,20 @@ public class ChannelRepository
         channel.RemoveUser(session.User.Id);
     }
 
+    public void RemoveAbstractChannel(string name)
+    {
+        if (_channels.TryGetValue(name, out var channel) && channel.IsAbstract)
+        {
+            _channels.TryRemove(name, out _);
+        }
+    }
+
     private ChatChannel CreateAbstractChannel(string name)
     {
         var channel = name switch
         {
-            not null when name.StartsWith("#spectator_") => new ChatChannel("#spectator", "Spectator chat channel.", false),
-            not null when name.StartsWith("#multiplayer_") => new ChatChannel("#multiplayer", "Multiplayer chat channel.", false),
+            not null when name.StartsWith("#spectator_") => new ChatChannel("#spectator", "Spectator chat channel.", false, true),
+            not null when name.StartsWith("#multiplayer_") => new ChatChannel("#multiplayer", "Multiplayer chat channel.", false, true),
             _ => throw new InvalidOperationException("Invalid channel name.")
         };
 
@@ -59,9 +67,16 @@ public class ChannelRepository
         return channel;
     }
 
-    public ChatChannel? GetChannel(string name)
+    public ChatChannel? GetChannel(Session session, string name)
     {
-        return _channels.GetValueOrDefault(name);
+        var channel = name switch
+        {
+            not null when name == "#spectator" => GetChannel(session, $"#spectator_{session.Spectating?.User.Id}"),
+            not null when name == "#multiplayer" => GetChannel(session, $"#multiplayer_{session.Match?.Match.MatchId}"),
+            _ => _channels!.GetValueOrDefault(name)
+        };
+
+        return channel;
     }
 
     public List<ChatChannel> GetChannels(Session? session = null)

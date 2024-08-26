@@ -101,7 +101,7 @@ public static class ScoreService
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
             var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
-            channels.GetChannel("#announce")!.SendToChannel(message);
+            channels.GetChannel(session, "#announce")?.SendToChannel(message);
         }
 
         return GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);

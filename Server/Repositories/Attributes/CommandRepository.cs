@@ -11,6 +11,7 @@ namespace Sunrise.Server.Repositories.Attributes;
 public static class CommandRepository
 {
     private static readonly Dictionary<string, ChatCommand> Handlers = new();
+    private static string[] Prefixes { get; set; } = [];
 
     public static async Task HandleCommand(BanchoChatMessage message, Session session)
     {
@@ -37,6 +38,12 @@ public static class CommandRepository
             args = message.Message.Split(' ').Skip(1).ToArray();
         }
 
+        if (args != null && Prefixes.Contains(command) && args.Length > 0)
+        {
+            command = $"{command} {args[0]}";
+            args = args.Skip(1).ToArray();
+        }
+
         var handler = GetHandler(command);
 
         switch (handler)
@@ -59,8 +66,11 @@ public static class CommandRepository
         if (handler.IsGlobal && message.Channel != Configuration.BotUsername)
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
-            channel = channels.GetChannel(message.Channel);
+            channel = channels.GetChannel(session, message.Channel);
         }
+
+        if (handler.Prefix != string.Empty && HasPrefixException(session, message, handler, channel))
+            return;
 
         await handler.Handle(session, channel, args);
     }
@@ -75,16 +85,37 @@ public static class CommandRepository
             .ToArray();
     }
 
-
-    public static void SendMessage(Session session, string message)
+    public static void SendMessage(Session session, string message, string? channel = null)
     {
         session.WritePacket(PacketType.ServerChatMessage,
             new BanchoChatMessage
             {
                 Message = message,
                 Sender = Configuration.BotUsername,
-                Channel = Configuration.BotUsername
+                Channel = channel ?? Configuration.BotUsername
             });
+    }
+
+    private static bool HasPrefixException(Session session, BanchoChatMessage message, ChatCommand handler, ChatChannel? channel)
+    {
+        if (handler.Prefix == "mp")
+        {
+            if (session.Match == null)
+            {
+                if (!handler.IsGlobal || message.Channel == Configuration.BotUsername)
+                    SendMessage(session, "You must be in a multiplayer lobby to use this command.");
+                return true;
+            }
+
+            if (channel?.Name.StartsWith("#multiplayer") == false)
+            {
+                if (!handler.IsGlobal || message.Channel == Configuration.BotUsername)
+                    SendMessage(session, "You must be in the multiplayer channel to use this command.");
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static (string?, string[]?) ActionToCommand(string message)
@@ -119,8 +150,13 @@ public static class CommandRepository
                 continue;
             }
 
-            var command = new ChatCommand(instance, attribute.RequiredRank, attribute.IsGlobal);
-            Handlers.Add(attribute.Command, command);
+            if (attribute.Prefix != string.Empty)
+            {
+                Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
+            }
+
+            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredRank, attribute.IsGlobal);
+            Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(), command); // .Trim() => https://imgur.com/a/0rsYZRv
         }
     }
 

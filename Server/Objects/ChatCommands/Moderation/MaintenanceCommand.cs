@@ -7,7 +7,7 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands.Moderation;
 
-[ChatCommand("maintenance", PlayerRank.SuperMod)]
+[ChatCommand("maintenance", requiredRank: PlayerRank.SuperMod)]
 public class MaintenanceCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

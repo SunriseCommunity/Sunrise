@@ -14,7 +14,7 @@ public class SpectateStopHandler : IHandler
     {
         var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
 
-        chatChannels.LeaveChannel($"#spectator_{session.Spectating?.User.Username}", session, true);
+        chatChannels.LeaveChannel($"#spectator_{session.Spectating?.User.Id}", session, true);
 
         session.Spectating?.RemoveSpectator(session);
         session.Spectating = null;

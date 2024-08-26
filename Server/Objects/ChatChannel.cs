@@ -3,11 +3,12 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
-public class ChatChannel(string name, string description, bool isPublic = true)
+public class ChatChannel(string name, string description, bool isPublic = true, bool isAbstract = false)
 {
     public string Name { get; } = name;
     public string Description { get; } = description;
     public bool IsPublic { get; } = isPublic;
+    public bool IsAbstract { get; } = isAbstract;
     private List<int> UserIds { get; } = [];
 
     public void AddUser(int userId)
@@ -18,15 +19,23 @@ public class ChatChannel(string name, string description, bool isPublic = true)
     public void RemoveUser(int userId)
     {
         UserIds.Remove(userId);
+
+        if (UserIds.Count == 0 && IsAbstract)
+        {
+            ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>().RemoveAbstractChannel(Name);
+        }
     }
 
-    public void SendToChannel(string message)
+    public void SendToChannel(string message, string? sender = null)
     {
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         foreach (var session in UserIds.Select(userId => sessions.GetSession(userId)))
         {
-            session?.SendChannelMessage(Name, message);
+            if (session?.User.Username == sender)
+                continue;
+
+            session?.SendChannelMessage(IsAbstract ? Name.Split('_')[0] : Name, message, sender);
         }
     }
 

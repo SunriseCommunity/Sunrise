@@ -8,7 +8,7 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands.Moderation;
 
-[ChatCommand("restrict", PlayerRank.SuperMod)]
+[ChatCommand("restrict", requiredRank: PlayerRank.SuperMod)]
 public class RestrictCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)

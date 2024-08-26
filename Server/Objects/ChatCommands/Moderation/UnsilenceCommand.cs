@@ -8,7 +8,7 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands.Moderation;
 
-[ChatCommand("unsilence", PlayerRank.SuperMod)]
+[ChatCommand("unsilence", requiredRank: PlayerRank.SuperMod)]
 public class UnsilenceCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)

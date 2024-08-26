@@ -14,7 +14,7 @@ public class ChatMessagePublicHandler : IHandler
 {
     private readonly RateLimiter _rateLimiter = new(5, TimeSpan.FromSeconds(4));
 
-    public Task Handle(BanchoPacket packet, Session session)
+    public async Task Handle(BanchoPacket packet, Session session)
     {
         var message = new BanchoChatMessage(packet.Data)
         {
@@ -24,41 +24,17 @@ public class ChatMessagePublicHandler : IHandler
 
         if (!_rateLimiter.CanSend(session))
         {
-            return Task.CompletedTask;
+            return;
         }
+
+        var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var channel = channels.GetChannel(session, message.Channel);
+
+        channel?.SendToChannel(message.Message, session.User.Username);
 
         if (message.Message.StartsWith(Configuration.BotPrefix))
         {
-            return CommandRepository.HandleCommand(message, session);
+            await CommandRepository.HandleCommand(message, session);
         }
-
-        if (message.Channel.StartsWith("#multiplayer"))
-        {
-            var fellowPlayers = session.Match?.Players.Values.Where(p => p != session).ToList() ?? [];
-
-            foreach (var player in fellowPlayers)
-            {
-                player.SendChannelMessage("#multiplayer", message.Message, session.User.Username);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        if (message.Channel.StartsWith("#spectator"))
-        {
-            var fellowSpectators = session.Spectating?.Spectators.Where(s => s != session).ToList() ?? [];
-
-            foreach (var player in fellowSpectators)
-            {
-                player.SendChannelMessage("#spectator", message.Message, session.User.Username);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-
-        sessions.WriteToAllSessions(PacketType.ServerChatMessage, message, session.User.Id);
-        return Task.CompletedTask;
     }
 }

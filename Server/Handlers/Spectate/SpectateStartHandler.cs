@@ -22,7 +22,7 @@ public class SpectateStartHandler : IHandler
         session.Spectating = targetSession;
 
         var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
-        chatChannels.JoinChannel($"#spectator_{targetSession?.User.Username}", session, true);
+        chatChannels.JoinChannel($"#spectator_{targetSession?.User.Id}", session, true);
 
         return Task.CompletedTask;
     }
