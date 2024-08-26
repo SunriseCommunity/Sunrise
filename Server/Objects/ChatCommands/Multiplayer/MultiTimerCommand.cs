@@ -4,8 +4,8 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands.Multiplayer;
 
-[ChatCommand("start", "mp", isGlobal: true)]
-public class MultiStartCommand : IChatCommand
+[ChatCommand("timer", "mp", isGlobal: true)]
+public class MultiTimerCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
@@ -20,7 +20,7 @@ public class MultiStartCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        var time = 0;
+        var time = 30;
 
         if (args is { Length: > 0 })
         {
@@ -35,16 +35,12 @@ public class MultiStartCommand : IChatCommand
             case > 60 * 1000 * 5:
                 session.SendChannelMessage(channel.Name, "You can't set the start time to more than 5 minutes.");
                 return Task.CompletedTask;
-            case < 0:
-                session.SendChannelMessage(channel.Name, "You can't set the start time to less than 0 seconds.");
+            case <= 0:
+                session.SendChannelMessage(channel.Name, "You can't set the start time to less or equal to 0 seconds.");
                 return Task.CompletedTask;
             case > 0:
-                session.SendChannelMessage(channel.Name, $"Match will start in {Parsers.SecondsToMinutes(time, true)}.");
-                session.Match.StartTimer(time, true, SendAlertMessage, OnFinish);
-                return Task.CompletedTask;
-            default:
-                session.SendChannelMessage(channel.Name, "Match will start immediately.");
-                session.Match.StartGame();
+                session.SendChannelMessage(channel.Name, $"Countdown timer has been set to {Parsers.SecondsToMinutes(time, true)}.");
+                session.Match.StartTimer(time, false, SendAlertMessage, OnFinish);
                 return Task.CompletedTask;
         }
 
@@ -61,11 +57,10 @@ public class MultiStartCommand : IChatCommand
         async Task OnFinish(MultiplayerMatch match)
         {
             match.StopTimer();
-            match.StartGame();
 
             foreach (var player in match.Players.Values)
             {
-                player.SendChannelMessage(channel.Name, "GLHF and enjoy the game!");
+                player.SendChannelMessage(channel.Name, "Countdown timer has finished.");
             }
 
             await Task.CompletedTask;

@@ -62,6 +62,11 @@ public static class Parsers
         return time.ToString(@"mm\:ss");
     }
 
+    public static string SecondsToMinutes(int seconds, bool showSeconds = false)
+    {
+        return seconds < 60 ? $"{seconds} second(s)" : $"{seconds / 60} minute(s) {(showSeconds ? $"{seconds % 60} second(s)" : "")}";
+    }
+
     public static string ToSearchResult(this BeatmapSet set, Session session)
     {
         var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",

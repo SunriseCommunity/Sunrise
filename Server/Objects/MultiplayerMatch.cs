@@ -32,6 +32,7 @@ public class MultiplayerMatch
     private MatchRepository Matches { get; }
     public ConcurrentDictionary<int, Session> Players { get; } = new();
     public ConcurrentDictionary<int, MultiplayerSlot> Slots { get; } = new();
+    private TimerWithAlerts? Timer { get; set; }
 
     public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session session)
     {
@@ -172,9 +173,9 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public bool HasHostPrivileges(Session session)
+    public bool HasHostPrivileges(Session session, bool shouldBeOwner = false)
     {
-        return session.User.Id == Match.HostId || session.User.Id == _roomCreatorId;
+        return !shouldBeOwner && session.User.Id == Match.HostId || session.User.Id == _roomCreatorId;
     }
 
     public void EndGame(bool forced = false)
@@ -196,6 +197,25 @@ public class MultiplayerMatch
             WriteToAllPlayers(PacketType.ServerNotification, "The match has been forcefully ended by the host.");
 
         ApplyNewChanges();
+    }
+
+    public void StartTimer(int timer, bool timerForStart, Func<MultiplayerMatch, string, Task> alertHandler, Func<MultiplayerMatch, Task> finishHandler)
+    {
+        StopTimer();
+
+        var alertMessage = timerForStart ? "The match will start in {0}." : "Countdown will end in {0}.";
+        Timer = new TimerWithAlerts(timer, alertMessage, this, finishHandler, alertHandler);
+    }
+
+    public void StopTimer()
+    {
+        Timer?.Stop();
+        Timer = null;
+    }
+
+    public bool HasActiveTimer()
+    {
+        return Timer != null;
     }
 
     public void UpdateLock(int slotId, bool? toLock = null)
@@ -307,6 +327,14 @@ public class MultiplayerMatch
 
         ApplyNewChanges();
     }
+
+    public void ClearHost()
+    {
+        Match.HostId = -1;
+
+        ApplyNewChanges();
+    }
+
 
     public void SetPlayerLoaded(Session session)
     {
