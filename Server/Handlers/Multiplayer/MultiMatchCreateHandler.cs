@@ -30,8 +30,6 @@ public class MultiMatchCreateHandler : IHandler
 
         var multiplayerMatches = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
 
-        Console.WriteLine("new password: " + match.GamePassword);
-
         multiplayerMatches.CreateMatch(match);
 
         multiplayerMatches.JoinMatch(session,

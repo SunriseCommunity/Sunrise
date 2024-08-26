@@ -18,7 +18,8 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Score submission and leaderboards
 - [x] Chat implementation
 - [x] Chat Bot (as a replacement for Bancho Bot)
-- [ ] Multiplayer
+- [x] Multiplayer
+- [ ] !mp commands
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
 - [x] Spectating

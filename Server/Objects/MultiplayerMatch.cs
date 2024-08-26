@@ -4,6 +4,7 @@ using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using osu.Shared;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
@@ -23,7 +24,7 @@ public class MultiplayerMatch
 
     public BanchoMultiplayerMatch Match { get; private set; }
     private MatchRepository Matches { get; }
-    private ConcurrentDictionary<int, Session> Players { get; } = new();
+    public ConcurrentDictionary<int, Session> Players { get; } = new();
     private ConcurrentDictionary<int, MultiplayerSlot> Slots { get; } = new();
 
     public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session session)
@@ -88,6 +89,9 @@ public class MultiplayerMatch
 
         session.SendMultiMatchJoinSuccess(Match);
 
+        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        chatChannels.JoinChannel($"#multiplayer_{Match.MatchId}", session, true);
+
         ApplyNewChanges();
     }
 
@@ -105,6 +109,9 @@ public class MultiplayerMatch
         }
 
         slot.RemovePlayer();
+
+        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        chatChannels.LeaveChannel($"#multiplayer_{Match.MatchId}", session, true);
 
         ApplyNewChanges();
     }

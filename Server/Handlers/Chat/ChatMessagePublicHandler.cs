@@ -32,6 +32,30 @@ public class ChatMessagePublicHandler : IHandler
             return CommandRepository.HandleCommand(message, session);
         }
 
+        if (message.Channel.StartsWith("#multiplayer"))
+        {
+            var fellowPlayers = session.Match?.Players.Values.Where(p => p != session).ToList() ?? [];
+
+            foreach (var player in fellowPlayers)
+            {
+                player.SendChannelMessage("#multiplayer", message.Message, session.User.Username);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        if (message.Channel.StartsWith("#spectator"))
+        {
+            var fellowSpectators = session.Spectating?.Spectators.Where(s => s != session).ToList() ?? [];
+
+            foreach (var player in fellowSpectators)
+            {
+                player.SendChannelMessage("#spectator", message.Message, session.User.Username);
+            }
+
+            return Task.CompletedTask;
+        }
+
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
 
         sessions.WriteToAllSessions(PacketType.ServerChatMessage, message, session.User.Id);

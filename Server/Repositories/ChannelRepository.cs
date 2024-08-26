@@ -26,7 +26,7 @@ public class ChannelRepository
                 return;
             }
 
-            channel = CreateChannel(name);
+            channel = CreateAbstractChannel(name);
         }
 
         session.SendJoinChannel(channel);
@@ -45,12 +45,12 @@ public class ChannelRepository
         channel.RemoveUser(session.User.Id);
     }
 
-    private ChatChannel CreateChannel(string name)
+    private ChatChannel CreateAbstractChannel(string name)
     {
         var channel = name switch
         {
-            not null when name.StartsWith("#spectator_") => new ChatChannel(name, "Spectator chat channel.", false),
-            not null when name.StartsWith("#multiplayer_") => new ChatChannel(name, "Multiplayer chat channel.", false),
+            not null when name.StartsWith("#spectator_") => new ChatChannel("#spectator", "Spectator chat channel.", false),
+            not null when name.StartsWith("#multiplayer_") => new ChatChannel("#multiplayer", "Multiplayer chat channel.", false),
             _ => throw new InvalidOperationException("Invalid channel name.")
         };
 
