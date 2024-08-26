@@ -29,6 +29,8 @@ public class Session
         Attributes = new UserAttributes(User, location, database);
     }
 
+    public MultiplayerMatch? Match { get; set; } = null;
+
     public Session? Spectating { get; set; } = null;
 
     public User User { get; private set; }
@@ -147,6 +149,30 @@ public class Session
     {
         _helper.WritePacket(PacketType.ServerFriendsList, User.FriendsList);
     }
+
+    public void SendMultiMatchJoinFail()
+    {
+        _helper.WritePacket(PacketType.ServerMultiMatchJoinFail, -1);
+    }
+
+    public void SendMultiMatchJoinSuccess(BanchoMultiplayerMatch match)
+    {
+        _helper.WritePacket(PacketType.ServerMultiMatchJoinSuccess, match);
+    }
+
+    public void SendMultiInvite(BanchoMultiplayerMatch match, Session sender)
+    {
+        var message = new BanchoChatMessage
+        {
+            Sender = sender.User.Username,
+            SenderId = sender.User.Id,
+            Channel = sender.User.Username,
+            Message = $"Come join my multiplayer match! [osump://{match.MatchId}/{match.GamePassword} {match.GameName}]"
+        };
+
+        _helper.WritePacket(PacketType.ServerMultiInvite, message);
+    }
+
 
     public byte[] GetContent()
     {

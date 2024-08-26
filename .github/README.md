@@ -63,6 +63,7 @@ website. The server is currently in development and is not yet ready for public 
     127.0.0.1 cho.sunrise.local
     127.0.0.1 assets.sunrise.local
     127.0.0.1 c4.sunrise.local
+    127.0.0.1 b.sunrise.local
     ```
 
 > [!WARNING]
