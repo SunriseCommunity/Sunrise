@@ -13,7 +13,10 @@ public class MultiTransferHostHandler : IHandler
     {
         var slotId = new BanchoInt(packet.Data);
 
-        session.Match?.TransferHost(session, slotId.Value);
+        if (session.Match == null || session.Match.HasHostPrivileges(session) == false)
+            return Task.CompletedTask;
+
+        session.Match.TransferHost(slotId.Value);
 
         return Task.CompletedTask;
     }

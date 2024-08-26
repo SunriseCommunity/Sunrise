@@ -13,7 +13,10 @@ public class MultiChangePasswordHandler : IHandler
     {
         var newMatch = new BanchoMultiplayerMatch(packet.Data);
 
-        session.Match?.ChangePassword(session, newMatch.GamePassword);
+        if (session.Match == null || session.Match.HasHostPrivileges(session) == false)
+            return Task.CompletedTask;
+
+        session.Match.ChangePassword(newMatch.GamePassword);
 
         return Task.CompletedTask;
     }

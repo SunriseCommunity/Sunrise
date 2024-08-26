@@ -18,6 +18,16 @@ public class MultiplayerSlot(bool isLocked = false)
         Status = status ?? MultiSlotStatus.NotReady;
     }
 
+    public void AddPlayer(MultiplayerSlot slot)
+    {
+        UserId = slot.UserId;
+        Status = slot.Status;
+        Mods = slot.Mods;
+        Team = slot.Team;
+        IsLoaded = slot.IsLoaded;
+        IsSkipped = slot.IsSkipped;
+    }
+
     public void RemovePlayer()
     {
         UserId = -1;
@@ -54,8 +64,8 @@ public class MultiplayerSlot(bool isLocked = false)
         IsSkipped = isSkipped ?? !IsSkipped;
     }
 
-    public void UpdateTeam()
+    public void UpdateTeam(SlotTeams? team = null)
     {
-        Team = Team == SlotTeams.Blue ? SlotTeams.Red : SlotTeams.Blue;
+        Team = team ?? (Team == SlotTeams.Blue ? SlotTeams.Red : SlotTeams.Blue);
     }
 }
