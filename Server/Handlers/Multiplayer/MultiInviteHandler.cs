@@ -11,9 +11,16 @@ namespace Sunrise.Server.Handlers.Multiplayer;
 [PacketHandler(PacketType.ClientMultiInvite)]
 public class MultiInviteHandler : IHandler
 {
+    private readonly RateLimiter _rateLimiter = new(6, TimeSpan.FromSeconds(4));
+
     public Task Handle(BanchoPacket packet, Session session)
     {
         var invitee = new BanchoInt(packet.Data);
+
+        if (!_rateLimiter.CanSend(session))
+        {
+            return Task.CompletedTask;
+        }
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
         var inviteeSession = sessions.GetSession(invitee.Value);
