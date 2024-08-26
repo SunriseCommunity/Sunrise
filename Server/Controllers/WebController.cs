@@ -166,4 +166,22 @@ public class WebController : ControllerBase
         var result = await AuthService.Register(Request);
         return result is BadRequestObjectResult ? result : Ok(result);
     }
+
+    [Obsolete("Temporary while I work on the website")]
+    [Route("/beatmapsets/{*path}")]
+    [HttpGet]
+    public IActionResult RedirectToMirrorSets(string path)
+    {
+        Console.WriteLine(path);
+        return Redirect($"https://osu.direct/beatmapsets/{path}");
+    }
+
+    [Obsolete("Temporary while I work on the website")]
+    [Route("/beatmaps/{*path}")]
+    [HttpGet]
+    public IActionResult RedirectToMirrorMaps(string path)
+    {
+        Console.WriteLine(path);
+        return Redirect($"https://osu.direct/beatmaps/{path}");
+    }
 }
