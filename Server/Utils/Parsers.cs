@@ -4,6 +4,7 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
+using osu.Shared;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
@@ -97,5 +98,27 @@ public static class Parsers
             5 => BeatmapStatusSearch.Graveyard,
             _ => BeatmapStatusSearch.Any
         };
+    }
+
+    public static string? GetModsString(this Mods mods)
+    {
+        var shortedMods = string.Join("",
+            Enum.GetValues<ModsShorted>()
+                .Where(x => mods.HasFlag((Mods)x) && x != ModsShorted.None)
+                .Select(x => x.ToString()));
+
+        return string.IsNullOrEmpty(shortedMods) ? string.Empty : $"+{shortedMods} ";
+    }
+
+    public static Mods StringModsToMods(this string shortedMods)
+    {
+        var dict = Enum.GetValues(typeof(ModsShorted))
+            .Cast<ModsShorted>()
+            .ToDictionary(t => t, t => t.ToString());
+
+        var mods = dict.Where(kvp => shortedMods.Contains(kvp.Value, StringComparison.CurrentCultureIgnoreCase))
+            .Aggregate(ModsShorted.None, (current, kvp) => current | kvp.Key);
+
+        return (Mods)mods;
     }
 }

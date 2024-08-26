@@ -2,7 +2,7 @@ namespace Sunrise.Server.Types.Enums;
 
 public enum ModsShorted
 {
-    None = 0,
+    None = 0, // Actually NM, but it's not used in the code.
     NF = 1,
     EZ = 2,
     TD = 4,

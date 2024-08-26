@@ -1,4 +1,3 @@
-using osu.Shared;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Services;
@@ -7,31 +6,27 @@ using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands;
 
-[ChatCommand("beatmap")]
-public class BeatmapCommand : IChatCommand
+[ChatCommand("with")]
+public class WithCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (args == null || args.Length < 1)
+
+        if (session.LastBeatmapIdUsedWithCommand == null)
         {
-            CommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}beatmap <id> [<mods>]; Example: {Configuration.BotPrefix}beatmap 962782 HDHR");
+            CommandRepository.SendMessage(session, "You must use the !beatmap command (or use /np) before using the !with command.");
             return;
         }
 
-        if (!int.TryParse(args[0], out var beatmapId))
+        if (args == null || args.Length == 0)
         {
-            CommandRepository.SendMessage(session, "Invalid beatmap id.");
+            CommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}with <mods>; Example: {Configuration.BotPrefix}with HDHR");
             return;
         }
 
-        var withMods = Mods.None;
+        var withMods = args[0].StringModsToMods();
 
-        if (args.Length >= 2)
-        {
-            withMods = args[1].StringModsToMods();
-        }
-
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
+        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
 
         if (beatmapSet == null)
         {
@@ -39,11 +34,9 @@ public class BeatmapCommand : IChatCommand
             return;
         }
 
-        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == beatmapId);
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == session.LastBeatmapIdUsedWithCommand);
 
-        session.LastBeatmapIdUsedWithCommand = beatmapId;
-
-        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(session, beatmapId, beatmap?.ModeInt ?? 0, withMods);
+        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(session, session.LastBeatmapIdUsedWithCommand.Value, beatmap?.ModeInt ?? 0, withMods);
 
         CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {withMods.GetModsString()}| 95%: {pp95:0.00}pp | 98%: {pp98:0.00}pp | 99%: {pp99:0.00}pp | 100%: {pp100:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
     }

@@ -1,6 +1,7 @@
 using System.Reflection;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using osu.Shared;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
@@ -25,7 +26,7 @@ public static class CommandRepository
 
         if (message.Message.StartsWith("ACTION") && message.Channel == Configuration.BotUsername)
         {
-            (command, args) = ActionToCommand(message.Message);
+            (command, args) = ActionToCommand(session, message.Message);
 
             if (command == null)
             {
@@ -118,7 +119,7 @@ public static class CommandRepository
         return false;
     }
 
-    private static (string?, string[]?) ActionToCommand(string message)
+    private static (string?, string[]?) ActionToCommand(Session session, string message)
     {
         var action = message.Split(' ', 2).Length >= 2 ? message.Split(' ', 2)[1] : null;
 
@@ -129,8 +130,11 @@ public static class CommandRepository
                 return (null, null);
             }
 
-            var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0] ?? string.Empty, out var id) ? id : 0;
-            return ("beatmap", [beatmapId.ToString()]);
+            var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0], out var id) ? id : 0;
+
+            var mods = action?.StartsWith("is watching") == true ? session.Spectating?.Attributes.Status.CurrentMods : Mods.None;
+
+            return ("beatmap", [beatmapId.ToString(), mods?.GetModsString() ?? string.Empty]);
         }
 
         return (null, null);

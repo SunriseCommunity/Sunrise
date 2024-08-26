@@ -29,6 +29,9 @@ public class Session
         Attributes = new UserAttributes(User, location, database);
     }
 
+    // Note: Not the best place, but I'm out of ideas.
+    public int? LastBeatmapIdUsedWithCommand { get; set; }
+
     public MultiplayerMatch? Match { get; set; } = null;
 
     public Session? Spectating { get; set; } = null;
