@@ -2,6 +2,7 @@ using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
 

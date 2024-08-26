@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 

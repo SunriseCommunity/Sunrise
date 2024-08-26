@@ -3,7 +3,7 @@ using HOPEless.Bancho;
 using osu.Shared;
 using Sunrise.Server.Objects;
 
-namespace Sunrise.Server.Repositories.Chat;
+namespace Sunrise.Server.Repositories;
 
 public class ChannelRepository
 {
@@ -11,6 +11,7 @@ public class ChannelRepository
     {
         ["#osu"] = new ChatChannel("#osu", "General chat channel."),
         ["#announce"] = new ChatChannel("#announce", "Announcement chat channel."),
+        ["#lobby"] = new ChatChannel("#lobby", "Multiplayer lobby channel."),
         ["#staff"] = new ChatChannel("#staff", "Staff chat channel.", false),
         ["#userlog"] = new ChatChannel("#userlog", "Your session logs."),
         ["#AYAYA"] = new ChatChannel("#AYAYA", "Feel free to spam AYAYA here.")

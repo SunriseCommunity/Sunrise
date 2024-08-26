@@ -7,7 +7,6 @@ using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 

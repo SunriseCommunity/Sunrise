@@ -1,5 +1,5 @@
 using Sunrise.Server.Objects.CustomAttributes;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;

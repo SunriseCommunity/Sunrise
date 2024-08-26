@@ -8,7 +8,6 @@ using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 

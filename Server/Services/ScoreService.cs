@@ -5,7 +5,6 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -18,6 +17,11 @@ public static class ScoreService
         var data = new SubmitScoreRequest(request);
 
         data.ThrowIfHasEmptyFields();
+
+        if (data.IsScoreNotComplete == "1")
+        {
+            return "error: no";
+        }
 
         var decryptedScore = Parsers.ParseSubmittedScore(data);
 
@@ -76,6 +80,12 @@ public static class ScoreService
         {
             await database.UpdateUserStats(userStats);
             return "error: no"; // Don't submit failed scores
+        }
+
+
+        if (data.Replay is { Length: < 24 })
+        {
+            return "error: no";
         }
 
         var replayFile = await database.UploadReplay(userStats.UserId, data.Replay!);

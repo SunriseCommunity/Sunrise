@@ -6,7 +6,7 @@ using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Repositories.Chat;
+namespace Sunrise.Server.Repositories.Attributes;
 
 public static class CommandRepository
 {
