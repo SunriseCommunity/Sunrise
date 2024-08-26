@@ -1,6 +1,7 @@
 using osu.Shared;
+using Sunrise.Server.Types.Enums;
 
-namespace Sunrise.Server.Types.Enums;
+namespace Sunrise.Server.Types;
 
 public static class RedisKey
 {

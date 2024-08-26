@@ -4,6 +4,7 @@ using osu.Shared;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;

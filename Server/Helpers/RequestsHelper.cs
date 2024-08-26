@@ -3,6 +3,7 @@ using System.Text.Json;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
