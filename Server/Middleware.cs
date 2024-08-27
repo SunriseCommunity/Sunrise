@@ -46,7 +46,7 @@ public sealed class Middleware(
         await next(context);
     }
 
-    private RateLimiter GetRateLimiter(IPAddress key)
+    private TokenBucketRateLimiter GetRateLimiter(IPAddress key)
     {
         return cache.GetOrCreate(key,
             entry =>

@@ -1,6 +1,6 @@
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects.CustomAttributes;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -12,6 +12,7 @@ public class RecentScoreCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
+
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
@@ -33,6 +34,6 @@ public class RecentScoreCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == lastScore.BeatmapId);
 
-        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] Mods: {lastScore.Mods} | Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
+        CommandRepository.SendMessage(session, $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {lastScore.Mods.GetModsString()}| Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
     }
 }

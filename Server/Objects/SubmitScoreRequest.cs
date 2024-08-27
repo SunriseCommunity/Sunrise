@@ -10,12 +10,13 @@ public class SubmitScoreRequest(HttpRequest request)
     public string? ScoreTime { get; set; } = request.Form["st"];
     public string? ScoreFailTime { get; set; } = request.Form["ft"];
     public string? BeatmapHash { get; set; } = request.Form["bmk"];
+    public string? IsScoreNotComplete { get; set; } = request.Form["x"];
 
     public void ThrowIfHasEmptyFields()
     {
-        if (string.IsNullOrEmpty(ScoreEncoded) || string.IsNullOrEmpty(OsuVersion) || string.IsNullOrEmpty(Iv) || string.IsNullOrEmpty(PassHash) || string.IsNullOrEmpty(BeatmapHash) || Replay == null)
+        if (string.IsNullOrEmpty(ScoreEncoded) || string.IsNullOrEmpty(OsuVersion) || string.IsNullOrEmpty(Iv) || string.IsNullOrEmpty(PassHash) || string.IsNullOrEmpty(IsScoreNotComplete) || string.IsNullOrEmpty(BeatmapHash) || Replay == null)
         {
-            throw new Exception("Invalid request: Missing parameters");
+            throw new Exception($"Invalid request: Missing one of parameters: {ScoreEncoded}, {OsuVersion}, {Iv}, {PassHash}, {IsScoreNotComplete}, {BeatmapHash}, {Replay}.");
         }
     }
 }

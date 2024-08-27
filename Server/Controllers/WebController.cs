@@ -142,7 +142,9 @@ public class WebController : ControllerBase
     [HttpGet("check-updates.php")]
     public IActionResult CheckUpdates()
     {
-        return Redirect("https://osu.ppy.sh/web/check-updates.php");
+        var queryString = Request.QueryString.HasValue ? Request.QueryString.Value : string.Empty;
+        var redirectUrl = $"https://osu.ppy.sh/web/check-updates.php{queryString}";
+        return Redirect(redirectUrl);
     }
 
     [HttpGet("osu-getseasonal.php")]
@@ -165,5 +167,23 @@ public class WebController : ControllerBase
     {
         var result = await AuthService.Register(Request);
         return result is BadRequestObjectResult ? result : Ok(result);
+    }
+
+    [Obsolete("Temporary while I work on the website")]
+    [Route("/beatmapsets/{*path}")]
+    [HttpGet]
+    public IActionResult RedirectToMirrorSets(string path)
+    {
+        Console.WriteLine(path);
+        return Redirect($"https://osu.direct/beatmapsets/{path}");
+    }
+
+    [Obsolete("Temporary while I work on the website")]
+    [Route("/beatmaps/{*path}")]
+    [HttpGet]
+    public IActionResult RedirectToMirrorMaps(string path)
+    {
+        Console.WriteLine(path);
+        return Redirect($"https://osu.direct/beatmaps/{path}");
     }
 }

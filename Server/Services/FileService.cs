@@ -69,8 +69,6 @@ public static class FileService
             throw new Exception("Invalid request: Missing parameters");
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-
         using var buffer = new MemoryStream();
         await screenshot.CopyToAsync(buffer, request.HttpContext.RequestAborted);
 
@@ -78,6 +76,13 @@ public static class FileService
         {
             throw new Exception("Screenshot is too large. Max size is 5MB");
         }
+
+        if (!ImageTools.IsValidImage(buffer))
+        {
+            throw new Exception("Invalid image format");
+        }
+
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
         var screenshotId = await database.SetScreenshot(user.Id, buffer.ToArray());
 

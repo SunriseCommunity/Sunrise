@@ -2,13 +2,13 @@ using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.ChatCommands.Moderation;
 
-[ChatCommand("unsilence", PlayerRank.SuperMod)]
+[ChatCommand("unsilence", requiredRank: PlayerRank.SuperMod)]
 public class UnsilenceCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)

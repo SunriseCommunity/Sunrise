@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -14,7 +14,7 @@ public class SpectateStopHandler : IHandler
     {
         var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
 
-        chatChannels.LeaveChannel($"#spectator_{session.Spectating?.User.Username}", session, true);
+        chatChannels.LeaveChannel($"#spectator_{session.Spectating?.User.Id}", session, true);
 
         session.Spectating?.RemoveSpectator(session);
         session.Spectating = null;

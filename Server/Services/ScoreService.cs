@@ -5,7 +5,6 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Chat;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -18,6 +17,11 @@ public static class ScoreService
         var data = new SubmitScoreRequest(request);
 
         data.ThrowIfHasEmptyFields();
+
+        if (data.IsScoreNotComplete == "1")
+        {
+            return "error: no";
+        }
 
         var decryptedScore = Parsers.ParseSubmittedScore(data);
 
@@ -78,6 +82,12 @@ public static class ScoreService
             return "error: no"; // Don't submit failed scores
         }
 
+
+        if (data.Replay is { Length: < 24 })
+        {
+            return "error: no";
+        }
+
         var replayFile = await database.UploadReplay(userStats.UserId, data.Replay!);
         score.ReplayFileId = replayFile.Id;
 
@@ -91,7 +101,7 @@ public static class ScoreService
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
             var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
-            channels.GetChannel("#announce")!.SendToChannel(message);
+            channels.GetChannel(session, "#announce")?.SendToChannel(message);
         }
 
         return GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);

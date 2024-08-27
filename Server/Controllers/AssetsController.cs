@@ -30,8 +30,8 @@ public class AssetsController : ControllerBase
     [Route("events/EventBanner.jpg")]
     public IActionResult GetEventBanner()
     {
-        var data = System.IO.File.ReadAllBytes("./Data/Files/EventBanner.png");
-        return new FileContentResult(data, "image/jpeg");
+        var data = System.IO.File.ReadAllBytes("./Data/Files/Assets/EventBanner.png");
+        return new FileContentResult(data, "image/png");
     }
 
     [HttpGet]
@@ -46,6 +46,6 @@ public class AssetsController : ControllerBase
             return NotFound();
         }
 
-        return new FileContentResult(screenshot, "image/png");
+        return new FileContentResult(screenshot, "image/jpeg");
     }
 }

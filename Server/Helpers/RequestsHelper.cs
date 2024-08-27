@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text.Json;
-using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
@@ -30,9 +30,7 @@ public class RequestsHelper
             return default;
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-
-        var apis = await database.GetExternalApis(type);
+        var apis = Configuration.ExternalApis.Where(x => x.Type == type).OrderBy(x => x.Priority).ToList();
 
         if (apis is { Count: 0 } or null)
         {

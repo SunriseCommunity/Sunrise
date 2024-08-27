@@ -5,7 +5,7 @@ using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Repositories;
+namespace Sunrise.Server.Repositories.Attributes;
 
 public class PacketRepository
 {

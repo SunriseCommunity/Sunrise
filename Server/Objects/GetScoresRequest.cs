@@ -40,7 +40,7 @@ public class GetScoresRequest
         if (string.IsNullOrEmpty(Hash) || string.IsNullOrEmpty(BeatmapName) ||
             string.IsNullOrEmpty(Username) || string.IsNullOrEmpty(BeatmapSetId))
         {
-            throw new Exception("Invalid request: Missing parameters");
+            throw new Exception($"Invalid request: Missing one of parameters: {Hash}, {BeatmapName}, {Username}, {BeatmapSetId}.");
         }
     }
 }

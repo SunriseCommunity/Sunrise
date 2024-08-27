@@ -1,16 +1,18 @@
 using System.Reflection;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using osu.Shared;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Repositories.Chat;
+namespace Sunrise.Server.Repositories.Attributes;
 
 public static class CommandRepository
 {
     private static readonly Dictionary<string, ChatCommand> Handlers = new();
+    private static string[] Prefixes { get; set; } = [];
 
     public static async Task HandleCommand(BanchoChatMessage message, Session session)
     {
@@ -24,7 +26,7 @@ public static class CommandRepository
 
         if (message.Message.StartsWith("ACTION") && message.Channel == Configuration.BotUsername)
         {
-            (command, args) = ActionToCommand(message.Message);
+            (command, args) = ActionToCommand(session, message.Message);
 
             if (command == null)
             {
@@ -35,6 +37,12 @@ public static class CommandRepository
         {
             command = message.Message.Split(' ')[0][Configuration.BotPrefix.Length..].ToLower();
             args = message.Message.Split(' ').Skip(1).ToArray();
+        }
+
+        if (args != null && Prefixes.Contains(command) && args.Length > 0)
+        {
+            command = $"{command} {args[0]}";
+            args = args.Skip(1).ToArray();
         }
 
         var handler = GetHandler(command);
@@ -59,8 +67,11 @@ public static class CommandRepository
         if (handler.IsGlobal && message.Channel != Configuration.BotUsername)
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
-            channel = channels.GetChannel(message.Channel);
+            channel = channels.GetChannel(session, message.Channel);
         }
+
+        if (handler.Prefix != string.Empty && HasPrefixException(session, message, handler, channel))
+            return;
 
         await handler.Handle(session, channel, args);
     }
@@ -75,19 +86,40 @@ public static class CommandRepository
             .ToArray();
     }
 
-
-    public static void SendMessage(Session session, string message)
+    public static void SendMessage(Session session, string message, string? channel = null)
     {
         session.WritePacket(PacketType.ServerChatMessage,
             new BanchoChatMessage
             {
                 Message = message,
                 Sender = Configuration.BotUsername,
-                Channel = Configuration.BotUsername
+                Channel = channel ?? Configuration.BotUsername
             });
     }
 
-    private static (string?, string[]?) ActionToCommand(string message)
+    private static bool HasPrefixException(Session session, BanchoChatMessage message, ChatCommand handler, ChatChannel? channel)
+    {
+        if (handler.Prefix == "mp")
+        {
+            if (session.Match == null)
+            {
+                if (!handler.IsGlobal || message.Channel == Configuration.BotUsername)
+                    SendMessage(session, "You must be in a multiplayer lobby to use this command.");
+                return true;
+            }
+
+            if (channel?.Name.StartsWith("#multiplayer") == false)
+            {
+                if (!handler.IsGlobal || message.Channel == Configuration.BotUsername)
+                    SendMessage(session, "You must be in the multiplayer channel to use this command.");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static (string?, string[]?) ActionToCommand(Session session, string message)
     {
         var action = message.Split(' ', 2).Length >= 2 ? message.Split(' ', 2)[1] : null;
 
@@ -98,8 +130,11 @@ public static class CommandRepository
                 return (null, null);
             }
 
-            var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0] ?? string.Empty, out var id) ? id : 0;
-            return ("beatmap", [beatmapId.ToString()]);
+            var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0], out var id) ? id : 0;
+
+            var mods = action?.StartsWith("is watching") == true ? session.Spectating?.Attributes.Status.CurrentMods : Mods.None;
+
+            return ("beatmap", [beatmapId.ToString(), mods?.GetModsString() ?? string.Empty]);
         }
 
         return (null, null);
@@ -119,8 +154,13 @@ public static class CommandRepository
                 continue;
             }
 
-            var command = new ChatCommand(instance, attribute.RequiredRank, attribute.IsGlobal);
-            Handlers.Add(attribute.Command, command);
+            if (attribute.Prefix != string.Empty)
+            {
+                Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
+            }
+
+            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredRank, attribute.IsGlobal);
+            Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(), command); // .Trim() => https://imgur.com/a/0rsYZRv
         }
     }
 

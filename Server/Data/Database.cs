@@ -4,6 +4,7 @@ using osu.Shared;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;
@@ -21,16 +22,10 @@ public sealed class SunriseDb
         Redis = redis;
 
         _orm.InitializeDatabase();
-        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(BeatmapFile), typeof(ExternalApi), typeof(Score)]);
+        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(BeatmapFile), typeof(Score)]);
     }
 
     private RedisRepository Redis { get; }
-
-    [Obsolete("Not recommended to use this method. Use other methods instead.")]
-    public WatsonORM GetOrm()
-    {
-        return _orm;
-    }
 
     public async Task<User> InsertUser(User user)
     {
@@ -53,11 +48,11 @@ public sealed class SunriseDb
         return user;
     }
 
-    public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null, string? passhash = null)
+    public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null, string? passhash = null, bool useCache = true)
     {
         var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username ?? ""), RedisKey.UserByEmail(email ?? "")]);
 
-        if (cachedUser != null)
+        if (cachedUser != null && useCache)
         {
             return cachedUser;
         }
@@ -223,15 +218,6 @@ public sealed class SunriseDb
         return uniqueScores.Select(x => x.Key).ToList();
     }
 
-    public async Task<List<ExternalApi>?> GetExternalApis(ApiType type)
-    {
-        var exp = new Expr("Type", OperatorEnum.Equals, (int)type);
-
-        var apis = await _orm.SelectManyAsync<ExternalApi>(exp);
-
-        return apis?.OrderBy(x => x.Priority).ToList();
-    }
-
     public async Task SetBeatmapFile(int beatmapId, byte[] beatmap)
     {
         var filePath = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";
@@ -273,7 +259,7 @@ public sealed class SunriseDb
     public async Task SetAvatar(int id, byte[] avatar)
     {
         var filePath = $"{DataPath}Files/Avatars/{id}.png";
-        await File.WriteAllBytesAsync(filePath, avatar);
+        await File.WriteAllBytesAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256));
 
         var record = new UserFile
         {
@@ -293,13 +279,6 @@ public sealed class SunriseDb
         if (cachedRecord != null)
         {
             return await File.ReadAllBytesAsync(cachedRecord.Path);
-        }
-
-        // TODO: Remove this "костыль" (shit) when we will set bot record in DB. 
-        if (userId == int.MaxValue)
-        {
-            var botAvatar = await File.ReadAllBytesAsync($"{DataPath}Files/Avatars/Bot.png");
-            return botAvatar;
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
@@ -327,7 +306,7 @@ public sealed class SunriseDb
 
     public async Task<int> SetScreenshot(int userId, byte[] screenshot)
     {
-        var filePath = $"{DataPath}Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.png";
+        var filePath = $"{DataPath}Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.jpg";
         await File.WriteAllBytesAsync(filePath, screenshot);
 
         var record = new UserFile
@@ -369,7 +348,7 @@ public sealed class SunriseDb
     public async Task SetBanner(int userId, byte[] banner)
     {
         var filePath = $"{DataPath}Files/Banners/{userId}.png";
-        await File.WriteAllBytesAsync(filePath, banner);
+        await File.WriteAllBytesAsync(filePath, ImageTools.ResizeImage(banner, 1280, 256));
 
         var record = new UserFile
         {
@@ -479,5 +458,36 @@ public sealed class SunriseDb
     public async Task RemoveUserRank(int userId, GameMode mode)
     {
         await Redis.SortedSetRemove(RedisKey.LeaderboardGlobal(mode), userId);
+    }
+
+    public async Task InitializeBotInDatabase()
+    {
+        var isBotInitialized = await GetUser(username: Configuration.BotUsername, useCache: false);
+
+        if (isBotInitialized != null)
+        {
+            return;
+        }
+
+        var bot = new User
+        {
+            Username = Configuration.BotUsername,
+            Country = (short)CountryCodes.AQ, // Antarctica, because our bot is "cool" :D
+            Privilege = PlayerRank.SuperMod,
+            RegisterDate = DateTime.Now,
+            Passhash = "12345678",
+            Email = "bot@mail.com",
+            IsRestricted = true // Bot is restricted by default to prevent users from logging in as it
+        };
+
+        bot = await InsertUser(bot);
+
+        if (bot == null)
+        {
+            throw new Exception("Failed to insert bot into the database");
+        }
+
+        var botAvatar = await File.ReadAllBytesAsync($"{DataPath}Files/Assets/BotAvatar.png");
+        await SetAvatar(bot.Id, botAvatar);
     }
 }

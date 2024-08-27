@@ -4,7 +4,7 @@ using Microsoft.Extensions.FileProviders;
 using Prometheus;
 using Sunrise.Server.Data;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Chat;
+using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server;
@@ -58,6 +58,7 @@ public static class Bootstrap
     {
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChannelRepository>();
+        builder.Services.AddSingleton<MatchRepository>();
 
         builder.Services.AddSingleton<RedisRepository>();
         builder.Services.AddSingleton<SunriseDb>();
@@ -106,7 +107,6 @@ public static class Bootstrap
         PacketRepository.GetHandlers();
 
         ServicesProviderHolder.ServiceProvider = app.Services;
-
-        Configuration.InsertApiServersIfNotExists();
+        Configuration.Initialize();
     }
 }
