@@ -13,6 +13,7 @@
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.7"/>
         <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
         <PackageReference Include="Rijndael256" Version="3.2.0"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5"/>
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8"/>
         <PackageReference Include="StackExchange.Redis" Version="2.8.0"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
