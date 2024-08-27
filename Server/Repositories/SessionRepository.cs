@@ -2,12 +2,10 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
-using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories;
@@ -22,6 +20,7 @@ public class SessionRepository
     {
         _database = database;
         _channels = channels;
+
         AddBotToSession();
 
         const int second = 1000;
@@ -102,18 +101,16 @@ public class SessionRepository
         return _sessions.Values.ToList();
     }
 
-    private void AddBotToSession()
+    private async void AddBotToSession()
     {
-        // TODO: On a side not, it's better to add the bot to the database and then retrieve it from there. Will do that later.
+        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
 
-        var bot = new User
+        var bot = await database.GetUser(username: Configuration.BotUsername);
+
+        if (bot == null)
         {
-            Id = int.MaxValue,
-            Username = Configuration.BotUsername,
-            Country = (short)CountryCodes.AQ, // Antarctica, because our bot is "cool" :D
-            Privilege = PlayerRank.SuperMod,
-            RegisterDate = DateTime.Now
-        };
+            throw new Exception("Bot not found in the database while initializing bot in the session repository.");
+        }
 
         var session = new Session(bot, new Location(), _database)
         {

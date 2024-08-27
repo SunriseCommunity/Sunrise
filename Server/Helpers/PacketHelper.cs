@@ -13,7 +13,10 @@ public class PacketHelper
     private readonly ConcurrentQueue<BanchoPacket> _packets = new();
 
     [Obsolete("Use WritePacket instead.")]
-    public void EnqueuePacket(BanchoPacket packet) => _packets.Enqueue(packet);
+    public void EnqueuePacket(BanchoPacket packet)
+    {
+        _packets.Enqueue(packet);
+    }
 
     private void WritePacket(PacketType type, ISerializable data)
     {
@@ -39,8 +42,11 @@ public class PacketHelper
     {
         using var w = new SerializationWriter(new MemoryStream());
         w.Write((short)data.Count);
+
         foreach (var i in data)
+        {
             w.Write(i);
+        }
 
         WritePacket(type, ((MemoryStream)w.BaseStream).ToArray());
     }
@@ -49,8 +55,11 @@ public class PacketHelper
     {
         using var w = new SerializationWriter(new MemoryStream());
         w.Write((short)data.Count);
+
         foreach (var i in data)
+        {
             w.Write(i);
+        }
 
         WritePacket(type, ((MemoryStream)w.BaseStream).ToArray());
     }
@@ -59,6 +68,7 @@ public class PacketHelper
     {
         switch (data)
         {
+            // @formatter:off
             case int i: WritePacket(type, i); return;
             case string s: WritePacket(type, s); return;
             case List<int> il: WritePacket(type, il); return;
@@ -68,6 +78,7 @@ public class PacketHelper
             case ISerializable serializable: WritePacket(type, serializable); return;
             case byte[] bytes: WritePacket(type, bytes); return;
             default: throw new ArgumentException("Invalid data type: " + data?.GetType().Name);
+            // @formatter:on
         }
     }
 

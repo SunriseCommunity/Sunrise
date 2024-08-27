@@ -38,11 +38,9 @@ public static class BaseApiService
             throw new Exception("UserFile is too large. Max size is 5MB");
         }
 
-        var extension = request.Headers.ContentType.ToString().Split("/").Last();
-
-        if (extension != "png" && extension != "jpg" && extension != "jpeg")
+        if (!ImageTools.IsValidImage(buffer))
         {
-            throw new Exception("Invalid file type. Only PNG and JPG are allowed");
+            throw new Exception("Invalid image format");
         }
     }
 }
