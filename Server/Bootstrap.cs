@@ -107,7 +107,6 @@ public static class Bootstrap
         PacketRepository.GetHandlers();
 
         ServicesProviderHolder.ServiceProvider = app.Services;
-
-        Configuration.InsertApiServersIfNotExists();
+        Configuration.Initialize();
     }
 }
