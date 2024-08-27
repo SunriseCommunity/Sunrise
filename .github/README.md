@@ -45,8 +45,9 @@ website. The server is currently in development and is not yet ready for public 
 
 ## Local connection ⚙️
 
-1. If you want to connect to the server locally, follow these steps: 0. Add a launch argument `-devserver sunrise.local`
-   to your osu! shortcut.
+#### If you want to connect to the server locally, follow these steps: 
+
+1. Add a launch argument `-devserver sunrise.local` to your osu! shortcut.
 2. Open the `hosts` file located in `C:\Windows\System32\drivers\etc\hosts` (C:\ is your system drive) with a text
    editor and add the following line:
 
