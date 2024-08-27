@@ -16,7 +16,7 @@ public class SubmitScoreRequest(HttpRequest request)
     {
         if (string.IsNullOrEmpty(ScoreEncoded) || string.IsNullOrEmpty(OsuVersion) || string.IsNullOrEmpty(Iv) || string.IsNullOrEmpty(PassHash) || string.IsNullOrEmpty(IsScoreNotComplete) || string.IsNullOrEmpty(BeatmapHash) || Replay == null)
         {
-            throw new Exception("Invalid request: Missing parameters");
+            throw new Exception($"Invalid request: Missing one of parameters: {ScoreEncoded}, {OsuVersion}, {Iv}, {PassHash}, {IsScoreNotComplete}, {BeatmapHash}, {Replay}.");
         }
     }
 }
