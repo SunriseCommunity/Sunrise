@@ -142,7 +142,9 @@ public class WebController : ControllerBase
     [HttpGet("check-updates.php")]
     public IActionResult CheckUpdates()
     {
-        return Redirect("https://osu.ppy.sh/web/check-updates.php");
+        var queryString = Request.QueryString.HasValue ? Request.QueryString.Value : string.Empty;
+        var redirectUrl = $"https://osu.ppy.sh/web/check-updates.php{queryString}";
+        return Redirect(redirectUrl);
     }
 
     [HttpGet("osu-getseasonal.php")]
