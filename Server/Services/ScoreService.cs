@@ -1,9 +1,8 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Data;
 using Sunrise.Server.Helpers;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
-using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -12,60 +11,23 @@ namespace Sunrise.Server.Services;
 
 public static class ScoreService
 {
-    public static async Task<string> SubmitScore(HttpRequest request)
+    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash, int scoreTime, int scoreFailTime, string osuVersion, string uniqueIds, IFormFile? replay, string? storyboardHash)
     {
-        var data = new SubmitScoreRequest(request);
-
-        data.ThrowIfHasEmptyFields();
-
-        if (data.IsScoreNotComplete == "1")
-        {
-            return "error: no";
-        }
-
-        var decryptedScore = Parsers.ParseSubmittedScore(data);
-
-        var username = decryptedScore.Split(':')[1].Trim() ?? "";
-
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username: username);
-
-        if (session == null)
-        {
-            return "error: no";
-        }
-
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapHash: data.BeatmapHash);
-        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.BeatmapHash);
-
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: beatmapHash);
+        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
         if (beatmap == null || beatmapSet == null)
-        {
             throw new Exception("Invalid request: BeatmapFile not found");
-        }
 
-        var score = new Score().SetNewScoreFromString(decryptedScore, beatmap, data.OsuVersion ?? "");
-
-        if (IsHasInvalidMods(score.Mods))
-        {
+        var score = scoreSerialized.TryParseToScore(beatmap, osuVersion);
+        if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
             return "error: no";
-        }
 
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-
-        var rawScores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
-        var scores = new ScoresHelper(rawScores);
+        var scores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
 
         var userStats = await database.GetUserStats(score.UserId, score.GameMode);
-        var user = await database.GetUser(score.UserId);
-
-        if (userStats == null || user == null)
-        {
-            throw new Exception("Invalid request: UserStats not found");
-        }
-
-        if (user.Passhash != data.PassHash || user.IsRestricted)
-        {
+        if (userStats == null)
             return "error: no";
-        }
 
         var prevUserStats = userStats.Clone();
         var prevPBest = scores.GetPersonalBestOf(score.UserId);
@@ -73,22 +35,19 @@ public static class ScoreService
         var prevUserRank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
         prevUserStats.Rank = prevUserRank;
 
-        var timeElapsed = GetTimeElapsed(score, data);
+        var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
         await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
 
-        if (IsScoreFailed(score))
+        if (SubmitScoreHelper.IsScoreFailed(score))
         {
             await database.UpdateUserStats(userStats);
             return "error: no"; // Don't submit failed scores
         }
 
-
-        if (data.Replay is { Length: < 24 })
-        {
+        if (replay is { Length: < 24 } or null)
             return "error: no";
-        }
 
-        var replayFile = await database.UploadReplay(userStats.UserId, data.Replay!);
+        var replayFile = await database.UploadReplay(userStats.UserId, replay);
         score.ReplayFileId = replayFile.Id;
 
         await database.InsertScore(score);
@@ -100,45 +59,26 @@ public static class ScoreService
         if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
             var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
-            var message = $"[https://osu.{Configuration.Domain}/{userStats.UserId} {user.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+            var message = $"[https://osu.{Configuration.Domain}/u/{userStats.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
             channels.GetChannel(session, "#announce")?.SendToChannel(message);
         }
 
-        return GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
+        return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(HttpRequest request)
+    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods, LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
-        var data = new GetScoresRequest(request);
-
-        data.ThrowIfHasEmptyFields();
-
         var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var scores = await database.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
 
-        var session = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>().GetSession(username: data.Username);
-
-        if (session == null)
-        {
-            return $"{(int)BeatmapStatus.NotSubmitted}|false";
-        }
-
-        var rawScores = await database.GetBeatmapScores(data.Hash, data.Mode, data.LeaderboardType, data.Mods, session.User);
-        var scores = new ScoresHelper(rawScores);
-
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, int.Parse(data.BeatmapSetId), data.Hash);
-
-        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == data.Hash);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
+        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)
-        {
-            // TODO: Check with our db to find out if need's update
-            return $"{(int)BeatmapStatus.NotSubmitted}|false";
-        }
+            return $"{(int)BeatmapStatus.NotSubmitted}|false"; // TODO: Check with our db to find out if need's update
 
         if (beatmap.Status < BeatmapStatus.Ranked)
-        {
             return $"{(int)beatmap.Status}|false";
-        }
 
         var responses = new List<string>
         {
@@ -147,9 +87,7 @@ public static class ScoreService
         };
 
         if (scores.Count == 0)
-        {
             return string.Join("\n", responses);
-        }
 
         var personalBest = scores.GetPersonalBestOf(session.User.Id);
         responses.Add(personalBest != null ? await personalBest.GetString() : "");
@@ -162,78 +100,5 @@ public static class ScoreService
         }
 
         return string.Join("\n", responses);
-    }
-
-    private static string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)
-    {
-        var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
-
-        // TODO: Change playcount and passcount to be from out db
-        var beatmapInfo = $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
-        var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
-        var scoreInfo = string.Join("|", GetChart(prevScore, newScore));
-        var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" + string.Join("|", GetChart(prevUser, user));
-
-        return $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:";
-    }
-
-    private static List<string> GetChart<T>(T before, T after)
-    {
-        string[] chartEntries =
-        [
-            "Rank",
-            "RankedScore",
-            "TotalScore",
-            "MaxCombo",
-            "Accuracy",
-            "Pp"
-        ];
-
-        var result = new List<string>();
-
-        foreach (var entry in chartEntries)
-        {
-            var lowerFirst = char.ToLower(entry[0]) + entry[1..];
-
-            var obj = entry switch
-            {
-                "RankedScore" => typeof(T) == typeof(Score) ? "TotalScore" : "RankedScore",
-                "Rank" => typeof(T) == typeof(Score) ? "LeaderboardRank" : "Rank",
-                "Pp" => "PerformancePoints",
-                _ => entry
-            };
-
-            result.Add(GetChartEntry(lowerFirst, before?.GetType().GetProperty(obj)?.GetValue(before), after?.GetType().GetProperty(obj)?.GetValue(after)));
-        }
-
-        return result;
-    }
-
-    private static string GetChartEntry(string name, object? before, object? after)
-    {
-        return $"{name}Before:{before?.ToString() ?? string.Empty}|{name}After:{after?.ToString() ?? string.Empty}";
-    }
-
-    private static bool IsHasInvalidMods(Mods mods)
-    {
-        return mods.HasFlag(Mods.Relax) || mods.HasFlag(Mods.Autoplay) || mods.HasFlag(Mods.Target) ||
-               mods.HasFlag(Mods.ScoreV2);
-    }
-
-    private static int GetTimeElapsed(Score score, SubmitScoreRequest data)
-    {
-        var isPassed = score.IsPassed || score.Mods.HasFlag(Mods.NoFail);
-
-        if (string.IsNullOrEmpty(data.ScoreTime) || string.IsNullOrEmpty(data.ScoreFailTime))
-        {
-            return 0;
-        }
-
-        return isPassed ? int.Parse(data.ScoreTime) : int.Parse(data.ScoreFailTime);
-    }
-
-    private static bool IsScoreFailed(Score score)
-    {
-        return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
     }
 }

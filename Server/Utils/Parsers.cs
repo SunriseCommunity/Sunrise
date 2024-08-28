@@ -6,6 +6,7 @@ using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 using osu.Shared;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 
@@ -34,13 +35,13 @@ public static class Parsers
         return new LoginRequest(lines[0], lines[1], clientEssentials[0], short.Parse(clientEssentials[1]), clientEssentials[2] == "1", clientEssentials[3], clientEssentials[4] == "1");
     }
 
-    public static string ParseSubmittedScore(SubmitScoreRequest data)
+    public static string ParseSubmittedScore(string osuVersion, string scoreEncoded, string iv)
     {
-        var keyConcatenated = $"{StableKey}{data.OsuVersion}";
+        var keyConcatenated = $"{StableKey}{osuVersion}";
         var keyBytes = Encoding.Default.GetBytes(keyConcatenated);
 
-        var ivBytes = Convert.FromBase64String(data.Iv!);
-        var encodedStrBytes = Convert.FromBase64String(data.ScoreEncoded!);
+        var ivBytes = Convert.FromBase64String(iv);
+        var encodedStrBytes = Convert.FromBase64String(scoreEncoded);
 
         var engine = new RijndaelEngine(256);
         var blockCipher = new PaddedBufferedBlockCipher(new CbcBlockCipher(engine), new Pkcs7Padding());
@@ -120,5 +121,10 @@ public static class Parsers
             .Aggregate(ModsShorted.None, (current, kvp) => current | kvp.Key);
 
         return (Mods)mods;
+    }
+
+    public static Score TryParseToScore(this string scoreString, Beatmap beatmap, string version)
+    {
+        return new Score().SetNewScoreFromString(scoreString, beatmap, version);
     }
 }

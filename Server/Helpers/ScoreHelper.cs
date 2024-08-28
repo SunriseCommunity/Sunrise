@@ -2,15 +2,11 @@ using Sunrise.Server.Objects.Models;
 
 namespace Sunrise.Server.Helpers;
 
-public class ScoresHelper(List<Score> scores)
+public static class ScoreHelper
 {
-    private readonly List<Score> _scores = GetSortedScores(scores);
-
-    public int Count => _scores.Count;
-
-    public List<Score> GetTopScores(int? count = null)
+    public static List<Score> GetTopScores(this List<Score> scores, int? count = null)
     {
-        var leaderboard = _scores;
+        var leaderboard = GetSortedScores(scores);
 
         var personalBests = new List<Score>();
 
@@ -23,9 +19,9 @@ public class ScoresHelper(List<Score> scores)
         return personalBests;
     }
 
-    public Score GetNewPersonalScore(Score score)
+    public static Score GetNewPersonalScore(this List<Score> scores, Score score)
     {
-        var leaderboard = new List<Score>(_scores);
+        var leaderboard = GetSortedScores(scores);
 
         var oldPBest = leaderboard.Find(x => x.UserId == score.UserId);
 
@@ -43,12 +39,12 @@ public class ScoresHelper(List<Score> scores)
         return newPBest;
     }
 
-    public Score? GetPersonalBestOf(int userId)
+    public static Score? GetPersonalBestOf(this List<Score> scores, int userId)
     {
-        return GetTopScores()?.Find(x => x.UserId == userId);
+        return scores.GetTopScores().Find(x => x.UserId == userId);
     }
 
-    public static List<Score> GetSortedScores(List<Score> scores, bool onlyBest = true)
+    public static List<Score> GetSortedScores(this List<Score> scores, bool onlyBest = true)
     {
         scores.Sort((x, y) =>
             y.TotalScore.CompareTo(x.TotalScore) != 0

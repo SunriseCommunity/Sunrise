@@ -29,36 +29,23 @@ public static class AuthService
         var user = await database.GetUser(username: loginRequest.Username);
 
         if (!CharactersFilter.IsValidString(loginRequest.Username, true))
-        {
             return RejectLogin(response, "Invalid characters in username or password.");
-        }
 
         if (user == null)
-        {
             return RejectLogin(response, "User with this username does not exist.");
-        }
 
         if (user.Passhash != loginRequest.PassHash)
-        {
             return RejectLogin(response, "Invalid credentials.");
-        }
 
         if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
-        {
             return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
-        }
 
         if (user.IsRestricted)
-        {
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
-        }
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-
         if (sessions.IsUserOnline(user.Id))
-        {
             return RejectLogin(response, "User is already logged in. Try again later in another minute.");
-        }
 
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
@@ -77,16 +64,14 @@ public static class AuthService
         var writer = new PacketHelper();
 
         if (reason != null)
-        {
             writer.WritePacket(PacketType.ServerNotification, reason);
-        }
 
         writer.WritePacket(PacketType.ServerLoginReply, code);
 
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    public static IActionResult Relogin(HttpResponse response, string? reason = null)
+    public static IActionResult Relogin()
     {
         var writer = new PacketHelper();
         writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin

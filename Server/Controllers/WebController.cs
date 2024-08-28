@@ -1,168 +1,96 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Data;
-using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.CustomAttributes;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
-[ApiController]
 [Route("/web")]
 [Subdomain("osu")]
 public class WebController : ControllerBase
 {
-    [HttpPost("osu-submit-modular-selector.php")]
-    public async Task<IActionResult> Submit()
+    [HttpPost(RequestType.OsuScreenshot)]
+    public async Task<IActionResult> OsuScreenshot(
+        [FromForm(Name = "u")] string username,
+        [FromForm(Name = "p")] string passhash,
+        [FromForm(Name = "ss")] IFormFile screenshot)
     {
-        var result = await ScoreService.SubmitScore(Request);
-        return await Task.FromResult<IActionResult>(Ok(result));
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+            return Ok("error: pass");
+
+        if (await AssetService.SaveScreenshot(session, screenshot, HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, error);
+            return BadRequest(error);
+        }
+
+        return Ok(resultUrl);
     }
 
-    [HttpGet("osu-getreplay.php")]
-    public async Task<IActionResult> GetReplay()
+    [HttpGet(RequestType.OsuGetFriends)]
+    public async Task<IActionResult> OsuGetFriends(
+        [FromQuery(Name = "u")] string username,
+        [FromQuery(Name = "h")] string passhash)
     {
-        var scoreId = Request.Query["c"];
+        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+            return Ok("error: pass");
 
-        if (string.IsNullOrEmpty(scoreId))
-            return BadRequest("Invalid request: Missing parameters");
-
-        var result = await FileService.GetOsuReplayBytes(int.Parse(scoreId!));
-
-        return new FileContentResult(result, "application/octet-stream");
-    }
-
-    [HttpGet("osu-osz2-getscores.php")]
-    public async Task<IActionResult> GetScores()
-    {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
-        var result = await ScoreService.GetBeatmapScores(Request);
-        return Ok(result);
-    }
-
-    [HttpGet("osu-search.php")]
-    public async Task<IActionResult> Search()
-    {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
-        var result = await BeatmapService.SearchBeatmapSet(Request);
-
-        if (result == null)
-            return BadRequest("Invalid request: Invalid request");
-
-        return Ok(result);
-    }
-
-    [HttpGet("osu-search-set.php")]
-    public async Task<IActionResult> SearchBySetId()
-    {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
-        var result = await BeatmapService.SearchBeatmapSetByIds(Request);
-
-        if (result == null)
-            return BadRequest("Invalid request: Invalid request");
-
-        return Ok(result);
-    }
-
-    [HttpGet("osu-getfriends.php")]
-    public async Task<IActionResult> OsuGetFriends()
-    {
-        if (await AuthorizationHelper.IsAuthorized(Request) == false)
-            return BadRequest("Invalid request: Unauthorized");
-
-        var friends = await BanchoService.GetFriends(Request.Query["u"]!);
-
+        var friends = await BanchoService.GetFriends(session.User.Username);
         if (friends == null)
-            return BadRequest("Invalid request: Invalid request");
+            return BadRequest("error: no");
 
         return Ok(friends);
     }
 
-    [HttpPost("osu-error.php")]
+    [HttpPost(RequestType.OsuError)]
     public IActionResult OsuError()
     {
         return Ok();
     }
 
-    [HttpGet("lastfm.php")]
+    [HttpGet(RequestType.LastFm)]
     public IActionResult LastFm()
     {
         return Ok();
     }
 
-    [HttpGet("osu-markasread.php")]
+    [HttpGet(RequestType.OsuMarkAsRead)]
     public IActionResult OsuMarkAsRead()
     {
         return Ok();
     }
 
-    [HttpGet("bancho_connect.php")]
+    [HttpGet(RequestType.BanchoConnect)]
     public IActionResult BanchoConnect()
     {
         return Ok();
     }
 
-    [HttpPost("osu-session.php")]
+    [HttpPost(RequestType.OsuSession)]
     public IActionResult OsuConnect()
     {
         return Ok();
     }
 
-    [HttpPost("osu-screenshot.php")]
-    public async Task<IActionResult> OsuScreenshot()
-    {
-        var username = Request.Form["u"];
-        var passhash = Request.Form["p"];
-
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(passhash))
-        {
-            return BadRequest("Invalid request: Missing parameters");
-        }
-
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-
-        var user = await database.GetUser(username: username, passhash: passhash);
-
-        if (user == null)
-        {
-            return BadRequest("Invalid request: User not found");
-        }
-
-        var resultUrl = await FileService.SaveScreenshot(Request, user);
-
-        return Ok(resultUrl);
-    }
-
-    [HttpGet("check-updates.php")]
+    [HttpGet(RequestType.CheckUpdates)]
     public IActionResult CheckUpdates()
     {
         var queryString = Request.QueryString.HasValue ? Request.QueryString.Value : string.Empty;
-        var redirectUrl = $"https://osu.ppy.sh/web/check-updates.php{queryString}";
-        return Redirect(redirectUrl);
+        return Redirect($"https://osu.ppy.sh/web/{RequestType.CheckUpdates}{queryString}");
     }
 
-    [HttpGet("osu-getseasonal.php")]
+    [HttpGet(RequestType.OsuGetSeasonalBackground)]
     public IActionResult GetSeasonal()
     {
-        var result = FileService.GetSeasonalBackgrounds();
+        var result = AssetService.GetSeasonalBackgrounds();
         return Ok(result);
     }
 
-    [Route("/d/{id}")]
-    [HttpGet]
-    public IActionResult DownloadBeatmapset(string id)
-    {
-        return Redirect($"https://osu.direct/api/d/{id}");
-    }
-
-    [Route("/users")]
-    [HttpPost]
+    [HttpPost(RequestType.PostRegister)]
     public async Task<IActionResult> Register()
     {
         var result = await AuthService.Register(Request);
@@ -174,7 +102,6 @@ public class WebController : ControllerBase
     [HttpGet]
     public IActionResult RedirectToMirrorSets(string path)
     {
-        Console.WriteLine(path);
         return Redirect($"https://osu.direct/beatmapsets/{path}");
     }
 
@@ -183,7 +110,6 @@ public class WebController : ControllerBase
     [HttpGet]
     public IActionResult RedirectToMirrorMaps(string path)
     {
-        Console.WriteLine(path);
         return Redirect($"https://osu.direct/beatmaps/{path}");
     }
 }

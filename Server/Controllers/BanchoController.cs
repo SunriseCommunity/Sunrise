@@ -1,53 +1,44 @@
-using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Services;
+using Sunrise.Server.Storage;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
-[ApiController]
 [Subdomain("c", "c4", "cho")]
-public class BanchoController : ControllerBase
+public class BanchoController(ILogger<BanchoController> logger) : ControllerBase
 {
-    [HttpPost("/")]
-    public async Task<IActionResult> Process()
+    [HttpPost(RequestType.BanchoProcess)]
+    public async Task<IActionResult> Process([FromHeader(Name = "osu-token")] string? token)
     {
-        string? sessionToken = Request.Headers["osu-token"];
+        if (token == null)
+            return await AuthService.Login(Request, Response);
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(out var session, token: token) || session == null)
+            return AuthService.Relogin();
 
-        if (sessionToken == null)
-        {
-            return await AuthService.Login(Request, Response);
-        }
+        await using var buffer = new MemoryStream();
+        await Request.Body.CopyToAsync(buffer);
+        buffer.Seek(0, SeekOrigin.Begin);
 
-        var session = sessions.GetSession(sessionToken);
+        await BanchoService.ProcessPackets(session, buffer, logger);
 
-        if (session == null)
-        {
-            return AuthService.Relogin(Response);
-        }
-
-        session.Attributes.LastPingRequest = DateTime.UtcNow;
-
-        await using var ms = new MemoryStream();
-        await Request.Body.CopyToAsync(ms);
-        ms.Seek(0, SeekOrigin.Begin);
-
-        foreach (var packet in BanchoSerializer.DeserializePackets(ms))
-        {
-            await PacketRepository.HandlePacket(packet, session);
-        }
+        session.Attributes.UpdateLastPing();
 
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }
 
-    [HttpGet("/")]
-    public Task<IActionResult> Get()
+    [HttpGet(RequestType.BanchoProcess)]
+    public async Task<IActionResult> Get()
     {
-        return Task.FromResult<IActionResult>(Ok("Hello, world!"));
+        var image = await LocalStorage.ReadFileAsync("./Data/Files/Assets/Peppy.jpg");
+        if (image == null)
+            return NotFound();
+
+        return new FileContentResult(image, "image/jpeg");
     }
 }
