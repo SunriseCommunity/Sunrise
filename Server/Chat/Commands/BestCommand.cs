@@ -20,7 +20,6 @@ public class BestCommand : IChatCommand
         if (args is { Length: >= 1 })
         {
             var user = await database.GetUser(username: args[0]);
-            Console.WriteLine(user);
 
             if (user == null)
             {
