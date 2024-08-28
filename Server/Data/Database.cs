@@ -4,6 +4,7 @@ using osu.Shared;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Storage;
 using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -15,10 +16,14 @@ public sealed class SunriseDb
 {
     private const string DataPath = "./Data/";
     private const string Database = "sunrise.db";
+    private readonly ILogger<SunriseDb> _logger;
     private readonly WatsonORM _orm = new(new DatabaseSettings(DataPath + Database));
 
     public SunriseDb(RedisRepository redis)
     {
+        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
+        _logger = loggerFactory.CreateLogger<SunriseDb>();
+
         Redis = redis;
 
         _orm.InitializeDatabase();
@@ -85,7 +90,7 @@ public sealed class SunriseDb
         await _orm.UpdateAsync(user);
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var session = sessions.GetSession(user.Id);
+        var session = sessions.GetSession(userId: user.Id);
 
         session?.UpdateUser(user);
 
@@ -101,7 +106,7 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<UserStats> GetUserStats(int userId, GameMode mode, bool useCache = true)
+    public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await Redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
 
@@ -115,7 +120,8 @@ public sealed class SunriseDb
 
         if (stats == null)
         {
-            throw new Exception("User stats not found");
+            _logger.LogCritical($"User stats not found for user {userId} in mode {mode}. Is database corrupted?");
+            return null;
         }
 
         await Redis.Set(RedisKey.UserStats(userId, mode), stats);
@@ -187,7 +193,7 @@ public sealed class SunriseDb
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
 
         var scores = await _orm.SelectManyAsync<Score>(exp);
-        scores = ScoresHelper.GetSortedScores(scores);
+        scores = scores.GetSortedScores();
 
         foreach (var score in scores.ToList())
         {
@@ -256,10 +262,12 @@ public sealed class SunriseDb
         return file;
     }
 
-    public async Task SetAvatar(int id, byte[] avatar)
+    public async Task<bool> SetAvatar(int id, byte[] avatar)
     {
         var filePath = $"{DataPath}Files/Avatars/{id}.png";
-        await File.WriteAllBytesAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256));
+
+        if (!await LocalStorage.WriteFileAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256)))
+            return false;
 
         var record = new UserFile
         {
@@ -268,8 +276,12 @@ public sealed class SunriseDb
             Type = FileType.Avatar
         };
 
-        record = await _orm.InsertAsync(record);
+        record = await _orm.WriteRecordAsync(record);
+        if (record == null)
+            return false;
+
         await Redis.Set(RedisKey.AvatarRecord(id), record);
+        return true;
     }
 
     public async Task<byte[]> GetAvatar(int userId, bool fallToDefault = true)
@@ -324,20 +336,16 @@ public sealed class SunriseDb
 
     public async Task<byte[]?> GetScreenshot(int screenshotId)
     {
-        var cachedRecord = await Redis.Get<UserFile>(RedisKey.ScreenshotRecord(screenshotId));
 
+        var cachedRecord = await Redis.Get<UserFile>(RedisKey.ScreenshotRecord(screenshotId));
         if (cachedRecord != null)
-        {
             return await File.ReadAllBytesAsync(cachedRecord.Path);
-        }
 
         var exp = new Expr("Id", OperatorEnum.Equals, screenshotId);
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
 
         if (record == null)
-        {
             return null;
-        }
 
         var file = await File.ReadAllBytesAsync(record.Path);
         await Redis.Set(RedisKey.ScreenshotRecord(screenshotId), record);
@@ -345,10 +353,12 @@ public sealed class SunriseDb
         return file;
     }
 
-    public async Task SetBanner(int userId, byte[] banner)
+    public async Task<bool> SetBanner(int userId, byte[] banner)
     {
         var filePath = $"{DataPath}Files/Banners/{userId}.png";
-        await File.WriteAllBytesAsync(filePath, ImageTools.ResizeImage(banner, 1280, 256));
+
+        if (!await LocalStorage.WriteFileAsync(filePath, ImageTools.ResizeImage(banner, 1280, 256)))
+            return false;
 
         var record = new UserFile
         {
@@ -357,8 +367,12 @@ public sealed class SunriseDb
             Type = FileType.Banner
         };
 
-        record = await _orm.InsertAsync(record);
+        record = await _orm.WriteRecordAsync(record);
+        if (record == null)
+            return false;
+
         await Redis.Set(RedisKey.BannerRecord(userId), record);
+        return true;
     }
 
     public async Task<byte[]> GetBanner(int userId, bool fallToDefault = true)
@@ -413,22 +427,17 @@ public sealed class SunriseDb
         return record;
     }
 
-    public async Task<byte[]> GetReplay(int replayId)
+    public async Task<byte[]?> GetReplay(int replayId)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.ReplayRecord(replayId));
-
         if (cachedRecord != null)
-        {
             return await File.ReadAllBytesAsync(cachedRecord.Path);
-        }
 
         var exp = new Expr("Id", OperatorEnum.Equals, replayId);
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
 
         if (record == null)
-        {
-            throw new Exception("Replay not found");
-        }
+            return null;
 
         var file = await File.ReadAllBytesAsync(record.Path);
         await Redis.Set(RedisKey.ReplayRecord(replayId), record);
