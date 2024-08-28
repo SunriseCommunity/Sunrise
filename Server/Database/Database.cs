@@ -4,7 +4,7 @@ using osu.Shared;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Storage;
+using Sunrise.Server.Storages;
 using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;

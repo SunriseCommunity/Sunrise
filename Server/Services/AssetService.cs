@@ -1,6 +1,6 @@
 ﻿using Sunrise.Server.Data;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Storage;
+using Sunrise.Server.Storages;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Services;

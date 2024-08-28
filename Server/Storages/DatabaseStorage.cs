@@ -1,6 +1,6 @@
 using Watson.ORM.Sqlite;
 
-namespace Sunrise.Server.Storage;
+namespace Sunrise.Server.Storages;
 
 public static class DatabaseStorage
 {
