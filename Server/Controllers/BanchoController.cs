@@ -35,7 +35,7 @@ public class BanchoController(ILogger<BanchoController> logger) : ControllerBase
     [HttpGet(RequestType.BanchoProcess)]
     public async Task<IActionResult> Get()
     {
-        var image = await LocalStorage.ReadFileAsync("./Data/Files/Assets/Peppy.jpg");
+        var image = await AssetService.GetPeppyImage();
         if (image == null)
             return NotFound();
 

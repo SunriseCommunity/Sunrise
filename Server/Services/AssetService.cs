@@ -103,8 +103,13 @@ public static class AssetService
         return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);
     }
 
-    public static byte[]? GetEventBanner()
+    public static async Task<byte[]?> GetEventBanner()
     {
-        return LocalStorage.ReadFileAsync("./Data/Files/Assets/EventBanner.png").Result;
+        return await LocalStorage.ReadFileAsync("./Data/Files/Assets/EventBanner.png");
+    }
+
+    public static async Task<byte[]?> GetPeppyImage()
+    {
+        return await LocalStorage.ReadFileAsync("./Data/Files/Assets/Peppy.jpg");
     }
 }

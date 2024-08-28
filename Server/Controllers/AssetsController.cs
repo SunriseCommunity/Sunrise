@@ -33,9 +33,9 @@ public class AssetsController : ControllerBase
     }
 
     [HttpGet(RequestType.EventBanner)]
-    public IActionResult GetEventBanner()
+    public async Task<IActionResult> GetEventBanner()
     {
-        var data = AssetService.GetEventBanner();
+        var data = await AssetService.GetEventBanner();
         if (data == null)
             return NotFound();
 

@@ -97,6 +97,16 @@ public class WebController : ControllerBase
         return result is BadRequestObjectResult ? result : Ok(result);
     }
 
+    [HttpGet("/wiki/en/Do_you_really_want_to_ask_peppy")]
+    public async Task<IActionResult> AskPeppy()
+    {
+        var image = await AssetService.GetPeppyImage();
+        if (image == null)
+            return NotFound();
+
+        return new FileContentResult(image, "image/jpeg");
+    }
+
     [Obsolete("Temporary while I work on the website")]
     [Route("/beatmapsets/{*path}")]
     [HttpGet]
