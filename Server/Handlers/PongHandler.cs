@@ -10,7 +10,7 @@ public class PongHandler : IHandler
 {
     public Task Handle(BanchoPacket packet, Session session)
     {
-        session.Attributes.LastPingRequest = DateTime.UtcNow;
+        session.Attributes.UpdateLastPing();
         return Task.CompletedTask;
     }
 }

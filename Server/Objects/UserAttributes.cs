@@ -11,7 +11,7 @@ public class UserAttributes
 {
     private readonly SunriseDb _database;
 
-    public UserAttributes(User user, Location location, SunriseDb database)
+    public UserAttributes(User user, Location location, SunriseDb database, bool usesOsuClient = true)
     {
         _database = database;
 
@@ -20,6 +20,7 @@ public class UserAttributes
         Timezone = location.TimeOffset;
         Country = Enum.TryParse(location.Country, out CountryCodes country) ? (short)country != 0 ? (short)country : null : null;
         User = user;
+        UsesOsuClient = usesOsuClient;
     }
 
     private User User { get; }
@@ -28,12 +29,13 @@ public class UserAttributes
     private float Latitude { get; }
     private short? Country { get; }
     public DateTime LastLogin { get; set; } = DateTime.UtcNow;
-    public DateTime LastPingRequest { get; set; } = DateTime.UtcNow;
-    public bool IgnoreNonFriendPm { get; set; } = false;
-    public string? AwayMessage { get; set; } = null;
-    public bool ShowUserLocation { get; set; } = true;
-    public bool IsBot { get; set; } = false;
+    public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
+    public bool ShowUserLocation { get; set; } = true;
+    public bool IgnoreNonFriendPm { get; set; }
+    public string? AwayMessage { get; set; }
+    public bool IsBot { get; set; }
+    public bool UsesOsuClient { get; set; }
 
     public async Task<BanchoUserPresence> GetPlayerPresence()
     {
@@ -50,7 +52,7 @@ public class UserAttributes
             Permissions = User.Privilege,
             Rank = (int)userRank,
             PlayMode = GetCurrentGameMode(),
-            UsesOsuClient = true
+            UsesOsuClient = UsesOsuClient
         };
     }
 
@@ -71,6 +73,14 @@ public class UserAttributes
             TotalScore = userStats.TotalScore
         };
     }
+
+
+    public void UpdateLastPing()
+    {
+        LastPingRequest = DateTime.UtcNow;
+    }
+
+
 
     public GameMode GetCurrentGameMode()
     {
