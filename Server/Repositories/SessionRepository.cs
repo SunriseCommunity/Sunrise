@@ -12,6 +12,8 @@ namespace Sunrise.Server.Repositories;
 
 public class SessionRepository
 {
+
+    private const int Second = 1000;
     private readonly ChannelRepository _channels;
     private readonly SunriseDb _database;
     private readonly ConcurrentDictionary<int, Session> _sessions = new();
@@ -23,13 +25,12 @@ public class SessionRepository
 
         AddBotToSession();
 
-        const int second = 1000;
         Task.Run(async () =>
         {
             while (true)
             {
                 ClearInactiveSessions();
-                await Task.Delay(60 * second);
+                await Task.Delay(60 * Second);
             }
         });
     }
