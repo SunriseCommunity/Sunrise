@@ -70,19 +70,27 @@ public class SessionRepository
         _sessions.TryRemove(userId, out _);
     }
 
-    public Session? GetSession(string? token = null, string? username = null)
+
+    public bool TryGetSession(string username, string passhash, out Session? session)
     {
-        return _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username);
+        session = _sessions.Values.FirstOrDefault(x => x.User.Username == username && x.User.Passhash == passhash);
+        return session != null;
+    }
+
+    public bool TryGetSession(out Session? session, string? username = null, string? token = null, int? userId = null)
+    {
+        session = _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username || x.User.Id == userId);
+        return session != null;
+    }
+
+    public Session? GetSession(string? username = null, string? token = null, int? userId = null)
+    {
+        return TryGetSession(out var session, username, token, userId) ? session : null;
     }
 
     public bool IsUserOnline(int userId)
     {
         return _sessions.Values.Any(x => x.User.Id == userId);
-    }
-
-    public Session? GetSession(int userId)
-    {
-        return _sessions.Values.FirstOrDefault(x => x.User.Id == userId);
     }
 
     public async Task SendCurrentPlayers(Session session)
@@ -118,6 +126,8 @@ public class SessionRepository
             {
                 IsBot = true,
                 ShowUserLocation = false,
+                UsesOsuClient = false,
+
                 Status = new BanchoUserStatus
                 {
                     Action = BanchoAction.Unknown
@@ -132,10 +142,7 @@ public class SessionRepository
     {
         foreach (var session in _sessions.Values)
         {
-            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1))
-                continue;
-
-            if (session.Attributes.IsBot)
+            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1) || session.Attributes.IsBot)
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);

@@ -16,7 +16,7 @@ public class SpectateStartHandler : IHandler
         var target = new BanchoInt(packet.Data);
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var targetSession = sessions.GetSession(target.Value);
+        var targetSession = sessions.GetSession(userId: target.Value);
 
         targetSession?.AddSpectator(session);
         session.Spectating = targetSession;

@@ -23,7 +23,7 @@ public class MultiInviteHandler : IHandler
         }
 
         var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var inviteeSession = sessions.GetSession(invitee.Value);
+        var inviteeSession = sessions.GetSession(userId: invitee.Value);
 
         if (inviteeSession == null)
             return Task.CompletedTask;
