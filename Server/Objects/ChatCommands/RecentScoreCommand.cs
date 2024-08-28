@@ -1,7 +1,7 @@
 using Sunrise.Server.Data;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -24,7 +24,7 @@ public class RecentScoreCommand : IChatCommand
             return;
         }
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapHash: lastScore.BeatmapHash);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: lastScore.BeatmapHash);
 
         if (beatmapSet == null)
         {

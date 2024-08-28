@@ -1,7 +1,7 @@
 using osu.Shared;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -31,7 +31,7 @@ public class BeatmapCommand : IChatCommand
             withMods = args[1].StringModsToMods();
         }
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: beatmapId);
 
         if (beatmapSet == null)
         {

@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
 using Sunrise.Server.Data;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Models;
-using Sunrise.Server.Services;
 using Beatmap = RosuPP.Beatmap;
 using Mods = osu.Shared.Mods;
 
@@ -14,7 +14,7 @@ public static class Calculators
 {
     public static double CalculatePerformancePoints(Session session, Score score)
     {
-        var beatmapBytes = BeatmapService.GetBeatmapFile(session, score.BeatmapId).Result;
+        var beatmapBytes = BeatmapManager.GetBeatmapFile(session, score.BeatmapId).Result;
 
         if (beatmapBytes == null)
         {
@@ -40,7 +40,7 @@ public static class Calculators
 
     public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session, int beatmapId, int mode, Mods mods = Mods.None)
     {
-        var beatmapBytes = await BeatmapService.GetBeatmapFile(session, beatmapId);
+        var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);
 
         if (beatmapBytes == null)
         {

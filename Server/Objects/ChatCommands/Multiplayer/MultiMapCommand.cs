@@ -1,6 +1,6 @@
 using osu.Shared;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects.CustomAttributes;
-using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 
 namespace Sunrise.Server.Objects.ChatCommands.Multiplayer;
@@ -35,7 +35,7 @@ public class MultiMapCommand : IChatCommand
             return;
         }
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: beatmapId);
 
         if (beatmapSet == null)
         {

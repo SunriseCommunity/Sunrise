@@ -1,7 +1,7 @@
 using Sunrise.Server.Data;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -38,7 +38,7 @@ public class BestCommand : IChatCommand
 
         foreach (var (score, index) in bestScores.Select((value, i) => (value, i)))
         {
-            var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
+            var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
 
             if (beatmapSet == null) continue;
 

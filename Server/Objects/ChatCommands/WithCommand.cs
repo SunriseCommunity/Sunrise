@@ -1,6 +1,6 @@
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Services;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -26,7 +26,7 @@ public class WithCommand : IChatCommand
 
         var withMods = args[0].StringModsToMods();
 
-        var beatmapSet = await BeatmapService.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
 
         if (beatmapSet == null)
         {
