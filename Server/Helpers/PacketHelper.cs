@@ -12,12 +12,6 @@ public class PacketHelper
 {
     private readonly ConcurrentQueue<BanchoPacket> _packets = new();
 
-    [Obsolete("Use WritePacket instead.")]
-    public void EnqueuePacket(BanchoPacket packet)
-    {
-        _packets.Enqueue(packet);
-    }
-
     private void WritePacket(PacketType type, ISerializable data)
     {
         _packets.Enqueue(new BanchoPacket(type, data.Serialize()));
