@@ -34,7 +34,7 @@ public class ScoreController : ControllerBase
         var scoreSerialized = Parsers.ParseSubmittedScore(osuVersion, scoreEncoded, iv);
         var username = scoreSerialized.Split(':')[1].Trim();
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -59,7 +59,7 @@ public class ScoreController : ControllerBase
         if (fromEditor == "1" || leaderboardVersion != "4")
             return Ok("error: pass");
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 

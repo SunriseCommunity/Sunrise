@@ -89,7 +89,7 @@ public sealed class SunriseDb
     {
         await _orm.UpdateAsync(user);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var session = sessions.GetSession(userId: user.Id);
 
         session?.UpdateUser(user);

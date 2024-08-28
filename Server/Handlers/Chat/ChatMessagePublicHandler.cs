@@ -27,7 +27,7 @@ public class ChatMessagePublicHandler : IHandler
             return;
         }
 
-        var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         var channel = channels.GetChannel(session, message.Channel);
 
         channel?.SendToChannel(message.Message, session.User.Username);

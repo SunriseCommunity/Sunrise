@@ -27,7 +27,7 @@ public class UserStatsRequestHandler : IHandler
 
         ids.Remove(session.User.Id);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         foreach (var player in ids.Select(id => sessions.GetSession(userId: id)))
         {

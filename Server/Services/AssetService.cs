@@ -11,7 +11,7 @@ public static class AssetService
 
     public static async Task<byte[]?> GetOsuReplayBytes(int scoreId)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var score = await database.GetScore(scoreId);
         if (score == null)
@@ -28,7 +28,7 @@ public static class AssetService
         if (!isValid || err != null)
             return (false, err);
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var isSuccessful = await database.SetBanner(userId, buffer.ToArray());
         return isSuccessful ? (true, null) : (false, "Failed to save banner. Please try again later.");
@@ -57,7 +57,7 @@ public static class AssetService
         if (!isValid || err != null)
             return (false, err);
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var isSuccessful = await database.SetAvatar(userId, buffer.ToArray());
 
@@ -66,7 +66,7 @@ public static class AssetService
 
     public static async Task<byte[]> GetAvatar(int id)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var avatar = await database.GetAvatar(id);
 
@@ -89,7 +89,7 @@ public static class AssetService
         if (!ImageTools.IsValidImage(buffer))
             return (null, "Invalid image format");
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var screenshotId = await database.SetScreenshot(session.User.Id, buffer.ToArray());
 
         return ($"https://a.{Configuration.Domain}/ss/{screenshotId}.jpg", null);
@@ -97,7 +97,7 @@ public static class AssetService
 
     public static async Task<(byte[]?, string?)> GetScreenshot(int screenshotId)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var screenshot = await database.GetScreenshot(screenshotId);
 
         return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);

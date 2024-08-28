@@ -37,7 +37,7 @@ public class ChatMessagePrivateHandler : IHandler
             }
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
 
         if (sessions.TryGetSession(out var receiver, message.Channel) || receiver == null)

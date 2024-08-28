@@ -15,7 +15,7 @@ public class ChatChannelJoinHandler : IHandler
     {
         var channelName = new BanchoString(packet.Data);
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
 
         if (channelName.Value.StartsWith('#')) chatChannels.JoinChannel(channelName.Value, session);
 

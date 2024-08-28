@@ -18,7 +18,7 @@ public class BeatmapManager
             return null;
         }
 
-        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+        var redis = ServicesProviderHolder.GetRequiredService<RedisRepository>();
 
         var beatmapSet = await redis.Get<BeatmapSet?>([RedisKey.BeatmapSetBySetId(beatmapSetId ?? -1), RedisKey.BeatmapSetByHash(beatmapHash ?? ""), RedisKey.BeatmapSetByBeatmapId(beatmapId ?? -1)]);
 
@@ -84,7 +84,7 @@ public class BeatmapManager
 
     public static async Task<byte[]?> GetBeatmapFile(Session session, int beatmapId)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var beatmapFile = await database.GetBeatmapFile(beatmapId);
 
         if (beatmapFile != null)

@@ -22,13 +22,13 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
 
         if (UserIds.Count == 0 && IsAbstract)
         {
-            ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>().RemoveAbstractChannel(Name);
+            ServicesProviderHolder.GetRequiredService<ChannelRepository>().RemoveAbstractChannel(Name);
         }
     }
 
     public void SendToChannel(string message, string? sender = null)
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         foreach (var session in UserIds.Select(userId => sessions.GetSession(userId: userId)))
         {

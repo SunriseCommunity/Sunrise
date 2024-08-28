@@ -24,7 +24,7 @@ public static class AuthService
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: loginRequest.Username);
 
@@ -43,7 +43,7 @@ public static class AuthService
         if (user.IsRestricted)
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (sessions.IsUserOnline(user.Id))
             return RejectLogin(response, "User is already logged in. Try again later in another minute.");
 
@@ -86,7 +86,7 @@ public static class AuthService
         session.SendPrivilege();
         session.SendExistingChannels();
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
 
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
@@ -101,7 +101,7 @@ public static class AuthService
             session.SendChannelAvailable(channel);
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
@@ -177,7 +177,7 @@ public static class AuthService
             errors["password"].Add("Invalid password. It should contain between 8 and 32 characters.");
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: username);
 

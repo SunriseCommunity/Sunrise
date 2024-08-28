@@ -28,7 +28,7 @@ public class MultiMatchCreateHandler : IHandler
 
         match.GamePassword = match.GamePassword?.Replace(" ", "_");
 
-        var multiplayerMatches = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
         multiplayerMatches.CreateMatch(match);
 

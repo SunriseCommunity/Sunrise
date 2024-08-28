@@ -21,7 +21,7 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "r")] int ranked
     )
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
@@ -41,7 +41,7 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "b")] int beatmapId
     )
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 

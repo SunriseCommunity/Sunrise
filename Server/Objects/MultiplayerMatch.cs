@@ -115,7 +115,7 @@ public class MultiplayerMatch
 
         session.SendMultiMatchJoinSuccess(Match);
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         chatChannels.JoinChannel($"#multiplayer_{Match.MatchId}", session, true);
 
         ApplyNewChanges();
@@ -136,7 +136,7 @@ public class MultiplayerMatch
 
         slot.RemovePlayer();
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         chatChannels.LeaveChannel($"#multiplayer_{Match.MatchId}", session, true);
 
         if (forced)

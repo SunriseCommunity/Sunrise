@@ -12,7 +12,7 @@ public class LobbyLeaveHandler : IHandler
 {
     public Task Handle(BanchoPacket packet, Session session)
     {
-        var matchRepository = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var matchRepository = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
         matchRepository.LeaveLobby(session);
 

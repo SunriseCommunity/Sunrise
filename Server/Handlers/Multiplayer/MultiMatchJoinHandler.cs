@@ -15,7 +15,7 @@ public class MultiMatchJoinHandler : IHandler
     {
         var joinData = new BanchoMultiplayerJoin(packet.Data);
 
-        var multiplayerMatches = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
         multiplayerMatches.JoinMatch(session, joinData);
 

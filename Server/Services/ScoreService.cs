@@ -22,7 +22,7 @@ public static class ScoreService
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
             return "error: no";
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var scores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
 
         var userStats = await database.GetUserStats(score.UserId, score.GameMode);
@@ -58,7 +58,7 @@ public static class ScoreService
 
         if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
-            var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+            var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
             var message = $"[https://osu.{Configuration.Domain}/u/{userStats.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
             channels.GetChannel(session, "#announce")?.SendToChannel(message);
         }
@@ -68,7 +68,7 @@ public static class ScoreService
 
     public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods, LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var scores = await database.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);

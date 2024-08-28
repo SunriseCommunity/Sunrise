@@ -14,7 +14,7 @@ public class BestCommand : IChatCommand
     {
         var userId = session.User.Id;
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         if (args is { Length: >= 1 })
         {

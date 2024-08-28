@@ -21,7 +21,7 @@ public class MultiInviteCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var invitee = sessions.GetSession(username: args[0]);
 

@@ -27,7 +27,7 @@ public class MultiHostCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var targetSession = sessions.GetSession(username: args[0]);
 
         if (targetSession == null)

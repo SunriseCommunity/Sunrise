@@ -17,7 +17,7 @@ public class WebController : ControllerBase
         [FromForm(Name = "p")] string passhash,
         [FromForm(Name = "ss")] IFormFile screenshot)
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -35,7 +35,7 @@ public class WebController : ControllerBase
         [FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash)
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 

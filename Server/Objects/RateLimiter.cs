@@ -47,10 +47,10 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         var silenceTime = TimeSpan.FromMinutes(5);
         session.User.SilencedUntil = DateTime.UtcNow + silenceTime;
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         await database.UpdateUser(session.User); // NOTE: I have no guarantee that we will not overwrite some db changes here. Just pointing out.
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         session.SendSilenceStatus((int)silenceTime.TotalSeconds, "You are sending messages too fast. Slow down!");
 
         sessions.WriteToAllSessions(PacketType.ServerUserSilenced, session.User.Id);

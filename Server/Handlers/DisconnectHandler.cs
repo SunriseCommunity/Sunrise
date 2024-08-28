@@ -18,7 +18,7 @@ public class DisconnectHandler : IHandler
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         sessions.WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
         sessions.RemoveSession(session.User.Id);

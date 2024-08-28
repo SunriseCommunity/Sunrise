@@ -15,7 +15,7 @@ public class MultiSettingsChangeHandler : IHandler
     {
         var changes = new BanchoMultiplayerMatch(packet.Data);
 
-        var matchRepository = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var matchRepository = ServicesProviderHolder.GetRequiredService<MatchRepository>();
         matchRepository.UpdateMatch(session, changes);
 
         return Task.CompletedTask;

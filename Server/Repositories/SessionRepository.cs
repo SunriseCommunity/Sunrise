@@ -111,7 +111,7 @@ public class SessionRepository
 
     private async void AddBotToSession()
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var bot = await database.GetUser(username: Configuration.BotUsername);
 

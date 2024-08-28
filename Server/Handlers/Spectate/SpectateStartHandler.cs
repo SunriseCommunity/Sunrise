@@ -15,13 +15,13 @@ public class SpectateStartHandler : IHandler
     {
         var target = new BanchoInt(packet.Data);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var targetSession = sessions.GetSession(userId: target.Value);
 
         targetSession?.AddSpectator(session);
         session.Spectating = targetSession;
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         chatChannels.JoinChannel($"#spectator_{targetSession?.User.Id}", session, true);
 
         return Task.CompletedTask;

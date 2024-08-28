@@ -66,7 +66,7 @@ public static class CommandRepository
 
         if (handler.IsGlobal && message.Channel != Configuration.BotUsername)
         {
-            var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+            var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
             channel = channels.GetChannel(session, message.Channel);
         }
 

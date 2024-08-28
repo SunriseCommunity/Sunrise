@@ -24,7 +24,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(userId);
 

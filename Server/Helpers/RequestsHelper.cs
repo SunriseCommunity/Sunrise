@@ -105,7 +105,7 @@ public class RequestsHelper
 
     private static async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri)
     {
-        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+        var redis = ServicesProviderHolder.GetRequiredService<RedisRepository>();
         var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)

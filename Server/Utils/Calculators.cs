@@ -85,7 +85,7 @@ public static class Calculators
 
     public static async Task<double> CalculateUserWeightedAccuracy(Score score)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
         userBests.Add(score);
@@ -100,7 +100,7 @@ public static class Calculators
 
     public static async Task<double> CalculateUserWeightedPerformance(Score score)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
         userBests.Add(score);

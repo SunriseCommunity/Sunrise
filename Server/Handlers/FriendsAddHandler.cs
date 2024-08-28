@@ -17,6 +17,6 @@ public class FriendsAddHandler : IHandler
 
         session.User.AddFriend(friendId.Value);
 
-        await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().UpdateUser(session.User);
+        await ServicesProviderHolder.GetRequiredService<SunriseDb>().UpdateUser(session.User);
     }
 }

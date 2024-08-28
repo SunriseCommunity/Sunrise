@@ -20,7 +20,7 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.GetBanner)]
     public async Task<IActionResult> GetBanner(int id)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var file = await database.GetBanner(id);
         return new FileContentResult(file, "image/png");

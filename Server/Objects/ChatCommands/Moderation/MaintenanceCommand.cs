@@ -31,7 +31,7 @@ public class MaintenanceCommand : IChatCommand
                 Configuration.OnMaintenance = true;
                 CommandRepository.SendMessage(session, "Maintenance mode enabled.");
 
-                var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+                var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
                 foreach (var userSession in sessions.GetSessions())
                 {

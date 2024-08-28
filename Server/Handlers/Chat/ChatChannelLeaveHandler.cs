@@ -15,7 +15,7 @@ public class ChatChannelLeaveHandler : IHandler
     {
         var channelName = new BanchoString(packet.Data);
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
 
         if (channelName.Value.StartsWith('#')) chatChannels.LeaveChannel(channelName.Value, session);
 

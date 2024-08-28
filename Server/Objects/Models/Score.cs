@@ -83,7 +83,7 @@ public class Score
 
     public Score SetNewScoreFromString(string scoreString, Beatmap beatmap, string version)
     {
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var split = scoreString.Split(':');
         var session = sessions.GetSession(username: split[1].Trim());
@@ -118,7 +118,7 @@ public class Score
 
     public async Task<string> GetString()
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
         var username = (await database.GetUser(UserId))?.Username ?? "Unknown";

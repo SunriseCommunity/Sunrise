@@ -26,7 +26,7 @@ public class SilenceCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(userId);
 
@@ -85,7 +85,7 @@ public class SilenceCommand : IChatCommand
 
         user.SilencedUntil = DateTime.UtcNow.AddSeconds(time);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var player = sessions.GetSession(userId: user.Id);
 

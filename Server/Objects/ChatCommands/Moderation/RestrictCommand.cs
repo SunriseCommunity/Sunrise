@@ -25,7 +25,7 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(userId);
 
@@ -47,7 +47,7 @@ public class RestrictCommand : IChatCommand
 
         CommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been restricted.");
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var player = sessions.GetSession(userId: user.Id);
 

@@ -14,7 +14,7 @@ public class RecentScoreCommand : IChatCommand
     {
 
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var lastScore = await database.GetUserLastScore(session.User.Id);
 

@@ -41,7 +41,7 @@ public static class BeatmapService
 
         if (searchMostPlayed)
         {
-            var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
             var ids = await database.GetMostPlayedBeatmapsIds(Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, page);
 
             beatmapSets = await BeatmapManager.SearchBeatmapsByIds(session, ids.Take(50).ToList());

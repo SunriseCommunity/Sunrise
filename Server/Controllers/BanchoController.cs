@@ -17,7 +17,7 @@ public class BanchoController(ILogger<BanchoController> logger) : ControllerBase
         if (token == null)
             return await AuthService.Login(Request, Response);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(out var session, token: token) || session == null)
             return AuthService.Relogin();
 
