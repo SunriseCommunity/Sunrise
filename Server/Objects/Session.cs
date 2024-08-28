@@ -1,9 +1,11 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
+using Sunrise.Server.Chat;
 using Sunrise.Server.Data;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Objects.Multiplayer;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;

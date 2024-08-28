@@ -1,4 +1,4 @@
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Database.Models;
 
 namespace Sunrise.Server.Helpers;
 

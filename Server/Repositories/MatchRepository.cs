@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Multiplayer;
 
 namespace Sunrise.Server.Repositories;
 

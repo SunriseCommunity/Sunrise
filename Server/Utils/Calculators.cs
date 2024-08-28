@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
 using Sunrise.Server.Data;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
 using Beatmap = RosuPP.Beatmap;
 using Mods = osu.Shared.Mods;
 

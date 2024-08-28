@@ -1,4 +1,5 @@
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Multiplayer;
 
 namespace Sunrise.Server.Utils;
 

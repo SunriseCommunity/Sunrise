@@ -1,3 +1,4 @@
+using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
 
 namespace Sunrise.Server.Types.Interfaces;

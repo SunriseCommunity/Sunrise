@@ -1,5 +1,5 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
 

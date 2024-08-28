@@ -5,8 +5,8 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 using osu.Shared;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 

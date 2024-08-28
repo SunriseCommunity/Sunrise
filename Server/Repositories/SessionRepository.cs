@@ -3,8 +3,8 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using Sunrise.Server.Data;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
 

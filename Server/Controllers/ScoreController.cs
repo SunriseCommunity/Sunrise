@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
-using Sunrise.Server.Objects.CustomAttributes;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using osu.Shared;
+using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
 
 namespace Sunrise.Server.Repositories;

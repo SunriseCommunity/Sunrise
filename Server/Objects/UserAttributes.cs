@@ -1,7 +1,7 @@
 using HOPEless.Bancho.Objects;
 using osu.Shared;
 using Sunrise.Server.Data;
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 
