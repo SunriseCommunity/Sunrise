@@ -4,16 +4,15 @@ using Sunrise.Server.Data;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
 public class UserAttributes
 {
-    private readonly SunriseDb _database;
 
-    public UserAttributes(User user, Location location, SunriseDb database, bool usesOsuClient = true)
+    public UserAttributes(User user, Location location, LoginRequest loginRequest, bool usesOsuClient = true)
     {
-        _database = database;
 
         Latitude = location.Latitude;
         Longitude = location.Longitude;
@@ -21,6 +20,9 @@ public class UserAttributes
         Country = Enum.TryParse(location.Country, out CountryCodes country) ? (short)country != 0 ? (short)country : null : null;
         User = user;
         UsesOsuClient = usesOsuClient;
+
+        OsuVersion = loginRequest.Version;
+        UserHash = loginRequest.ClientHash;
     }
 
     private User User { get; }
@@ -28,6 +30,8 @@ public class UserAttributes
     private float Longitude { get; }
     private float Latitude { get; }
     private short? Country { get; }
+    public string? OsuVersion { get; }
+    public string? UserHash { get; }
     public DateTime LastLogin { get; set; } = DateTime.UtcNow;
     public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
@@ -39,7 +43,9 @@ public class UserAttributes
 
     public async Task<BanchoUserPresence> GetPlayerPresence()
     {
-        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserPresence
         {
@@ -58,8 +64,10 @@ public class UserAttributes
 
     public async Task<BanchoUserData> GetPlayerData()
     {
-        var userStats = IsBot ? new UserStats() : await _database.GetUserStats(User.Id, GetCurrentGameMode());
-        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        
+        var userStats = IsBot ? new UserStats() : await database.GetUserStats(User.Id, GetCurrentGameMode());
+        var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserData
         {

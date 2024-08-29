@@ -12,15 +12,12 @@ namespace Sunrise.Server.Repositories;
 
 public class SessionRepository
 {
-
     private const int Second = 1000;
     private readonly ChannelRepository _channels;
-    private readonly SunriseDb _database;
     private readonly ConcurrentDictionary<int, Session> _sessions = new();
 
-    public SessionRepository(SunriseDb database, ChannelRepository channels)
+    public SessionRepository(ChannelRepository channels)
     {
-        _database = database;
         _channels = channels;
 
         AddBotToSession();
@@ -48,7 +45,7 @@ public class SessionRepository
 
     public Session CreateSession(User user, Location location, LoginRequest loginRequest)
     {
-        var session = new Session(user, location, _database)
+        var session = new Session(user, location, loginRequest)
         {
             Attributes =
             {
@@ -121,7 +118,17 @@ public class SessionRepository
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");
         }
 
-        var session = new Session(bot, new Location(), _database)
+        var loginRequest = new LoginRequest(
+            Configuration.BotUsername,
+            "Hash",
+            "Version",
+            0,
+            false,
+            "Hash",
+            false
+        );
+
+        var session = new Session(bot, new Location(), loginRequest)
         {
             Attributes =
             {

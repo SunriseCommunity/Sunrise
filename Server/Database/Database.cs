@@ -208,6 +208,14 @@ public sealed class SunriseDb
         return scores;
     }
 
+    public async Task<int> GetLeaderboardRank(Score score)
+    {
+        var exp = new Expr("BeatmapHash", OperatorEnum.Equals, score.BeatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)score.GameMode);
+        var scores = await _orm.SelectManyAsync<Score>(exp);
+
+        return scores.GetSortedScores().FindIndex(x => x.Id == score.Id) + 1;
+    }
+
     public async Task<List<int>> GetMostPlayedBeatmapsIds(GameMode? gameMode, int page = 1, int limit = 100)
     {
         var exp = new Expr("Id", OperatorEnum.IsNotNull, null);

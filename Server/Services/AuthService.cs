@@ -209,15 +209,7 @@ public static class AuthService
             return new OkObjectResult("");
         }
 
-        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
-        var sb = new StringBuilder();
-
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
-
-        var passhash = sb.ToString();
+        var passhash = password.GetPassHash();
         var location = await RegionHelper.GetRegion(ip);
 
         user = new User
@@ -232,5 +224,18 @@ public static class AuthService
         await database.InsertUser(user);
 
         return new OkObjectResult("");
+    }
+
+    public static string GetPassHash(this string password)
+    {
+        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
+        var sb = new StringBuilder();
+
+        foreach (var b in data)
+        {
+            sb.Append(b.ToString("x2"));
+        }
+
+        return sb.ToString();
     }
 }

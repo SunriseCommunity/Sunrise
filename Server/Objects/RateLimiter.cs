@@ -10,7 +10,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
 {
     private readonly Dictionary<int, List<DateTime>> _requestTimestamps = new();
 
-    public bool CanSend(Session session)
+    public bool CanSend(BaseSession session)
     {
         var userId = session.User.Id;
         var now = DateTime.UtcNow;
@@ -30,16 +30,30 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
 
         if (timestamps.Count >= messagesLimit)
         {
-            if (actionOnLimit)
-            {
-                _ = SilenceUser(session);
-            }
+            if (actionOnLimit && session is Session gameSession)
+                _ = SilenceUser(gameSession);
 
             return false;
         }
 
         timestamps.Add(now);
         return true;
+    }
+
+    public int GetRemainingCalls(BaseSession session)
+    {
+        var userId = session.User.Id;
+        var now = DateTime.UtcNow;
+
+        if (!_requestTimestamps.ContainsKey(userId))
+        {
+            _requestTimestamps[userId] = [];
+        }
+
+        var timestamps = _requestTimestamps[userId];
+        timestamps.RemoveAll(t => now - t > timeWindow);
+
+        return messagesLimit - timestamps.Count;
     }
 
     private static async Task SilenceUser(Session session)

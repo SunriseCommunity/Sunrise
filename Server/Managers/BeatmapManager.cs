@@ -11,7 +11,7 @@ namespace Sunrise.Server.Managers;
 
 public class BeatmapManager
 {
-    public static async Task<BeatmapSet?> GetBeatmapSet(Session session, int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
+    public static async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
         {

@@ -58,6 +58,7 @@ public static class Bootstrap
     {
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChannelRepository>();
+        builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
 
         builder.Services.AddSingleton<RedisRepository>();

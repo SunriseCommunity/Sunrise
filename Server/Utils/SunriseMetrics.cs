@@ -7,7 +7,7 @@ namespace Sunrise.Server.Utils;
 
 public static class SunriseMetrics
 {
-    private static readonly Counter PacketHandlingCounter = Prometheus.Metrics.CreateCounter(
+    private static readonly Counter PacketHandlingCounter = Metrics.CreateCounter(
         "bancho_packets_handled_total",
         "Counts the total number of handled packets",
         new CounterConfiguration
@@ -15,7 +15,7 @@ public static class SunriseMetrics
             LabelNames = ["packet_type", "username", "user_id"]
         });
 
-    private static readonly Counter ExternalApiRequestsCounter = Prometheus.Metrics.CreateCounter(
+    private static readonly Counter ExternalApiRequestsCounter = Metrics.CreateCounter(
         "external_api_requests_total",
         "Counts the total number of external API requests",
         new CounterConfiguration
@@ -23,7 +23,7 @@ public static class SunriseMetrics
             LabelNames = ["api_type", "api_server", "username", "user_id"]
         });
 
-    private static readonly Counter RequestReturnedErrorCounter = Prometheus.Metrics.CreateCounter(
+    private static readonly Counter RequestReturnedErrorCounter = Metrics.CreateCounter(
         "request_returned_error_total",
         "Counts the total number of requests that returned an error",
         new CounterConfiguration
@@ -40,7 +40,7 @@ public static class SunriseMetrics
         ).Inc();
     }
 
-    public static void ExternalApiRequestsCounterInc(ApiType type, ApiServer server, Session session)
+    public static void ExternalApiRequestsCounterInc(ApiType type, ApiServer server, BaseSession session)
     {
         ExternalApiRequestsCounter.WithLabels(
             type.ToString(),
