@@ -1,5 +1,5 @@
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Utils;
 
@@ -18,6 +18,4 @@ public static class ScoreService
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         return await database.GetUserBestScores(userId, mode);
     }
-    
-    
 }

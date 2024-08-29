@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;

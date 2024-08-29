@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Attributes;
+using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
@@ -53,8 +54,34 @@ public class WebController : ControllerBase
     }
 
     [HttpGet(RequestType.LastFm)]
-    public IActionResult LastFm()
+    public IActionResult LastFm(
+        [FromQuery(Name = "us")] string username,
+        [FromQuery(Name = "ha")] string passhash,
+        [FromQuery(Name = "b")] string query)
     {
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+            return Ok("error: pass");
+
+        if (query[0] != 'a')
+            return Ok("-3");
+
+        var flags = (LastFmfLags)int.Parse(query[1..]);
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        if ((flags & (LastFmfLags.HqAssembly | LastFmfLags.HqFile)) != 0)
+        {
+            database.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
+            return Ok("-3");
+        }
+
+        if ((flags & LastFmfLags.RegistryEdits) != 0)
+        {
+            database.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
+            return Ok("-3");
+        }
+
         return Ok();
     }
 

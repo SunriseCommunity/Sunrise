@@ -1,4 +1,4 @@
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;

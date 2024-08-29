@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;

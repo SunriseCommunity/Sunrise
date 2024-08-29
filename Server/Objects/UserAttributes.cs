@@ -1,6 +1,6 @@
 using HOPEless.Bancho.Objects;
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
@@ -65,7 +65,7 @@ public class UserAttributes
     public async Task<BanchoUserData> GetPlayerData()
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        
+
         var userStats = IsBot ? new UserStats() : await database.GetUserStats(User.Id, GetCurrentGameMode());
         var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 

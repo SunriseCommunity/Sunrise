@@ -1,6 +1,6 @@
 using HOPEless.Bancho;
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;
 

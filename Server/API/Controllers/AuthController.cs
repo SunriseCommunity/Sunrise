@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.API.Serializable.Request;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
 using AuthService = Sunrise.Server.API.Services.AuthService;

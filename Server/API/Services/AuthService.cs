@@ -2,7 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Utils;
 

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Utils;
 

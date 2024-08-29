@@ -1,5 +1,5 @@
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;

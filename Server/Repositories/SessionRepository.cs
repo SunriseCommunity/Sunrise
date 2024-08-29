@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
