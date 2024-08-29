@@ -11,9 +11,9 @@ namespace Sunrise.Server.Services;
 
 public static class BeatmapService
 {
-    public static async Task<string> SearchBeatmapByIds(Session session, int setId, int beatmapId)
+    public static async Task<string> SearchBeatmap(Session session, int? setId, int? beatmapId, string? beatmapHash)
     {
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapId: beatmapId);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
 
         return beatmapSet != null ? beatmapSet.ToSearchResult(session) : "0";
     }

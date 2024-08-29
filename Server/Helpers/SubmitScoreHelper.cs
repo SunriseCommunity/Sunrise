@@ -1,5 +1,6 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
 
@@ -7,6 +8,20 @@ namespace Sunrise.Server.Helpers;
 
 public static class SubmitScoreHelper
 {
+
+    public static bool IsScoreValid(Session session, string osuVersion, string clientHash, string beatmapHash, string onlineBeatmapHash)
+    {
+        var userOsuVersion = session.Attributes.OsuVersion?.Split(".")[0] ?? "";
+        var userLoginHash = string.Join(":", session.Attributes.UserHash?.Split(":")[..^1] ?? []);
+
+        return new[]
+        {
+            string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
+            string.Equals(clientHash, userLoginHash, StringComparison.Ordinal),
+            string.Equals(beatmapHash, onlineBeatmapHash, StringComparison.Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
+        }.All(c => c);
+    }
+
     public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";

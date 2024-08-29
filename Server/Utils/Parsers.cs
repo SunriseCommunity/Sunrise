@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
@@ -35,13 +36,13 @@ public static class Parsers
         return new LoginRequest(lines[0], lines[1], clientEssentials[0], short.Parse(clientEssentials[1]), clientEssentials[2] == "1", clientEssentials[3], clientEssentials[4] == "1");
     }
 
-    public static string ParseSubmittedScore(string osuVersion, string scoreEncoded, string iv)
+    public static string ParseRijndaelString(string osuVersion, string iv, string encodedString)
     {
         var keyConcatenated = $"{StableKey}{osuVersion}";
         var keyBytes = Encoding.Default.GetBytes(keyConcatenated);
 
         var ivBytes = Convert.FromBase64String(iv);
-        var encodedStrBytes = Convert.FromBase64String(scoreEncoded);
+        var encodedStrBytes = Convert.FromBase64String(encodedString);
 
         var engine = new RijndaelEngine(256);
         var blockCipher = new PaddedBufferedBlockCipher(new CbcBlockCipher(engine), new Pkcs7Padding());
@@ -67,19 +68,6 @@ public static class Parsers
     public static string SecondsToMinutes(int seconds, bool showSeconds = false)
     {
         return seconds < 60 ? $"{seconds} second(s)" : $"{seconds / 60} minute(s) {(showSeconds ? $"{seconds % 60} second(s)" : "")}";
-    }
-
-    public static string ToSearchResult(this BeatmapSet set, Session session)
-    {
-        var beatmaps = set.Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",
-            (current, map) => current + $"[{map.DifficultyRating:F2}⭐] {map.Version.Replace('|', 'I')} {{cs: {map.CS} / od: {map.Accuracy} / ar: {map.AR} / hp: {map.Drain}}}@{map.ModeInt},").TrimEnd(',');
-
-        var hasVideo = set.HasVideo ? "1" : "0";
-
-        var beatmapStatus = GetBeatmapSearchStatus(set.StatusString);
-        var lastUpdatedTime = (beatmapStatus >= BeatmapStatusSearch.Ranked ? set.RankedDate : set.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
-
-        return $"{set.Id}.osz|{set.Artist.Replace('|', 'I')}|{set.Title.Replace('|', 'I')}|{set.Creator.Replace('|', 'I')}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{set.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
     }
 
     public static BeatmapStatusSearch GetBeatmapSearchStatus(string status)
@@ -125,6 +113,24 @@ public static class Parsers
 
     public static Score TryParseToScore(this string scoreString, Beatmap beatmap, string version)
     {
-        return new Score().SetNewScoreFromString(scoreString, beatmap, version);
+        return new Score().SetNewScoreFromString(scoreString, beatmap);
+    }
+
+    public static string ToHash(this string s)
+    {
+        return Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(s))).ToLower();
+    }
+
+    public static string CreateMD5(this string input)
+    {
+        var inputBytes = Encoding.ASCII.GetBytes(input);
+        var hash = MD5.HashData(inputBytes);
+
+        return Convert.ToHexString(hash).ToLower();
+    }
+
+    public static int ToSeconds(this DateTime time)
+    {
+        return time.Hour * 3600 + time.Minute * 60 + time.Second;
     }
 }

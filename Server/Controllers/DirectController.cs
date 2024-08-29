@@ -37,15 +37,16 @@ public class DirectController : ControllerBase
     public async Task<IActionResult> SearchBySetId(
         [FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash,
-        [FromQuery(Name = "s")] int setId,
-        [FromQuery(Name = "b")] int beatmapId
+        [FromQuery(Name = "s")] int? setId,
+        [FromQuery(Name = "b")] int? beatmapId,
+        [FromQuery(Name = "c")] string? beatmapHash
     )
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await BeatmapService.SearchBeatmapByIds(session, setId, beatmapId);
+        var result = await BeatmapService.SearchBeatmap(session, setId, beatmapId,beatmapHash);
 
         return Ok(result);
     }

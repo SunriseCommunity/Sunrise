@@ -16,11 +16,10 @@ public class ScoreController : ControllerBase
     public async Task<IActionResult> Submit(
         [FromForm(Name = "pass")] string passhash,
         [FromForm(Name = "bmk")] string beatmapHash,
-        [FromForm(Name = "c1")] string uniqueIds,
         [FromForm(Name = "st")] int scoreTime,
         [FromForm(Name = "ft")] int scoreFailTime,
         [FromForm(Name = "osuver")] string osuVersion,
-        // [FromForm(Name = "s")] byte[] clientHashB64,
+        [FromForm(Name = "s")] string clientHashEncoded,
         [FromForm(Name = "iv")] string iv,
         [FromForm(Name = "score")] string scoreEncoded,
         [FromForm(Name = "x")] string? isScoreNotComplete,
@@ -31,14 +30,15 @@ public class ScoreController : ControllerBase
         if (isScoreNotComplete == "1")
             return Ok("error: no");
 
-        var scoreSerialized = Parsers.ParseSubmittedScore(osuVersion, scoreEncoded, iv);
+        var scoreSerialized = Parsers.ParseRijndaelString(osuVersion, iv, scoreEncoded);
+        var clientHash = Parsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
         var username = scoreSerialized.Split(':')[1].Trim();
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var result = await ScoreService.SubmitScore(session, scoreSerialized, beatmapHash, scoreTime, scoreFailTime, osuVersion, uniqueIds, replayFile, storyboardHash);
+        var result = await ScoreService.SubmitScore(session, scoreSerialized, beatmapHash, scoreTime, scoreFailTime, osuVersion, clientHash, replayFile, storyboardHash);
         return await Task.FromResult<IActionResult>(Ok(result));
     }
 
