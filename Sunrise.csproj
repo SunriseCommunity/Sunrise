@@ -17,6 +17,7 @@
         <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8"/>
         <PackageReference Include="StackExchange.Redis" Version="2.8.0"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2"/>
         <PackageReference Include="WatsonORM.Sqlite" Version="3.0.8"/>
     </ItemGroup>
 
