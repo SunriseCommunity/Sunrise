@@ -11,7 +11,7 @@ namespace Sunrise.Server.Services;
 
 public static class ScoreService
 {
-    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash, int scoreTime, int scoreFailTime, string osuVersion, string uniqueIds, IFormFile? replay, string? storyboardHash)
+    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash, int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay, string? storyboardHash)
     {
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
@@ -21,6 +21,11 @@ public static class ScoreService
         var score = scoreSerialized.TryParseToScore(beatmap, osuVersion);
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
             return "error: no";
+
+        if (!SubmitScoreHelper.IsScoreValid(session, osuVersion, clientHash, beatmapHash, beatmap.Checksum))
+            return "error: no"; // TODO: Restrict
+
+        // TODO: Check score.ComputeOnlineHash vs score.ScoreHash after I fix the ComputeOnlineHash method
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var scores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
@@ -59,8 +64,7 @@ public static class ScoreService
         if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
-            var message = $"[https://osu.{Configuration.Domain}/u/{userStats.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
-            channels.GetChannel(session, "#announce")?.SendToChannel(message);
+            channels.GetChannel(session, "#announce")?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
         }
 
         return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);

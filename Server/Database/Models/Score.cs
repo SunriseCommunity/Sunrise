@@ -78,10 +78,17 @@ public class Score
 
     // Local properties
     public Beatmap Beatmap { get; set; }
-    public string FileChecksum { get; set; }
+    public string ScoreHash { get; set; } // TODO: Should be moved to Database
+    public string ClientTime { get; set; } // TODO: Should be moved to Database
     public int? LeaderboardRank { get; set; }
 
-    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap, string version)
+    public async Task<int> GetLeaderboardRank()
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        return await database.GetLeaderboardRank(this);
+    }
+
+    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -94,7 +101,7 @@ public class Score
         BeatmapHash = split[0];
         UserId = session.User.Id;
         BeatmapId = beatmap.Id;
-        FileChecksum = split[2]; // TODO: Check file checksum
+        ScoreHash = split[2];
         Count300 = int.Parse(split[3]);
         Count100 = int.Parse(split[4]);
         Count50 = int.Parse(split[5]);
@@ -109,7 +116,8 @@ public class Score
         IsPassed = bool.Parse(split[14]);
         GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
-        OsuVersion = version;
+        ClientTime = split[16];
+        OsuVersion = split[17];
         Accuracy = Calculators.CalculateAccuracy(this);
         PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
         Beatmap = beatmap;
@@ -122,8 +130,34 @@ public class Score
 
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
         var username = (await database.GetUser(UserId))?.Username ?? "Unknown";
-        var hasReplay = ReplayFileId != null ? "1" : "0";
+
+        const string hasReplay = "1"; // We don't store score without replays
 
         return $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
+    }
+
+    private string ComputeOnlineHash(string storyboardHash, string clientHash, string username, string version)
+    {
+        // TODO: Doesn't work as expected. Will be probably fixed in the future if I will not get insane.
+        return string.Format(
+            "chickenmcnuggets{0}o15{1}{2}smustard{3}{4}uu{5}{6}{7}{8}{9}{10}{11}Q{12}{13}{15}{14}{16}{17}",
+            Count300 + Count100,
+            Count50,
+            CountGeki,
+            CountKatu,
+            CountMiss,
+            BeatmapHash,
+            MaxCombo,
+            Perfect,
+            username,
+            TotalScore,
+            Grade,
+            (int)Mods,
+            IsPassed,
+            (int)GameMode,
+            ClientTime,
+            OsuVersion,
+            clientHash,
+            storyboardHash).CreateMD5();
     }
 }
