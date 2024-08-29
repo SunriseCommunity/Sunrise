@@ -3,7 +3,7 @@ using System.Text;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
@@ -40,7 +40,7 @@ public static class AuthService
         if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
             return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
 
-        if (user.IsRestricted)
+        if (user.IsRestricted && await database.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();

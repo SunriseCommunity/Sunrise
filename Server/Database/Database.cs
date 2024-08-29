@@ -10,7 +10,7 @@ using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;
 
-namespace Sunrise.Server.Data;
+namespace Sunrise.Server.Database;
 
 public sealed class SunriseDb
 {
@@ -27,7 +27,7 @@ public sealed class SunriseDb
         Redis = redis;
 
         _orm.InitializeDatabase();
-        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(BeatmapFile), typeof(Score)]);
+        _orm.InitializeTables([typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score)]);
     }
 
     private RedisRepository Redis { get; }
@@ -208,6 +208,68 @@ public sealed class SunriseDb
         return scores;
     }
 
+    public async Task<bool> IsRestricted(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        var restriction = await _orm.SelectFirstAsync<Restriction?>(exp);
+        if (restriction == null)
+            return false;
+
+        if (restriction.ExpiryDate >= DateTime.UtcNow)
+            return true;
+
+        await UnrestrictPlayer(userId, restriction);
+
+        return false;
+
+    }
+
+    public async Task UnrestrictPlayer(int userId, Restriction? restriction = null)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+
+        restriction ??= await _orm.SelectFirstAsync<Restriction?>(exp);
+
+        if (restriction == null)
+            return;
+
+        await _orm.DeleteAsync(restriction);
+
+        var user = await GetUser(userId);
+        if (user == null)
+            return;
+
+        user.IsRestricted = false;
+        await UpdateUser(user);
+    }
+
+    public async Task RestrictPlayer(int userId, int executorId, string reason, TimeSpan? expiresAfter = null)
+    {
+        var restriction = new Restriction
+        {
+            UserId = userId,
+            ExecutorId = executorId,
+            Reason = reason,
+            ExpiryDate = DateTime.UtcNow.Add(expiresAfter ?? TimeSpan.FromDays(365))
+        };
+
+
+        var user = await GetUser(userId);
+        if (user == null)
+            return;
+
+        if (user.Privilege >= PlayerRank.SuperMod)
+            return;
+
+        user.IsRestricted = true;
+        await UpdateUser(user);
+        await _orm.InsertAsync(restriction);
+
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var session = sessions.GetSession(userId: userId);
+        session?.SendRestriction(reason);
+    }
+
     public async Task<int> GetLeaderboardRank(Score score)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, score.BeatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)score.GameMode);
@@ -382,6 +444,8 @@ public sealed class SunriseDb
         await Redis.Set(RedisKey.BannerRecord(userId), record);
         return true;
     }
+
+
 
     public async Task<byte[]> GetBanner(int userId, bool fallToDefault = true)
     {

@@ -1,6 +1,6 @@
 using osu.Shared;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
@@ -41,9 +41,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        user.IsRestricted = false;
-
-        await database.UpdateUser(user);
+        await database.UnrestrictPlayer(user.Id);
 
         CommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been unrestricted.");
     }

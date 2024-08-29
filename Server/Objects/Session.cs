@@ -63,9 +63,9 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
-    public void SendRestriction()
+    public void SendRestriction(string reason = "No reason provided.")
     {
-        const string message = "You have been restricted. Please contact a staff member for more information.";
+        var message = $"You have been restricted. Reason: {reason}. Please contact a staff member for more information.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
         _helper.WritePacket(PacketType.ServerNotification, message);

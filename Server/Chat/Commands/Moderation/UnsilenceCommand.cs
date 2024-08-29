@@ -1,6 +1,6 @@
 using osu.Shared;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
