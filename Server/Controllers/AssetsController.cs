@@ -11,6 +11,7 @@ namespace Sunrise.Server.Controllers;
 public class AssetsController : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
+    [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id)
     {
         var result = await AssetService.GetAvatar(id);

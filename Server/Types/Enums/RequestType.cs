@@ -5,11 +5,12 @@ namespace Sunrise.Server.Types.Enums;
 public static class RequestType
 {
     // Assets controller
-    public const string GetAvatar = "{id:int}";
+    public const string GetBanchoAvatar = "{id:int}";
+    public const string GetAvatar = "avatar/{id:int}";
     public const string GetBanner = "banner/{id:int}";
     public const string GetScreenshot = "ss/{id:int}.jpg";
-    public const string BannerUpload = "banner/upload/{id:int}";
-    public const string AvatarUpload = "avatar/upload/{id:int}";
+    public const string BannerUpload = "upload/banner";
+    public const string AvatarUpload = "upload/banner";
     public const string MenuContent = "menu-content.json";
     public const string EventBanner = "events/EventBanner.jpg";
 
