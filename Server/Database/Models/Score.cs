@@ -87,7 +87,7 @@ public class Score
         return await database.GetLeaderboardRank(this);
     }
 
-    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap)
+    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap, string version)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -115,8 +115,8 @@ public class Score
         IsPassed = bool.Parse(split[14]);
         GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
+        OsuVersion = version;
         ClientTime = split[16];
-        OsuVersion = split[17];
         Accuracy = Calculators.CalculateAccuracy(this);
         PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
         Beatmap = beatmap;

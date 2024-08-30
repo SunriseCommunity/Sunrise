@@ -20,8 +20,7 @@ public class ScoreController : ControllerBase
         var score = await database.GetScore(id);
         if (score == null)
             return NotFound("Score not found");
-
-        // TODO: Proper to json covertion
+        
         return Ok(new ScoreResponse(score));
     }
 

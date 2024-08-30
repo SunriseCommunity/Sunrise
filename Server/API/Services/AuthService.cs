@@ -15,12 +15,10 @@ public static class AuthService
 
     public static (string, string, int) GenerateTokens(int userId)
     {
-        var tokenExpires = DateTime.UtcNow.AddHours(1);
-
-        var token = GenerateJwtToken(userId, tokenExpires);
+        var token = GenerateJwtToken(userId, TokenExpires);
         var refreshToken = GenerateJwtToken(userId, DateTime.UtcNow.AddMonths(1));
 
-        return (token, refreshToken, tokenExpires.ToSeconds());
+        return (token, refreshToken, TokenExpires.ToSeconds());
     }
 
     public static async Task<User?> GetUserFromToken(string token)

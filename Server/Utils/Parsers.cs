@@ -113,7 +113,7 @@ public static class Parsers
 
     public static Score TryParseToScore(this string scoreString, Beatmap beatmap, string version)
     {
-        return new Score().SetNewScoreFromString(scoreString, beatmap);
+        return new Score().SetNewScoreFromString(scoreString, beatmap, version);
     }
 
     public static string ToHash(this string s)
