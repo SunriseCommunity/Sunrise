@@ -2,8 +2,9 @@ using System.Reflection;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
+using Sunrise.Server.Attributes;
+using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -66,7 +67,7 @@ public static class CommandRepository
 
         if (handler.IsGlobal && message.Channel != Configuration.BotUsername)
         {
-            var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+            var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
             channel = channels.GetChannel(session, message.Channel);
         }
 

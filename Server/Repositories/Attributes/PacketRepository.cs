@@ -1,7 +1,7 @@
 using System.Reflection;
 using HOPEless.Bancho;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 

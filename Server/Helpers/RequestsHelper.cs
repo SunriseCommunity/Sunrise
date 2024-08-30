@@ -22,7 +22,7 @@ public class RequestsHelper
         Client.DefaultRequestHeaders.Add("User-Agent", "Sunrise");
     }
 
-    public static async Task<T?> SendRequest<T>(Session session, ApiType type, object?[] args)
+    public static async Task<T?> SendRequest<T>(BaseSession session, ApiType type, object?[] args)
     {
         if (session.IsRateLimited())
         {
@@ -105,7 +105,7 @@ public class RequestsHelper
 
     private static async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri)
     {
-        var redis = ServicesProviderHolder.ServiceProvider.GetRequiredService<RedisRepository>();
+        var redis = ServicesProviderHolder.GetRequiredService<RedisRepository>();
         var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)
@@ -114,58 +114,72 @@ public class RequestsHelper
             return (default, true);
         }
 
-        var response = await Client.GetAsync(requestUri);
-        var rateLimit = string.Empty;
-        var rateLimitReset = "60";
-        IEnumerable<string>? rateLimitHeader;
-
-        switch (server)
+        try
         {
-            case ApiServer.Ppy:
-            case ApiServer.CatboyBest:
-                rateLimit = response.Headers.TryGetValues("X-RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
-                break;
-            case ApiServer.OsuDirect:
-                rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
-                rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
-                break;
-            case ApiServer.OldPpy:
-            case ApiServer.Nerinyan:
-                break;
-            case ApiServer.OsuOkayu:
-            default:
-                Logger.LogWarning($"Server {server} rate limit headers wasn't set. Ignoring rate limit.");
-                break;
+            var response = await Client.GetAsync(requestUri);
+            var rateLimit = string.Empty;
+            var rateLimitReset = "60";
+            IEnumerable<string>? rateLimitHeader;
+
+            switch (server)
+            {
+                case ApiServer.Ppy:
+                case ApiServer.CatboyBest:
+                    rateLimit = response.Headers.TryGetValues("X-RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                    break;
+                case ApiServer.OsuDirect:
+                    rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                    rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                    break;
+                case ApiServer.OldPpy:
+                case ApiServer.Nerinyan:
+                    break;
+                case ApiServer.OsuOkayu:
+                default:
+                    Logger.LogWarning($"Server {server} rate limit headers wasn't set. Ignoring rate limit.");
+                    break;
+            }
+
+            if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
+            {
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt) ? rateLimitResetInt : 60));
+            }
+
+            if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
+            {
+                Logger.LogWarning($"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
+
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
+
+                return (default, true);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode < HttpStatusCode.BadGateway)
+                    return (default, false);
+
+                Logger.LogWarning($"{server} returned status code {response.StatusCode}. Ignoring server for 10 minutes.");
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
+
+                return (default, false);
+            }
+
+            switch (typeof(T))
+            {
+                case not null when typeof(T) == typeof(byte[]):
+                    return ((T)(object)await response.Content.ReadAsByteArrayAsync(), false);
+                case not null when typeof(T) == typeof(string):
+                    return ((T)(object)await response.Content.ReadAsStringAsync(), false);
+                default:
+                    var content = await response.Content.ReadAsStringAsync();
+                    return (JsonSerializer.Deserialize<T>(content), false);
+            }
         }
-
-        if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
+        catch (Exception e)
         {
-            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt) ? rateLimitResetInt : 60));
-        }
-
-        if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
-        {
-            Logger.LogWarning($"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
-
-            await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
-
-            return (default, true);
-        }
-
-        if (!response.IsSuccessStatusCode)
-        {
+            Logger.LogError(e, $"Failed to process request to {server} with uri {requestUri}");
             return (default, false);
-        }
-
-        switch (typeof(T))
-        {
-            case not null when typeof(T) == typeof(byte[]):
-                return ((T)(object)await response.Content.ReadAsByteArrayAsync(), false);
-            case not null when typeof(T) == typeof(string):
-                return ((T)(object)await response.Content.ReadAsStringAsync(), false);
-            default:
-                var content = await response.Content.ReadAsStringAsync();
-                return (JsonSerializer.Deserialize<T>(content), false);
         }
     }
 }

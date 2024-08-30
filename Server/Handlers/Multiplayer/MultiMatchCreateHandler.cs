@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -28,7 +28,7 @@ public class MultiMatchCreateHandler : IHandler
 
         match.GamePassword = match.GamePassword?.Replace(" ", "_");
 
-        var multiplayerMatches = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
         multiplayerMatches.CreateMatch(match);
 

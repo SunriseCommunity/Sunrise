@@ -1,32 +1,32 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Chat;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Objects.Multiplayer;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
-public class Session
+public class Session : BaseSession
 {
     private readonly PacketHelper _helper;
-    private readonly RateLimiter _rateLimiter = new(Configuration.UserApiCallsInMinute, TimeSpan.FromMinutes(1), false, false);
     public readonly UserAttributes Attributes;
 
     public readonly List<Session> Spectators = [];
 
     public readonly string Token;
 
-    public Session(User user, Location location, SunriseDb database)
+    public Session(User user, Location location, LoginRequest loginRequest) : base(user)
     {
         _helper = new PacketHelper();
 
         User = user;
         Token = Guid.NewGuid().ToString();
-        Attributes = new UserAttributes(User, location, database);
+        Attributes = new UserAttributes(User, location, loginRequest);
     }
 
     // Note: Not the best place, but I'm out of ideas.
@@ -63,9 +63,9 @@ public class Session
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
-    public void SendRestriction()
+    public void SendRestriction(string reason = "No reason provided.")
     {
-        const string message = "You have been restricted. Please contact a staff member for more information.";
+        var message = $"You have been restricted. Reason: {reason}. Please contact a staff member for more information.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
         _helper.WritePacket(PacketType.ServerNotification, message);
@@ -214,10 +214,5 @@ public class Session
         _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.User.Id);
 
         Spectators.Remove(session);
-    }
-
-    public bool IsRateLimited()
-    {
-        return !_rateLimiter.CanSend(this);
     }
 }

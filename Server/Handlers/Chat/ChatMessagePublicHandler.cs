@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
@@ -27,7 +27,7 @@ public class ChatMessagePublicHandler : IHandler
             return;
         }
 
-        var channels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         var channel = channels.GetChannel(session, message.Channel);
 
         channel?.SendToChannel(message.Message, session.User.Username);

@@ -52,4 +52,19 @@ public static class ImageTools
     {
         return ValidImageBytes.Any(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length)));
     }
+
+    public static (bool, string?) IsHasValidImageAttributes(MemoryStream buffer)
+    {
+        if (buffer.Length > 5 * 1024 * 1024)
+        {
+            return (false, "UserFile is too large. Max size is 5MB");
+        }
+
+        if (!IsValidImage(buffer))
+        {
+            return (false, "Invalid image format");
+        }
+
+        return (true, null);
+    }
 }

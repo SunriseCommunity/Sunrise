@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -15,13 +15,13 @@ public class SpectateStartHandler : IHandler
     {
         var target = new BanchoInt(packet.Data);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var targetSession = sessions.GetSession(target.Value);
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var targetSession = sessions.GetSession(userId: target.Value);
 
         targetSession?.AddSpectator(session);
         session.Spectating = targetSession;
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         chatChannels.JoinChannel($"#spectator_{targetSession?.User.Id}", session, true);
 
         return Task.CompletedTask;

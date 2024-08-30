@@ -1,25 +1,28 @@
 using HOPEless.Bancho.Objects;
 using osu.Shared;
-using Sunrise.Server.Data;
-using Sunrise.Server.Objects.Models;
+using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
 public class UserAttributes
 {
-    private readonly SunriseDb _database;
 
-    public UserAttributes(User user, Location location, SunriseDb database)
+    public UserAttributes(User user, Location location, LoginRequest loginRequest, bool usesOsuClient = true)
     {
-        _database = database;
 
         Latitude = location.Latitude;
         Longitude = location.Longitude;
         Timezone = location.TimeOffset;
         Country = Enum.TryParse(location.Country, out CountryCodes country) ? (short)country != 0 ? (short)country : null : null;
         User = user;
+        UsesOsuClient = usesOsuClient;
+
+        OsuVersion = loginRequest.Version;
+        UserHash = loginRequest.ClientHash;
     }
 
     private User User { get; }
@@ -27,17 +30,22 @@ public class UserAttributes
     private float Longitude { get; }
     private float Latitude { get; }
     private short? Country { get; }
+    public string? OsuVersion { get; }
+    public string? UserHash { get; }
     public DateTime LastLogin { get; set; } = DateTime.UtcNow;
-    public DateTime LastPingRequest { get; set; } = DateTime.UtcNow;
-    public bool IgnoreNonFriendPm { get; set; } = false;
-    public string? AwayMessage { get; set; } = null;
-    public bool ShowUserLocation { get; set; } = true;
-    public bool IsBot { get; set; } = false;
+    public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
+    public bool ShowUserLocation { get; set; } = true;
+    public bool IgnoreNonFriendPm { get; set; }
+    public string? AwayMessage { get; set; }
+    public bool IsBot { get; set; }
+    public bool UsesOsuClient { get; set; }
 
     public async Task<BanchoUserPresence> GetPlayerPresence()
     {
-        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserPresence
         {
@@ -50,14 +58,16 @@ public class UserAttributes
             Permissions = User.Privilege,
             Rank = (int)userRank,
             PlayMode = GetCurrentGameMode(),
-            UsesOsuClient = true
+            UsesOsuClient = UsesOsuClient
         };
     }
 
     public async Task<BanchoUserData> GetPlayerData()
     {
-        var userStats = IsBot ? new UserStats() : await _database.GetUserStats(User.Id, GetCurrentGameMode());
-        var userRank = IsBot ? 0 : await _database.GetUserRank(User.Id, GetCurrentGameMode());
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        var userStats = IsBot ? new UserStats() : await database.GetUserStats(User.Id, GetCurrentGameMode());
+        var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 
         return new BanchoUserData
         {
@@ -71,6 +81,14 @@ public class UserAttributes
             TotalScore = userStats.TotalScore
         };
     }
+
+
+    public void UpdateLastPing()
+    {
+        LastPingRequest = DateTime.UtcNow;
+    }
+
+
 
     public GameMode GetCurrentGameMode()
     {

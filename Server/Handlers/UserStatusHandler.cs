@@ -2,8 +2,8 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using osu.Shared;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -24,7 +24,7 @@ public class UserStatusHandler : IHandler
 
         session.Attributes.Status = status;
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
     }

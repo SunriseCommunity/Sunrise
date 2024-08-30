@@ -1,48 +1,55 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Data;
-using Sunrise.Server.Objects.CustomAttributes;
+using Sunrise.Server.Attributes;
+using Sunrise.Server.Database;
 using Sunrise.Server.Services;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
-[ApiController]
 [Subdomain("a", "assets")]
 public class AssetsController : ControllerBase
 {
-    [HttpGet]
-    [Route("{id:int}")]
+    [HttpGet(RequestType.GetAvatar)]
+    [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id)
     {
-        var result = await FileService.GetAvatarBytes(id);
+        var result = await AssetService.GetAvatar(id);
         return new FileContentResult(result, "image/png");
     }
 
-    [HttpGet]
-    [Route("menu-content.json")]
-    public IActionResult GetMenuContent()
+    [HttpGet(RequestType.GetBanner)]
+    public async Task<IActionResult> GetBanner(int id)
     {
-        var json = BanchoService.GetCurrentEventJson();
-        return Ok(json);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        var file = await database.GetBanner(id);
+        return new FileContentResult(file, "image/png");
     }
 
-    [HttpGet]
-    [Route("events/EventBanner.jpg")]
-    public IActionResult GetEventBanner()
+    [HttpGet(RequestType.MenuContent)]
+    public IActionResult GetMenuContent()
     {
-        var data = System.IO.File.ReadAllBytes("./Data/Files/Assets/EventBanner.png");
+        return Ok(BanchoService.GetCurrentEventJson());
+    }
+
+    [HttpGet(RequestType.EventBanner)]
+    public async Task<IActionResult> GetEventBanner()
+    {
+        var data = await AssetService.GetEventBanner();
+        if (data == null)
+            return NotFound();
+
         return new FileContentResult(data, "image/png");
     }
 
     [HttpGet]
-    [Route("/ss/{id:int}.jpg")]
+    [Route(RequestType.GetScreenshot)]
     public async Task<IActionResult> GetScreenshot(int id)
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
-        var screenshot = await database.GetScreenshot(id);
-
-        if (screenshot == null)
+        if (await AssetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
         {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, error);
             return NotFound();
         }
 

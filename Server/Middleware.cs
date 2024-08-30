@@ -26,6 +26,13 @@ public sealed class Middleware(
             return;
         }
 
+        // Don't limit requests from the Assets subdomain. It can't be helped.
+        if (context.Request.Host.Host.StartsWith("a."))
+        {
+            await next(context);
+            return;
+        }
+
         var limiter = GetRateLimiter(ip);
         using var lease = await limiter.AcquireAsync(1, context.RequestAborted);
 

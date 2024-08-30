@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -15,7 +15,7 @@ public class ChatChannelLeaveHandler : IHandler
     {
         var channelName = new BanchoString(packet.Data);
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
 
         if (channelName.Value.StartsWith('#')) chatChannels.LeaveChannel(channelName.Value, session);
 

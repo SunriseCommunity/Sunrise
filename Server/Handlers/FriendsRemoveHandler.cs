@@ -1,8 +1,8 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
-using Sunrise.Server.Data;
+using Sunrise.Server.Attributes;
+using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -17,6 +17,6 @@ public class FriendsRemoveHandler : IHandler
 
         session.User.RemoveFriend(friendId.Value);
 
-        await ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>().UpdateUser(session.User);
+        await ServicesProviderHolder.GetRequiredService<SunriseDb>().UpdateUser(session.User);
     }
 }

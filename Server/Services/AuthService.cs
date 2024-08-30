@@ -3,10 +3,10 @@ using System.Text;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -24,41 +24,28 @@ public static class AuthService
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: loginRequest.Username);
 
         if (!CharactersFilter.IsValidString(loginRequest.Username, true))
-        {
             return RejectLogin(response, "Invalid characters in username or password.");
-        }
 
         if (user == null)
-        {
             return RejectLogin(response, "User with this username does not exist.");
-        }
 
         if (user.Passhash != loginRequest.PassHash)
-        {
             return RejectLogin(response, "Invalid credentials.");
-        }
 
         if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
-        {
             return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
-        }
 
-        if (user.IsRestricted)
-        {
+        if (user.IsRestricted && await database.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
-        }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (sessions.IsUserOnline(user.Id))
-        {
             return RejectLogin(response, "User is already logged in. Try again later in another minute.");
-        }
 
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
@@ -77,16 +64,14 @@ public static class AuthService
         var writer = new PacketHelper();
 
         if (reason != null)
-        {
             writer.WritePacket(PacketType.ServerNotification, reason);
-        }
 
         writer.WritePacket(PacketType.ServerLoginReply, code);
 
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    public static IActionResult Relogin(HttpResponse response, string? reason = null)
+    public static IActionResult Relogin()
     {
         var writer = new PacketHelper();
         writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin
@@ -101,7 +86,7 @@ public static class AuthService
         session.SendPrivilege();
         session.SendExistingChannels();
 
-        var chatChannels = ServicesProviderHolder.ServiceProvider.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
 
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
@@ -116,7 +101,7 @@ public static class AuthService
             session.SendChannelAvailable(channel);
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
@@ -192,7 +177,7 @@ public static class AuthService
             errors["password"].Add("Invalid password. It should contain between 8 and 32 characters.");
         }
 
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: username);
 
@@ -224,15 +209,7 @@ public static class AuthService
             return new OkObjectResult("");
         }
 
-        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
-        var sb = new StringBuilder();
-
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
-
-        var passhash = sb.ToString();
+        var passhash = password.GetPassHash();
         var location = await RegionHelper.GetRegion(ip);
 
         user = new User
@@ -247,5 +224,18 @@ public static class AuthService
         await database.InsertUser(user);
 
         return new OkObjectResult("");
+    }
+
+    public static string GetPassHash(this string password)
+    {
+        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
+        var sb = new StringBuilder();
+
+        foreach (var b in data)
+        {
+            sb.Append(b.ToString("x2"));
+        }
+
+        return sb.ToString();
     }
 }

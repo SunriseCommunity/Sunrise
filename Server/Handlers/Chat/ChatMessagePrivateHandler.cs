@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
@@ -37,11 +37,10 @@ public class ChatMessagePrivateHandler : IHandler
             }
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        var receiver = sessions.GetSession(username: message.Channel);
 
-        if (receiver is null)
+        if (sessions.TryGetSession(out var receiver, message.Channel) || receiver == null)
         {
             return;
         }

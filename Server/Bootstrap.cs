@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Utils;
@@ -58,6 +58,7 @@ public static class Bootstrap
     {
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChannelRepository>();
+        builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
 
         builder.Services.AddSingleton<RedisRepository>();

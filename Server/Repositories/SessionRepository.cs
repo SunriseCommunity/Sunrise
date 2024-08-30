@@ -2,9 +2,9 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
-using Sunrise.Server.Data;
+using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
 
@@ -12,24 +12,22 @@ namespace Sunrise.Server.Repositories;
 
 public class SessionRepository
 {
+    private const int Second = 1000;
     private readonly ChannelRepository _channels;
-    private readonly SunriseDb _database;
     private readonly ConcurrentDictionary<int, Session> _sessions = new();
 
-    public SessionRepository(SunriseDb database, ChannelRepository channels)
+    public SessionRepository(ChannelRepository channels)
     {
-        _database = database;
         _channels = channels;
 
         AddBotToSession();
 
-        const int second = 1000;
         Task.Run(async () =>
         {
             while (true)
             {
                 ClearInactiveSessions();
-                await Task.Delay(60 * second);
+                await Task.Delay(60 * Second);
             }
         });
     }
@@ -47,7 +45,7 @@ public class SessionRepository
 
     public Session CreateSession(User user, Location location, LoginRequest loginRequest)
     {
-        var session = new Session(user, location, _database)
+        var session = new Session(user, location, loginRequest)
         {
             Attributes =
             {
@@ -70,19 +68,27 @@ public class SessionRepository
         _sessions.TryRemove(userId, out _);
     }
 
-    public Session? GetSession(string? token = null, string? username = null)
+
+    public bool TryGetSession(string username, string passhash, out Session? session)
     {
-        return _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username);
+        session = _sessions.Values.FirstOrDefault(x => x.User.Username == username && x.User.Passhash == passhash);
+        return session != null;
+    }
+
+    public bool TryGetSession(out Session? session, string? username = null, string? token = null, int? userId = null)
+    {
+        session = _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username || x.User.Id == userId);
+        return session != null;
+    }
+
+    public Session? GetSession(string? username = null, string? token = null, int? userId = null)
+    {
+        return TryGetSession(out var session, username, token, userId) ? session : null;
     }
 
     public bool IsUserOnline(int userId)
     {
         return _sessions.Values.Any(x => x.User.Id == userId);
-    }
-
-    public Session? GetSession(int userId)
-    {
-        return _sessions.Values.FirstOrDefault(x => x.User.Id == userId);
     }
 
     public async Task SendCurrentPlayers(Session session)
@@ -103,7 +109,7 @@ public class SessionRepository
 
     private async void AddBotToSession()
     {
-        var database = ServicesProviderHolder.ServiceProvider.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var bot = await database.GetUser(username: Configuration.BotUsername);
 
@@ -112,12 +118,24 @@ public class SessionRepository
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");
         }
 
-        var session = new Session(bot, new Location(), _database)
+        var loginRequest = new LoginRequest(
+            Configuration.BotUsername,
+            "Hash",
+            "Version",
+            0,
+            false,
+            "Hash",
+            false
+        );
+
+        var session = new Session(bot, new Location(), loginRequest)
         {
             Attributes =
             {
                 IsBot = true,
                 ShowUserLocation = false,
+                UsesOsuClient = false,
+
                 Status = new BanchoUserStatus
                 {
                     Action = BanchoAction.Unknown
@@ -132,10 +150,7 @@ public class SessionRepository
     {
         foreach (var session in _sessions.Values)
         {
-            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1))
-                continue;
-
-            if (session.Attributes.IsBot)
+            if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1) || session.Attributes.IsBot)
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);

@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -22,8 +22,8 @@ public class MultiInviteHandler : IHandler
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
-        var inviteeSession = sessions.GetSession(invitee.Value);
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var inviteeSession = sessions.GetSession(userId: invitee.Value);
 
         if (inviteeSession == null)
             return Task.CompletedTask;

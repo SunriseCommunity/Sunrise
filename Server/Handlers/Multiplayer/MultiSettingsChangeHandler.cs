@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -15,7 +15,7 @@ public class MultiSettingsChangeHandler : IHandler
     {
         var changes = new BanchoMultiplayerMatch(packet.Data);
 
-        var matchRepository = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var matchRepository = ServicesProviderHolder.GetRequiredService<MatchRepository>();
         matchRepository.UpdateMatch(session, changes);
 
         return Task.CompletedTask;

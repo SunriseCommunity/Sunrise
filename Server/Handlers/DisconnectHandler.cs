@@ -1,6 +1,6 @@
 using HOPEless.Bancho;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -18,7 +18,7 @@ public class DisconnectHandler : IHandler
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         sessions.WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
         sessions.RemoveSession(session.User.Id);

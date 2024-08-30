@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using osu.Shared.Serialization;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -27,9 +27,9 @@ public class UserStatsRequestHandler : IHandler
 
         ids.Remove(session.User.Id);
 
-        var sessions = ServicesProviderHolder.ServiceProvider.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        foreach (var player in ids.Select(id => sessions.GetSession(id)))
+        foreach (var player in ids.Select(id => sessions.GetSession(userId: id)))
         {
             if (player != null)
             {

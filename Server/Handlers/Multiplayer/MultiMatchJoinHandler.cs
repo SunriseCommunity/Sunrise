@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.CustomAttributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
@@ -15,7 +15,7 @@ public class MultiMatchJoinHandler : IHandler
     {
         var joinData = new BanchoMultiplayerJoin(packet.Data);
 
-        var multiplayerMatches = ServicesProviderHolder.ServiceProvider.GetRequiredService<MatchRepository>();
+        var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
         multiplayerMatches.JoinMatch(session, joinData);
 
