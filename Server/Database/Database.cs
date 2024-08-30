@@ -129,6 +129,49 @@ public sealed class SunriseDb
         return stats;
     }
 
+    public async Task<List<UserStats?>?> GetAllUserStats(GameMode mode, bool useCache = true)
+    {
+        var cachedStats = await Redis.Get<List<UserStats?>>(RedisKey.AllUserStats(mode));
+
+        if (cachedStats != null && useCache)
+        {
+            return cachedStats;
+        }
+
+        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode);
+        var stats = await _orm.SelectManyAsync<UserStats?>(exp);
+
+        if (stats == null)
+        {
+            return null;
+        }
+
+        await Redis.Set(RedisKey.AllUserStats(mode), stats);
+
+        return stats;
+    }
+
+    public async Task<List<User?>?> GetAllUsers(bool useCache = true)
+    {
+        var cachedStats = await Redis.Get<List<User?>>(RedisKey.AllUsers());
+
+        if (cachedStats != null && useCache)
+        {
+            return cachedStats;
+        }
+
+        var stats = await _orm.SelectManyAsync<User?>(new Expr("Id", OperatorEnum.IsNotNull, null));
+
+        if (stats == null)
+        {
+            return null;
+        }
+
+        await Redis.Set(RedisKey.AllUsers(), stats);
+
+        return stats;
+    }
+
     public async Task UpdateUserStats(UserStats stats)
     {
         await _orm.UpdateAsync(stats);
