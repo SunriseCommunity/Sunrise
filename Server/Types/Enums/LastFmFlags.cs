@@ -1,7 +1,7 @@
 namespace Sunrise.Server.Types.Enums;
 
 [Flags]
-public enum LastFmfLags
+public enum LastFmFlags
 {
     RunWithLdFlag = 1 << 14,
     ConsoleOpen = 1 << 15,

@@ -66,19 +66,19 @@ public class WebController : ControllerBase
         if (query[0] != 'a')
             return Ok("-3");
 
-        var flags = (LastFmfLags)int.Parse(query[1..]);
+        var flags = (LastFmFlags)int.Parse(query[1..]);
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        if ((flags & (LastFmfLags.HqAssembly | LastFmfLags.HqFile)) != 0)
+        if ((flags & (LastFmFlags.HqAssembly | LastFmFlags.HqFile)) != 0)
         {
-            database.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
+            _ = database.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
             return Ok("-3");
         }
 
-        if ((flags & LastFmfLags.RegistryEdits) != 0)
+        if ((flags & LastFmFlags.RegistryEdits) != 0)
         {
-            database.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
+            _ = database.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
             return Ok("-3");
         }
 
