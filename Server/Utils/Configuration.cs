@@ -6,12 +6,14 @@ namespace Sunrise.Server.Utils;
 
 public static class Configuration
 {
+    public static bool IsDevelopment => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+
     public static bool IgnoreBeatmapRanking => true;
-    public static string RedisConnection => "localhost:6379";
+    public static string RedisConnection => IsDevelopment ? "localhost:6379" : "redis";
     public static string WelcomeMessage => "Welcome to Sunrise!";
     public static string BotUsername => "Sunshine Bot";
     public static string BotPrefix => "!";
-    public static string Domain => "sunrise.local";
+    public static string Domain => IsDevelopment ? "sunrise.local" : "osu-sunrise.top";
     public static bool OnMaintenance { get; set; }
     public static int UserApiCallsInMinute => 60;
     public static int ServerRateLimit => 100;

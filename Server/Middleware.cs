@@ -20,13 +20,13 @@ public sealed class Middleware(
             return;
         }
 
-        if (context.Request.Path.StartsWithSegments("/metrics") && !Equals(ip, IPAddress.Loopback))
+        if (context.Request.Path.StartsWithSegments("/metrics") && !ip.IsFromLocalNetwork() && !ip.IsFromDocker())
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;
         }
 
-        // Don't limit requests from the Assets subdomain. It can't be helped.
+        // TODO: Add caching for assets
         if (context.Request.Host.Host.StartsWith("a."))
         {
             await next(context);
