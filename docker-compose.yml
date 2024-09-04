@@ -1,37 +1,47 @@
 name: osu-sunrise
 services:
+  sunrise:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "443:443"
+    volumes:
+      - ./Data:/app/Data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=https://+:443;http://+:5147
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificate.pfx
+    depends_on:
+      - redis
+      - prometheus
+
   redis:
     image: redis:latest
     container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - monitoring
-  
+    restart: always
+    volumes:
+      - redis:/data
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - monitoring
-
+    restart: always
+  
   grafana:
     image: grafana/grafana
     container_name: grafana
     ports:
-      - "3030:3000"
+      - "3060:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./grafana:/var/lib/grafana
     depends_on:
       - prometheus
-    networks:
-      - monitoring
 
-networks:
-  monitoring:
-    driver: bridge
+volumes:
+  redis:

@@ -29,7 +29,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Prometheus metrics with Grafana dashboard
 - [x] Rate limiter for both internal and external requests
 - [x] Redis caching for faster response times
-- [ ] Docker support
+- [x] Docker support
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
@@ -38,8 +38,12 @@ website. The server is currently in development and is not yet ready for public 
 
 1. Clone the repository
 2. Open the project in Visual Studio (or any other IDE)
-3. Run the project
-4. (Optional) If you want to connect to the server locally, please refer to
+3. To set up development environment run:
+    ```bash
+    docker compose -f docker-compose.dev.yml up -d
+    ```
+4. Run the project
+5. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
    section.
 

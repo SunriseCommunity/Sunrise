@@ -44,6 +44,16 @@ public static class RegionHelper
         return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
     }
 
+    public static bool IsFromDocker(this IPAddress ip)
+    {
+        return ip.MapToIPv4().ToString().StartsWith("172.");
+    }
+
+    public static bool IsFromLocalNetwork(this IPAddress ip)
+    {
+        return ip.Equals(IPAddress.Loopback);
+    }
+
     public static short GetCountryCode(string cc)
     {
         if (Enum.TryParse(typeof(CountryCodes), cc, true, out var result))

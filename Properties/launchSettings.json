@@ -1,25 +1,7 @@
 ﻿{
   "$schema": "https://json.schemastore.org/launchsettings.json",
-  "iisSettings": {
-    "windowsAuthentication": false,
-    "anonymousAuthentication": true,
-    "iisExpress": {
-      "applicationUrl": "http://0.0.0.0:17705",
-      "sslPort": 44343
-    }
-  },
   "profiles": {
-    "http": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "launchUrl": "swagger",
-      "applicationUrl": "http://0.0.0.0:5147",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
-    },
-    "https": {
+    "develop": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
@@ -27,16 +9,20 @@
       "applicationUrl": "https://0.0.0.0:443;http://0.0.0.0:5147",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ASPNETCORE_Kestrel__Certificates__Default__Path": "./sunrise.local.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "./sunrise.dev.pfx",
         "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
       }
     },
-    "IIS Express": {
-      "commandName": "IISExpress",
+    "production": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
       "launchBrowser": false,
       "launchUrl": "swagger",
+      "applicationUrl": "https://0.0.0.0:443;http://0.0.0.0:5147",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "./sunrise.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
       }
     }
   }

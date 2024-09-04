@@ -1,0 +1,42 @@
+name: osu-sunrise-dev
+services:
+  redis:
+    image: redis:latest
+    restart: always
+    volumes:
+      - redis:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - monitoring
+  
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana
+    restart: always
+    ports:
+      - "3030:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+volumes:
+  redis:
+
+networks:
+  monitoring:
+    driver: bridge
