@@ -73,7 +73,6 @@ public class Session : BaseSession
 
     public void SendJoinChannel(ChatChannel channel)
     {
-        _helper.WritePacket(PacketType.ServerChatChannelAvailableAutojoin, channel.Name);
         _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel.Name);
         SendChannelAvailable(channel);
     }
