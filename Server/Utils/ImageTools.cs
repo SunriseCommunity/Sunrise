@@ -53,6 +53,12 @@ public static class ImageTools
         return ValidImageBytes.Any(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length)));
     }
 
+    public static string? GetImageType(byte[] bytes)
+    {
+        var extension = ValidImageBytes.FirstOrDefault(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length))).Key;
+        return extension?[1..];
+    }
+
     public static (bool, string?) IsHasValidImageAttributes(MemoryStream buffer)
     {
         if (buffer.Length > 5 * 1024 * 1024)

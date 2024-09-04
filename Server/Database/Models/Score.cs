@@ -19,6 +19,9 @@ public class Score
     public int BeatmapId { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
+    public string ScoreHash { get; set; }
+
+    [Column(DataTypes.Nvarchar, 64, false)]
     public string BeatmapHash { get; set; }
 
     [Column(DataTypes.Int, false)]
@@ -69,6 +72,9 @@ public class Score
     [Column(DataTypes.Nvarchar, 64, false)]
     public string OsuVersion { get; set; }
 
+    [Column(DataTypes.DateTime, false)]
+    public DateTime ClientTime { get; set; }
+
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double Accuracy { get; set; }
 
@@ -77,8 +83,7 @@ public class Score
 
     // Local properties
     public Beatmap Beatmap { get; set; }
-    public string ScoreHash { get; set; } // TODO: Should be moved to Database
-    public string ClientTime { get; set; } // TODO: Should be moved to Database
+
     public int? LeaderboardRank { get; set; }
 
     public async Task<int> GetLeaderboardRank()
@@ -87,7 +92,7 @@ public class Score
         return await database.GetLeaderboardRank(this);
     }
 
-    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap, string version)
+    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -115,8 +120,8 @@ public class Score
         IsPassed = bool.Parse(split[14]);
         GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
-        OsuVersion = version;
-        ClientTime = split[16];
+        OsuVersion = split[17];
+        ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null);
         Accuracy = Calculators.CalculateAccuracy(this);
         PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
         Beatmap = beatmap;
@@ -135,11 +140,10 @@ public class Score
         return $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
     }
 
-    private string ComputeOnlineHash(string storyboardHash, string clientHash, string username, string version)
+    public string ComputeOnlineHash(string username, string clientHash, string? storyboardHash)
     {
-        // TODO: Doesn't work as expected. Will be probably fixed in the future if I will not get insane.
         return string.Format(
-            "chickenmcnuggets{0}o15{1}{2}smustard{3}{4}uu{5}{6}{7}{8}{9}{10}{11}Q{12}{13}{15}{14}{16}{17}",
+            "chickenmcnuggets{0}o15{1}{2}smustard{3}{4}uu{5}{6}{7}{8}{9}{10}{11}Q{12}{13}{15}{14:yyMMddHHmmss}{16}{17}",
             Count300 + Count100,
             Count50,
             CountGeki,

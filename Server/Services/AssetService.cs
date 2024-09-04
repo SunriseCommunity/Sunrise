@@ -64,20 +64,6 @@ public static class AssetService
         return isSuccessful ? (true, null) : (false, "Failed to save avatar. Please try again later.");
     }
 
-    public static async Task<byte[]> GetAvatar(int id)
-    {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-
-        var avatar = await database.GetAvatar(id);
-
-        if (avatar == null)
-        {
-            throw new Exception("Avatar not found");
-        }
-
-        return avatar;
-    }
-
     public static async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot, CancellationToken ct)
     {
         using var buffer = new MemoryStream();
@@ -101,6 +87,22 @@ public static class AssetService
         var screenshot = await database.GetScreenshot(screenshotId);
 
         return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);
+    }
+
+    public static async Task<(byte[]?, string?)> GetAvatar(int userId)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var screenshot = await database.GetAvatar(userId);
+
+        return screenshot == null ? (null, "Avatar not found") : (screenshot, null);
+    }
+
+    public static async Task<(byte[]?, string?)> GetBanner(int userId)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var screenshot = await database.GetBanner(userId);
+
+        return screenshot == null ? (null, "Banner not found") : (screenshot, null);
     }
 
     public static async Task<byte[]?> GetEventBanner()

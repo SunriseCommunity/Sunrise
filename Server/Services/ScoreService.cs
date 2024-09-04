@@ -19,20 +19,31 @@ public static class ScoreService
             throw new Exception("Invalid request: BeatmapFile not found");
 
         var score = scoreSerialized.TryParseToScore(beatmap, osuVersion);
+
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid mods");
             return "error: no";
-
-        if (!SubmitScoreHelper.IsScoreValid(session, osuVersion, clientHash, beatmapHash, beatmap.Checksum))
-            return "error: no"; // TODO: Restrict
-
-        // TODO: Check score.ComputeOnlineHash vs score.ScoreHash after I fix the ComputeOnlineHash method
+        }
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        if (!SubmitScoreHelper.IsScoreValid(session, score, osuVersion, clientHash, beatmapHash, beatmap.Checksum, storyboardHash))
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
+            await database.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
+            return "error: no";
+        }
+
         var scores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
 
         var userStats = await database.GetUserStats(score.UserId, score.GameMode);
+
         if (userStats == null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "User stats not found");
             return "error: no";
+        }
 
         var prevUserStats = userStats.Clone();
         var prevPBest = scores.GetPersonalBestOf(score.UserId);
@@ -50,7 +61,10 @@ public static class ScoreService
         }
 
         if (replay is { Length: < 24 } or null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Replay file is too small");
             return "error: no";
+        }
 
         var replayFile = await database.UploadReplay(userStats.UserId, replay);
         score.ReplayFileId = replayFile.Id;

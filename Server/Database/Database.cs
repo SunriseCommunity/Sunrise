@@ -369,9 +369,10 @@ public sealed class SunriseDb
             return null;
         }
 
-        var file = await File.ReadAllBytesAsync(record.Path);
+        var file = await LocalStorage.ReadFileAsync(record.Path);
 
         await Redis.Set(RedisKey.BeatmapRecord(beatmapId), record);
+
         return file;
     }
 
@@ -397,7 +398,7 @@ public sealed class SunriseDb
         return true;
     }
 
-    public async Task<byte[]> GetAvatar(int userId, bool fallToDefault = true)
+    public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.AvatarRecord(userId));
 
@@ -417,12 +418,7 @@ public sealed class SunriseDb
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Avatars/Default.png";
-        var file = await File.ReadAllBytesAsync(filePath);
-
-        if (file == null)
-        {
-            throw new Exception("Avatar not found");
-        }
+        var file = await LocalStorage.ReadFileAsync(filePath);
 
         await Redis.Set(RedisKey.AvatarRecord(userId), record);
 
@@ -449,7 +445,6 @@ public sealed class SunriseDb
 
     public async Task<byte[]?> GetScreenshot(int screenshotId)
     {
-
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.ScreenshotRecord(screenshotId));
         if (cachedRecord != null)
             return await File.ReadAllBytesAsync(cachedRecord.Path);
@@ -460,7 +455,7 @@ public sealed class SunriseDb
         if (record == null)
             return null;
 
-        var file = await File.ReadAllBytesAsync(record.Path);
+        var file = await LocalStorage.ReadFileAsync(record.Path);
         await Redis.Set(RedisKey.ScreenshotRecord(screenshotId), record);
 
         return file;
@@ -488,9 +483,7 @@ public sealed class SunriseDb
         return true;
     }
 
-
-
-    public async Task<byte[]> GetBanner(int userId, bool fallToDefault = true)
+    public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.BannerRecord(userId));
 
@@ -509,12 +502,7 @@ public sealed class SunriseDb
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Banners/Default.png";
-        var file = await File.ReadAllBytesAsync(filePath);
-
-        if (file == null)
-        {
-            throw new Exception("Banner not found");
-        }
+        var file = await LocalStorage.ReadFileAsync(filePath);
 
         await Redis.Set(RedisKey.BannerRecord(userId), record);
 
@@ -554,7 +542,7 @@ public sealed class SunriseDb
         if (record == null)
             return null;
 
-        var file = await File.ReadAllBytesAsync(record.Path);
+        var file = await LocalStorage.ReadFileAsync(record.Path);
         await Redis.Set(RedisKey.ReplayRecord(replayId), record);
 
         return file;

@@ -54,6 +54,7 @@ public static class Parsers
 
         var outputBytes = new byte[blockCipher.GetOutputSize(encodedStrBytes.Length)];
         var len = blockCipher.ProcessBytes(encodedStrBytes, 0, encodedStrBytes.Length, outputBytes, 0);
+        len += blockCipher.DoFinal(outputBytes, len);
 
         Array.Resize(ref outputBytes, len);
         return Encoding.UTF8.GetString(outputBytes);
@@ -113,7 +114,7 @@ public static class Parsers
 
     public static Score TryParseToScore(this string scoreString, Beatmap beatmap, string version)
     {
-        return new Score().SetNewScoreFromString(scoreString, beatmap, version);
+        return new Score().SetNewScoreFromString(scoreString, beatmap);
     }
 
     public static string ToHash(this string s)

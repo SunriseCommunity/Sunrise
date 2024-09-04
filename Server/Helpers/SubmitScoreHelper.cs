@@ -2,28 +2,38 @@
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Helpers;
 
 public static class SubmitScoreHelper
 {
+    private const string MetricsError = "Score {0} by {1} ({2}) rejected with reason: {3}";
+
     public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
         return $"[https://osu.{Configuration.Domain}/users/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
     }
 
-    public static bool IsScoreValid(Session session, string osuVersion, string clientHash, string beatmapHash, string onlineBeatmapHash)
+    public static void ReportRejectionToMetrics(Session session, Score score, string reason)
+    {
+        var message = string.Format(MetricsError, score.ScoreHash, session.User.Username, session.User.Id, reason);
+        SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
+    }
+
+    public static bool IsScoreValid(Session session, Score score, string osuVersion, string clientHash, string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
     {
         var userOsuVersion = session.Attributes.OsuVersion?.Split(".")[0] ?? "";
-        var userLoginHash = string.Join(":", session.Attributes.UserHash?.Split(":")[..^1] ?? []);
+        var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
 
         return new[]
         {
             string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
-            string.Equals(clientHash, userLoginHash, StringComparison.Ordinal),
+            string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
+            string.Equals(score.ScoreHash, computedOnlineHash, StringComparison.Ordinal),
             string.Equals(beatmapHash, onlineBeatmapHash, StringComparison.Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
-        }.All(c => c);
+        }.All(x => x);
     }
 
     public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)

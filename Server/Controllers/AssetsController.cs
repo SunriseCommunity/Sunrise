@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -14,17 +13,38 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id)
     {
-        var result = await AssetService.GetAvatar(id);
-        return new FileContentResult(result, "image/png");
+        if (await AssetService.GetAvatar(id) is var (avatar, error) && (error != null || avatar == null))
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, error);
+            return NotFound();
+        }
+
+        return new FileContentResult(avatar, $"image/{ImageTools.GetImageType(avatar) ?? "png"}");
     }
 
     [HttpGet(RequestType.GetBanner)]
     public async Task<IActionResult> GetBanner(int id)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        if (await AssetService.GetBanner(id) is var (banner, error) && (error != null || banner == null))
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, error);
+            return NotFound();
+        }
 
-        var file = await database.GetBanner(id);
-        return new FileContentResult(file, "image/png");
+        return new FileContentResult(banner, $"image/{ImageTools.GetImageType(banner) ?? "png"}");
+    }
+
+    [HttpGet]
+    [Route(RequestType.GetScreenshot)]
+    public async Task<IActionResult> GetScreenshot(int id)
+    {
+        if (await AssetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, error);
+            return NotFound();
+        }
+
+        return new FileContentResult(screenshot, "image/jpeg");
     }
 
     [HttpGet(RequestType.MenuContent)]
@@ -41,18 +61,5 @@ public class AssetsController : ControllerBase
             return NotFound();
 
         return new FileContentResult(data, "image/png");
-    }
-
-    [HttpGet]
-    [Route(RequestType.GetScreenshot)]
-    public async Task<IActionResult> GetScreenshot(int id)
-    {
-        if (await AssetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
-        {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, error);
-            return NotFound();
-        }
-
-        return new FileContentResult(screenshot, "image/jpeg");
     }
 }
