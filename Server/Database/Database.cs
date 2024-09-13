@@ -337,6 +337,12 @@ public sealed class SunriseDb
         return uniqueScores.Select(x => x.Key).ToList();
     }
 
+    public async Task<long> GetTotalUsers()
+    {
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        return await _orm.CountAsync<User>(exp);
+    }
+
     public async Task SetBeatmapFile(int beatmapId, byte[] beatmap)
     {
         var filePath = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";

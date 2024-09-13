@@ -3,7 +3,10 @@ using Microsoft.Extensions.Caching.Memory;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Attributes;
+using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
+using Sunrise.Server.Repositories;
+using Sunrise.Server.Utils;
 using RateLimiter = System.Threading.RateLimiting.RateLimiter;
 
 namespace Sunrise.Server.API.Controllers;
@@ -30,5 +33,19 @@ public class BaseController(IMemoryCache cache) : ControllerBase
         var session = await Request.GetSessionFromRequest();
 
         return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session?.GetRemainingCalls()));
+    }
+    
+    [HttpGet]
+    [Route("/status")]
+    public async Task<IActionResult> GetStatus()
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+
+        var usersOnline = sessions.GetSessions().Count;
+        var totalUsers = await database.GetTotalUsers();
+
+        return Ok(new StatusResponse(usersOnline, totalUsers));
     }
 }
