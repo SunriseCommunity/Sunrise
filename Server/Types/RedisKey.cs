@@ -5,8 +5,8 @@ namespace Sunrise.Server.Types;
 
 public static class RedisKey
 {
-// @formatter:off
-    
+    // @formatter:off
+
     // Primitives
     public static string ApiServerRateLimited(ApiServer server) { return $"api:{(int)server}:ratelimited"; }
     public static string OsuVersion(string version) { return $"osu:version:{version}"; }
@@ -14,6 +14,7 @@ public static class RedisKey
     // Objects
     public static string UserById(int userId) { return $"user:id:{userId}"; }
     public static string UserByUsername(string username) { return $"user:username:{username}"; }
+    public static string UserByUsernameAndPassHash(string username, string passhash) { return $"user:username:{username}:passhash:{passhash}"; }
     public static string UserByEmail(string email) { return $"user:email:{email}"; }
     public static string UserStats(int userId, GameMode mode) { return $"user:{userId}:stats:{(int)mode}"; }
     public static string AllUserStats(GameMode mode) { return $"user:all:stats:{(int)mode}"; }

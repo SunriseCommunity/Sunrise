@@ -55,7 +55,20 @@ public sealed class SunriseDb
 
     public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null, string? passhash = null, bool useCache = true)
     {
-        var cachedUser = await Redis.Get<User?>([RedisKey.UserById(id ?? -1), RedisKey.UserByUsername(username ?? ""), RedisKey.UserByEmail(email ?? "")]);
+        var redisKeys = new List<string> { RedisKey.UserById(id ?? 0), RedisKey.UserByEmail(email ?? "") };
+        if (username != null)
+        {
+            if (passhash != null)
+            {
+                redisKeys.Add(RedisKey.UserByUsernameAndPassHash(username, passhash));
+            }
+            else
+            {
+                redisKeys.Add(RedisKey.UserByUsername(username));
+            }
+        }
+
+        var cachedUser = await Redis.Get<User?>([.. redisKeys]);
 
         if (cachedUser != null && useCache)
         {
@@ -94,7 +107,7 @@ public sealed class SunriseDb
 
         session?.UpdateUser(user);
 
-        await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)], user);
+        await Redis.Set([RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email), RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)], user);
     }
 
     public async Task<UserStats> InsertUserStats(UserStats stats)
