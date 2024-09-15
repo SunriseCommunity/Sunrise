@@ -36,7 +36,7 @@ public class UserController : ControllerBase
 
         if (isValidMode != true)
         {
-            return BadRequest("Invalid mode parameter");
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
         }
 
         var stats = await database.GetUserStats(id, (GameMode)mode);
@@ -80,7 +80,7 @@ public class UserController : ControllerBase
 
         if (isValidMode != true)
         {
-            return BadRequest("Invalid mode parameter");
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
         }
 
         var stats = await database.GetUserStats(session.User.Id, (GameMode)mode);
@@ -105,7 +105,7 @@ public class UserController : ControllerBase
     {
         if (mode is < 0 or > 3)
         {
-            return BadRequest("Invalid mode parameter");
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
         }
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
@@ -146,7 +146,7 @@ public class UserController : ControllerBase
 
         if (isValidMode != true)
         {
-            return BadRequest("Invalid mode parameter");
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
         }
 
         var stats = await database.GetAllUserStats((GameMode)mode);
@@ -181,7 +181,7 @@ public class UserController : ControllerBase
         if (!isSet || error != null)
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
-            return BadRequest(error);
+            return BadRequest(new ErrorResponse(error ?? "Failed to set avatar"));
         }
 
         return new OkResult();
@@ -203,7 +203,7 @@ public class UserController : ControllerBase
         if (!isSet || error != null)
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
-            return BadRequest(error);
+            return BadRequest(new ErrorResponse(error ?? "Failed to set banner"));
         }
 
         return new OkResult();
