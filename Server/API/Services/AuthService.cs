@@ -11,12 +11,12 @@ namespace Sunrise.Server.API.Services;
 public static class AuthService
 {
     private static string TokenSecret => Configuration.WebTokenSecret;
-    private static DateTime TokenExpires => Configuration.WebTokenExpiration;
+    private static TimeSpan TokenExpires => Configuration.WebTokenExpiration;
 
     public static (string, string, int) GenerateTokens(int userId)
     {
         var token = GenerateJwtToken(userId, TokenExpires);
-        var refreshToken = GenerateJwtToken(userId, DateTime.UtcNow.AddMonths(1));
+        var refreshToken = GenerateJwtToken(userId, TimeSpan.FromDays(30));
 
         return (token, refreshToken, TokenExpires.ToSeconds());
     }
@@ -74,7 +74,7 @@ public static class AuthService
         }
     }
 
-    private static string GenerateJwtToken(int userId, DateTime expires)
+    private static string GenerateJwtToken(int userId, TimeSpan expires)
     {
         var token = new JwtSecurityToken(
             "Sunrise",
@@ -83,7 +83,7 @@ public static class AuthService
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString())
             },
-            expires: expires,
+            expires: DateTime.UtcNow.Add(expires),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)), SecurityAlgorithms.HmacSha256)
         );
 

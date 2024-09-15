@@ -130,8 +130,8 @@ public static class Parsers
         return Convert.ToHexString(hash).ToLower();
     }
 
-    public static int ToSeconds(this DateTime time)
+    public static int ToSeconds(this TimeSpan time)
     {
-        return time.Hour * 3600 + time.Minute * 60 + time.Second;
+        return (int)time.TotalSeconds;
     }
 }

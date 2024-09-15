@@ -19,7 +19,7 @@ public static class Configuration
     public static int ServerRateLimit => 100;
     public static int ServerRateLimitWindow => 10;
     public static bool IncludeUserTokenInLogs => false;
-    public static DateTime WebTokenExpiration => DateTime.UtcNow.AddHours(1);
+    public static TimeSpan WebTokenExpiration => TimeSpan.FromHours(1);
     public static string WebTokenSecret => "VerySafeTokenQuestion".ToHash();
 
     public static string[] BannedIps => [];
