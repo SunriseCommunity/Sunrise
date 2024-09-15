@@ -4,9 +4,9 @@ namespace Sunrise.Server.API.Serializable.Request;
 
 public class TokenRequest
 {
-    [JsonPropertyName("us")]
+    [JsonPropertyName("username")]
     public string? Username { get; set; }
 
-    [JsonPropertyName("pa")]
+    [JsonPropertyName("password")]
     public string? Password { get; set; }
 }
