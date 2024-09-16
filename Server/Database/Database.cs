@@ -484,7 +484,7 @@ public sealed class SunriseDb
     {
         var filePath = $"{DataPath}Files/Banners/{userId}.png";
 
-        if (!await LocalStorage.WriteFileAsync(filePath, ImageTools.ResizeImage(banner, 1280, 256)))
+        if (!await LocalStorage.WriteFileAsync(filePath, ImageTools.ResizeImage(banner, 1280, 320)))
             return false;
 
         var record = new UserFile
