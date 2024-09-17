@@ -68,8 +68,8 @@ public class UserStats
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
-            PerformancePoints = (short)await Calculators.CalculateUserWeightedPerformance(score);
-            Accuracy = await Calculators.CalculateUserWeightedAccuracy(score);
+            PerformancePoints = (short)await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
+            Accuracy = await Calculators.CalculateUserWeightedAccuracy(score.UserId, score.GameMode, score);
         }
     }
 

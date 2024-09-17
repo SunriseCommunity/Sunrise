@@ -84,13 +84,19 @@ public static class Calculators
     }
 
 
-    public static async Task<double> CalculateUserWeightedAccuracy(Score score)
+    public static async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
-        userBests.Add(score);
+        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        if (score != null)
+            userBests.Add(score);
+
+        if (userBests.Count == 0)
+        {
+            return 0;
+        }
 
         var top100Scores = userBests.Take(100).ToList();
 
@@ -105,13 +111,19 @@ public static class Calculators
         return weightedAccuracy * bonusAccuracy / 100;
     }
 
-    public static async Task<double> CalculateUserWeightedPerformance(Score score)
+    public static async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
-        userBests.Add(score);
+        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        if (score != null)
+            userBests.Add(score);
+
+        if (userBests.Count == 0)
+        {
+            return 0;
+        }
 
         var top100Scores = userBests.Take(100).ToList();
 
@@ -126,7 +138,6 @@ public static class Calculators
 
         return weightedPp + bonusPp;
     }
-
 
     public static float CalculateAccuracy(Score score)
     {

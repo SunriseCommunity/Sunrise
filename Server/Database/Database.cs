@@ -147,9 +147,9 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<List<UserStats?>?> GetAllUserStats(GameMode mode, bool useCache = true)
+    public async Task<List<UserStats>?> GetAllUserStats(GameMode mode, bool useCache = true)
     {
-        var cachedStats = await Redis.Get<List<UserStats?>>(RedisKey.AllUserStats(mode));
+        var cachedStats = await Redis.Get<List<UserStats>>(RedisKey.AllUserStats(mode));
 
         if (cachedStats != null && useCache)
         {
@@ -157,7 +157,7 @@ public sealed class SunriseDb
         }
 
         var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode);
-        var stats = await _orm.SelectManyAsync<UserStats?>(exp);
+        var stats = await _orm.SelectManyAsync<UserStats>(exp);
 
         if (stats == null)
         {
