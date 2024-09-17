@@ -1,14 +1,14 @@
-using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Chat.Commands.Moderation;
+namespace Sunrise.Server.Chat.Commands.Development;
 
-[ChatCommand("maintenance", requiredRank: PlayerRank.SuperMod)]
+[ChatCommand("maintenance", requiredPrivileges: UserPrivileges.Developer)]
 public class MaintenanceCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

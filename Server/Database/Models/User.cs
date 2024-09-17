@@ -1,4 +1,5 @@
 ﻿using osu.Shared;
+using Sunrise.Server.Types.Enums;
 using Watson.ORM.Core;
 
 namespace Sunrise.Server.Database.Models;
@@ -22,7 +23,7 @@ public class User
     public short Country { get; set; }
 
     [Column(DataTypes.Int, false)]
-    public PlayerRank Privilege { get; set; }
+    public UserPrivileges Privilege { get; set; }
 
     [Column(DataTypes.DateTime, false)]
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
@@ -55,5 +56,27 @@ public class User
             return;
 
         Friends = string.Join(',', FriendsList.Where(x => x != friendId));
+    }
+
+    public PlayerRank GetPrivilegeRank()
+    {
+        var privilegeRank = PlayerRank.Default;
+
+        if (Privilege.HasFlag(UserPrivileges.Developer))
+        {
+            privilegeRank |= PlayerRank.SuperMod;
+        }
+
+        if (Privilege.HasFlag(UserPrivileges.Admin) || Privilege.HasFlag(UserPrivileges.Bat))
+        {
+            privilegeRank |= PlayerRank.Bat;
+        }
+
+        if (Privilege.HasFlag(UserPrivileges.Supporter))
+        {
+            privilegeRank |= PlayerRank.Supporter;
+        }
+
+        return privilegeRank;
     }
 }

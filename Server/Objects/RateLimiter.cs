@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
-using osu.Shared;
 using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
@@ -15,7 +15,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         var userId = session.User.Id;
         var now = DateTime.UtcNow;
 
-        if (session.User.Privilege >= PlayerRank.SuperMod && ignoreMods)
+        if (session.User.Privilege.HasFlag(UserPrivileges.Admin) && ignoreMods)
         {
             return true;
         }

@@ -2,7 +2,6 @@
 using System.Text;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using osu.Shared;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
@@ -37,7 +36,7 @@ public static class AuthService
         if (user.Passhash != loginRequest.PassHash)
             return RejectLogin(response, "Invalid credentials.");
 
-        if (Configuration.OnMaintenance && user.Privilege < PlayerRank.SuperMod)
+        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivileges.Admin))
             return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
 
         if (user.IsRestricted && await database.IsRestricted(user.Id))
@@ -91,7 +90,7 @@ public static class AuthService
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
 
-        if (session.User.Privilege >= PlayerRank.SuperMod)
+        if (session.User.Privilege.HasFlag(UserPrivileges.Admin))
         {
             chatChannels.JoinChannel("#staff", session);
         }
@@ -218,7 +217,7 @@ public static class AuthService
             Email = email!,
             Passhash = passhash,
             Country = RegionHelper.GetCountryCode(location.Country),
-            Privilege = PlayerRank.Supporter
+            Privilege = UserPrivileges.User
         };
 
         await database.InsertUser(user);
