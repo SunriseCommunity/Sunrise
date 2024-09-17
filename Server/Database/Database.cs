@@ -55,7 +55,12 @@ public sealed class SunriseDb
 
     public async Task<User?> GetUser(int? id = null, string? username = null, string? email = null, string? passhash = null, bool useCache = true)
     {
-        var redisKeys = new List<string> { RedisKey.UserById(id ?? 0), RedisKey.UserByEmail(email ?? "") };
+        var redisKeys = new List<string>
+        {
+            RedisKey.UserById(id ?? 0),
+            RedisKey.UserByEmail(email ?? "")
+        };
+
         if (username != null)
         {
             if (passhash != null)
@@ -220,16 +225,18 @@ public sealed class SunriseDb
         return score;
     }
 
-    public async Task<List<Score>> GetUserBestScores(int userId, GameMode mode, int excludeBeatmapId = -1)
+    public async Task<List<Score>> GetUserBestScores(int userId, GameMode mode, int excludeBeatmapId = -1, int? limit = null)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId);
 
         var scores = await _orm.SelectManyAsync<Score>(exp,
         [
-            new ResultOrder("TotalScore", OrderDirectionEnum.Descending)
+            new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending)
         ]);
 
-        return scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
+        var bestScores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
+
+        return limit == null ? bestScores : bestScores.Take(limit.Value).ToList();
     }
 
     public async Task<Score?> GetUserLastScore(int userId)
@@ -249,7 +256,7 @@ public sealed class SunriseDb
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
 
         var scores = await _orm.SelectManyAsync<Score>(exp);
-        scores = scores.GetSortedScores();
+        scores = scores.GetSortedScoresByScore();
 
         foreach (var score in scores.ToList())
         {
@@ -314,7 +321,7 @@ public sealed class SunriseDb
         if (user == null)
             return;
 
-        if (user.Privilege >= PlayerRank.SuperMod)
+        if (user.Privilege >= UserPrivileges.Admin)
             return;
 
         user.IsRestricted = true;
@@ -331,7 +338,7 @@ public sealed class SunriseDb
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, score.BeatmapHash).PrependAnd("GameMode", OperatorEnum.Equals, (int)score.GameMode);
         var scores = await _orm.SelectManyAsync<Score>(exp);
 
-        return scores.GetSortedScores().FindIndex(x => x.Id == score.Id) + 1;
+        return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;
     }
 
     public async Task<List<int>> GetMostPlayedBeatmapsIds(GameMode? gameMode, int page = 1, int limit = 100)
@@ -604,7 +611,7 @@ public sealed class SunriseDb
         {
             Username = Configuration.BotUsername,
             Country = (short)CountryCodes.AQ, // Antarctica, because our bot is "cool" :D
-            Privilege = PlayerRank.SuperMod,
+            Privilege = UserPrivileges.User,
             RegisterDate = DateTime.Now,
             Passhash = "12345678",
             Email = "bot@mail.com",
