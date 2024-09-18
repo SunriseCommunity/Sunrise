@@ -11,9 +11,9 @@ public class AssetsController : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
-    public async Task<IActionResult> GetAvatar(int id)
+    public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetAvatar(id) is var (avatar, error) && (error != null || avatar == null))
+        if (await AssetService.GetAvatar(id, fallToDefault ?? true) is var (avatar, error) && (error != null || avatar == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, error);
             return NotFound();
@@ -23,9 +23,9 @@ public class AssetsController : ControllerBase
     }
 
     [HttpGet(RequestType.GetBanner)]
-    public async Task<IActionResult> GetBanner(int id)
+    public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetBanner(id) is var (banner, error) && (error != null || banner == null))
+        if (await AssetService.GetBanner(id, fallToDefault ?? true) is var (banner, error) && (error != null || banner == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, error);
             return NotFound();

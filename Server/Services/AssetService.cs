@@ -89,18 +89,18 @@ public static class AssetService
         return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);
     }
 
-    public static async Task<(byte[]?, string?)> GetAvatar(int userId)
+    public static async Task<(byte[]?, string?)> GetAvatar(int userId, bool toFallback = true)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var screenshot = await database.GetAvatar(userId);
+        var screenshot = await database.GetAvatar(userId, toFallback);
 
         return screenshot == null ? (null, "Avatar not found") : (screenshot, null);
     }
 
-    public static async Task<(byte[]?, string?)> GetBanner(int userId)
+    public static async Task<(byte[]?, string?)> GetBanner(int userId, bool toFallback = true)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var screenshot = await database.GetBanner(userId);
+        var screenshot = await database.GetBanner(userId, toFallback);
 
         return screenshot == null ? (null, "Banner not found") : (screenshot, null);
     }
