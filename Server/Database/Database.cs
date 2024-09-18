@@ -440,7 +440,7 @@ public sealed class SunriseDb
 
         if (record == null && !fallToDefault)
         {
-            throw new Exception("Avatar not found in database");
+            return null;
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Avatars/Default.png";
@@ -524,7 +524,7 @@ public sealed class SunriseDb
 
         if (record == null && !fallToDefault)
         {
-            throw new Exception("Banner not found in database");
+            return null;
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Banners/Default.png";
