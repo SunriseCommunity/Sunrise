@@ -64,10 +64,12 @@ public class UserController : ControllerBase
             return NotFound("User stats not found");
         }
 
+        var globalRank = await database.GetUserRank(id, (GameMode)mode);
+
         var data = JsonSerializer.SerializeToElement(new
         {
             user = new UserResponse(user, userStatus),
-            stats = new UserStatsResponse(stats)
+            stats = new UserStatsResponse(stats, (int)globalRank)
         });
 
         return Ok(data);
@@ -145,7 +147,11 @@ public class UserController : ControllerBase
         var data = JsonSerializer.SerializeToElement(new
         {
             users = usersResponse,
-            stats = stats.Select(stat => new UserStatsResponse(stat)).ToList()
+            stats = stats.Select(async stat =>
+            {
+                var globalRank = await database.GetUserRank(stat.UserId, (GameMode)mode);
+                return new UserStatsResponse(stat, (int)globalRank);
+            }).ToList()
         });
 
         return Ok(data);
