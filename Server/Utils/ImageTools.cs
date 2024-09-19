@@ -27,7 +27,14 @@ public static class ImageTools
         memoryStream.Seek(0, SeekOrigin.Begin);
 
         using var image = Image.Load(memoryStream);
-        image.Mutate(x => x.Resize(width, height));
+
+        var options = new ResizeOptions
+        {
+            Size = new Size(width, height),
+            Mode = ResizeMode.Crop
+        };
+
+        image.Mutate(x => x.Resize(options));
 
         using var outputStream = new MemoryStream();
 
