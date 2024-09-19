@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using HOPEless.Bancho.Objects;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Modes;
@@ -120,6 +121,11 @@ public static class Parsers
     public static string ToHash(this string s)
     {
         return Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(s))).ToLower();
+    }
+
+    public static string ToText(this BanchoUserStatus status)
+    {
+        return $"{status.Action} {status.ActionText}";
     }
 
     public static string CreateMD5(this string input)

@@ -5,7 +5,7 @@ namespace Sunrise.Server.Types;
 
 public static class RedisKey
 {
-    // @formatter:off
+// @formatter:off
 
     // Primitives
     public static string ApiServerRateLimited(ApiServer server) { return $"api:{(int)server}:ratelimited"; }
@@ -35,4 +35,5 @@ public static class RedisKey
 
     // Sorted Set
     public static string LeaderboardGlobal(GameMode mode) { return $"leaderboard:global:{(int)mode}"; }
+    // TODO: Add country leaderboard
 }

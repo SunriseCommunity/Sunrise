@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
-using osu.Shared;
 using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Repositories;
 
@@ -87,6 +87,6 @@ public class ChannelRepository
             return _channels.Values.Where(x => x.IsPublic).ToList();
         }
 
-        return _channels.Values.Where(x => x.IsPublic || session.User.Privilege >= PlayerRank.SuperMod).ToList();
+        return _channels.Values.Where(x => x.IsPublic || session.User.Privilege.HasFlag(UserPrivileges.Admin)).ToList();
     }
 }

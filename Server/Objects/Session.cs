@@ -52,7 +52,7 @@ public class Session : BaseSession
     {
         var message = "Server going down for maintenance.";
 
-        if (User.Privilege >= PlayerRank.SuperMod)
+        if (User.Privilege.HasFlag(UserPrivileges.Admin))
         {
             return;
         }
@@ -95,7 +95,7 @@ public class Session : BaseSession
 
     public void SendPrivilege()
     {
-        _helper.WritePacket(PacketType.ServerUserPermissions, User.Privilege >= PlayerRank.Supporter ? PlayerRank.Supporter : User.Privilege);
+        _helper.WritePacket(PacketType.ServerUserPermissions, User.GetPrivilegeRank() | PlayerRank.Supporter);
     }
 
     public void SendSilenceStatus(int time = 0, string? reason = null)

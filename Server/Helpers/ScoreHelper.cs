@@ -6,7 +6,7 @@ public static class ScoreHelper
 {
     public static List<Score> GetTopScores(this List<Score> scores, int? count = null)
     {
-        var leaderboard = GetSortedScores(scores);
+        var leaderboard = GetSortedScoresByScore(scores);
 
         var personalBests = new List<Score>();
 
@@ -21,7 +21,7 @@ public static class ScoreHelper
 
     public static Score GetNewPersonalScore(this List<Score> scores, Score score)
     {
-        var leaderboard = GetSortedScores(scores);
+        var leaderboard = GetSortedScoresByScore(scores);
 
         var oldPBest = leaderboard.Find(x => x.UserId == score.UserId);
 
@@ -31,7 +31,7 @@ public static class ScoreHelper
         }
 
         leaderboard.Add(score);
-        leaderboard = GetSortedScores(leaderboard);
+        leaderboard = GetSortedScoresByScore(leaderboard);
 
         var newPBest = leaderboard.Find(x => x.UserId == score.UserId);
         newPBest!.LeaderboardRank = leaderboard.IndexOf(newPBest) + 1;
@@ -44,7 +44,7 @@ public static class ScoreHelper
         return scores.GetTopScores().Find(x => x.UserId == userId);
     }
 
-    public static List<Score> GetSortedScores(this List<Score> scores, bool onlyBest = true)
+    public static List<Score> GetSortedScoresByScore(this List<Score> scores, bool onlyBest = true)
     {
         scores.Sort((x, y) =>
             y.TotalScore.CompareTo(x.TotalScore) != 0
@@ -52,5 +52,15 @@ public static class ScoreHelper
                 : x.WhenPlayed.CompareTo(y.WhenPlayed));
 
         return onlyBest ? scores.GroupBy(x => x.UserId).Select(x => x.OrderByDescending(y => y.TotalScore).First()).ToList() : scores;
+    }
+
+    public static List<Score> GetSortedScoresByPP(this List<Score> scores, bool onlyBest = true)
+    {
+        scores.Sort((x, y) =>
+            y.PerformancePoints.CompareTo(x.PerformancePoints) != 0
+                ? y.PerformancePoints.CompareTo(x.PerformancePoints)
+                : x.WhenPlayed.CompareTo(y.WhenPlayed));
+
+        return onlyBest ? scores.GroupBy(x => x.UserId).Select(x => x.OrderByDescending(y => y.PerformancePoints).First()).ToList() : scores;
     }
 }

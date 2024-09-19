@@ -1,14 +1,14 @@
-using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Moderation;
 
-[ChatCommand("restrict", requiredRank: PlayerRank.SuperMod)]
+[ChatCommand("restrict", requiredPrivileges: UserPrivileges.Admin)]
 public class RestrictCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
@@ -43,7 +43,7 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        if (user.Privilege >= PlayerRank.SuperMod)
+        if (user.Privilege >= UserPrivileges.Admin)
         {
             CommandRepository.SendMessage(session, "You cannot restrict this user due to their privilege level.");
             return;

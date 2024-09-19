@@ -5,6 +5,8 @@ using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
@@ -19,17 +21,33 @@ public class UserController : ControllerBase
     [Route("{id:int}")]
     public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] int? mode)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(id);
+        User user;
+        var userStatus = "Offline";
 
-        if (user == null)
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        var userSession = sessions.GetSession(userId: id);
+
+        if (userSession != null)
         {
-            return NotFound("User not found");
+            user = userSession.User;
+            userStatus = userSession.Attributes.Status.ToText();
+        }
+        else
+        {
+
+            var userDb = await database.GetUser(id);
+
+            if (userDb == null)
+                return NotFound("User not found");
+
+            user = userDb;
         }
 
         if (mode == null)
         {
-            return Ok(new UserResponse(user));
+            return Ok(new UserResponse(user, userStatus));
         }
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
@@ -46,10 +64,12 @@ public class UserController : ControllerBase
             return NotFound("User stats not found");
         }
 
+        var globalRank = await database.GetUserRank(id, (GameMode)mode);
+
         var data = JsonSerializer.SerializeToElement(new
         {
-            user = new UserResponse(user),
-            stats = new UserStatsResponse(stats)
+            user = new UserResponse(user, userStatus),
+            stats = new UserStatsResponse(stats, (int)globalRank)
         });
 
         return Ok(data);
@@ -63,43 +83,11 @@ public class UserController : ControllerBase
         if (session == null)
             return Unauthorized("Invalid session");
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(session.User.Id);
-
-        if (user == null)
-        {
-            return NotFound("User not found");
-        }
-
-        if (mode == null)
-        {
-            return Ok(new UserResponse(user));
-        }
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-
-        if (isValidMode != true)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
-
-        var stats = await database.GetUserStats(session.User.Id, (GameMode)mode);
-
-        if (stats == null)
-        {
-            return NotFound("User stats not found");
-        }
-
-        var data = JsonSerializer.SerializeToElement(new
-        {
-            user = new UserResponse(user),
-            stats = new UserStatsResponse(stats)
-        });
-
-        return Ok(data);
+        return await GetUser(session.User.Id, mode);
     }
 
     [HttpGet]
+    [Obsolete("Calculations for graph is impossible. Should just create snapshots each day with cron operation")]
     [Route("{id:int}/scores")]
     public async Task<IActionResult> GetUserScores(int id, [FromQuery(Name = "mode")] int mode)
     {
@@ -116,11 +104,11 @@ public class UserController : ControllerBase
             return NotFound("User not found");
         }
 
-        var stats = await database.GetUserBestScores(id, (GameMode)mode);
+        var scores = await database.GetUserBestScores(id, (GameMode)mode);
 
-        var scores = stats.Select(score => new ScoreResponse(score)).ToList();
+        var top100Scores = scores.Take(100).Select(score => new ScoreResponse(score)).ToList();
 
-        return Ok(scores);
+        return Ok(new ScoresResponse(top100Scores, scores.Count));
     }
 
     [HttpGet]
@@ -159,7 +147,11 @@ public class UserController : ControllerBase
         var data = JsonSerializer.SerializeToElement(new
         {
             users = usersResponse,
-            stats = stats.Select(stat => new UserStatsResponse(stat)).ToList()
+            stats = stats.Select(async stat =>
+            {
+                var globalRank = await database.GetUserRank(stat.UserId, (GameMode)mode);
+                return new UserStatsResponse(stat, (int)globalRank);
+            }).ToList()
         });
 
         return Ok(data);

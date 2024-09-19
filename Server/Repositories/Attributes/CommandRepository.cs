@@ -57,7 +57,7 @@ public static class CommandRepository
                 return;
         }
 
-        if (handler.RequiredPrivileges > session.User.Privilege)
+        if (!session.User.Privilege.HasFlag(handler.RequiredPrivileges))
         {
             SendMessage(session, "You don't have permission to use this command.");
             return;
@@ -82,7 +82,7 @@ public static class CommandRepository
         var privilege = session.User.Privilege;
 
         return Handlers
-            .Where(x => x.Value.RequiredPrivileges <= privilege)
+            .Where(x => privilege.HasFlag(x.Value.RequiredPrivileges))
             .Select(x => x.Key)
             .ToArray();
     }
@@ -160,7 +160,7 @@ public static class CommandRepository
                 Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
             }
 
-            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredRank, attribute.IsGlobal);
+            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredPrivileges, attribute.IsGlobal);
             Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(), command); // .Trim() => https://imgur.com/a/0rsYZRv
         }
     }

@@ -3,6 +3,7 @@ using osu.Shared;
 using RosuPP;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Beatmap = RosuPP.Beatmap;
@@ -83,14 +84,26 @@ public static class Calculators
     }
 
 
-    public static async Task<double> CalculateUserWeightedAccuracy(Score score)
+    public static async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
-        userBests.Add(score);
+        // Get users top scores sorted by pp in descending order
+        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        if (score != null)
+            userBests.Add(score);
 
-        var weightedAccuracy = userBests
+        if (userBests.Count == 0)
+        {
+            return 0;
+        }
+
+        var top100Scores = userBests.Take(100).ToList();
+
+        // Sorting again because we previously added a new score
+        top100Scores = top100Scores.GetSortedScoresByPP(false);
+
+        var weightedAccuracy = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.Accuracy)
             .Sum();
         var bonusAccuracy = 100 / (20 * (1 - Math.Pow(0.95, userBests.Count)));
@@ -98,22 +111,33 @@ public static class Calculators
         return weightedAccuracy * bonusAccuracy / 100;
     }
 
-    public static async Task<double> CalculateUserWeightedPerformance(Score score)
+    public static async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var userBests = await database.GetUserBestScores(score.UserId, score.GameMode, score.BeatmapId);
-        userBests.Add(score);
+        // Get users top scores sorted by pp in descending order
+        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        if (score != null)
+            userBests.Add(score);
+
+        if (userBests.Count == 0)
+        {
+            return 0;
+        }
+
+        var top100Scores = userBests.Take(100).ToList();
+
+        // Sorting again because we previously added a new score
+        top100Scores = top100Scores.GetSortedScoresByPP(false);
 
         const double bonusNumber = 416.6667;
-        var weightedPp = userBests
+        var weightedPp = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.PerformancePoints)
             .Sum();
         var bonusPp = bonusNumber * (1 - Math.Pow(0.9994, userBests.Count));
 
         return weightedPp + bonusPp;
     }
-
 
     public static float CalculateAccuracy(Score score)
     {

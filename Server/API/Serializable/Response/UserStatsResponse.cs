@@ -4,7 +4,7 @@ using Sunrise.Server.Database.Models;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class UserStatsResponse(UserStats stats)
+public class UserStatsResponse(UserStats stats, int globalRank)
 {
     [JsonPropertyName("user_id")]
     public int UserId { get; set; } = stats.UserId;
@@ -26,6 +26,9 @@ public class UserStatsResponse(UserStats stats)
 
     [JsonPropertyName("pp")]
     public short PerformancePoints { get; set; } = stats.PerformancePoints;
+
+    [JsonPropertyName("rank")]
+    public int Rank { get; set; } = globalRank;
 
     [JsonPropertyName("max_combo")]
     public int MaxCombo { get; set; } = stats.MaxCombo;
