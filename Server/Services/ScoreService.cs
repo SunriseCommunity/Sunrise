@@ -68,6 +68,7 @@ public static class ScoreService
 
         var replayFile = await database.UploadReplay(userStats.UserId, replay);
         score.ReplayFileId = replayFile.Id;
+        score.BeatmapSetId = beatmapSet.Id;
 
         await database.InsertScore(score);
         await database.UpdateUserStats(userStats);

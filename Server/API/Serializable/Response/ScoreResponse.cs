@@ -12,6 +12,9 @@ public class ScoreResponse(Score score)
     [JsonPropertyName("beatmap_id")]
     public int BeatmapId { get; set; } = score.BeatmapId;
 
+    [JsonPropertyName("beatmap_set_id")]
+    public int BeatmapSetId { get; set; } = score.BeatmapSetId;
+
     [JsonPropertyName("count_100")]
     public int Count100 { get; set; } = score.Count100;
 

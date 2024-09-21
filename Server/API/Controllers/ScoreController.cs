@@ -20,7 +20,7 @@ public class ScoreController : ControllerBase
         var score = await database.GetScore(id);
         if (score == null)
             return NotFound("Score not found");
-        
+
         return Ok(new ScoreResponse(score));
     }
 
