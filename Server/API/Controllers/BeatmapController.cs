@@ -19,12 +19,12 @@ public class BeatmapController : ControllerBase
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: id);
         if (beatmapSet == null)
-            return NotFound("Beatmap set not found");
+            return NotFound(new ErrorResponse("Beatmap set not found"));
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return NotFound("Beatmap not found");
+            return NotFound(new ErrorResponse("Beatmap not found"));
 
         return Ok(new BeatmapResponse(beatmap, beatmapSet));
     }
@@ -34,11 +34,9 @@ public class BeatmapController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, id);
         if (beatmapSet == null)
-            return NotFound("Beatmap set not found");
-
-        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
+            return NotFound(new ErrorResponse("Beatmap set not found"));
 
         return Ok(new BeatmapSetResponse(beatmapSet));
     }

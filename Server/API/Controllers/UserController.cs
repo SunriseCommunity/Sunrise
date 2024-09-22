@@ -42,7 +42,7 @@ public class UserController : ControllerBase
             var userDb = await database.GetUser(id);
 
             if (userDb == null)
-                return NotFound("User not found");
+                return NotFound(new ErrorResponse("User not found"));
 
             user = userDb;
         }
@@ -63,7 +63,7 @@ public class UserController : ControllerBase
 
         if (stats == null)
         {
-            return NotFound("User stats not found");
+            return NotFound(new ErrorResponse("User stats not found"));
         }
 
         var globalRank = await database.GetUserRank(id, (GameMode)mode);
@@ -83,7 +83,7 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         return await GetUser(session.User.Id, mode);
     }
@@ -103,7 +103,7 @@ public class UserController : ControllerBase
 
         if (user == null)
         {
-            return NotFound("User not found");
+            return NotFound(new ErrorResponse("User not found"));
         }
 
         var scores = await database.GetUserBestScores(id, (GameMode)mode);
@@ -141,7 +141,7 @@ public class UserController : ControllerBase
 
         if (user == null)
         {
-            return NotFound("User not found");
+            return NotFound(new ErrorResponse("User not found"));
         }
 
         var scores = await database.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
@@ -160,7 +160,7 @@ public class UserController : ControllerBase
 
         if (users == null)
         {
-            return NotFound("Users not found");
+            return NotFound(new ErrorResponse("Users not found"));
         }
 
         var usersResponse = users.Select(user => new UserResponse(user)).ToList();
@@ -181,7 +181,7 @@ public class UserController : ControllerBase
 
         if (stats == null)
         {
-            return NotFound("Users not found");
+            return NotFound(new ErrorResponse("Users not found"));
         }
 
         var data = JsonSerializer.SerializeToElement(new
@@ -203,13 +203,13 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var user = await database.GetUser(id);
 
         if (user == null)
-            return NotFound("User not found");
+            return NotFound(new ErrorResponse("User not found"));
 
         if (user.Id == session.User.Id)
             return BadRequest(new ErrorResponse("You can't check your own friend status"));
@@ -226,13 +226,13 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var user = await database.GetUser(id);
 
         if (user == null)
-            return NotFound("User not found");
+            return NotFound(new ErrorResponse("User not found"));
 
         switch (action)
         {
@@ -256,7 +256,7 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();
@@ -278,7 +278,7 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();
