@@ -17,6 +17,15 @@ public class BeatmapResponse(Beatmap beatmap, BeatmapSet? beatmapSet = null)
     [JsonPropertyName("version")]
     public string Version { get; set; } = beatmap.Version;
 
+    [JsonPropertyName("star_rating")]
+    public double StarRating { get; set; } = beatmap.DifficultyRating;
+
+    [JsonPropertyName("total_length")]
+    public int TotalLength { get; set; } = beatmap.TotalLength;
+
+    [JsonPropertyName("max_combo")]
+    public int MaxCombo { get; set; } = beatmap.MaxCombo ?? 0;
+
     [JsonPropertyName("accuracy")]
     public double Accuracy { get; set; } = beatmap.Accuracy;
 
