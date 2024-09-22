@@ -30,7 +30,7 @@ public class RecalculateCommand : IChatCommand
         {
             var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-            var stats = await database.GetAllUserStats(mode);
+            var stats = await database.GetAllUserStats(mode, LeaderboardSortType.Pp);
 
             if (stats == null)
             {

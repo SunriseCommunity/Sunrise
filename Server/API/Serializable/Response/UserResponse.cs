@@ -5,7 +5,7 @@ using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class UserResponse(User user, string? status = "Offline")
+public class UserResponse(User user, string? status = null)
 {
     [JsonPropertyName("user_id")]
     public int Id { get; set; } = user.Id;
@@ -33,5 +33,6 @@ public class UserResponse(User user, string? status = "Offline")
     public List<string> Badges { get; set; } = UserService.GetUserBadges(user);
 
     [JsonPropertyName("user_status")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? UserStatus { get; set; } = status;
 }

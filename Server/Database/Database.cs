@@ -147,7 +147,7 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<List<UserStats>?> GetAllUserStats(GameMode mode, bool useCache = true)
+    public async Task<List<UserStats>?> GetAllUserStats(GameMode mode, LeaderboardSortType leaderboardSortType, bool useCache = true)
     {
         var cachedStats = await Redis.Get<List<UserStats>>(RedisKey.AllUserStats(mode));
 
@@ -157,7 +157,16 @@ public sealed class SunriseDb
         }
 
         var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode);
-        var stats = await _orm.SelectManyAsync<UserStats>(exp);
+
+        var stats = await _orm.SelectManyAsync<UserStats>(exp,
+        [
+            leaderboardSortType switch
+            {
+                LeaderboardSortType.Pp => new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending),
+                LeaderboardSortType.Score => new ResultOrder("TotalScore", OrderDirectionEnum.Descending),
+                _ => throw new ArgumentOutOfRangeException(nameof(leaderboardSortType), leaderboardSortType, null)
+            }
+        ]);
 
         if (stats == null)
         {

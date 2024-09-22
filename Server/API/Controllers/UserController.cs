@@ -152,9 +152,28 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Route("all")]
-    public async Task<IActionResult> GetAllUsers([FromQuery(Name = "mode")] int? mode)
+    [Route("leaderboard")]
+    public async Task<IActionResult> GetLeaderboard(
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "type")] int? leaderboardType,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0)
     {
+        if (leaderboardType is < 0 or > 1 or null)
+        {
+            return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
+        }
+
+        if (mode is < 0 or > 3)
+        {
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        }
+
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest(new ErrorResponse("Invalid limit parameter"));
+        }
+
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var users = await database.GetAllUsers();
 
@@ -163,38 +182,26 @@ public class UserController : ControllerBase
             return NotFound(new ErrorResponse("Users not found"));
         }
 
-        var usersResponse = users.Select(user => new UserResponse(user)).ToList();
-
-        if (mode == null)
-        {
-            return Ok(usersResponse);
-        }
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-
-        if (isValidMode != true)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
-
-        var stats = await database.GetAllUserStats((GameMode)mode);
+        var stats = await database.GetAllUserStats((GameMode)mode, (LeaderboardSortType)leaderboardType);
 
         if (stats == null)
         {
             return NotFound(new ErrorResponse("Users not found"));
         }
 
-        var data = JsonSerializer.SerializeToElement(new
-        {
-            users = usersResponse,
-            stats = stats.Select(async stat =>
-            {
-                var globalRank = await database.GetUserRank(stat.UserId, (GameMode)mode);
-                return new UserStatsResponse(stat, (int)globalRank);
-            }).ToList()
-        });
+        stats = stats.Where(x => users.Any(u => u.Id == x.UserId)).ToList();
 
-        return Ok(data);
+        var offsetUserStats = stats.Skip(page * limit ?? 0).Take(limit ?? 50).ToList();
+
+        var usersWithStats = offsetUserStats.Select(async stats =>
+        {
+            var user = users.FirstOrDefault(u => u.Id == stats.UserId);
+
+            var globalRank = await database.GetUserRank(user.Id, (GameMode)mode);
+            return new UserWithStats(new UserResponse(user), new UserStatsResponse(stats, (int)globalRank));
+        }).Select(task => task.Result).ToList();
+
+        return Ok(new LeaderboardResponse(usersWithStats, users.Count));
     }
 
     [HttpGet]
