@@ -10,13 +10,14 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("score/{id:int}")]
 [Subdomain("api")]
+[ResponseCache(VaryByHeader = "User-Agent", Duration = 3600)]
 public class ScoreController : ControllerBase
 {
     [HttpGet("")]
     public async Task<IActionResult> GetScore(int id)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-
+        
         var score = await database.GetScore(id);
         if (score == null)
             return NotFound("Score not found");

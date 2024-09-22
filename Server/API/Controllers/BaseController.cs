@@ -34,9 +34,10 @@ public class BaseController(IMemoryCache cache) : ControllerBase
 
         return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session?.GetRemainingCalls()));
     }
-    
+
     [HttpGet]
     [Route("/status")]
+    [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
     public async Task<IActionResult> GetStatus()
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
