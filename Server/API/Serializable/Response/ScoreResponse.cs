@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using osu.Shared;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -52,7 +53,8 @@ public class ScoreResponse(Score score)
     public int MaxCombo { get; set; } = score.MaxCombo;
 
     [JsonPropertyName("mods")]
-    public Mods Mods { get; set; } = score.Mods;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Mods { get; set; } = score.Mods.GetModsString();
 
     [JsonPropertyName("is_perfect")]
     public bool Perfect { get; set; } = score.Perfect;
