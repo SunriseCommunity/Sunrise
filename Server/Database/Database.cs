@@ -423,10 +423,12 @@ public sealed class SunriseDb
     public async Task<byte[]?> GetBeatmapFile(int beatmapId)
     {
         var cachedRecord = await Redis.Get<BeatmapFile?>(RedisKey.BeatmapRecord(beatmapId));
+        byte[]? file;
 
         if (cachedRecord != null)
         {
-            return await File.ReadAllBytesAsync(cachedRecord.Path);
+            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            return file;
         }
 
         var exp = new Expr("BeatmapId", OperatorEnum.Equals, beatmapId);
@@ -437,7 +439,12 @@ public sealed class SunriseDb
             return null;
         }
 
-        var file = await LocalStorage.ReadFileAsync(record.Path);
+        file = await LocalStorage.ReadFileAsync(record.Path);
+
+        if (file == null)
+        {
+            return null;
+        }
 
         await Redis.Set(RedisKey.BeatmapRecord(beatmapId), record);
 
@@ -469,10 +476,12 @@ public sealed class SunriseDb
     public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.AvatarRecord(userId));
+        byte[]? file;
 
         if (cachedRecord != null)
         {
-            return await File.ReadAllBytesAsync(cachedRecord.Path);
+            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            return file;
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
@@ -486,7 +495,9 @@ public sealed class SunriseDb
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Avatars/Default.png";
-        var file = await LocalStorage.ReadFileAsync(filePath);
+        file = await LocalStorage.ReadFileAsync(filePath);
+        if (file == null)
+            return null;
 
         await Redis.Set(RedisKey.AvatarRecord(userId), record);
 
@@ -514,8 +525,13 @@ public sealed class SunriseDb
     public async Task<byte[]?> GetScreenshot(int screenshotId)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.ScreenshotRecord(screenshotId));
+        byte[]? file;
+
         if (cachedRecord != null)
-            return await File.ReadAllBytesAsync(cachedRecord.Path);
+        {
+            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            return file;
+        }
 
         var exp = new Expr("Id", OperatorEnum.Equals, screenshotId);
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
@@ -523,7 +539,10 @@ public sealed class SunriseDb
         if (record == null)
             return null;
 
-        var file = await LocalStorage.ReadFileAsync(record.Path);
+        file = await LocalStorage.ReadFileAsync(record.Path);
+        if (file == null)
+            return null;
+
         await Redis.Set(RedisKey.ScreenshotRecord(screenshotId), record);
 
         return file;
@@ -554,10 +573,12 @@ public sealed class SunriseDb
     public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.BannerRecord(userId));
+        byte[]? file;
 
         if (cachedRecord != null)
         {
-            return await File.ReadAllBytesAsync(cachedRecord.Path);
+            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            return file;
         }
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
@@ -570,7 +591,9 @@ public sealed class SunriseDb
         }
 
         var filePath = record?.Path ?? $"{DataPath}Files/Banners/Default.png";
-        var file = await LocalStorage.ReadFileAsync(filePath);
+        file = await LocalStorage.ReadFileAsync(filePath);
+        if (file == null)
+            return null;
 
         await Redis.Set(RedisKey.BannerRecord(userId), record);
 
@@ -601,8 +624,13 @@ public sealed class SunriseDb
     public async Task<byte[]?> GetReplay(int replayId)
     {
         var cachedRecord = await Redis.Get<UserFile>(RedisKey.ReplayRecord(replayId));
+        byte[]? file;
+
         if (cachedRecord != null)
-            return await File.ReadAllBytesAsync(cachedRecord.Path);
+        {
+            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            return file;
+        }
 
         var exp = new Expr("Id", OperatorEnum.Equals, replayId);
         var record = await _orm.SelectFirstAsync<UserFile?>(exp);
@@ -610,7 +638,10 @@ public sealed class SunriseDb
         if (record == null)
             return null;
 
-        var file = await LocalStorage.ReadFileAsync(record.Path);
+        file = await LocalStorage.ReadFileAsync(record.Path);
+        if (file == null)
+            return null;
+
         await Redis.Set(RedisKey.ReplayRecord(replayId), record);
 
         return file;
