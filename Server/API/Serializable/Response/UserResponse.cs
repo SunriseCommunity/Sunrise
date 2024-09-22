@@ -5,7 +5,7 @@ using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class UserResponse(User user, string? status = null)
+public class UserResponse(User user, string? status = "Offline")
 {
     [JsonPropertyName("user_id")]
     public int Id { get; set; } = user.Id;
@@ -26,14 +26,12 @@ public class UserResponse(User user, string? status = null)
     public bool IsRestricted { get; set; } = user.IsRestricted;
 
     [JsonPropertyName("silenced_until")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? SilencedUntil { get; set; } = user.SilencedUntil > DateTime.UtcNow ? user.SilencedUntil : null!;
-
-    [JsonPropertyName("friends")]
-    public List<int> FriendsList { get; set; } = user.FriendsList;
 
     [JsonPropertyName("badges")]
     public List<string> Badges { get; set; } = UserService.GetUserBadges(user);
 
     [JsonPropertyName("user_status")]
-    public string? UserStatus { get; set; } = status ?? null;
+    public string? UserStatus { get; set; } = status;
 }

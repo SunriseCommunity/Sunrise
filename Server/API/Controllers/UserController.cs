@@ -197,6 +197,60 @@ public class UserController : ControllerBase
         return Ok(data);
     }
 
+    [HttpGet]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> GetFriendStatus(int id)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized("Invalid session");
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+            return NotFound("User not found");
+
+        if (user.Id == session.User.Id)
+            return BadRequest(new ErrorResponse("You can't check your own friend status"));
+
+        var isFollowing = user.FriendsList.Contains(session.User.Id);
+        var isFollowed = session.User.FriendsList.Contains(user.Id);
+
+        return Ok(new FriendStatusResponse(isFollowing, isFollowed));
+    }
+
+    [HttpPost]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> EditFriendStatus(int id, [FromQuery(Name = "action")] string action)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized("Invalid session");
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+            return NotFound("User not found");
+
+        switch (action)
+        {
+            case "add":
+                session.User.AddFriend(user.Id);
+                break;
+            case "remove":
+                session.User.RemoveFriend(user.Id);
+                break;
+            default:
+                return BadRequest(new ErrorResponse("Invalid action parameter"));
+        }
+
+        await database.UpdateUser(session.User);
+
+        return new OkResult();
+    }
+
     [HttpPost(RequestType.AvatarUpload)]
     public async Task<IActionResult> SetAvatar()
     {
