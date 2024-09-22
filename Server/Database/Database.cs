@@ -239,6 +239,48 @@ public sealed class SunriseDb
         return limit == null ? bestScores : bestScores.Take(limit.Value).ToList();
     }
 
+    public async Task<List<Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
+    {
+        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode);
+
+        switch (type)
+        {
+            case ScoreTableType.Best:
+                exp = exp.PrependAnd("UserId", OperatorEnum.Equals, userId);
+                break;
+            case ScoreTableType.Recent:
+                exp = exp.PrependAnd("UserId", OperatorEnum.Equals, userId);
+                break;
+            case ScoreTableType.Top:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type), type, null);
+        }
+
+        var scores = await _orm.SelectManyAsync<Score>(exp,
+        [
+            type switch
+            {
+                ScoreTableType.Best => new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending),
+                ScoreTableType.Recent => new ResultOrder("WhenPlayed", OrderDirectionEnum.Descending),
+                ScoreTableType.Top => new ResultOrder("TotalScore", OrderDirectionEnum.Descending),
+                _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+            }
+        ]);
+
+        switch (type)
+        {
+            case ScoreTableType.Top:
+                scores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).Where(x => x.UserId == userId).ToList();
+                break;
+            case ScoreTableType.Best:
+                scores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
+                break;
+        }
+
+        return scores;
+    }
+
     public async Task<Score?> GetUserLastScore(int userId)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId);

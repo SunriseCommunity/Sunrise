@@ -32,6 +32,7 @@ public class UserController : ControllerBase
         if (userSession != null)
         {
             user = userSession.User;
+            user.LastOnlineTime = userSession.Attributes.LastPingRequest;
             userStatus = userSession.Attributes.Status.ToText();
         }
         else
@@ -88,8 +89,8 @@ public class UserController : ControllerBase
 
     [HttpGet]
     [Obsolete("Calculations for graph is impossible. Should just create snapshots each day with cron operation")]
-    [Route("{id:int}/scores")]
-    public async Task<IActionResult> GetUserScores(int id, [FromQuery(Name = "mode")] int mode)
+    [Route("{id:int}/graph/scores")]
+    public async Task<IActionResult> GetUserGraphScores(int id, [FromQuery(Name = "mode")] int mode)
     {
         if (mode is < 0 or > 3)
         {
@@ -109,6 +110,44 @@ public class UserController : ControllerBase
         var top100Scores = scores.Take(100).Select(score => new ScoreResponse(score)).ToList();
 
         return Ok(new ScoresResponse(top100Scores, scores.Count));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/scores")]
+    public async Task<IActionResult> GetUserGraphScores(int id,
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "type")] int? scoresType,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0)
+    {
+        if (scoresType is < 0 or > 2 or null)
+        {
+            return BadRequest(new ErrorResponse("Invalid scores type parameter"));
+        }
+
+        if (mode is < 0 or > 3)
+        {
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        }
+
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest(new ErrorResponse("Invalid limit parameter"));
+        }
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+        {
+            return NotFound("User not found");
+        }
+
+        var scores = await database.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
+
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score)).ToList();
+
+        return Ok(new ScoresResponse(offsetScores, scores.Count));
     }
 
     [HttpGet]

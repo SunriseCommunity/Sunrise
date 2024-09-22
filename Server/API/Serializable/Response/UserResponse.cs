@@ -7,7 +7,6 @@ namespace Sunrise.Server.API.Serializable.Response;
 
 public class UserResponse(User user, string? status = null)
 {
-
     [JsonPropertyName("user_id")]
     public int Id { get; set; } = user.Id;
 
@@ -19,6 +18,9 @@ public class UserResponse(User user, string? status = null)
 
     [JsonPropertyName("register_date")]
     public DateTime RegisterDate { get; set; } = user.RegisterDate;
+
+    [JsonPropertyName("last_online_time")]
+    public DateTime LastOnlineTime { get; set; } = user.LastOnlineTime;
 
     [JsonPropertyName("restricted")]
     public bool IsRestricted { get; set; } = user.IsRestricted;
