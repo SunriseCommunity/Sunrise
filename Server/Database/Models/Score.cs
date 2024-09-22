@@ -25,9 +25,6 @@ public class Score
     public string BeatmapHash { get; set; }
 
     [Column(DataTypes.Int, false)]
-    public int BeatmapSetId { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int ReplayFileId { get; set; }
 
     [Column(DataTypes.Int, false)]
