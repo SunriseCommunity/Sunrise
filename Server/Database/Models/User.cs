@@ -28,6 +28,9 @@ public class User
     [Column(DataTypes.DateTime, false)]
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
 
+    [Column(DataTypes.DateTime, false)]
+    public DateTime LastOnlineTime { get; set; } = DateTime.UtcNow; // Can be fucked up by outdated cache? Need to investigate
+
     [Column(DataTypes.Nvarchar, 1024, false)]
     public string Friends { get; set; } = string.Empty;
 

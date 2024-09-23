@@ -4,6 +4,8 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Helpers;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Services;
@@ -79,14 +81,26 @@ public static class AuthService
         var token = new JwtSecurityToken(
             "Sunrise",
             "Sunrise",
-            new[]
-            {
+            [
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString())
-            },
+            ],
             expires: DateTime.UtcNow.Add(expires),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)), SecurityAlgorithms.HmacSha256)
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public static BaseSession GenerateIpSession(HttpRequest request)
+    {
+        var ip = RegionHelper.GetUserIpAddress(request);
+
+        var user = new User
+        {
+            Id = ip.GetHashCode(),
+            Username = "Guest"
+        };
+
+        return new BaseSession(user);
     }
 }

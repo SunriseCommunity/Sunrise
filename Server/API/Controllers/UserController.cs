@@ -15,6 +15,7 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 600)]
 public class UserController : ControllerBase
 {
     [HttpGet]
@@ -32,6 +33,7 @@ public class UserController : ControllerBase
         if (userSession != null)
         {
             user = userSession.User;
+            user.LastOnlineTime = userSession.Attributes.LastPingRequest;
             userStatus = userSession.Attributes.Status.ToText();
         }
         else
@@ -40,7 +42,7 @@ public class UserController : ControllerBase
             var userDb = await database.GetUser(id);
 
             if (userDb == null)
-                return NotFound("User not found");
+                return NotFound(new ErrorResponse("User not found"));
 
             user = userDb;
         }
@@ -61,7 +63,7 @@ public class UserController : ControllerBase
 
         if (stats == null)
         {
-            return NotFound("User stats not found");
+            return NotFound(new ErrorResponse("User stats not found"));
         }
 
         var globalRank = await database.GetUserRank(id, (GameMode)mode);
@@ -81,15 +83,15 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         return await GetUser(session.User.Id, mode);
     }
 
     [HttpGet]
     [Obsolete("Calculations for graph is impossible. Should just create snapshots each day with cron operation")]
-    [Route("{id:int}/scores")]
-    public async Task<IActionResult> GetUserScores(int id, [FromQuery(Name = "mode")] int mode)
+    [Route("{id:int}/graph/scores")]
+    public async Task<IActionResult> GetUserGraphScores(int id, [FromQuery(Name = "mode")] int mode)
     {
         if (mode is < 0 or > 3)
         {
@@ -101,7 +103,7 @@ public class UserController : ControllerBase
 
         if (user == null)
         {
-            return NotFound("User not found");
+            return NotFound(new ErrorResponse("User not found"));
         }
 
         var scores = await database.GetUserBestScores(id, (GameMode)mode);
@@ -112,49 +114,148 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Route("all")]
-    public async Task<IActionResult> GetAllUsers([FromQuery(Name = "mode")] int? mode)
+    [Route("{id:int}/scores")]
+    public async Task<IActionResult> GetUserGraphScores(int id,
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "type")] int? scoresType,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0)
     {
+        if (scoresType is < 0 or > 2 or null)
+        {
+            return BadRequest(new ErrorResponse("Invalid scores type parameter"));
+        }
+
+        if (mode is < 0 or > 3)
+        {
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        }
+
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest(new ErrorResponse("Invalid limit parameter"));
+        }
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+        {
+            return NotFound(new ErrorResponse("User not found"));
+        }
+
+        var scores = await database.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
+
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score)).ToList();
+
+        return Ok(new ScoresResponse(offsetScores, scores.Count));
+    }
+
+    [HttpGet]
+    [Route("leaderboard")]
+    public async Task<IActionResult> GetLeaderboard(
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "type")] int? leaderboardType,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0)
+    {
+        if (leaderboardType is < 0 or > 1 or null)
+        {
+            return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
+        }
+
+        if (mode is < 0 or > 3)
+        {
+            return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        }
+
+        if (limit is < 1 or > 100)
+        {
+            return BadRequest(new ErrorResponse("Invalid limit parameter"));
+        }
+
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var users = await database.GetAllUsers();
 
         if (users == null)
         {
-            return NotFound("Users not found");
+            return NotFound(new ErrorResponse("Users not found"));
         }
 
-        var usersResponse = users.Select(user => new UserResponse(user)).ToList();
-
-        if (mode == null)
-        {
-            return Ok(usersResponse);
-        }
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-
-        if (isValidMode != true)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
-
-        var stats = await database.GetAllUserStats((GameMode)mode);
+        var stats = await database.GetAllUserStats((GameMode)mode, (LeaderboardSortType)leaderboardType);
 
         if (stats == null)
         {
-            return NotFound("Users not found");
+            return NotFound(new ErrorResponse("Users not found"));
         }
 
-        var data = JsonSerializer.SerializeToElement(new
-        {
-            users = usersResponse,
-            stats = stats.Select(async stat =>
-            {
-                var globalRank = await database.GetUserRank(stat.UserId, (GameMode)mode);
-                return new UserStatsResponse(stat, (int)globalRank);
-            }).ToList()
-        });
+        stats = stats.Where(x => users.Any(u => u.Id == x.UserId)).ToList();
 
-        return Ok(data);
+        var offsetUserStats = stats.Skip(page * limit ?? 0).Take(limit ?? 50).ToList();
+
+        var usersWithStats = offsetUserStats.Select(async stats =>
+        {
+            var user = users.FirstOrDefault(u => u.Id == stats.UserId);
+
+            var globalRank = await database.GetUserRank(user.Id, (GameMode)mode);
+            return new UserWithStats(new UserResponse(user), new UserStatsResponse(stats, (int)globalRank));
+        }).Select(task => task.Result).ToList();
+
+        return Ok(new LeaderboardResponse(usersWithStats, users.Count));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> GetFriendStatus(int id)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        if (user.Id == session.User.Id)
+            return BadRequest(new ErrorResponse("You can't check your own friend status"));
+
+        var isFollowing = user.FriendsList.Contains(session.User.Id);
+        var isFollowed = session.User.FriendsList.Contains(user.Id);
+
+        return Ok(new FriendStatusResponse(isFollowing, isFollowed));
+    }
+
+    [HttpPost]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> EditFriendStatus(int id, [FromQuery(Name = "action")] string action)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        switch (action)
+        {
+            case "add":
+                session.User.AddFriend(user.Id);
+                break;
+            case "remove":
+                session.User.RemoveFriend(user.Id);
+                break;
+            default:
+                return BadRequest(new ErrorResponse("Invalid action parameter"));
+        }
+
+        await database.UpdateUser(session.User);
+
+        return new OkResult();
     }
 
     [HttpPost(RequestType.AvatarUpload)]
@@ -162,7 +263,7 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();
@@ -184,7 +285,7 @@ public class UserController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();

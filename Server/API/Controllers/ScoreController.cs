@@ -10,17 +10,18 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("score/{id:int}")]
 [Subdomain("api")]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 3600)]
 public class ScoreController : ControllerBase
 {
     [HttpGet("")]
     public async Task<IActionResult> GetScore(int id)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-
+        
         var score = await database.GetScore(id);
         if (score == null)
-            return NotFound("Score not found");
-        
+            return NotFound(new ErrorResponse("Score not found"));
+
         return Ok(new ScoreResponse(score));
     }
 
@@ -29,17 +30,17 @@ public class ScoreController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
-            return Unauthorized("Invalid session");
+            return Unauthorized(new ErrorResponse("Invalid session"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var score = await database.GetScore(id: id);
         if (score == null)
-            return NotFound("Score not found");
+            return NotFound(new ErrorResponse("Score not found"));
 
         var replay = await database.GetReplay(score.ReplayFileId);
         if (replay == null)
-            return NotFound("Replay not found");
+            return NotFound(new ErrorResponse("Replay not found"));
 
         var replayFile = new ReplayFile(score, replay);
         var replayStream = await replayFile.ReadReplay();
