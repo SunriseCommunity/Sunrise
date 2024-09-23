@@ -8,7 +8,7 @@ using AuthService = Sunrise.Server.API.Services.AuthService;
 namespace Sunrise.Server.API.Controllers;
 
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "User-Agent", Duration = 3600)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 3600)]
 public class BeatmapController : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
