@@ -22,8 +22,6 @@ public static class Configuration
     public static TimeSpan WebTokenExpiration =>
         TimeSpan.FromSeconds(Config.GetSection("API").GetValue<int?>("TokenExpiresIn") ?? 3600);
 
-    //public static int UserApiCallsInMinute => 60; // REDO ON WINDOW SYSTEM
-
     public static int ApiCallsPerWindow =>
         Config.GetSection("API").GetSection("RateLimit").GetValue<int?>("CallsPerWindow") ?? 100;
 
