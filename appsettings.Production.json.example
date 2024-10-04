@@ -1,0 +1,31 @@
+{
+  "Note": "Don't forget to remove .example at the end of this file for it to work!",
+  "General": {
+    "WelcomeMessage": "Welcome to Sunrise!",
+    "WebDomain": "osu-sunrise.top",
+    "IgnoreBeatmapRanking": false,
+    "IncludeUserTokenInLogs": false,
+    "OnMaintenance": false,
+    "RateLimit": {
+      "CallsPerWindow": 100,
+      "Window": 10
+    },
+    "BannedIps": []
+  },
+  "Redis": {
+    "ConnectionString": "redis",
+    "CacheLifeTime": 600
+  },
+  "Bot": {
+    "Username": "Sunshine Bot",
+    "Prefix": "!"
+  },
+  "API": {
+    "RateLimit": {
+      "CallsPerWindow": 60,
+      "Window": 30
+    },
+    "TokenExpiresIn": 3600,
+    "TokenSecret": "ReplaceMeWithSomething"
+  }
+}
