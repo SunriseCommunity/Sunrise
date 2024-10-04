@@ -8,6 +8,7 @@ services:
       - "443:443"
     volumes:
       - ./Data:/app/Data
+      - ./appsettings.Production.json:/app/appsettings.Production.json
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=https://+:443;http://+:5147
