@@ -123,3 +123,6 @@ Data/Files/SeasonalBackgrounds/*
 
 # Logs
 logs/*
+
+# Ignore appsettings.Production.json
+appsettings.Production.json

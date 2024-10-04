@@ -33,7 +33,7 @@ public class RedisRepository
 
     public async Task Set<T>(string key, T value, TimeSpan? cacheTime = null)
     {
-        await _redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromMinutes(15), flags: CommandFlags.FireAndForget);
+        await _redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime), flags: CommandFlags.FireAndForget);
     }
 
     public async Task Set<T>(string[] keys, T value, TimeSpan? cacheTime = null)

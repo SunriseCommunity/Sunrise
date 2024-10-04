@@ -38,7 +38,7 @@ public sealed class Middleware(
 
         if (limiter.GetStatistics() is { } statistics)
         {
-            context.Response.Headers["X-RateLimit-Limit"] = $"{Configuration.ServerRateLimit}";
+            context.Response.Headers["X-RateLimit-Limit"] = $"{Configuration.GeneralCallsPerWindow}";
             context.Response.Headers["X-RateLimit-Remaining"] = $"{statistics.CurrentAvailablePermits}";
             if (lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                 context.Response.Headers.RetryAfter = $"{retryAfter.Seconds}";
@@ -58,14 +58,14 @@ public sealed class Middleware(
         return cache.GetOrCreate(key,
             entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromSeconds(Configuration.ServerRateLimitWindow);
+                entry.SlidingExpiration = TimeSpan.FromSeconds(Configuration.GeneralWindow);
                 return new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
                 {
                     AutoReplenishment = true,
-                    TokenLimit = Configuration.ServerRateLimit,
-                    TokensPerPeriod = Configuration.ServerRateLimit,
+                    TokenLimit = Configuration.GeneralCallsPerWindow,
+                    TokensPerPeriod = Configuration.GeneralCallsPerWindow,
                     QueueLimit = 0,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(Configuration.ServerRateLimitWindow)
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(Configuration.GeneralWindow)
                 });
             }) ?? throw new InvalidOperationException($"Failed to create rate limiter for {key}");
     }
