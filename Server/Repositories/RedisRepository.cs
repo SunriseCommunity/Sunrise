@@ -6,8 +6,9 @@ namespace Sunrise.Server.Repositories;
 
 public class RedisRepository
 {
+    private static readonly ConnectionMultiplexer RedisConnection =
+        ConnectionMultiplexer.Connect(Configuration.RedisConnection);
 
-    private static readonly ConnectionMultiplexer RedisConnection = ConnectionMultiplexer.Connect(Configuration.RedisConnection);
     private readonly IDatabase _redis = RedisConnection.GetDatabase();
 
     public async Task<T?> Get<T>(string key)
@@ -21,26 +22,22 @@ public class RedisRepository
         var values = await _redis.StringGetAsync(keys.Select(x => (RedisKey)x).ToArray());
 
         foreach (var value in values)
-        {
             if (value.HasValue)
-            {
                 return JsonSerializer.Deserialize<T>(value!);
-            }
-        }
 
         return default;
     }
 
     public async Task Set<T>(string key, T value, TimeSpan? cacheTime = null)
     {
-        await _redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime), flags: CommandFlags.FireAndForget);
+        await _redis.StringSetAsync(new RedisKey(key), JsonSerializer.Serialize(value),
+            cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime));
     }
 
     public async Task Set<T>(string[] keys, T value, TimeSpan? cacheTime = null)
     {
-        var values = keys.Select(x => new KeyValuePair<RedisKey, RedisValue>((RedisKey)x, JsonSerializer.Serialize(value))).ToArray();
-
-        await _redis.StringSetAsync(values, flags: CommandFlags.FireAndForget);
+        foreach (var t in keys)
+            await Set(t, value, cacheTime);
     }
 
     public async Task Remove(string key)
