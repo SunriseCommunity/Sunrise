@@ -1,23 +1,23 @@
 using HOPEless.Bancho.Objects;
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
 public class UserAttributes
 {
-
     public UserAttributes(User user, Location location, LoginRequest loginRequest, bool usesOsuClient = true)
     {
-
         Latitude = location.Latitude;
         Longitude = location.Longitude;
         Timezone = location.TimeOffset;
-        Country = Enum.TryParse(location.Country, out CountryCodes country) ? (short)country != 0 ? (short)country : null : null;
+        Country = Enum.TryParse(location.Country, out CountryCodes country)
+            ? (short)country != 0 ? (short)country : null
+            : null;
         User = user;
         UsesOsuClient = usesOsuClient;
 
@@ -43,7 +43,6 @@ public class UserAttributes
 
     public async Task<BanchoUserPresence> GetPlayerPresence()
     {
-
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var userRank = IsBot ? 0 : await database.GetUserRank(User.Id, GetCurrentGameMode());
 
@@ -87,7 +86,6 @@ public class UserAttributes
     {
         LastPingRequest = DateTime.UtcNow;
     }
-
 
 
     public GameMode GetCurrentGameMode()

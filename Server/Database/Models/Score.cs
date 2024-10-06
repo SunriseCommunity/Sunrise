@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;

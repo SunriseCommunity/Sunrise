@@ -1,10 +1,10 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers.Multiplayer;
 
@@ -18,10 +18,7 @@ public class MultiMatchCreateHandler : IHandler
         var matchHistoryPublic =
             string.IsNullOrEmpty(match.GamePassword) || !match.GamePassword.EndsWith("//private");
 
-        if (!matchHistoryPublic)
-        {
-            match.GamePassword = match.GamePassword[..^9];
-        }
+        if (!matchHistoryPublic) match.GamePassword = match.GamePassword[..^9];
 
         if (string.IsNullOrEmpty(match.GamePassword))
             match.GamePassword = null;

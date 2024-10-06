@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -38,7 +39,8 @@ public class ScoreController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var result = await ScoreService.SubmitScore(session, scoreSerialized, beatmapHash, scoreTime, scoreFailTime, osuVersion, clientHash, replayFile, storyboardHash);
+        var result = await ScoreService.SubmitScore(session, scoreSerialized, beatmapHash, scoreTime, scoreFailTime,
+            osuVersion, clientHash, replayFile, storyboardHash);
         return await Task.FromResult<IActionResult>(Ok(result));
     }
 
@@ -63,7 +65,8 @@ public class ScoreController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var result = await ScoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename);
+        var result =
+            await ScoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename);
 
         return Ok(result);
     }

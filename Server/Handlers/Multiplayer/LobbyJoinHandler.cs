@@ -1,9 +1,9 @@
 using HOPEless.Bancho;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers.Multiplayer;
 

@@ -1,6 +1,7 @@
 ﻿using DatabaseWrapper.Core;
 using ExpressionTree;
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
@@ -15,8 +16,8 @@ namespace Sunrise.Server.Database;
 
 public sealed class SunriseDb
 {
-    private const string DataPath = "./Data/";
-    private const string Database = "sunrise.db";
+    private const string DataPath = Configuration.DataPath;
+    private const string Database = Configuration.DatabaseName;
     private readonly ILogger<SunriseDb> _logger;
     private readonly WatsonORM _orm = new(new DatabaseSettings(DataPath + Database));
 

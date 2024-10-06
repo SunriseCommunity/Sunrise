@@ -1,4 +1,5 @@
 ﻿using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;

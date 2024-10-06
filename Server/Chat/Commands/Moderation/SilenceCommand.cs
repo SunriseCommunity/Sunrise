@@ -1,4 +1,5 @@
 using HOPEless.Bancho;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
@@ -6,7 +7,6 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Moderation;
 
@@ -17,7 +17,8 @@ public class SilenceCommand : IChatCommand
     {
         if (args == null || args.Length < 4)
         {
-            CommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}silence <user id> <amount> <unit (s/m/h/d)> <reason>");
+            CommandRepository.SendMessage(session,
+                $"Usage: {Configuration.BotPrefix}silence <user id> <amount> <unit (s/m/h/d)> <reason>");
             return;
         }
 
@@ -45,7 +46,8 @@ public class SilenceCommand : IChatCommand
 
         if (user.SilencedUntil > DateTime.UtcNow)
         {
-            CommandRepository.SendMessage(session, $"User is already silenced. He will be unsilenced at {user.SilencedUntil}. UTC+0 ");
+            CommandRepository.SendMessage(session,
+                $"User is already silenced. He will be unsilenced at {user.SilencedUntil}. UTC+0 ");
             return;
         }
 
@@ -96,6 +98,7 @@ public class SilenceCommand : IChatCommand
 
         await database.UpdateUser(user);
 
-        CommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been silenced until {user.SilencedUntil:yyyy-MM-dd HH:mm:ss}. UTC+0 | Reason: {reason}");
+        CommandRepository.SendMessage(session,
+            $"User {user.Username} ({user.Id}) has been silenced until {user.SilencedUntil:yyyy-MM-dd HH:mm:ss}. UTC+0 | Reason: {reason}");
     }
 }

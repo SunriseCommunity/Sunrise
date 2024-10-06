@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
@@ -13,7 +14,8 @@ public static class BeatmapService
 {
     public static async Task<string> SearchBeatmap(Session session, int? setId, int? beatmapId, string? beatmapHash)
     {
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
+        var beatmapSet =
+            await BeatmapManager.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
 
         return beatmapSet != null ? beatmapSet.ToSearchResult(session) : "0";
     }
@@ -42,10 +44,12 @@ public static class BeatmapService
         if (searchMostPlayed)
         {
             var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-            var ids = await database.GetMostPlayedBeatmapsIds(Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, page);
+            var ids = await database.GetMostPlayedBeatmapsIds(
+                Enum.TryParse<GameMode>(mode, out var modeEnum) ? modeEnum : null, page);
 
             beatmapSets = await BeatmapManager.SearchBeatmapsByIds(session, ids.Take(50).ToList());
-            beatmapSets?.AddRange(await BeatmapManager.SearchBeatmapsByIds(session, ids.Skip(50).Take(50).ToList()) ?? []); // Not the best, but API ignores my page size parameter.
+            beatmapSets?.AddRange(await BeatmapManager.SearchBeatmapsByIds(session, ids.Skip(50).Take(50).ToList()) ??
+                                  []); // Not the best, but API ignores my page size parameter.
         }
         else
         {
@@ -63,29 +67,23 @@ public static class BeatmapService
         return string.Join("\n", result);
     }
 
-    private static async Task<List<BeatmapSet>?> SearchBeatmapSet(Session session, string? rankedStatus, string mode, int page, string query)
+    private static async Task<List<BeatmapSet>?> SearchBeatmapSet(Session session, string? rankedStatus, string mode,
+        int page, string query)
     {
-        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session, ApiType.BeatmapSetSearch, [query, 100, page, rankedStatus, mode]);
+        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session, ApiType.BeatmapSetSearch,
+            [query, 100, page, rankedStatus, mode]);
 
-        if (beatmapSets == null)
-        {
-            return null;
-        }
+        if (beatmapSets == null) return null;
 
         // TODO: Save beatmapSets to DB with beatmaps and add redis logic.
 
         if (Configuration.IgnoreBeatmapRanking)
-        {
             foreach (var b in beatmapSets)
             {
                 b.StatusString = "ranked";
 
-                foreach (var beatmap in b.Beatmaps)
-                {
-                    beatmap.StatusString = "ranked";
-                }
+                foreach (var beatmap in b.Beatmaps) beatmap.StatusString = "ranked";
             }
-        }
 
         return beatmapSets;
     }

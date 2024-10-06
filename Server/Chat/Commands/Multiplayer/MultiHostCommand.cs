@@ -1,8 +1,8 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Multiplayer;
 
@@ -12,9 +12,7 @@ public class MultiHostCommand : IChatCommand
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (channel == null || session.Match == null)
-        {
             throw new InvalidOperationException("Multiplayer command was called without being in a multiplayer room.");
-        }
 
         if (session.Match.HasHostPrivileges(session) == false)
         {
@@ -29,7 +27,7 @@ public class MultiHostCommand : IChatCommand
         }
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-        var targetSession = sessions.GetSession(username: args[0]);
+        var targetSession = sessions.GetSession(args[0]);
 
         if (targetSession == null)
         {

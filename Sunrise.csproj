@@ -8,6 +8,8 @@
 
     <ItemGroup>
         <PackageReference Include="BouncyCastle.NetCore" Version="1.9.0"/>
+        <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14"/>
+        <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9"/>
         <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.9"/>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.7"/>

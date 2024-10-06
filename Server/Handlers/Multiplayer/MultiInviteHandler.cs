@@ -1,10 +1,10 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers.Multiplayer;
 
@@ -17,10 +17,7 @@ public class MultiInviteHandler : IHandler
     {
         var invitee = new BanchoInt(packet.Data);
 
-        if (!_rateLimiter.CanSend(session))
-        {
-            return Task.CompletedTask;
-        }
+        if (!_rateLimiter.CanSend(session)) return Task.CompletedTask;
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var inviteeSession = sessions.GetSession(userId: invitee.Value);
@@ -29,9 +26,8 @@ public class MultiInviteHandler : IHandler
             return Task.CompletedTask;
 
         if (inviteeSession.User.Username == Configuration.BotUsername)
-        {
-            session.SendChannelMessage(Configuration.BotUsername, "Thanks for the invite, but if I join, who will moderate the chat?");
-        }
+            session.SendChannelMessage(Configuration.BotUsername,
+                "Thanks for the invite, but if I join, who will moderate the chat?");
 
         var match = session.Match;
         if (match != null)

@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
@@ -15,16 +16,14 @@ public class RecalculateCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        CommandRepository.SendMessage(session, "Recalculation started. Server will enter maintenance mode until it's done.");
+        CommandRepository.SendMessage(session,
+            "Recalculation started. Server will enter maintenance mode until it's done.");
 
         Configuration.OnMaintenance = true;
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        foreach (var userSession in sessions.GetSessions())
-        {
-            userSession.SendBanchoMaintenance();
-        }
+        foreach (var userSession in sessions.GetSessions()) userSession.SendBanchoMaintenance();
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {
@@ -51,7 +50,8 @@ public class RecalculateCommand : IChatCommand
                 await database.UpdateUserStats(stat);
             }
 
-            CommandRepository.SendMessage(session, $"Recalculated stats for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
+            CommandRepository.SendMessage(session,
+                $"Recalculated stats for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
         }
 
         Configuration.OnMaintenance = false;

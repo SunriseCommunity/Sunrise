@@ -1,5 +1,5 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat;
 
@@ -21,9 +21,7 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
         UserIds.Remove(userId);
 
         if (UserIds.Count == 0 && IsAbstract)
-        {
             ServicesProviderHolder.GetRequiredService<ChannelRepository>().RemoveAbstractChannel(Name);
-        }
     }
 
     public void SendToChannel(string message, string? sender = null)

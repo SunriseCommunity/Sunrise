@@ -1,6 +1,6 @@
 using System.Text.Json;
 using StackExchange.Redis;
-using Sunrise.Server.Utils;
+using Sunrise.Server.Application;
 
 namespace Sunrise.Server.Repositories;
 

@@ -2,6 +2,7 @@
 using System.Text;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
@@ -37,7 +38,8 @@ public static class AuthService
             return RejectLogin(response, "Invalid credentials.");
 
         if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivileges.Admin))
-            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.", LoginResponses.ServerError);
+            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.",
+                LoginResponses.ServerError);
 
         if (user.IsRestricted && await database.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
@@ -56,7 +58,8 @@ public static class AuthService
         return await ProceedWithLogin(session);
     }
 
-    private static IActionResult RejectLogin(HttpResponse response, string? reason = null, LoginResponses code = LoginResponses.InvalidCredentials)
+    private static IActionResult RejectLogin(HttpResponse response, string? reason = null,
+        LoginResponses code = LoginResponses.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
 
@@ -90,15 +93,9 @@ public static class AuthService
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
 
-        if (session.User.Privilege.HasFlag(UserPrivileges.Admin))
-        {
-            chatChannels.JoinChannel("#staff", session);
-        }
+        if (session.User.Privilege.HasFlag(UserPrivileges.Admin)) chatChannels.JoinChannel("#staff", session);
 
-        foreach (var channel in chatChannels.GetChannels(session))
-        {
-            session.SendChannelAvailable(channel);
-        }
+        foreach (var channel in chatChannels.GetChannels(session)) session.SendChannelAvailable(channel);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -106,9 +103,7 @@ public static class AuthService
         await sessions.SendCurrentPlayers(session);
 
         if (session.User.SilencedUntil > DateTime.UtcNow)
-        {
             session.SendSilenceStatus((int)(session.User.SilencedUntil - DateTime.UtcNow).TotalSeconds);
-        }
 
         sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence());
         sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
@@ -119,9 +114,8 @@ public static class AuthService
         session.SendNotification(Configuration.WelcomeMessage);
 
         if (Configuration.OnMaintenance)
-        {
-            session.SendNotification("Server is currently in maintenance mode. Please keep in mind that some features may not work properly.");
-        }
+            session.SendNotification(
+                "Server is currently in maintenance mode. Please keep in mind that some features may not work properly.");
 
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }
@@ -135,9 +129,7 @@ public static class AuthService
         var ip = RegionHelper.GetUserIpAddress(request);
 
         if (string.IsNullOrEmpty(ip.ToString()))
-        {
             return new BadRequestObjectResult("Invalid request: Missing IP address");
-        }
 
         var errors = new Dictionary<string, List<string>>
         {
@@ -147,53 +139,32 @@ public static class AuthService
         };
 
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
-        {
             return new BadRequestObjectResult("Invalid request: Missing parameters");
-        }
 
         if (!CharactersFilter.IsValidString(username!, true))
-        {
             errors["username"].Add("Invalid username. It should contain only alphanumeric characters.");
-
-        }
         else if (username.Length is < 2 or > 32)
-        {
             errors["username"].Add("Invalid username. Length should be between 2 and 32 characters.");
 
-        }
-
         if (!CharactersFilter.IsValidString(email!) || !email.Contains('@') || !email.Contains('.'))
-        {
             errors["user_email"].Add("Invalid email. It should contain '@' and '.'.");
-        }
 
         if (!CharactersFilter.IsValidString(password!))
-        {
             errors["password"].Add("Invalid password. It should contain only alphanumeric characters.");
-        }
         else if (password.Length is < 8 or > 32)
-        {
             errors["password"].Add("Invalid password. It should contain between 8 and 32 characters.");
-        }
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var user = await database.GetUser(username: username);
 
-        if (user != null)
-        {
-            errors["username"].Add("User with this username already exists.");
-        }
+        if (user != null) errors["username"].Add("User with this username already exists.");
 
         user = await database.GetUser(email: email);
 
-        if (user != null)
-        {
-            errors["user_email"].Add("User with this email already exists.");
-        }
+        if (user != null) errors["user_email"].Add("User with this email already exists.");
 
         if (errors.Any(x => x.Value.Count > 0))
-        {
             return new BadRequestObjectResult(new
             {
                 form_error = new
@@ -201,12 +172,8 @@ public static class AuthService
                     user = errors
                 }
             });
-        }
 
-        if (request.Form["check"] != "0")
-        {
-            return new OkObjectResult("");
-        }
+        if (request.Form["check"] != "0") return new OkObjectResult("");
 
         var passhash = password.GetPassHash();
         var location = await RegionHelper.GetRegion(ip);
@@ -230,10 +197,7 @@ public static class AuthService
         var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
         var sb = new StringBuilder();
 
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
+        foreach (var b in data) sb.Append(b.ToString("x2"));
 
         return sb.ToString();
     }

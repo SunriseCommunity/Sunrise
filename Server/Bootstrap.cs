@@ -1,11 +1,13 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server;
 
@@ -21,6 +23,7 @@ public static class Bootstrap
         builder.Services.AddProblemDetails();
         builder.Services.AddMetrics();
 
+
         builder.Services.AddW3CLogging(logging =>
         {
             logging.LoggingFields = W3CLoggingFields.All;
@@ -28,6 +31,15 @@ public static class Bootstrap
             logging.AdditionalRequestHeaders.Add("osu-version");
             if (Configuration.IncludeUserTokenInLogs) logging.AdditionalRequestHeaders.Add("osu-token");
         });
+    }
+
+    public static void AddHangfire(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddHangfire(config =>
+        {
+            config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(Configuration.HangfireConnection));
+        });
+        builder.Services.AddHangfireServer();
     }
 
     public static void AddMiddlewares(this WebApplicationBuilder builder)
@@ -69,7 +81,9 @@ public static class Bootstrap
     {
         app.UseStaticFiles(new StaticFileOptions
         {
-            FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Data/Files/SeasonalBackgrounds")),
+            FileProvider =
+                new PhysicalFileProvider(
+                    Path.Combine(Directory.GetCurrentDirectory(), "Data/Files/SeasonalBackgrounds")),
             RequestPath = "/static"
         });
     }

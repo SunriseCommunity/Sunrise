@@ -1,11 +1,11 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers.Chat;
 
@@ -22,10 +22,7 @@ public class ChatMessagePublicHandler : IHandler
             SenderId = session.User.Id
         };
 
-        if (!_rateLimiter.CanSend(session))
-        {
-            return;
-        }
+        if (!_rateLimiter.CanSend(session)) return;
 
         var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
         var channel = channels.GetChannel(session, message.Channel);
@@ -33,8 +30,6 @@ public class ChatMessagePublicHandler : IHandler
         channel?.SendToChannel(message.Message, session.User.Username);
 
         if (message.Message.StartsWith(Configuration.BotPrefix))
-        {
             await CommandRepository.HandleCommand(message, session);
-        }
     }
 }

@@ -1,6 +1,6 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Services;
 

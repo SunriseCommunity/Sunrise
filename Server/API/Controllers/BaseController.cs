@@ -2,11 +2,11 @@
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Utils;
 using RateLimiter = System.Threading.RateLimiting.RateLimiter;
 
 namespace Sunrise.Server.API.Controllers;

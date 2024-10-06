@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;

@@ -1,8 +1,8 @@
 using HOPEless.Bancho;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
@@ -15,15 +15,9 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         var userId = session.User.Id;
         var now = DateTime.UtcNow;
 
-        if (session.User.Privilege.HasFlag(UserPrivileges.Admin) && ignoreMods)
-        {
-            return true;
-        }
+        if (session.User.Privilege.HasFlag(UserPrivileges.Admin) && ignoreMods) return true;
 
-        if (!_requestTimestamps.ContainsKey(userId))
-        {
-            _requestTimestamps[userId] = [];
-        }
+        if (!_requestTimestamps.ContainsKey(userId)) _requestTimestamps[userId] = [];
 
         var timestamps = _requestTimestamps[userId];
         timestamps.RemoveAll(t => now - t > timeWindow);
@@ -45,10 +39,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         var userId = session.User.Id;
         var now = DateTime.UtcNow;
 
-        if (!_requestTimestamps.ContainsKey(userId))
-        {
-            _requestTimestamps[userId] = [];
-        }
+        if (!_requestTimestamps.ContainsKey(userId)) _requestTimestamps[userId] = [];
 
         var timestamps = _requestTimestamps[userId];
         timestamps.RemoveAll(t => now - t > timeWindow);
@@ -62,7 +53,8 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         session.User.SilencedUntil = DateTime.UtcNow + silenceTime;
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        await database.UpdateUser(session.User); // NOTE: I have no guarantee that we will not overwrite some db changes here. Just pointing out.
+        await database.UpdateUser(session
+            .User); // NOTE: I have no guarantee that we will not overwrite some db changes here. Just pointing out.
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         session.SendSilenceStatus((int)silenceTime.TotalSeconds, "You are sending messages too fast. Slow down!");

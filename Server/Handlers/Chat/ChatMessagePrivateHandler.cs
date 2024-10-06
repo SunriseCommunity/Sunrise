@@ -1,11 +1,11 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers.Chat;
 
@@ -23,26 +23,18 @@ public class ChatMessagePrivateHandler : IHandler
             SenderId = session.User.Id
         };
 
-        if (!_rateLimiter.CanSend(session))
-        {
-            return;
-        }
+        if (!_rateLimiter.CanSend(session)) return;
 
         if (message.Channel == Configuration.BotUsername)
-        {
             if (message.Message.StartsWith(Configuration.BotPrefix) || message.Message.StartsWith(Action))
             {
                 await CommandRepository.HandleCommand(message, session);
                 return;
             }
-        }
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        if (!sessions.TryGetSession(out var receiver, message.Channel) || receiver == null)
-        {
-            return;
-        }
+        if (!sessions.TryGetSession(out var receiver, message.Channel) || receiver == null) return;
 
         if (receiver.Attributes.AwayMessage is not null)
         {
@@ -56,18 +48,15 @@ public class ChatMessagePrivateHandler : IHandler
             return;
         }
 
-        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiver?.User.FriendsList.Contains(session.User.Id) == true)
-        {
+        if (receiver is { Attributes.IgnoreNonFriendPm: false } ||
+            receiver?.User.FriendsList.Contains(session.User.Id) == true)
             receiver.WritePacket(PacketType.ServerChatMessage, message);
-        }
 
         if (receiver != null && receiver.User.SilencedUntil > DateTime.UtcNow)
-        {
             session.WritePacket(PacketType.ServerChatPmTargetSilenced,
                 new BanchoChatMessage
                 {
                     Channel = receiver.User.Username
                 });
-        }
     }
 }

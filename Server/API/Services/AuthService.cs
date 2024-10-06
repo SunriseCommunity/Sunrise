@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
@@ -37,7 +38,8 @@ public static class AuthService
 
     public static (string?, int) RefreshToken(string token)
     {
-        return (!ValidateJwtToken(token, out var userId) ? null : GenerateJwtToken(userId!.Value, TokenExpires), TokenExpires.ToSeconds());
+        return (!ValidateJwtToken(token, out var userId) ? null : GenerateJwtToken(userId!.Value, TokenExpires),
+            TokenExpires.ToSeconds());
     }
 
     private static bool ValidateJwtToken(string token, out int? userId)
@@ -85,7 +87,8 @@ public static class AuthService
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString())
             ],
             expires: DateTime.UtcNow.Add(expires),
-            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)), SecurityAlgorithms.HmacSha256)
+            signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)),
+                SecurityAlgorithms.HmacSha256)
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);

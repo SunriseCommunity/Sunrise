@@ -1,10 +1,10 @@
 ﻿using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Helpers;
 

@@ -1,8 +1,8 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Multiplayer;
 
@@ -12,9 +12,7 @@ public class MultiInviteCommand : IChatCommand
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (channel == null || session.Match == null)
-        {
             throw new InvalidOperationException("Multiplayer command was called without being in a multiplayer room.");
-        }
 
         if (args == null || args.Length == 0)
         {
@@ -24,7 +22,7 @@ public class MultiInviteCommand : IChatCommand
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        var invitee = sessions.GetSession(username: args[0]);
+        var invitee = sessions.GetSession(args[0]);
 
         if (invitee == null)
         {

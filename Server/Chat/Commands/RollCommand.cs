@@ -1,8 +1,8 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 using static System.Int32;
 
 namespace Sunrise.Server.Chat.Commands;
@@ -15,23 +15,16 @@ public class RollCommand : IChatCommand
         var maxNumber = 100;
 
         if (args?.Length > 0)
-        {
             if (TryParse(args[0], out var parsedValue))
-            {
                 maxNumber = parsedValue;
-            }
-        }
 
-        var message = $"[https://osu.{Configuration.Domain}/{session.User.Id} {session.User.Username}] rolls {new Random().Next(0, maxNumber)} point(s)";
+        var message =
+            $"[https://osu.{Configuration.Domain}/{session.User.Id} {session.User.Username}] rolls {new Random().Next(0, maxNumber)} point(s)";
 
         if (channel != null)
-        {
             channel.SendToChannel(message);
-        }
         else
-        {
             CommandRepository.SendMessage(session, message);
-        }
 
         return Task.CompletedTask;
     }

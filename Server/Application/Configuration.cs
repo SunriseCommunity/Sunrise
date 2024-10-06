@@ -1,11 +1,14 @@
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Utils;
+namespace Sunrise.Server.Application;
 
 public static class Configuration
 {
+    public const string DataPath = "./Data/";
+    public const string DatabaseName = "sunrise.db";
     private static readonly string? Env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
@@ -58,6 +61,13 @@ public static class Configuration
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
     public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? true;
+
+    // Hangfire section
+    public static string HangfireConnection =>
+        Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
+
+    public static int MaxDailyBackupCount =>
+        Config.GetSection("Hangfire").GetValue<int?>("MaxDailyBackupCount") ?? 3;
 
     // TODO: Move ExternalApis and InitializeBotInDatabase to a db migration
 

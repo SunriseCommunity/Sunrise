@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text.Json;
+using Sunrise.Server.Application;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Helpers;
 
@@ -42,7 +42,8 @@ public class RequestsHelper
         {
             if (args.Length < api.NumberOfRequiredArgs)
             {
-                Logger.LogWarning($"Not enough arguments for {type} for {api}. Required {api.NumberOfRequiredArgs}, got {args.Length}.");
+                Logger.LogWarning(
+                    $"Not enough arguments for {type} for {api}. Required {api.NumberOfRequiredArgs}, got {args.Length}.");
                 continue;
             }
 
@@ -52,18 +53,13 @@ public class RequestsHelper
 
             var (response, isServerRateLimited) = await SendApiRequest<T>(api.Server, requestUri);
 
-            if (isServerRateLimited)
-            {
-                continue;
-            }
+            if (isServerRateLimited) continue;
 
-            if (response is not null)
-            {
-                return response;
-            }
+            if (response is not null) return response;
         }
 
-        Logger.LogWarning($"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.");
+        Logger.LogWarning(
+            $"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.");
 
         return default;
     }
@@ -85,18 +81,11 @@ public class RequestsHelper
             await Task.Delay(2000);
             Logger.LogInformation($"Retrying request to {requestUri} (try {requestTry + 1})");
             return await SendRequest<T>(requestUri, requestTry + 1);
-
         }
 
-        if (!response.IsSuccessStatusCode)
-        {
-            return default;
-        }
+        if (!response.IsSuccessStatusCode) return default;
 
-        if (typeof(T) == typeof(byte[]))
-        {
-            return (T)(object)await response.Content.ReadAsByteArrayAsync();
-        }
+        if (typeof(T) == typeof(byte[])) return (T)(object)await response.Content.ReadAsByteArrayAsync();
 
         var content = await response.Content.ReadAsStringAsync();
 
@@ -125,11 +114,17 @@ public class RequestsHelper
             {
                 case ApiServer.Ppy:
                 case ApiServer.CatboyBest:
-                    rateLimit = response.Headers.TryGetValues("X-RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                    rateLimit = response.Headers.TryGetValues("X-RateLimit-Remaining", out rateLimitHeader)
+                        ? rateLimitHeader.FirstOrDefault()
+                        : "60";
                     break;
                 case ApiServer.OsuDirect:
-                    rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
-                    rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader) ? rateLimitHeader.FirstOrDefault() : "60";
+                    rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out rateLimitHeader)
+                        ? rateLimitHeader.FirstOrDefault()
+                        : "60";
+                    rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader)
+                        ? rateLimitHeader.FirstOrDefault()
+                        : "60";
                     break;
                 case ApiServer.OldPpy:
                 case ApiServer.Nerinyan:
@@ -141,13 +136,15 @@ public class RequestsHelper
             }
 
             if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
-            {
-                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt) ? rateLimitResetInt : 60));
-            }
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true,
+                    TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt)
+                        ? rateLimitResetInt
+                        : 60));
 
             if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
             {
-                Logger.LogWarning($"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
+                Logger.LogWarning(
+                    $"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
 
                 await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
 
@@ -159,7 +156,8 @@ public class RequestsHelper
                 if (response.StatusCode < HttpStatusCode.BadGateway)
                     return (default, false);
 
-                Logger.LogWarning($"{server} returned status code {response.StatusCode}. Ignoring server for 10 minutes.");
+                Logger.LogWarning(
+                    $"{server} returned status code {response.StatusCode}. Ignoring server for 10 minutes.");
                 await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
 
                 return (default, false);

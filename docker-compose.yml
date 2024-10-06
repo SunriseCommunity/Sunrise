@@ -20,14 +20,12 @@ services:
 
   redis:
     image: redis:latest
-    container_name: redis
     restart: always
     volumes:
       - redis:/data
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     restart: always
@@ -43,6 +41,16 @@ services:
       - ./grafana:/var/lib/grafana
     depends_on:
       - prometheus
+  
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hangfire
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   redis:
+  postgres_data:
