@@ -31,6 +31,7 @@ public static class Configuration
     // General section
     public static string WelcomeMessage => Config.GetSection("General").GetValue<string?>("WelcomeMessage") ?? "";
     public static string Domain => Config.GetSection("General").GetValue<string?>("WebDomain") ?? "";
+    public static string MedalMirrorUrl => Config.GetSection("General").GetValue<string?>("MedalMirrorUrl") ?? "";
 
     public static int GeneralCallsPerWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("CallsPerWindow") ?? 100;
@@ -56,6 +57,8 @@ public static class Configuration
     // Redis section
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
+
+    // TODO: Move ExternalApis and InitializeBotInDatabase to a db migration
 
     public static List<ExternalApi> ExternalApis { get; } =
     [

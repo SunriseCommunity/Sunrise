@@ -11,7 +11,9 @@ namespace Sunrise.Server.Services;
 
 public static class ScoreService
 {
-    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash, int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay, string? storyboardHash)
+    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
+        int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
+        string? storyboardHash)
     {
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
@@ -28,7 +30,8 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        if (!SubmitScoreHelper.IsScoreValid(session, score, osuVersion, clientHash, beatmapHash, beatmap.Checksum, storyboardHash))
+        if (!SubmitScoreHelper.IsScoreValid(session, score, osuVersion, clientHash, beatmapHash, beatmap.Checksum,
+                storyboardHash))
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
             await database.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
@@ -78,13 +81,15 @@ public static class ScoreService
         if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
-            channels.GetChannel(session, "#announce")?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
+            channels.GetChannel(session, "#announce")
+                ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
         }
 
-        return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
+        return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods, LeaderboardType leaderboardType, string beatmapHash, string filename)
+    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods,
+        LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var scores = await database.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
@@ -112,10 +117,7 @@ public static class ScoreService
 
         var leaderboardScores = scores.GetTopScores(50);
 
-        foreach (var score in leaderboardScores)
-        {
-            responses.Add(await score.GetString());
-        }
+        foreach (var score in leaderboardScores) responses.Add(await score.GetString());
 
         return string.Join("\n", responses);
     }

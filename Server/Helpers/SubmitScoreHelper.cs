@@ -1,5 +1,6 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
@@ -13,7 +14,8 @@ public static class SubmitScoreHelper
 
     public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
-        return $"[https://osu.{Configuration.Domain}/users/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+        return
+            $"[https://osu.{Configuration.Domain}/users/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
     }
 
     public static void ReportRejectionToMetrics(Session session, Score score, string reason)
@@ -22,7 +24,8 @@ public static class SubmitScoreHelper
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
     }
 
-    public static bool IsScoreValid(Session session, Score score, string osuVersion, string clientHash, string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
+    public static bool IsScoreValid(Session session, Score score, string osuVersion, string clientHash,
+        string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
     {
         var userOsuVersion = session.Attributes.OsuVersion?.Split(".")[0] ?? "";
         var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
@@ -32,21 +35,30 @@ public static class SubmitScoreHelper
             string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
             string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
             string.Equals(score.ScoreHash, computedOnlineHash, StringComparison.Ordinal),
-            string.Equals(beatmapHash, onlineBeatmapHash, StringComparison.Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
+            string.Equals(beatmapHash, onlineBeatmapHash,
+                StringComparison
+                    .Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
         }.All(x => x);
     }
 
-    public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser, Score newScore, Score? prevScore)
+    public static async Task<string> GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser,
+        Score newScore,
+        Score? prevScore)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
 
         // TODO: Change playcount and passcount to be from out db
-        var beatmapInfo = $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
+        var beatmapInfo =
+            $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
         var scoreInfo = string.Join("|", GetChart(prevScore, newScore));
-        var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" + string.Join("|", GetChart(prevUser, user));
+        var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
+                         string.Join("|", GetChart(prevUser, user));
 
-        return $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:";
+        var newAchievements = await MedalManager.GetNewMedals(newScore, beatmap, user);
+
+        return
+            $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
     }
 
     public static bool IsHasInvalidMods(Mods mods)
@@ -93,7 +105,8 @@ public static class SubmitScoreHelper
                 _ => entry
             };
 
-            result.Add(GetChartEntry(lowerFirst, before?.GetType().GetProperty(obj)?.GetValue(before), after?.GetType().GetProperty(obj)?.GetValue(after)));
+            result.Add(GetChartEntry(lowerFirst, before?.GetType().GetProperty(obj)?.GetValue(before),
+                after?.GetType().GetProperty(obj)?.GetValue(after)));
         }
 
         return result;

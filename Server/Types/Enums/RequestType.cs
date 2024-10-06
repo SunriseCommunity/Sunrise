@@ -9,6 +9,8 @@ public static class RequestType
     public const string GetAvatar = "avatar/{id:int}";
     public const string GetBanner = "banner/{id:int}";
     public const string GetScreenshot = "ss/{id:int}.jpg";
+    public const string GetMedalImage = "medals/client/{medalId:int}.png";
+    public const string GetMedalHighImage = "medals/client/{medalId:int}@2x.png";
     public const string BannerUpload = "upload/banner";
     public const string AvatarUpload = "upload/avatar";
     public const string MenuContent = "menu-content.json";

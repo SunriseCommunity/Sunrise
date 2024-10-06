@@ -9,14 +9,11 @@ namespace Sunrise.Server.Database.Models;
 [Table("score")]
 public class Score
 {
-    [Column(true, DataTypes.Int, false)]
-    public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int UserId { get; set; }
+    [Column(DataTypes.Int, false)] public int UserId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int BeatmapId { get; set; }
+    [Column(DataTypes.Int, false)] public int BeatmapId { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string ScoreHash { get; set; }
@@ -24,56 +21,41 @@ public class Score
     [Column(DataTypes.Nvarchar, 64, false)]
     public string BeatmapHash { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int ReplayFileId { get; set; }
+    [Column(DataTypes.Int, false)] public int ReplayFileId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int TotalScore { get; set; }
+    [Column(DataTypes.Int, false)] public int TotalScore { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int MaxCombo { get; set; }
+    [Column(DataTypes.Int, false)] public int MaxCombo { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int Count300 { get; set; }
+    [Column(DataTypes.Int, false)] public int Count300 { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int Count100 { get; set; }
+    [Column(DataTypes.Int, false)] public int Count100 { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int Count50 { get; set; }
+    [Column(DataTypes.Int, false)] public int Count50 { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int CountMiss { get; set; }
+    [Column(DataTypes.Int, false)] public int CountMiss { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int CountKatu { get; set; }
+    [Column(DataTypes.Int, false)] public int CountKatu { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int CountGeki { get; set; }
+    [Column(DataTypes.Int, false)] public int CountGeki { get; set; }
 
-    [Column(DataTypes.Boolean, false)]
-    public bool Perfect { get; set; }
+    [Column(DataTypes.Boolean, false)] public bool Perfect { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public Mods Mods { get; set; }
+    [Column(DataTypes.Int, false)] public Mods Mods { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Grade { get; set; }
 
-    [Column(DataTypes.Boolean, false)]
-    public bool IsPassed { get; set; }
+    [Column(DataTypes.Boolean, false)] public bool IsPassed { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public GameMode GameMode { get; set; }
+    [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
-    [Column(DataTypes.DateTime, false)]
-    public DateTime WhenPlayed { get; set; }
+    [Column(DataTypes.DateTime, false)] public DateTime WhenPlayed { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string OsuVersion { get; set; }
 
-    [Column(DataTypes.DateTime, false)]
-    public DateTime ClientTime { get; set; }
+    [Column(DataTypes.DateTime, false)] public DateTime ClientTime { get; set; }
 
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double Accuracy { get; set; }
@@ -81,6 +63,7 @@ public class Score
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double PerformancePoints { get; set; }
 
+    // TODO: Deprecate local properties.
     // Local properties
     public Beatmap Beatmap { get; set; }
 
@@ -97,7 +80,7 @@ public class Score
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var split = scoreString.Split(':');
-        var session = sessions.GetSession(username: split[1].Trim());
+        var session = sessions.GetSession(split[1].Trim());
 
         if (session == null)
             throw new Exception("Session not found for score submission");
@@ -137,7 +120,8 @@ public class Score
 
         const string hasReplay = "1"; // We don't store score without replays
 
-        return $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
+        return
+            $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
     }
 
     public string ComputeOnlineHash(string username, string clientHash, string? storyboardHash)

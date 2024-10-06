@@ -23,6 +23,8 @@ website. The server is currently in development and is not yet ready for public 
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
 - [x] Spectating
+- [ ] Achievements (Medals)
+- [ ] Rank snapshots
 
 ### Additional features
 
@@ -30,6 +32,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Rate limiter for both internal and external requests
 - [x] Redis caching for faster response times
 - [x] Docker support
+- [x] Database migrations
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
@@ -49,7 +52,7 @@ website. The server is currently in development and is not yet ready for public 
 
 ## Local connection ⚙️
 
-#### If you want to connect to the server locally, follow these steps: 
+#### If you want to connect to the server locally, follow these steps:
 
 1. Add a launch argument `-devserver sunrise.local` to your osu! shortcut.
 2. Open the `hosts` file located in `C:\Windows\System32\drivers\etc\hosts` (C:\ is your system drive) with a text

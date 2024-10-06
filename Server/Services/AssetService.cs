@@ -41,10 +41,7 @@ public static class AssetService
         var files = Directory.GetFiles(basePath).Where(x => x.EndsWith(".jpg")).ToArray();
         var backgrounds = new string[files.Length];
 
-        for (var i = 0; i < files.Length; i++)
-        {
-            backgrounds[i] = Path.GetFileNameWithoutExtension(files[i]);
-        }
+        for (var i = 0; i < files.Length; i++) backgrounds[i] = Path.GetFileNameWithoutExtension(files[i]);
 
         var seasonalBackgrounds = backgrounds.Select(x => $"https://{Configuration.Domain}/static/{x}.jpg").ToArray();
 
@@ -64,7 +61,8 @@ public static class AssetService
         return isSuccessful ? (true, null) : (false, "Failed to save avatar. Please try again later.");
     }
 
-    public static async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot, CancellationToken ct)
+    public static async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot,
+        CancellationToken ct)
     {
         using var buffer = new MemoryStream();
         await screenshot.CopyToAsync(buffer, ct);
@@ -108,6 +106,14 @@ public static class AssetService
     public static async Task<byte[]?> GetEventBanner()
     {
         return await LocalStorage.ReadFileAsync("./Data/Files/Assets/EventBanner.png");
+    }
+
+    public static async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var medalImage = await database.GetMedalImage(medalFileId, isHighRes);
+
+        return medalImage ?? await LocalStorage.ReadFileAsync("./Data/Files/Medals/default.png");
     }
 
     public static async Task<byte[]?> GetPeppyImage()
