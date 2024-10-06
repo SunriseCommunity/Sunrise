@@ -23,7 +23,7 @@ website. The server is currently in development and is not yet ready for public 
 - [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
 - [x] Spectating
-- [ ] Achievements (Medals)
+- [x] Achievements (Medals)
 - [ ] Rank snapshots
 
 ### Additional features
@@ -33,6 +33,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Redis caching for faster response times
 - [x] Docker support
 - [x] Database migrations
+- [ ] Database backups
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.

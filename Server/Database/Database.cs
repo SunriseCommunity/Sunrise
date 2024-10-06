@@ -377,9 +377,9 @@ public sealed class SunriseDb
         return file;
     }
 
-    public async Task<List<UserMedals>> GetUserMedals(int userId)
+    public async Task<List<UserMedals>> GetUserMedals(int userId, GameMode? mode = null)
     {
-        var cachedMedals = await Redis.Get<List<UserMedals>>(RedisKey.UserMedals(userId));
+        var cachedMedals = await Redis.Get<List<UserMedals>>(RedisKey.UserMedals(userId, mode));
         if (cachedMedals != null) return cachedMedals;
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId);
@@ -387,7 +387,13 @@ public sealed class SunriseDb
 
         if (userMedals == null) return [];
 
-        await Redis.Set(RedisKey.UserMedals(userId), userMedals);
+        if (mode != null)
+        {
+            var modeMedals = await GetMedals(mode.Value);
+            userMedals = userMedals.Where(x => modeMedals.Any(y => y.Id == x.MedalId)).ToList();
+        }
+
+        await Redis.Set(RedisKey.UserMedals(userId, mode), userMedals);
 
         return userMedals;
     }
