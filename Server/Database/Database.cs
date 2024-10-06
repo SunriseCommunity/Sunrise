@@ -31,12 +31,23 @@ public sealed class SunriseDb
         _orm.InitializeTable(typeof(Migration));
 
         var migrationManager = new MigrationManager(_orm);
-        migrationManager.ApplyMigrations($"{DataPath}Migrations");
+        var appliedMigrations = migrationManager.ApplyMigrations($"{DataPath}Migrations");
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
             typeof(Medal), typeof(MedalFile), typeof(UserMedals)
         ]);
+
+        if (appliedMigrations <= 0) return;
+
+        _logger.LogInformation($"Applied {appliedMigrations} migrations");
+        _logger.LogWarning("Cache will be flushed due to database changes. This may cause performance issues.");
+
+        redis.FlushAllCache();
+        _logger.LogInformation("Cache flushed. Rebuilding user ranks...");
+
+        for (var i = 0; i < 4; i++) SetAllUserRanks((GameMode)i).Wait();
+        _logger.LogInformation("User ranks rebuilt. Cache is now up to date.");
     }
 
     private RedisRepository Redis { get; }
@@ -175,13 +186,13 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<List<User?>?> GetAllUsers(bool useCache = true)
+    public async Task<List<User>?> GetAllUsers(bool useCache = true)
     {
-        var cachedStats = await Redis.Get<List<User?>>(RedisKey.AllUsers());
+        var cachedStats = await Redis.Get<List<User>>(RedisKey.AllUsers());
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var stats = await _orm.SelectManyAsync<User?>(new Expr("Id", OperatorEnum.IsNotNull, null));
+        var stats = await _orm.SelectManyAsync<User>(new Expr("Id", OperatorEnum.IsNotNull, null));
 
         if (stats == null) return null;
 
@@ -731,12 +742,22 @@ public sealed class SunriseDb
     public async Task SetUserRank(int userId, GameMode mode)
     {
         var userStats = await GetUserStats(userId, mode, false);
-        await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(mode), userId, userStats.PerformancePoints);
+        await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(mode), userId, userStats?.PerformancePoints ?? 0);
     }
 
     public async Task RemoveUserRank(int userId, GameMode mode)
     {
         await Redis.SortedSetRemove(RedisKey.LeaderboardGlobal(mode), userId);
+    }
+
+    private async Task SetAllUserRanks(GameMode mode)
+    {
+        var users = await GetAllUsers(false);
+
+        if (users == null) return;
+
+        foreach (var user in users)
+            await SetUserRank(user.Id, mode);
     }
 
     public async Task InitializeBotInDatabase()

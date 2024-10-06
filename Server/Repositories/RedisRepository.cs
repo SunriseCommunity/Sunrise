@@ -59,4 +59,9 @@ public class RedisRepository
     {
         return await _redis.SortedSetRemoveAsync(key, value);
     }
+
+    public void FlushAllCache()
+    {
+        _redis.Execute("FLUSHALL");
+    }
 }

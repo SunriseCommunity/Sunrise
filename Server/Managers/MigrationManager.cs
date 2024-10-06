@@ -5,10 +5,12 @@ namespace Sunrise.Server.Managers;
 
 public class MigrationManager(WatsonORM orm)
 {
-    public void ApplyMigrations(string migrationsPath)
+    public int ApplyMigrations(string migrationsPath)
     {
         var appliedMigrations = orm.SelectMany<Migration>();
         var migrationFiles = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToList();
+
+        var migrationsApplied = 0;
 
         foreach (var file in migrationFiles)
         {
@@ -26,6 +28,10 @@ public class MigrationManager(WatsonORM orm)
             };
 
             orm.Insert(historyEntry);
+
+            migrationsApplied++;
         }
+
+        return migrationsApplied;
     }
 }
