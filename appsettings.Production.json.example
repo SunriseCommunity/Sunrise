@@ -16,6 +16,7 @@
   "Redis": {
     "ConnectionString": "redis",
     "CacheLifeTime": 600
+    "UseCache": true,
   },
   "Bot": {
     "Username": "Sunshine Bot",

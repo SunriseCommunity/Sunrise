@@ -9,16 +9,22 @@ public class RedisRepository
     private static readonly ConnectionMultiplexer RedisConnection =
         ConnectionMultiplexer.Connect(Configuration.RedisConnection);
 
+    private static readonly bool UseCache = Configuration.UseCache;
+
     private readonly IDatabase _redis = RedisConnection.GetDatabase();
 
     public async Task<T?> Get<T>(string key)
     {
+        if (!UseCache) return default;
+
         var value = await _redis.StringGetAsync(key);
         return value.HasValue ? JsonSerializer.Deserialize<T>(value!) : default;
     }
 
     public async Task<T?> Get<T>(string[] keys)
     {
+        if (!UseCache) return default;
+
         var values = await _redis.StringGetAsync(keys.Select(x => (RedisKey)x).ToArray());
 
         foreach (var value in values)
@@ -30,18 +36,24 @@ public class RedisRepository
 
     public async Task Set<T>(string key, T value, TimeSpan? cacheTime = null)
     {
+        if (!UseCache) return;
+
         await _redis.StringSetAsync(new RedisKey(key), JsonSerializer.Serialize(value),
             cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime));
     }
 
     public async Task Set<T>(string[] keys, T value, TimeSpan? cacheTime = null)
     {
+        if (!UseCache) return;
+
         foreach (var t in keys)
             await Set(t, value, cacheTime);
     }
 
     public async Task Remove(string key)
     {
+        if (!UseCache) return;
+
         await _redis.KeyDeleteAsync(key);
     }
 

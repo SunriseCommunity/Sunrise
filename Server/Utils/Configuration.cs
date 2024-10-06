@@ -57,6 +57,7 @@ public static class Configuration
     // Redis section
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
+    public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? true;
 
     // TODO: Move ExternalApis and InitializeBotInDatabase to a db migration
 
