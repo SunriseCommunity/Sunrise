@@ -8,7 +8,7 @@ public class MigrationManager(WatsonORM orm)
     public void ApplyMigrations(string migrationsPath)
     {
         var appliedMigrations = orm.SelectMany<Migration>();
-        var migrationFiles = Directory.GetFiles(migrationsPath, "*.sql");
+        var migrationFiles = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToList();
 
         foreach (var file in migrationFiles)
         {
