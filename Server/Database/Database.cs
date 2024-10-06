@@ -28,13 +28,15 @@ public sealed class SunriseDb
         Redis = redis;
 
         _orm.InitializeDatabase();
-        _orm.InitializeTables([
-            typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
-            typeof(Migration), typeof(Medal), typeof(MedalFile), typeof(UserMedals)
-        ]);
+        _orm.InitializeTable(typeof(Migration));
 
         var migrationManager = new MigrationManager(_orm);
         migrationManager.ApplyMigrations($"{DataPath}Migrations");
+
+        _orm.InitializeTables([
+            typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
+            typeof(Medal), typeof(MedalFile), typeof(UserMedals)
+        ]);
     }
 
     private RedisRepository Redis { get; }

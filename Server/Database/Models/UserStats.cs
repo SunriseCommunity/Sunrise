@@ -8,14 +8,11 @@ namespace Sunrise.Server.Database.Models;
 [Table("user_stats")]
 public class UserStats
 {
-    [Column(true, DataTypes.Int, false)]
-    public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int UserId { get; set; }
+    [Column(DataTypes.Int, false)] public int UserId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public GameMode GameMode { get; set; }
+    [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double Accuracy { get; set; }
@@ -26,17 +23,15 @@ public class UserStats
     [Column(DataTypes.Double, 45, 2, false)]
     public long RankedScore { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int PlayCount { get; set; }
+    [Column(DataTypes.Int, false)] public int PlayCount { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public short PerformancePoints { get; set; }
+    [Column(DataTypes.Int, false)] public short PerformancePoints { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int MaxCombo { get; set; }
+    [Column(DataTypes.Int, false)] public int MaxCombo { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int PlayTime { get; set; }
+    [Column(DataTypes.Int, false)] public int PlayTime { get; set; }
+
+    [Column(DataTypes.Int, false)] public int TotalHits { get; set; }
 
     // Local property
     public long? Rank { get; set; }
@@ -53,8 +48,10 @@ public class UserStats
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
         IncreaseTotalScore(score.TotalScore);
+        IncreaseTotalHits(score);
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
+
 
         if (isFailed) return;
 
@@ -68,9 +65,17 @@ public class UserStats
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
-            PerformancePoints = (short)await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
+            PerformancePoints =
+                (short)await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
             Accuracy = await Calculators.CalculateUserWeightedAccuracy(score.UserId, score.GameMode, score);
         }
+    }
+
+    private void IncreaseTotalHits(Score newScore)
+    {
+        TotalHits += newScore.Count300 + newScore.Count100 + newScore.Count50;
+        if (GameMode is GameMode.Taiko or GameMode.Mania)
+            TotalHits += newScore.CountGeki + newScore.CountKatu;
     }
 
     private void UpdateMaxCombo(int combo)

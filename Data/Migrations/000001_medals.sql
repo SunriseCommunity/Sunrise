@@ -1,3 +1,4 @@
+-- 1. Create new tables
 CREATE TABLE IF NOT EXISTS `medal`
 (
     `Id`          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -26,7 +27,47 @@ CREATE TABLE IF NOT EXISTS `user_medals`
     `UnlockedAt` TEXT                              NOT NULL
 );
 
--- skill
+-- 2. Update existing tables
+CREATE TABLE `user_stats_new`
+(
+    `Id`                INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    `UserId`            INTEGER                           NOT NULL,
+    `GameMode`          INTEGER                           NOT NULL,
+    `Accuracy`          DECIMAL(100, 2)                   NOT NULL,
+    `TotalScore`        REAL                              NOT NULL,
+    `RankedScore`       REAL                              NOT NULL,
+    `PlayCount`         INTEGER                           NOT NULL,
+    `PerformancePoints` INTEGER                           NOT NULL,
+    `MaxCombo`          INTEGER                           NOT NULL,
+    `PlayTime`          INTEGER                           NOT NULL,
+    `TotalHits`         INTEGER DEFAULT 0
+);
+
+INSERT INTO user_stats_new
+SELECT *
+FROM user_stats;
+DROP TABLE user_stats;
+ALTER TABLE user_stats_new
+    RENAME TO user_stats;
+
+-- 2.5. Enrich new column with data
+UPDATE user_stats
+SET TotalHits = (SELECT SUM(Count300 + Count100 + Count50 + CountMiss +
+                            CASE WHEN GameMode IN (1, 3) THEN CountKatu ELSE 0 END +
+                            CASE WHEN GameMode IN (1, 3) THEN CountGeki ELSE 0 END
+                        )
+                 FROM score
+                 WHERE score.UserId = user_stats.UserId
+                   AND score.GameMode = user_stats.GameMode
+                 GROUP BY UserId, GameMode)
+WHERE EXISTS (SELECT 1
+              FROM score
+              WHERE score.UserId = user_stats.UserId
+                AND score.GameMode = user_stats.GameMode);
+
+-- 3. Insert data
+
+-- Skill
 -- -- std
 INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
 VALUES ('Rising Star', 'Can''t go forward without the first steps.', 0, 4, 'osu-skill-pass-1',
@@ -150,11 +191,14 @@ INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
 VALUES ('The Drummer''s Throne', 'Percussive brilliance befitting royalty alone.', 1, 4, 'taiko-skill-fc-8',
         'beatmap.DifficultyRating >= 8 && score.Perfect');
 
--- TODO: Set condition
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('30,000 Drum Hits', 'Did that drum have a face?', 1, 4, 'taiko-hits-30000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('300,000 Drum Hits', 'The rhythm never stops.', 1, 4, 'taiko-hits-300000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('3,000,000 Drum Hits', 'Truly, the Don of dons.', 1, 4, 'taiko-hits-3000000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('30,000,000 Drum Hits', 'Your rhythm, eternal.', 1, 4, 'taiko-hits-30000000', '');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('30,000 Drum Hits', 'Did that drum have a face?', 1, 4, 'taiko-hits-30000', 'user.TotalHits >= 30000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('300,000 Drum Hits', 'The rhythm never stops.', 1, 4, 'taiko-hits-300000', 'user.TotalHits >= 300000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('3,000,000 Drum Hits', 'Truly, the Don of dons.', 1, 4, 'taiko-hits-3000000', 'user.TotalHits >= 3000000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('30,000,000 Drum Hits', 'Your rhythm, eternal.', 1, 4, 'taiko-hits-30000000', 'user.TotalHits >= 30000000');
 
 -- -- fruits
 INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
@@ -204,11 +248,15 @@ INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
 VALUES ('Dashing Scarlet', 'Speed beyond mortal reckoning.', 2, 4, 'fruits-skill-fc-8',
         'beatmap.DifficultyRating >= 8 && score.Perfect');
 
--- TODO: Set condition
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('Catch 20,000 fruits', 'That is a lot of dietary fiber.', 2, 4, 'fruits-hits-20000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('Catch 200,000 fruits', 'So, I heard you like fruit...', 2, 4, 'fruits-hits-200000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('Catch 2,000,000 fruits', 'Downright healthy.', 2, 4, 'fruits-hits-2000000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('Catch 20,000,000 fruits', 'Nothing left behind.', 2, 4, 'fruits-hits-20000000', '');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('Catch 20,000 fruits', 'That is a lot of dietary fiber.', 2, 4, 'fruits-hits-20000', 'user.TotalHits >= 20000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('Catch 200,000 fruits', 'So, I heard you like fruit...', 2, 4, 'fruits-hits-200000',
+        'user.TotalHits >= 200000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('Catch 2,000,000 fruits', 'Downright healthy.', 2, 4, 'fruits-hits-2000000', 'user.TotalHits >= 2000000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('Catch 20,000,000 fruits', 'Nothing left behind.', 2, 4, 'fruits-hits-20000000', 'user.TotalHits >= 20000000');
 
 -- -- mania
 INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
@@ -256,11 +304,15 @@ VALUES ('Step Up', 'A precipice rarely seen.', 3, 4, 'mania-skill-fc-7',
 INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
 VALUES ('Behind The Veil', 'Supernatural!', 3, 4, 'mania-skill-fc-8', 'beatmap.DifficultyRating >= 8 && score.Perfect');
 
--- TODO: Set condition
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('40,000 Keys', 'Just the start of the rainbow.', 3, 4, 'mania-hits-40000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('400,000 Keys', 'Four hundred thousand and still not even close.', 3, 4, 'mania-hits-400000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('4,000,000 Keys', 'Is this the end of the rainbow?', 3, 4, 'mania-hits-4000000', '');
--- INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition) VALUES ('40,000,000 Keys', 'The rainbow is eternal.', 3, 4, 'mania-hits-40000000', '');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('40,000 Keys', 'Just the start of the rainbow.', 3, 4, 'mania-hits-40000', 'user.TotalHits >= 40000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('400,000 Keys', 'Four hundred thousand and still not even close.', 3, 4, 'mania-hits-400000',
+        'user.TotalHits >= 400000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('4,000,000 Keys', 'Is this the end of the rainbow?', 3, 4, 'mania-hits-4000000', 'user.TotalHits >= 4000000');
+INSERT INTO medal (Name, Description, GameMode, Category, FileUrl, Condition)
+VALUES ('40,000,000 Keys', 'The rainbow is eternal.', 3, 4, 'mania-hits-40000000', 'user.TotalHits >= 40000000');
 
 -- mods intro
 INSERT INTO medal (Name, Description, Category, FileUrl, Condition)
