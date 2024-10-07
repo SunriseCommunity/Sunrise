@@ -39,5 +39,5 @@ public static class RedisKey
 
     // Sorted Set
     public static string LeaderboardGlobal(GameMode mode) { return $"leaderboard:global:{(int)mode}"; }
-    // TODO: Add country leaderboard
+    public static string LeaderboardCountry(GameMode mode, CountryCodes countryCode) { return $"leaderboard:{(int)countryCode}:{(int)mode}"; }
 }

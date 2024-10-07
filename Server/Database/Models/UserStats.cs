@@ -33,6 +33,12 @@ public class UserStats
 
     [Column(DataTypes.Int, false)] public int TotalHits { get; set; }
 
+    [Column(DataTypes.Long)] public long? BestGlobalRank { get; set; }
+    [Column(DataTypes.DateTime)] public DateTime? BestGlobalRankDate { get; set; }
+
+    [Column(DataTypes.Long)] public long? BestCountryRank { get; set; }
+    [Column(DataTypes.DateTime)] public DateTime? BestCountryRankDate { get; set; }
+
     // Local property
     public long? Rank { get; set; }
 

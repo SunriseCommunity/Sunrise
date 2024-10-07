@@ -66,7 +66,7 @@ public sealed class SunriseDb
                 UserId = user.Id,
                 GameMode = mode
             };
-            await InsertUserStats(stats);
+            await UpdateUserStats(stats);
         }
 
         await Redis.Set(RedisKey.UserById(user.Id), user);
@@ -129,15 +129,6 @@ public sealed class SunriseDb
             RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
             RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
         ], user);
-    }
-
-    public async Task<UserStats> InsertUserStats(UserStats stats)
-    {
-        stats = await _orm.InsertAsync(stats);
-        await SetUserRank(stats.UserId, stats.GameMode);
-        await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
-
-        return stats;
     }
 
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
@@ -204,8 +195,9 @@ public sealed class SunriseDb
 
     public async Task UpdateUserStats(UserStats stats)
     {
-        await _orm.UpdateAsync(stats);
-        await SetUserRank(stats.UserId, stats.GameMode);
+        stats = await SetUserRank(stats);
+        stats = await _orm.UpdateAsync(stats);
+
         await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
     }
 
@@ -739,32 +731,81 @@ public sealed class SunriseDb
 
         if (!rank.HasValue)
         {
-            await SetUserRank(userId, mode);
             rank = await Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), userId);
+            await SetUserRank(userId, mode);
         }
 
         return rank.HasValue ? rank.Value + 1 : -1;
     }
 
-    public async Task SetUserRank(int userId, GameMode mode)
+    private async Task<long> GetUserCountryRank(int userId, GameMode mode)
     {
-        var userStats = await GetUserStats(userId, mode, false);
-        await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(mode), userId, userStats?.PerformancePoints ?? 0);
+        var user = await GetUser(userId);
+        if (user == null) return -1;
+
+        var rank = await Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, (CountryCodes)user.Country), userId);
+
+        if (!rank.HasValue)
+        {
+            rank = await Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, (CountryCodes)user.Country), userId);
+            await SetUserRank(userId, mode);
+        }
+
+        return rank.HasValue ? rank.Value + 1 : -1;
     }
 
-    public async Task RemoveUserRank(int userId, GameMode mode)
+    private async Task<UserStats> SetUserRank(int userId, GameMode mode)
     {
+        var stats = await GetUserStats(userId, mode);
+        if (stats == null) throw new Exception("User stats not found for user " + userId);
+
+        stats = await SetUserRank(stats);
+        return stats;
+    }
+
+    private async Task<UserStats> SetUserRank(UserStats stats)
+    {
+        var user = await GetUser(stats.UserId);
+
+        await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(stats.GameMode), stats.UserId, stats.PerformancePoints);
+        await Redis.SortedSetAdd(RedisKey.LeaderboardCountry(stats.GameMode, (CountryCodes)user.Country), stats.UserId,
+            stats.PerformancePoints);
+
+        var newRank = await GetUserRank(stats.UserId, stats.GameMode);
+        var newCountryRank = await GetUserCountryRank(stats.UserId, stats.GameMode);
+
+        if (newRank < (stats.BestGlobalRank ?? long.MaxValue))
+        {
+            stats.BestGlobalRankDate = DateTime.UtcNow;
+            stats.BestGlobalRank = newRank;
+        }
+
+        if (newCountryRank < (stats.BestCountryRank ?? long.MaxValue))
+        {
+            stats.BestCountryRankDate = DateTime.UtcNow;
+            stats.BestCountryRank = newCountryRank;
+        }
+
+        return stats;
+    }
+
+
+    private async Task RemoveUserRank(int userId, GameMode mode)
+    {
+        var user = await GetUser(userId);
+        if (user == null) return;
+
         await Redis.SortedSetRemove(RedisKey.LeaderboardGlobal(mode), userId);
+        await Redis.SortedSetRemove(RedisKey.LeaderboardCountry(mode, (CountryCodes)user.Country), userId);
     }
 
     private async Task SetAllUserRanks(GameMode mode)
     {
-        var users = await GetAllUsers(false);
+        var usersStats = await GetAllUserStats(mode, LeaderboardSortType.Pp);
+        if (usersStats == null) return;
 
-        if (users == null) return;
-
-        foreach (var user in users)
-            await SetUserRank(user.Id, mode);
+        foreach (var stats in usersStats)
+            await UpdateUserStats(stats);
     }
 
     public async Task InitializeBotInDatabase()
