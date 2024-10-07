@@ -44,7 +44,7 @@ CREATE TABLE `user_stats_new`
 );
 
 INSERT INTO user_stats_new
-SELECT *
+SELECT *, 0
 FROM user_stats;
 DROP TABLE user_stats;
 ALTER TABLE user_stats_new
