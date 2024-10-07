@@ -58,11 +58,12 @@ public class UserController : ControllerBase
         if (stats == null) return NotFound(new ErrorResponse("User stats not found"));
 
         var globalRank = await database.GetUserRank(id, (GameMode)mode);
+        var countryRank = await database.GetUserCountryRank(id, (GameMode)mode);
 
         var data = JsonSerializer.SerializeToElement(new
         {
             user = new UserResponse(user, userStatus),
-            stats = new UserStatsResponse(stats, (int)globalRank)
+            stats = new UserStatsResponse(stats, (int)globalRank, (int)countryRank)
         });
 
         return Ok(data);
@@ -158,7 +159,10 @@ public class UserController : ControllerBase
             var user = users.FirstOrDefault(u => u.Id == stats.UserId);
 
             var globalRank = await database.GetUserRank(user.Id, (GameMode)mode);
-            return new UserWithStats(new UserResponse(user), new UserStatsResponse(stats, (int)globalRank));
+            var countryRank = await database.GetUserCountryRank(user.Id, (GameMode)mode);
+
+            return new UserWithStats(new UserResponse(user),
+                new UserStatsResponse(stats, (int)globalRank, (int)countryRank));
         }).Select(task => task.Result).ToList();
 
         return Ok(new LeaderboardResponse(usersWithStats, users.Count));

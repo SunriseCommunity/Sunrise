@@ -738,7 +738,7 @@ public sealed class SunriseDb
         return rank.HasValue ? rank.Value + 1 : -1;
     }
 
-    private async Task<long> GetUserCountryRank(int userId, GameMode mode)
+    public async Task<long> GetUserCountryRank(int userId, GameMode mode)
     {
         var user = await GetUser(userId);
         if (user == null) return -1;
