@@ -19,7 +19,7 @@
     "UseCache": true
   },
   "Hangfire": {
-      "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;"
+      "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
       "MaxDailyBackupCount": 14
   },
   "Bot": {
