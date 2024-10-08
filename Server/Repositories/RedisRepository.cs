@@ -1,50 +1,59 @@
 using System.Text.Json;
 using StackExchange.Redis;
-using Sunrise.Server.Utils;
+using Sunrise.Server.Application;
 
 namespace Sunrise.Server.Repositories;
 
 public class RedisRepository
 {
+    private static readonly ConnectionMultiplexer RedisConnection =
+        ConnectionMultiplexer.Connect(Configuration.RedisConnection);
 
-    private static readonly ConnectionMultiplexer RedisConnection = ConnectionMultiplexer.Connect(Configuration.RedisConnection);
+    private static readonly bool UseCache = Configuration.UseCache;
+
     private readonly IDatabase _redis = RedisConnection.GetDatabase();
 
     public async Task<T?> Get<T>(string key)
     {
+        if (!UseCache) return default;
+
         var value = await _redis.StringGetAsync(key);
         return value.HasValue ? JsonSerializer.Deserialize<T>(value!) : default;
     }
 
     public async Task<T?> Get<T>(string[] keys)
     {
+        if (!UseCache) return default;
+
         var values = await _redis.StringGetAsync(keys.Select(x => (RedisKey)x).ToArray());
 
         foreach (var value in values)
-        {
             if (value.HasValue)
-            {
                 return JsonSerializer.Deserialize<T>(value!);
-            }
-        }
 
         return default;
     }
 
     public async Task Set<T>(string key, T value, TimeSpan? cacheTime = null)
     {
-        await _redis.StringSetAsync(key, JsonSerializer.Serialize(value), cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime), flags: CommandFlags.FireAndForget);
+        if (!UseCache) return;
+
+        await _redis.StringSetAsync(new RedisKey(key), JsonSerializer.Serialize(value),
+            cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime));
     }
 
     public async Task Set<T>(string[] keys, T value, TimeSpan? cacheTime = null)
     {
-        var values = keys.Select(x => new KeyValuePair<RedisKey, RedisValue>((RedisKey)x, JsonSerializer.Serialize(value))).ToArray();
+        if (!UseCache) return;
 
-        await _redis.StringSetAsync(values, flags: CommandFlags.FireAndForget);
+        foreach (var t in keys)
+            await Set(t, value, cacheTime);
     }
 
     public async Task Remove(string key)
     {
+        if (!UseCache) return;
+
         await _redis.KeyDeleteAsync(key);
     }
 
@@ -61,5 +70,10 @@ public class RedisRepository
     public async Task<bool> SortedSetRemove(string key, int value)
     {
         return await _redis.SortedSetRemoveAsync(key, value);
+    }
+
+    public void FlushAllCache()
+    {
+        _redis.Execute("FLUSHALL");
     }
 }

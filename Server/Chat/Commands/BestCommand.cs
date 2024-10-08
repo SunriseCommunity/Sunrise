@@ -1,3 +1,4 @@
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Managers;
@@ -11,6 +12,8 @@ namespace Sunrise.Server.Chat.Commands;
 [ChatCommand("best")]
 public class BestCommand : IChatCommand
 {
+    // TODO: Should support choosing game mode as an argument
+
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         var userId = session.User.Id;
@@ -44,7 +47,13 @@ public class BestCommand : IChatCommand
 
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == score.BeatmapId);
 
-            result += $"[{index + 1}] [{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {score.Mods.GetModsString()}| Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★\n";
+            // Mods can change difficulty rating, important to recalculate it for right medal unlocking
+            if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
+                beatmap.DifficultyRating = await Calculators
+                    .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+
+            result +=
+                $"[{index + 1}] [{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {score.Mods.GetModsString()}| GameMode: {score.GameMode} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★\n";
         }
 
         CommandRepository.SendMessage(session, result);

@@ -1,9 +1,9 @@
 using HOPEless.Bancho;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers;
 
@@ -13,10 +13,7 @@ public class DisconnectHandler : IHandler
     public Task Handle(BanchoPacket packet, Session session)
     {
         // Thanks osu! client for trying to disconnect us right after we connect :)
-        if (session.Attributes.LastLogin > DateTime.UtcNow.AddSeconds(-2))
-        {
-            return Task.CompletedTask;
-        }
+        if (session.Attributes.LastLogin > DateTime.UtcNow.AddSeconds(-2)) return Task.CompletedTask;
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 

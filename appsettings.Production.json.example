@@ -3,6 +3,7 @@
   "General": {
     "WelcomeMessage": "Welcome to Sunrise!",
     "WebDomain": "osu-sunrise.top",
+    "MedalMirrorUrl": "https://raw.githubusercontent.com/SunriseCommunity/Server-Assets/main/medals/",
     "IgnoreBeatmapRanking": false,
     "IncludeUserTokenInLogs": false,
     "OnMaintenance": false,
@@ -15,6 +16,11 @@
   "Redis": {
     "ConnectionString": "redis",
     "CacheLifeTime": 600
+    "UseCache": true,
+  },
+  "Hangfire": {
+      "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;"
+      "MaxDailyBackupCount": 14,
   },
   "Bot": {
     "Username": "Sunshine Bot",

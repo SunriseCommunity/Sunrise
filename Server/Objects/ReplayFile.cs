@@ -1,4 +1,5 @@
 using osu.Shared.Serialization;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Managers;
@@ -17,7 +18,7 @@ public class ReplayFile
         if (user == null)
         {
             var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-            User = database.GetUser(id: score.UserId).Result;
+            User = database.GetUser(score.UserId).Result;
         }
 
         if (User == null)
@@ -62,13 +63,18 @@ public class ReplayFile
 
     public async Task<string> GetFileName(BaseSession? session)
     {
-        var beatmapSet = session != null ? await BeatmapManager.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash) : null;
+        var beatmapSet = session != null
+            ? await BeatmapManager.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash)
+            : null;
 
-        return $"{User?.Username} - {beatmapSet?.Artist} - {beatmapSet?.Title} [{Score.BeatmapId}] ({Score.WhenPlayed:yyyy-MM-dd}) {Score.GameMode}.osr";
+        return
+            $"{User?.Username} - {beatmapSet?.Artist} - {beatmapSet?.Title} [{Score.BeatmapId}] ({Score.WhenPlayed:yyyy-MM-dd}) {Score.GameMode}.osr";
     }
 
     private string GetReplayHash()
     {
-        return $"{Score.Count100 + Score.Count300}p{Score.Count50}o{Score.CountGeki}o{Score.CountKatu}t{Score.CountMiss}a{Score.BeatmapHash}r{Score.MaxCombo}e{Score.Perfect}y{User?.Username}o{Score.TotalScore}u0{(int)Score.Mods}{Score.IsPassed}".ToHash();
+        return
+            $"{Score.Count100 + Score.Count300}p{Score.Count50}o{Score.CountGeki}o{Score.CountKatu}t{Score.CountMiss}a{Score.BeatmapHash}r{Score.MaxCombo}e{Score.Perfect}y{User?.Username}o{Score.TotalScore}u0{(int)Score.Mods}{Score.IsPassed}"
+                .ToHash();
     }
 }

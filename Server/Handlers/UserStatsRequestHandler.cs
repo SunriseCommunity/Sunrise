@@ -1,10 +1,10 @@
 using HOPEless.Bancho;
 using osu.Shared.Serialization;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Handlers;
 
@@ -20,21 +20,14 @@ public class UserStatsRequestHandler : IHandler
 
         int length = reader.ReadInt16();
 
-        for (var i = 0; i < length; i++)
-        {
-            ids.Add(reader.ReadInt32());
-        }
+        for (var i = 0; i < length; i++) ids.Add(reader.ReadInt32());
 
         ids.Remove(session.User.Id);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         foreach (var player in ids.Select(id => sessions.GetSession(userId: id)))
-        {
             if (player != null)
-            {
                 session.WritePacket(PacketType.ServerUserData, await player.Attributes.GetPlayerData());
-            }
-        }
     }
 }

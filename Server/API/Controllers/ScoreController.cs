@@ -1,23 +1,23 @@
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Controllers;
 
 [Route("score/{id:int}")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 3600)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 public class ScoreController : ControllerBase
 {
     [HttpGet("")]
     public async Task<IActionResult> GetScore(int id)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        
+
         var score = await database.GetScore(id);
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
@@ -34,7 +34,7 @@ public class ScoreController : ControllerBase
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var score = await database.GetScore(id: id);
+        var score = await database.GetScore(id);
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
 

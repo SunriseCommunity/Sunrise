@@ -1,8 +1,8 @@
 using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Caching.Memory;
+using Sunrise.Server.Application;
 using Sunrise.Server.Helpers;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server;
 
@@ -20,7 +20,10 @@ public sealed class Middleware(
             return;
         }
 
-        if (context.Request.Path.StartsWithSegments("/metrics") && !ip.IsFromLocalNetwork() && !ip.IsFromDocker())
+        var path = context.Request.Path;
+
+        if ((path.StartsWithSegments("/metrics") || path.StartsWithSegments("/hangfire")) && !ip.IsFromLocalNetwork() &&
+            !ip.IsFromDocker())
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
             return;

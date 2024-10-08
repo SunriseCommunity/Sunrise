@@ -1,13 +1,13 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Chat;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Multiplayer;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects;
 
@@ -40,10 +40,7 @@ public class Session : BaseSession
 
     public void SendLoginResponse(LoginResponses response)
     {
-        if (response != LoginResponses.Success)
-        {
-            _helper.WritePacket(PacketType.ServerLoginReply, response);
-        }
+        if (response != LoginResponses.Success) _helper.WritePacket(PacketType.ServerLoginReply, response);
 
         _helper.WritePacket(PacketType.ServerLoginReply, User.Id);
     }
@@ -52,10 +49,7 @@ public class Session : BaseSession
     {
         var message = "Server going down for maintenance.";
 
-        if (User.Privilege.HasFlag(UserPrivileges.Admin))
-        {
-            return;
-        }
+        if (User.Privilege.HasFlag(UserPrivileges.Admin)) return;
 
         message += " You will be disconnected shortly.";
 
@@ -65,7 +59,8 @@ public class Session : BaseSession
 
     public void SendRestriction(string reason = "No reason provided.")
     {
-        var message = $"You have been restricted. Reason: {reason}. Please contact a staff member for more information.";
+        var message =
+            $"You have been restricted. Reason: {reason}. Please contact a staff member for more information.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
         _helper.WritePacket(PacketType.ServerNotification, message);
@@ -100,7 +95,8 @@ public class Session : BaseSession
 
     public void SendSilenceStatus(int time = 0, string? reason = null)
     {
-        _helper.WritePacket(PacketType.ServerNotification, $"You have been {(time == 0 ? "un" : "")}silenced. {(reason != null ? $"Reason: {reason}" : "")}");
+        _helper.WritePacket(PacketType.ServerNotification,
+            $"You have been {(time == 0 ? "un" : "")}silenced. {(reason != null ? $"Reason: {reason}" : "")}");
         _helper.WritePacket(PacketType.ServerLockClient, time);
     }
 
@@ -183,10 +179,7 @@ public class Session : BaseSession
 
     public void UpdateUser(User user)
     {
-        if (User.Id != user.Id)
-        {
-            throw new InvalidOperationException("Cannot update user with different ID.");
-        }
+        if (User.Id != user.Id) throw new InvalidOperationException("Cannot update user with different ID.");
 
         User = user;
     }
@@ -194,9 +187,7 @@ public class Session : BaseSession
     public void AddSpectator(Session session)
     {
         foreach (var spectator in Spectators)
-        {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.User.Id);
-        }
 
         _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.User.Id);
 
@@ -206,9 +197,7 @@ public class Session : BaseSession
     public void RemoveSpectator(Session session)
     {
         foreach (var spectator in Spectators)
-        {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.User.Id);
-        }
 
         _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.User.Id);
 

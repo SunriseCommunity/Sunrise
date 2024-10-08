@@ -120,6 +120,10 @@ Data/Files/Banners/*
 Data/Files/Replays/*
 Data/Files/Screenshot/*
 Data/Files/SeasonalBackgrounds/*
+Data/Backups/*
+
+# Temporary files
+*.tmp
 
 # Logs
 logs/*

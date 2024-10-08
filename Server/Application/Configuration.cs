@@ -1,11 +1,14 @@
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
-namespace Sunrise.Server.Utils;
+namespace Sunrise.Server.Application;
 
 public static class Configuration
 {
+    public const string DataPath = "./Data/";
+    public const string DatabaseName = "sunrise.db";
     private static readonly string? Env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
@@ -31,6 +34,7 @@ public static class Configuration
     // General section
     public static string WelcomeMessage => Config.GetSection("General").GetValue<string?>("WelcomeMessage") ?? "";
     public static string Domain => Config.GetSection("General").GetValue<string?>("WebDomain") ?? "";
+    public static string MedalMirrorUrl => Config.GetSection("General").GetValue<string?>("MedalMirrorUrl") ?? "";
 
     public static int GeneralCallsPerWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("CallsPerWindow") ?? 100;
@@ -56,6 +60,17 @@ public static class Configuration
     // Redis section
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
+    public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? true;
+
+    // Hangfire section
+    public static string HangfireConnection =>
+        Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
+
+    public static int MaxDailyBackupCount =>
+        Config.GetSection("Hangfire").GetValue<int?>("MaxDailyBackupCount") ?? 3;
+
+    // TODO: Deprecate after proper (external) beatmap server will be implemented 
+    // For mor information, ask @richardscull
 
     public static List<ExternalApi> ExternalApis { get; } =
     [

@@ -2,6 +2,7 @@ using System.Reflection;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
@@ -17,10 +18,7 @@ public static class CommandRepository
 
     public static async Task HandleCommand(BanchoChatMessage message, Session session)
     {
-        if (Handlers.Count == 0)
-        {
-            GetHandlers();
-        }
+        if (Handlers.Count == 0) GetHandlers();
 
         string? command;
         string[]? args;
@@ -29,10 +27,7 @@ public static class CommandRepository
         {
             (command, args) = ActionToCommand(session, message.Message);
 
-            if (command == null)
-            {
-                return;
-            }
+            if (command == null) return;
         }
         else
         {
@@ -53,7 +48,8 @@ public static class CommandRepository
             case null or { IsGlobal: false } when message.Channel != Configuration.BotUsername:
                 return;
             case null:
-                SendMessage(session, $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+                SendMessage(session,
+                    $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
                 return;
         }
 
@@ -98,7 +94,8 @@ public static class CommandRepository
             });
     }
 
-    private static bool HasPrefixException(Session session, BanchoChatMessage message, ChatCommand handler, ChatChannel? channel)
+    private static bool HasPrefixException(Session session, BanchoChatMessage message, ChatCommand handler,
+        ChatChannel? channel)
     {
         if (handler.Prefix == "mp")
         {
@@ -126,14 +123,13 @@ public static class CommandRepository
 
         if (action?.StartsWith("is listening to") == true || action?.StartsWith("is watching") == true)
         {
-            if (message.Split('/').Length < 6)
-            {
-                return (null, null);
-            }
+            if (message.Split('/').Length < 6) return (null, null);
 
             var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0], out var id) ? id : 0;
 
-            var mods = action?.StartsWith("is watching") == true ? session.Spectating?.Attributes.Status.CurrentMods : Mods.None;
+            var mods = action?.StartsWith("is watching") == true
+                ? session.Spectating?.Attributes.Status.CurrentMods
+                : Mods.None;
 
             return ("beatmap", [beatmapId.ToString(), mods?.GetModsString() ?? string.Empty]);
         }
@@ -143,25 +139,21 @@ public static class CommandRepository
 
     public static void GetHandlers()
     {
-        var types = Assembly.GetExecutingAssembly().GetTypes().Where(x => x.GetInterfaces().Contains(typeof(IChatCommand)));
+        var types = Assembly.GetExecutingAssembly().GetTypes()
+            .Where(x => x.GetInterfaces().Contains(typeof(IChatCommand)));
 
         foreach (var type in types)
         {
             var instance = Activator.CreateInstance(type) as IChatCommand;
             var attribute = type.GetCustomAttribute<ChatCommandAttribute>();
 
-            if (attribute == null || instance == null)
-            {
-                continue;
-            }
+            if (attribute == null || instance == null) continue;
 
-            if (attribute.Prefix != string.Empty)
-            {
-                Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
-            }
+            if (attribute.Prefix != string.Empty) Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
 
             var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredPrivileges, attribute.IsGlobal);
-            Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(), command); // .Trim() => https://imgur.com/a/0rsYZRv
+            Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(),
+                command); // .Trim() => https://imgur.com/a/0rsYZRv
         }
     }
 

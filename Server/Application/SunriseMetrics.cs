@@ -3,7 +3,7 @@ using Prometheus;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Enums;
 
-namespace Sunrise.Server.Utils;
+namespace Sunrise.Server.Application;
 
 public static class SunriseMetrics
 {

@@ -4,9 +4,7 @@ namespace Sunrise.Server.API.Serializable.Response;
 
 public class ScoresResponse(List<ScoreResponse> scores, int totalCount)
 {
-    [JsonPropertyName("scores")]
-    public List<ScoreResponse> Scores { get; set; } = scores;
+    [JsonPropertyName("scores")] public List<ScoreResponse> Scores { get; set; } = scores;
 
-    [JsonPropertyName("total_count")]
-    public int TotalCount { get; set; } = totalCount;
+    [JsonPropertyName("total_count")] public int TotalCount { get; set; } = totalCount;
 }

@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
+using Sunrise.Server.Application;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories;
 

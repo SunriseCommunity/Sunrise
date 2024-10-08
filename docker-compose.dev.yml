@@ -33,9 +33,21 @@ services:
       - prometheus
     networks:
       - monitoring
+  
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hangfire
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   redis:
+  postgres_data:
 
 networks:
   monitoring:

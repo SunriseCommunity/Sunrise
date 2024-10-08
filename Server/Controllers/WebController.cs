@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Controllers;
 
@@ -22,7 +22,8 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        if (await AssetService.SaveScreenshot(session, screenshot, HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
+        if (await AssetService.SaveScreenshot(session, screenshot,
+                HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, error);
             return BadRequest(error);

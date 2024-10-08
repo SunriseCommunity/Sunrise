@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
@@ -15,7 +16,7 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 600)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
 public class UserController : ControllerBase
 {
     [HttpGet]
@@ -38,7 +39,6 @@ public class UserController : ControllerBase
         }
         else
         {
-
             var userDb = await database.GetUser(id);
 
             if (userDb == null)
@@ -47,31 +47,23 @@ public class UserController : ControllerBase
             user = userDb;
         }
 
-        if (mode == null)
-        {
-            return Ok(new UserResponse(user, userStatus));
-        }
+        if (mode == null) return Ok(new UserResponse(user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
 
-        if (isValidMode != true)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var stats = await database.GetUserStats(id, (GameMode)mode);
 
-        if (stats == null)
-        {
-            return NotFound(new ErrorResponse("User stats not found"));
-        }
+        if (stats == null) return NotFound(new ErrorResponse("User stats not found"));
 
         var globalRank = await database.GetUserRank(id, (GameMode)mode);
+        var countryRank = await database.GetUserCountryRank(id, (GameMode)mode);
 
         var data = JsonSerializer.SerializeToElement(new
         {
             user = new UserResponse(user, userStatus),
-            stats = new UserStatsResponse(stats, (int)globalRank)
+            stats = new UserStatsResponse(stats, (int)globalRank, (int)countryRank)
         });
 
         return Ok(data);
@@ -89,28 +81,45 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Obsolete("Calculations for graph is impossible. Should just create snapshots each day with cron operation")]
+    [Obsolete("This endpoint is deprecated and will be removed in the future")]
     [Route("{id:int}/graph/scores")]
     public async Task<IActionResult> GetUserGraphScores(int id, [FromQuery(Name = "mode")] int mode)
     {
-        if (mode is < 0 or > 3)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var user = await database.GetUser(id);
 
-        if (user == null)
-        {
-            return NotFound(new ErrorResponse("User not found"));
-        }
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
 
         var scores = await database.GetUserBestScores(id, (GameMode)mode);
 
         var top100Scores = scores.Take(100).Select(score => new ScoreResponse(score)).ToList();
 
         return Ok(new ScoresResponse(top100Scores, scores.Count));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/graph")]
+    public async Task<IActionResult> GetUserGraphData(int id, [FromQuery(Name = "mode")] int mode)
+    {
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var userStats = await database.GetUserStats(id, (GameMode)mode);
+
+        if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
+
+        var snapshots = (await database.GetUserStatsSnapshot(id, (GameMode)mode)).GetSnapshots();
+
+        snapshots.Add(new StatsSnapshot
+        {
+            Rank = await database.GetUserRank(id, (GameMode)mode),
+            CountryRank = await database.GetUserCountryRank(id, (GameMode)mode),
+            PerformancePoints = userStats.PerformancePoints
+        });
+
+        return Ok(new StatsSnapshotsResponse(snapshots));
     }
 
     [HttpGet]
@@ -121,32 +130,21 @@ public class UserController : ControllerBase
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 0)
     {
-        if (scoresType is < 0 or > 2 or null)
-        {
-            return BadRequest(new ErrorResponse("Invalid scores type parameter"));
-        }
+        if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
 
-        if (mode is < 0 or > 3)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
-        if (limit is < 1 or > 100)
-        {
-            return BadRequest(new ErrorResponse("Invalid limit parameter"));
-        }
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var user = await database.GetUser(id);
 
-        if (user == null)
-        {
-            return NotFound(new ErrorResponse("User not found"));
-        }
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
 
         var scores = await database.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
 
-        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score)).ToList();
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score))
+            .ToList();
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));
     }
@@ -160,34 +158,20 @@ public class UserController : ControllerBase
         [FromQuery(Name = "page")] int? page = 0)
     {
         if (leaderboardType is < 0 or > 1 or null)
-        {
             return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
-        }
 
-        if (mode is < 0 or > 3)
-        {
-            return BadRequest(new ErrorResponse("Invalid mode parameter"));
-        }
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
-        if (limit is < 1 or > 100)
-        {
-            return BadRequest(new ErrorResponse("Invalid limit parameter"));
-        }
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var users = await database.GetAllUsers();
 
-        if (users == null)
-        {
-            return NotFound(new ErrorResponse("Users not found"));
-        }
+        if (users == null) return NotFound(new ErrorResponse("Users not found"));
 
         var stats = await database.GetAllUserStats((GameMode)mode, (LeaderboardSortType)leaderboardType);
 
-        if (stats == null)
-        {
-            return NotFound(new ErrorResponse("Users not found"));
-        }
+        if (stats == null) return NotFound(new ErrorResponse("Users not found"));
 
         stats = stats.Where(x => users.Any(u => u.Id == x.UserId)).ToList();
 
@@ -198,7 +182,10 @@ public class UserController : ControllerBase
             var user = users.FirstOrDefault(u => u.Id == stats.UserId);
 
             var globalRank = await database.GetUserRank(user.Id, (GameMode)mode);
-            return new UserWithStats(new UserResponse(user), new UserStatsResponse(stats, (int)globalRank));
+            var countryRank = await database.GetUserCountryRank(user.Id, (GameMode)mode);
+
+            return new UserWithStats(new UserResponse(user),
+                new UserStatsResponse(stats, (int)globalRank, (int)countryRank));
         }).Select(task => task.Result).ToList();
 
         return Ok(new LeaderboardResponse(usersWithStats, users.Count));
@@ -256,6 +243,21 @@ public class UserController : ControllerBase
         await database.UpdateUser(session.User);
 
         return new OkResult();
+    }
+
+    [HttpGet]
+    [Route("{id:int}/medals")]
+    public async Task<IActionResult> GetUserMedals(int id,
+        [FromQuery(Name = "mode")] int mode)
+    {
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        var userMedals = await database.GetUserMedals(id, (GameMode)mode);
+        var modeMedals = await database.GetMedals((GameMode)mode);
+
+        return Ok(new MedalsResponse(userMedals, modeMedals));
     }
 
     [HttpPost(RequestType.AvatarUpload)]

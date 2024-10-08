@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using osu.Shared;
 using RosuPP;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
@@ -17,10 +18,7 @@ public static class Calculators
     {
         var beatmapBytes = BeatmapManager.GetBeatmapFile(session, score.BeatmapId).Result;
 
-        if (beatmapBytes == null)
-        {
-            return 0;
-        }
+        if (beatmapBytes == null) return 0;
 
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
         var beatmap = Beatmap.FromBytes(bytesPointer);
@@ -39,14 +37,38 @@ public static class Calculators
         };
     }
 
-    public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session, int beatmapId, int mode, Mods mods = Mods.None)
+    public static async Task<double> RecalcuteBeatmapDifficulty(Session session, int beatmapId, int mode,
+        Mods mods = Mods.None)
     {
         var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);
 
-        if (beatmapBytes == null)
+        if (beatmapBytes == null) return -1;
+
+        var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
+        var beatmap = Beatmap.FromBytes(bytesPointer);
+
+        beatmap.Convert((Mode)mode);
+
+        var difficulty = Difficulty.New();
+        difficulty.IMods((uint)mods);
+        var result = difficulty.Calculate(beatmap.Context);
+
+        return result.mode switch
         {
-            return (0, 0, 0, 0);
-        }
+            Mode.Osu => result.osu.ToNullable()!.Value.stars,
+            Mode.Taiko => result.taiko.ToNullable()!.Value.stars,
+            Mode.Catch => result.fruit.ToNullable()!.Value.stars,
+            Mode.Mania => result.mania.ToNullable()!.Value.stars,
+            _ => -1
+        };
+    }
+
+    public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session,
+        int beatmapId, int mode, Mods mods = Mods.None)
+    {
+        var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);
+
+        if (beatmapBytes == null) return (0, 0, 0, 0);
 
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
         var beatmap = Beatmap.FromBytes(bytesPointer);
@@ -80,7 +102,6 @@ public static class Calculators
         }
 
         return (ppList[0], ppList[1], ppList[2], ppList[3]);
-
     }
 
 
@@ -93,10 +114,7 @@ public static class Calculators
         if (score != null)
             userBests.Add(score);
 
-        if (userBests.Count == 0)
-        {
-            return 0;
-        }
+        if (userBests.Count == 0) return 0;
 
         var top100Scores = userBests.Take(100).ToList();
 
@@ -120,10 +138,7 @@ public static class Calculators
         if (score != null)
             userBests.Add(score);
 
-        if (userBests.Count == 0)
-        {
-            return 0;
-        }
+        if (userBests.Count == 0) return 0;
 
         var top100Scores = userBests.Take(100).ToList();
 
@@ -143,22 +158,18 @@ public static class Calculators
     {
         var totalHits = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
 
-        if (score.GameMode == GameMode.Mania)
-        {
-            totalHits += score.CountGeki + score.CountKatu;
-        }
+        if (score.GameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
 
-        if (totalHits == 0)
-        {
-            return 0;
-        }
+        if (totalHits == 0) return 0;
 
         return score.GameMode switch
         {
-            GameMode.Standard => (float)(score.Count300 * 300 + score.Count100 * 100 + score.Count50 * 50) / (totalHits * 300) * 100,
+            GameMode.Standard => (float)(score.Count300 * 300 + score.Count100 * 100 + score.Count50 * 50) /
+                (totalHits * 300) * 100,
             GameMode.Taiko => (float)(score.Count300 * 300 + score.Count100 * 150) / (totalHits * 300) * 100,
             GameMode.CatchTheBeat => (float)(score.Count300 + score.Count100 + score.Count50) / totalHits * 100,
-            GameMode.Mania => (float)((score.Count300 + score.CountGeki) * 300 + score.CountKatu * 200 + score.Count100 * 100 + score.Count50 * 50) / (totalHits * 300) * 100,
+            GameMode.Mania => (float)((score.Count300 + score.CountGeki) * 300 + score.CountKatu * 200 +
+                                      score.Count100 * 100 + score.Count50 * 50) / (totalHits * 300) * 100,
             _ => 0
         };
     }

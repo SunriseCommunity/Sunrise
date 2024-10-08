@@ -2,11 +2,11 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories;
 
@@ -60,10 +60,7 @@ public class SessionRepository
 
     public void RemoveSession(int userId)
     {
-        foreach (var channel in _channels.GetChannels())
-        {
-            channel.RemoveUser(userId);
-        }
+        foreach (var channel in _channels.GetChannels()) channel.RemoveUser(userId);
 
         _sessions.TryRemove(userId, out _);
     }
@@ -77,7 +74,8 @@ public class SessionRepository
 
     public bool TryGetSession(out Session? session, string? username = null, string? token = null, int? userId = null)
     {
-        session = _sessions.Values.FirstOrDefault(x => x.Token == token || x.User.Username == username || x.User.Id == userId);
+        session = _sessions.Values.FirstOrDefault(x =>
+            x.Token == token || x.User.Username == username || x.User.Id == userId);
         return session != null;
     }
 
@@ -114,9 +112,7 @@ public class SessionRepository
         var bot = await database.GetUser(username: Configuration.BotUsername);
 
         if (bot == null)
-        {
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");
-        }
 
         var loginRequest = new LoginRequest(
             Configuration.BotUsername,

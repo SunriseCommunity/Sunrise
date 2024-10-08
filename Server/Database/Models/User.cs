@@ -7,38 +7,33 @@ namespace Sunrise.Server.Database.Models;
 [Table("user")]
 public class User
 {
-    [Column(true, DataTypes.Int, false)]
-    public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Username { get; set; }
 
-    [Column(DataTypes.Nvarchar, 64, false)]
+    [Column(DataTypes.Nvarchar, 1024, false)]
     public string Email { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Passhash { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public short Country { get; set; }
+    [Column(DataTypes.Int, false)] public short Country { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public UserPrivileges Privilege { get; set; }
+    [Column(DataTypes.Int, false)] public UserPrivileges Privilege { get; set; }
 
-    [Column(DataTypes.DateTime, false)]
-    public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
+    [Column(DataTypes.DateTime, false)] public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
 
     [Column(DataTypes.DateTime, false)]
-    public DateTime LastOnlineTime { get; set; } = DateTime.UtcNow; // Can be fucked up by outdated cache? Need to investigate
+    public DateTime LastOnlineTime { get; set; } =
+        DateTime.UtcNow; // Can be fucked up by outdated cache? Need to investigate
 
-    [Column(DataTypes.Nvarchar, 1024, false)]
+    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string Friends { get; set; } = string.Empty;
 
-    [Column(DataTypes.Boolean, false)]
-    public bool IsRestricted { get; set; } = false;
+    [Column(DataTypes.Boolean, false)] public bool IsRestricted { get; set; } = false;
 
-    [Column(DataTypes.DateTime, false)]
-    public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
+    [Column(DataTypes.DateTime, false)] public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
 
     public List<int> FriendsList => Friends.Split(',')
         .Where(x => !string.IsNullOrEmpty(x))
@@ -65,20 +60,12 @@ public class User
     {
         var privilegeRank = PlayerRank.Default;
 
-        if (Privilege.HasFlag(UserPrivileges.Developer))
-        {
-            privilegeRank |= PlayerRank.SuperMod;
-        }
+        if (Privilege.HasFlag(UserPrivileges.Developer)) privilegeRank |= PlayerRank.SuperMod;
 
         if (Privilege.HasFlag(UserPrivileges.Admin) || Privilege.HasFlag(UserPrivileges.Bat))
-        {
             privilegeRank |= PlayerRank.Bat;
-        }
 
-        if (Privilege.HasFlag(UserPrivileges.Supporter))
-        {
-            privilegeRank |= PlayerRank.Supporter;
-        }
+        if (Privilege.HasFlag(UserPrivileges.Supporter)) privilegeRank |= PlayerRank.Supporter;
 
         return privilegeRank;
     }

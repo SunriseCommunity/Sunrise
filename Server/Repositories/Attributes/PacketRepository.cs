@@ -1,9 +1,9 @@
 using System.Reflection;
 using HOPEless.Bancho;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Repositories.Attributes;
 
@@ -20,10 +20,7 @@ public class PacketRepository
 
     public static async Task HandlePacket(BanchoPacket packet, Session session)
     {
-        if (Handlers.Count == 0)
-        {
-            GetHandlers();
-        }
+        if (Handlers.Count == 0) GetHandlers();
 
         var handler = GetHandler(packet.Type);
 
@@ -34,9 +31,8 @@ public class PacketRepository
         }
 
         if (!handler.SuppressLogging)
-        {
-            Logger.LogInformation($"{DateTime.Now} | User {session.User.Username} (Id: {session.User.Id}) send {packet.Type}");
-        }
+            Logger.LogInformation(
+                $"{DateTime.Now} | User {session.User.Username} (Id: {session.User.Id}) send {packet.Type}");
 
         SunriseMetrics.PacketHandlingCounterInc(packet, session);
 
@@ -52,10 +48,7 @@ public class PacketRepository
             var instance = Activator.CreateInstance(type) as IHandler;
             var attribute = type.GetCustomAttribute<PacketHandlerAttribute>();
 
-            if (attribute == null || instance == null)
-            {
-                continue;
-            }
+            if (attribute == null || instance == null) continue;
 
             var handler = new PacketHandler(instance, attribute.SuppressLogger);
             Handlers.Add(attribute.PacketType, handler);

@@ -1,4 +1,4 @@
-namespace Sunrise.Server.Utils;
+namespace Sunrise.Server.Application;
 
 public static class ServicesProviderHolder
 {
@@ -12,20 +12,15 @@ public static class ServicesProviderHolder
 
     public static T GetService<T>() where T : notnull
     {
-        if (_serviceProvider == null)
-        {
-            throw new InvalidOperationException("ServiceProvider has not been set.");
-        }
+        if (_serviceProvider == null) throw new InvalidOperationException("ServiceProvider has not been set.");
 
-        return _serviceProvider.GetService<T>() ?? throw new InvalidOperationException($"Service of type {typeof(T)} not found.");
+        return _serviceProvider.GetService<T>() ??
+               throw new InvalidOperationException($"Service of type {typeof(T)} not found.");
     }
 
     public static T GetRequiredService<T>() where T : notnull
     {
-        if (_serviceProvider == null)
-        {
-            throw new InvalidOperationException("ServiceProvider has not been set.");
-        }
+        if (_serviceProvider == null) throw new InvalidOperationException("ServiceProvider has not been set.");
 
         return _serviceProvider.GetRequiredService<T>();
     }

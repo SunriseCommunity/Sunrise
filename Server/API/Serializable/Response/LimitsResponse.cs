@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Sunrise.Server.Utils;
+using Sunrise.Server.Application;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
