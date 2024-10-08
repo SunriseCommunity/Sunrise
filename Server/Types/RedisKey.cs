@@ -28,6 +28,7 @@ public static class RedisKey
     public static string UserMedals(int userId, GameMode? mode = null) { return $"user:{userId}:{(mode.HasValue ? (int)mode : "all" )}:medals"; }
     public static string Medal(int medalId) { return $"medal:{medalId}"; }
     public static string AllMedals(GameMode mode) { return $"medal:all:{(int)mode}"; }
+    public static string UserStatsSnapshot(int userId, GameMode mode) { return $"user:{userId}:stats:{(int)mode}:snapshot"; }
 
     // Records (Includes file paths)
     public static string BeatmapRecord(int beatmapId) { return $"beatmap:{beatmapId}"; }

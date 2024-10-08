@@ -36,7 +36,7 @@ public sealed class SunriseDb
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
-            typeof(Medal), typeof(MedalFile), typeof(UserMedals)
+            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot)
         ]);
 
         if (appliedMigrations <= 0) return;
@@ -66,7 +66,7 @@ public sealed class SunriseDb
                 UserId = user.Id,
                 GameMode = mode
             };
-            await UpdateUserStats(stats);
+            await InsertUserStats(stats);
         }
 
         await Redis.Set(RedisKey.UserById(user.Id), user);
@@ -152,7 +152,7 @@ public sealed class SunriseDb
         return stats;
     }
 
-    public async Task<List<UserStats>?> GetAllUserStats(GameMode mode, LeaderboardSortType leaderboardSortType,
+    public async Task<List<UserStats>> GetAllUserStats(GameMode mode, LeaderboardSortType leaderboardSortType,
         bool useCache = true)
     {
         var cachedStats = await Redis.Get<List<UserStats>>(RedisKey.AllUserStats(mode));
@@ -171,7 +171,7 @@ public sealed class SunriseDb
             }
         ]);
 
-        if (stats == null) return null;
+        if (stats == null) return [];
 
         await Redis.Set(RedisKey.AllUserStats(mode), stats);
 
@@ -197,6 +197,14 @@ public sealed class SunriseDb
     {
         stats = await SetUserRank(stats);
         stats = await _orm.UpdateAsync(stats);
+
+        await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
+    }
+
+    public async Task InsertUserStats(UserStats stats)
+    {
+        stats = await SetUserRank(stats);
+        stats = await _orm.InsertAsync(stats);
 
         await Redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
     }
@@ -312,6 +320,43 @@ public sealed class SunriseDb
         }
 
         return scores;
+    }
+
+    public async Task<UserStatsSnapshot> GetUserStatsSnapshot(int userId, GameMode mode)
+    {
+        var cachedSnapshot = await Redis.Get<UserStatsSnapshot>(RedisKey.UserStatsSnapshot(userId, mode));
+        if (cachedSnapshot != null) return cachedSnapshot;
+
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals,
+            (int)mode);
+        var snapshot = await _orm.SelectFirstAsync<UserStatsSnapshot?>(exp);
+
+        if (snapshot == null)
+        {
+            snapshot = new UserStatsSnapshot
+            {
+                UserId = userId,
+                GameMode = mode
+            };
+            snapshot = await InsertUserStatsSnapshot(snapshot);
+        }
+
+        await Redis.Set(RedisKey.UserStatsSnapshot(userId, mode), snapshot);
+
+        return snapshot;
+    }
+
+    public async Task UpdateUserStatsSnapshot(UserStatsSnapshot snapshot)
+    {
+        snapshot = await _orm.UpdateAsync(snapshot);
+        await Redis.Set(RedisKey.UserStatsSnapshot(snapshot.UserId, snapshot.GameMode), snapshot);
+    }
+
+    public async Task<UserStatsSnapshot> InsertUserStatsSnapshot(UserStatsSnapshot snapshot)
+    {
+        snapshot = await _orm.InsertAsync(snapshot);
+        await Redis.Set(RedisKey.UserStatsSnapshot(snapshot.UserId, snapshot.GameMode), snapshot);
+        return snapshot;
     }
 
     public async Task<List<Medal>> GetMedals(GameMode mode)

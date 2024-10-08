@@ -1,5 +1,9 @@
 using System.IO.Compression;
 using Hangfire;
+using osu.Shared;
+using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Application;
 
@@ -9,7 +13,37 @@ public static class BackgroundTasks
     {
         RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(), Cron.Daily);
 
-        // TODO: Add rank saving job
+        RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(), Cron.Daily);
+    }
+
+    public static async Task SaveStatsSnapshot()
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        for (var i = 0; i < 4; i++)
+        {
+            var usersStats = await database.GetAllUserStats((GameMode)i, LeaderboardSortType.Pp);
+
+            foreach (var stats in usersStats)
+            {
+                var currentSnapshot = await database.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
+                var rankSnapshots = currentSnapshot.GetSnapshots();
+
+                rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
+
+                if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[..68];
+
+                rankSnapshots.Add(new StatsSnapshot
+                {
+                    Rank = await database.GetUserRank(stats.UserId, stats.GameMode),
+                    CountryRank = await database.GetUserCountryRank(stats.UserId, stats.GameMode),
+                    PerformancePoints = stats.PerformancePoints
+                });
+
+                currentSnapshot.SetSnapshots(rankSnapshots);
+                await database.UpdateUserStatsSnapshot(currentSnapshot);
+            }
+        }
     }
 
     public static void BackupDatabase()
