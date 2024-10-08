@@ -14,14 +14,12 @@ public class UserStats
 
     [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
-    [Column(DataTypes.Decimal, 100, 2, false)]
+    [Column(DataTypes.Double, 3, 2, false)]
     public double Accuracy { get; set; }
 
-    [Column(DataTypes.Double, 45, 2, false)]
-    public long TotalScore { get; set; }
+    [Column(DataTypes.Int, false)] public long TotalScore { get; set; }
 
-    [Column(DataTypes.Double, 45, 2, false)]
-    public long RankedScore { get; set; }
+    [Column(DataTypes.Int, false)] public long RankedScore { get; set; }
 
     [Column(DataTypes.Int, false)] public int PlayCount { get; set; }
 

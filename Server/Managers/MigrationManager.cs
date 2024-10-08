@@ -3,11 +3,21 @@ using Watson.ORM.Sqlite;
 
 namespace Sunrise.Server.Managers;
 
-public class MigrationManager(WatsonORM orm)
+public class MigrationManager
 {
+    private readonly ILogger<MigrationManager> _logger;
+    private readonly WatsonORM _orm;
+
+    public MigrationManager(WatsonORM orm)
+    {
+        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
+        _logger = loggerFactory.CreateLogger<MigrationManager>();
+        _orm = orm;
+    }
+
     public int ApplyMigrations(string migrationsPath)
     {
-        var appliedMigrations = orm.SelectMany<Migration>();
+        var appliedMigrations = _orm.SelectMany<Migration>();
         var migrationFiles = Directory.GetFiles(migrationsPath, "*.sql").OrderBy(f => f).ToList();
 
         var migrationsApplied = 0;
@@ -19,7 +29,10 @@ public class MigrationManager(WatsonORM orm)
             if (appliedMigrations.Exists(m => m.Name == migrationName)) continue;
 
             var sql = File.ReadAllText(file);
-            orm.Query(sql);
+
+            _logger.LogInformation($"Applying migration: {migrationName}");
+
+            _orm.Query(sql);
 
             var historyEntry = new Migration
             {
@@ -27,7 +40,7 @@ public class MigrationManager(WatsonORM orm)
                 AppliedAt = DateTime.UtcNow
             };
 
-            orm.Insert(historyEntry);
+            _orm.Insert(historyEntry);
 
             migrationsApplied++;
         }

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `user`
     `SilencedUntil`  TEXT                              NOT NULL
 );
 
-CREATE TABLE `user_file`
+CREATE TABLE IF NOT EXISTS `user_file`
 (
     `Id`        INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `OwnerId`   INTEGER                           NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE `user_file`
     `CreatedAt` TEXT                              NOT NULL
 );
 
-CREATE TABLE `restriction`
+CREATE TABLE IF NOT EXISTS `restriction`
 (
     `Id`         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `UserId`     INTEGER                           NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE `restriction`
     `ExpiryDate` TEXT                              NOT NULL
 );
 
-CREATE TABLE `beatmap_file`
+CREATE TABLE IF NOT EXISTS `beatmap_file`
 (
     `Id`           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `BeatmapId`    INTEGER                           NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE `beatmap_file`
     `CreatedAt`    TEXT                              NOT NULL
 );
 
-CREATE TABLE `score`
+CREATE TABLE IF NOT EXISTS `score`
 (
     `Id`                INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `UserId`            INTEGER                           NOT NULL,
@@ -76,7 +76,7 @@ CREATE TABLE `score`
     `PerformancePoints` DECIMAL(100, 2)                   NOT NULL
 );
 
-CREATE TABLE "user_stats"
+CREATE TABLE IF NOT EXISTS "user_stats"
 (
     `Id`                INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     `UserId`            INTEGER                           NOT NULL,
