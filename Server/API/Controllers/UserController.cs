@@ -81,7 +81,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Obsolete("Calculations for graph is impossible. Should just create snapshots each day with cron operation")]
+    [Obsolete("This endpoint is deprecated and will be removed in the future")]
     [Route("{id:int}/graph/scores")]
     public async Task<IActionResult> GetUserGraphScores(int id, [FromQuery(Name = "mode")] int mode)
     {
@@ -97,6 +97,29 @@ public class UserController : ControllerBase
         var top100Scores = scores.Take(100).Select(score => new ScoreResponse(score)).ToList();
 
         return Ok(new ScoresResponse(top100Scores, scores.Count));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/graph")]
+    public async Task<IActionResult> GetUserGraphData(int id, [FromQuery(Name = "mode")] int mode)
+    {
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var userStats = await database.GetUserStats(id, (GameMode)mode);
+
+        if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
+
+        var snapshots = (await database.GetUserStatsSnapshot(id, (GameMode)mode)).GetSnapshots();
+
+        snapshots.Add(new StatsSnapshot
+        {
+            Rank = await database.GetUserRank(id, (GameMode)mode),
+            CountryRank = await database.GetUserCountryRank(id, (GameMode)mode),
+            PerformancePoints = userStats.PerformancePoints
+        });
+
+        return Ok(new StatsSnapshotsResponse(snapshots));
     }
 
     [HttpGet]
