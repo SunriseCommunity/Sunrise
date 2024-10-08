@@ -15,12 +15,12 @@
   },
   "Redis": {
     "ConnectionString": "redis",
-    "CacheLifeTime": 600
-    "UseCache": true,
+    "CacheLifeTime": 600,
+    "UseCache": true
   },
   "Hangfire": {
       "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;"
-      "MaxDailyBackupCount": 14,
+      "MaxDailyBackupCount": 14
   },
   "Bot": {
     "Username": "Sunshine Bot",
