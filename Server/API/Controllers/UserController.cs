@@ -16,7 +16,7 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 600)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
 public class UserController : ControllerBase
 {
     [HttpGet]

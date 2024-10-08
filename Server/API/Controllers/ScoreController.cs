@@ -10,7 +10,7 @@ namespace Sunrise.Server.API.Controllers;
 
 [Route("score/{id:int}")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 3600)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 public class ScoreController : ControllerBase
 {
     [HttpGet("")]
