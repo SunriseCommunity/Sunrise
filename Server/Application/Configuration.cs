@@ -103,7 +103,7 @@ public static class Configuration
 
     private static string GetApiToken()
     {
-        var apiToken = Config.GetSection("API").GetValue<string?>("Token");
+        var apiToken = Config.GetSection("API").GetValue<string?>("TokenSecret");
         if (string.IsNullOrEmpty(apiToken)) throw new Exception("API token is empty. Please check your configuration.");
         return apiToken;
     }
