@@ -65,6 +65,7 @@ public class Score
     public double PerformancePoints { get; set; }
 
     // TODO: Deprecate local properties.
+    // NOTE: May save beatmap as JSON in the db?. With recalculated difficulty rating if we played with mods and know if hash was different. 
     // Local properties
     public Beatmap Beatmap { get; set; }
 

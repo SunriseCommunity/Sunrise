@@ -73,6 +73,11 @@ public static class ScoreService
         var replayFile = await database.UploadReplay(userStats.UserId, replay);
         score.ReplayFileId = replayFile.Id;
 
+        // Mods can change difficulty rating, important to recalculate it for right medal unlocking
+        if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
+            beatmap.DifficultyRating = await Calculators
+                .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+
         await database.InsertScore(score);
         await database.UpdateUserStats(userStats);
 

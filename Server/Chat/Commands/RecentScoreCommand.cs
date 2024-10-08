@@ -34,7 +34,12 @@ public class RecentScoreCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == lastScore.BeatmapId);
 
+        // Mods can change difficulty rating, important to recalculate it for right medal unlocking
+        if ((int)lastScore.GameMode != beatmap.ModeInt || (int)lastScore.Mods > 0)
+            beatmap.DifficultyRating = await Calculators
+                .RecalcuteBeatmapDifficulty(session, lastScore.BeatmapId, (int)lastScore.GameMode, lastScore.Mods);
+
         CommandRepository.SendMessage(session,
-            $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {lastScore.Mods.GetModsString()}| Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating} ★");
+            $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {lastScore.Mods.GetModsString()}| GameMode: {lastScore.GameMode} | Acc: {lastScore.Accuracy:0.00}% | {lastScore.PerformancePoints:0.00}pp | {Parsers.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★");
     }
 }

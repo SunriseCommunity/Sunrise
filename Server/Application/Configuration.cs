@@ -69,7 +69,8 @@ public static class Configuration
     public static int MaxDailyBackupCount =>
         Config.GetSection("Hangfire").GetValue<int?>("MaxDailyBackupCount") ?? 3;
 
-    // TODO: Move ExternalApis and InitializeBotInDatabase to a db migration
+    // TODO: Deprecate after proper (external) beatmap server will be implemented 
+    // For mor information, ask @richardscull
 
     public static List<ExternalApi> ExternalApis { get; } =
     [

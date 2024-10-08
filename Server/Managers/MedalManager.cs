@@ -1,9 +1,10 @@
 using System.Linq.Dynamic.Core;
+using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
-using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using Beatmap = Sunrise.Server.Objects.Serializable.Beatmap;
 
 namespace Sunrise.Server.Managers;
 
@@ -37,6 +38,9 @@ public static class MedalManager
                 medal.Condition);
 
             if (!isConditionsAreMet) continue;
+
+            // Note: Kind of a hack to not give medals for passes with NoFail on non-ModIntroduction medals.
+            if (medal.Category != MedalCategory.ModIntroduction && score.Mods.HasFlag(Mods.NoFail)) continue;
 
             await database.UnlockMedal(userStats.UserId, medal.Id);
             newMedals.Add(medal.GetMedalString());

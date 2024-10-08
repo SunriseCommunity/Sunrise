@@ -37,6 +37,32 @@ public static class Calculators
         };
     }
 
+    public static async Task<double> RecalcuteBeatmapDifficulty(Session session, int beatmapId, int mode,
+        Mods mods = Mods.None)
+    {
+        var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);
+
+        if (beatmapBytes == null) return -1;
+
+        var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
+        var beatmap = Beatmap.FromBytes(bytesPointer);
+
+        beatmap.Convert((Mode)mode);
+
+        var difficulty = Difficulty.New();
+        difficulty.IMods((uint)mods);
+        var result = difficulty.Calculate(beatmap.Context);
+
+        return result.mode switch
+        {
+            Mode.Osu => result.osu.ToNullable()!.Value.stars,
+            Mode.Taiko => result.taiko.ToNullable()!.Value.stars,
+            Mode.Catch => result.fruit.ToNullable()!.Value.stars,
+            Mode.Mania => result.mania.ToNullable()!.Value.stars,
+            _ => -1
+        };
+    }
+
     public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session,
         int beatmapId, int mode, Mods mods = Mods.None)
     {
