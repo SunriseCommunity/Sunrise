@@ -50,6 +50,8 @@ public static class AuthService
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
 
+        await database.AddNewLoginEvent(user.Id, ip.ToString(), sr);
+
         var session = sessions.CreateSession(user, location, loginRequest);
 
         response.Headers["cho-token"] = session.Token;

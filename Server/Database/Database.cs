@@ -36,7 +36,7 @@ public sealed class SunriseDb
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
-            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot)
+            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot), typeof(LoginEvent)
         ]);
 
         if (appliedMigrations <= 0 && !Configuration.ClearCacheOnStartup) return;
@@ -787,6 +787,18 @@ public sealed class SunriseDb
         await Redis.Set(RedisKey.ReplayRecord(replayId), record);
 
         return file;
+    }
+
+    public async Task AddNewLoginEvent(int userId, string ip, string loginData)
+    {
+        var loginEvent = new LoginEvent
+        {
+            UserId = userId,
+            Ip = ip,
+            LoginData = loginData
+        };
+
+        await _orm.InsertAsync(loginEvent);
     }
 
     public async Task<long> GetUserRank(int userId, GameMode mode)
