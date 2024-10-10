@@ -31,6 +31,6 @@ public class StatsSnapshot
 {
     public long Rank { get; set; }
     public long CountryRank { get; set; }
-    public short PerformancePoints { get; set; }
+    public double PerformancePoints { get; set; }
     public DateTime SavedAt { get; set; } = DateTime.UtcNow;
 }

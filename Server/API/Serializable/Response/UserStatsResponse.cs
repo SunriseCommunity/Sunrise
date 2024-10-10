@@ -18,7 +18,7 @@ public class UserStatsResponse(UserStats stats, int globalRank, int countryRank)
 
     [JsonPropertyName("play_count")] public int PlayCount { get; set; } = stats.PlayCount;
 
-    [JsonPropertyName("pp")] public short PerformancePoints { get; set; } = stats.PerformancePoints;
+    [JsonPropertyName("pp")] public double PerformancePoints { get; set; } = stats.PerformancePoints;
 
     [JsonPropertyName("rank")] public int Rank { get; set; } = globalRank;
 

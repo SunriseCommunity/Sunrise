@@ -59,17 +59,37 @@ public class RedisRepository
 
     public async Task<bool> SortedSetAdd(string key, int value, double score)
     {
-        return await _redis.SortedSetAddAsync(key, value, score);
+        var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Clear old values with the same key (because we have timestamp in key we can't just overwrite it)
+        await SortedSetRemove(key, value);
+
+        return await _redis.SortedSetAddAsync(key, $"{timestamp}:{value}", score);
     }
 
     public async Task<long?> SortedSetRank(string key, int value)
     {
-        return await _redis.SortedSetRankAsync(key, value, Order.Descending);
+        var entries = await _redis.SortedSetRangeByRankAsync(key);
+
+        foreach (var entry in entries)
+            if (entry.ToString().EndsWith(":" + value))
+            {
+                var rank = await _redis.SortedSetRankAsync(key, entry, Order.Descending);
+                return rank;
+            }
+
+        return null;
     }
 
     public async Task<bool> SortedSetRemove(string key, int value)
     {
-        return await _redis.SortedSetRemoveAsync(key, value);
+        var entries = await _redis.SortedSetRangeByRankAsync(key);
+
+        foreach (var entry in entries)
+            if (entry.ToString().EndsWith(":" + value))
+                return await _redis.SortedSetRemoveAsync(key, entry);
+
+        return false;
     }
 
     public void FlushAllCache()

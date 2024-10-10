@@ -23,7 +23,8 @@ public class UserStats
 
     [Column(DataTypes.Int, false)] public int PlayCount { get; set; }
 
-    [Column(DataTypes.Int, false)] public short PerformancePoints { get; set; }
+    [Column(DataTypes.Double, int.MaxValue, int.MaxValue, false)]
+    public double PerformancePoints { get; set; }
 
     [Column(DataTypes.Int, false)] public int MaxCombo { get; set; }
 
@@ -70,7 +71,7 @@ public class UserStats
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
             PerformancePoints =
-                (short)await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
+                await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
             Accuracy = await Calculators.CalculateUserWeightedAccuracy(score.UserId, score.GameMode, score);
         }
     }

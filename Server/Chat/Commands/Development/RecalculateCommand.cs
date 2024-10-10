@@ -44,7 +44,7 @@ public class RecalculateCommand : IChatCommand
                 var pp = await Calculators.CalculateUserWeightedPerformance(stat.UserId, mode);
                 var acc = await Calculators.CalculateUserWeightedAccuracy(stat.UserId, mode);
 
-                stat.PerformancePoints = (short)pp;
+                stat.PerformancePoints = pp;
                 stat.Accuracy = acc;
 
                 await database.UpdateUserStats(stat);

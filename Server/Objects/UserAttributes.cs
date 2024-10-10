@@ -73,7 +73,7 @@ public class UserAttributes
             UserId = User.Id,
             Status = Status,
             Rank = (int)userRank,
-            Performance = userStats.PerformancePoints,
+            Performance = (short)userStats.PerformancePoints,
             Accuracy = (float)(userStats.Accuracy / 100f),
             Playcount = userStats.PlayCount,
             RankedScore = userStats.RankedScore,
