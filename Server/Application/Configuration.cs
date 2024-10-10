@@ -62,6 +62,9 @@ public static class Configuration
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
     public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? true;
 
+    public static bool ClearCacheOnStartup =>
+        Config.GetSection("Redis").GetValue<bool?>("ClearCacheOnStartup") ?? false;
+
     // Hangfire section
     public static string HangfireConnection =>
         Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";

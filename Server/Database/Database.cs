@@ -39,7 +39,7 @@ public sealed class SunriseDb
             typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot)
         ]);
 
-        if (appliedMigrations <= 0) return;
+        if (appliedMigrations <= 0 && !Configuration.ClearCacheOnStartup) return;
 
         _logger.LogInformation($"Applied {appliedMigrations} migrations");
         _logger.LogWarning("Cache will be flushed due to database changes. This may cause performance issues.");
@@ -848,6 +848,8 @@ public sealed class SunriseDb
     {
         var usersStats = await GetAllUserStats(mode, LeaderboardSortType.Pp);
         if (usersStats == null) return;
+
+        usersStats.Sort((x, y) => y.PerformancePoints.CompareTo(x.PerformancePoints));
 
         foreach (var stats in usersStats)
             await UpdateUserStats(stats);

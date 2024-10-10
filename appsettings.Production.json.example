@@ -16,7 +16,8 @@
   "Redis": {
     "ConnectionString": "redis",
     "CacheLifeTime": 600,
-    "UseCache": true
+    "UseCache": true,
+    "ClearCacheOnStartup": false
   },
   "Hangfire": {
       "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
