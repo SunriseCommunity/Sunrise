@@ -179,6 +179,21 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
+    [Route("search")]
+    public async Task<IActionResult> GetLeaderboard(
+        [FromQuery(Name = "query")] string query)
+    {
+        if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var users = await database.SearchUsers(query);
+
+        if (users == null) return NotFound(new ErrorResponse("Users not found"));
+
+        return Ok(users.Select(x => new UserResponse(x)));
+    }
+
+    [HttpGet]
     [Route("{id:int}/friend/status")]
     public async Task<IActionResult> GetFriendStatus(int id)
     {

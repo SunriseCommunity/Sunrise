@@ -185,13 +185,21 @@ public sealed class SunriseDb
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var stats = await _orm.SelectManyAsync<User>(new Expr("Id", OperatorEnum.IsNotNull, null));
+        var users = await _orm.SelectManyAsync<User>(new Expr("Id", OperatorEnum.IsNotNull, null));
 
-        if (stats == null) return null;
+        if (users == null) return null;
 
-        await Redis.Set(RedisKey.AllUsers(), stats);
+        await Redis.Set(RedisKey.AllUsers(), users);
 
-        return stats;
+        return users;
+    }
+
+    public async Task<List<User>?> SearchUsers(string query)
+    {
+        var users = await _orm.SelectManyAsync<User>(
+            new Expr("Username", OperatorEnum.Contains, $"%{query}%").PrependOr("Id", OperatorEnum.Equals, query));
+
+        return users;
     }
 
     public async Task UpdateUserStats(UserStats stats)
@@ -291,6 +299,14 @@ public sealed class SunriseDb
         }
 
         return scores;
+    }
+
+    public async Task<long> GetTotalScores()
+    {
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        var totalScores = await _orm.CountAsync<Score>(exp);
+
+        return totalScores;
     }
 
     public async Task<Score?> GetUserLastScore(int userId)

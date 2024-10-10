@@ -38,7 +38,7 @@ public class BaseController(IMemoryCache cache) : ControllerBase
     [HttpGet]
     [Route("/status")]
     [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
-    public async Task<IActionResult> GetStatus()
+    public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
@@ -46,6 +46,12 @@ public class BaseController(IMemoryCache cache) : ControllerBase
 
         var usersOnline = sessions.GetSessions().Count;
         var totalUsers = await database.GetTotalUsers();
+
+        if (detailed)
+        {
+            var totalScores = await database.GetTotalScores();
+            return Ok(new StatusResponse(usersOnline, totalUsers, totalScores));
+        }
 
         return Ok(new StatusResponse(usersOnline, totalUsers));
     }
