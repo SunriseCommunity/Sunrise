@@ -20,11 +20,11 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Chat Bot (as a replacement for Bancho Bot)
 - [x] Multiplayer
 - [x] !mp commands (mostly)
-- [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
+- [x] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
 - [x] Spectating
 - [x] Achievements (Medals)
-- [ ] Rank snapshots
+- [x] Rank snapshots
 
 ### Additional features
 
