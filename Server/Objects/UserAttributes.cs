@@ -32,7 +32,6 @@ public class UserAttributes
     private short? Country { get; }
     public string? OsuVersion { get; }
     public string? UserHash { get; }
-    public DateTime LastLogin { get; set; } = DateTime.UtcNow;
     public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
     public bool ShowUserLocation { get; set; } = true;

@@ -3,6 +3,7 @@ using HOPEless.Bancho.Objects;
 using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Chat;
+using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Multiplayer;
@@ -61,6 +62,15 @@ public class Session : BaseSession
     {
         var message =
             $"You have been restricted. Reason: {reason}. Please contact a staff member for more information.";
+
+        _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
+        _helper.WritePacket(PacketType.ServerNotification, message);
+    }
+
+    public void SendNewLogin()
+    {
+        var message =
+            "You have been logged in from another location. Please try again later.";
 
         _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
         _helper.WritePacket(PacketType.ServerNotification, message);
@@ -177,9 +187,15 @@ public class Session : BaseSession
         return _helper.GetBytesToSend();
     }
 
-    public void UpdateUser(User user)
+    public async Task UpdateUser(User? user = null)
     {
-        if (User.Id != user.Id) throw new InvalidOperationException("Cannot update user with different ID.");
+        if (user == null)
+        {
+            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+            user = await database.GetUser(User.Id);
+        }
+
+        if (User.Id != user?.Id) throw new InvalidOperationException("Cannot update user with different ID.");
 
         User = user;
     }

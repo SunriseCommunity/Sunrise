@@ -122,7 +122,8 @@ public sealed class SunriseDb
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var session = sessions.GetSession(userId: user.Id);
 
-        session?.UpdateUser(user);
+        if (session != null)
+            await session.UpdateUser(user);
 
         await Redis.Set(
         [

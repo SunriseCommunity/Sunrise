@@ -14,7 +14,7 @@ public class SessionRepository
 {
     private const int Second = 1000;
     private readonly ChannelRepository _channels;
-    private readonly ConcurrentDictionary<int, Session> _sessions = new();
+    private readonly ConcurrentDictionary<string, Session> _sessions = new();
 
     public SessionRepository(ChannelRepository channels)
     {
@@ -54,15 +54,15 @@ public class SessionRepository
             }
         };
 
-        _sessions.TryAdd(user.Id, session);
+        _sessions.TryAdd(session.Token, session);
         return session;
     }
 
-    public void RemoveSession(int userId)
+    public void RemoveSession(Session session)
     {
-        foreach (var channel in _channels.GetChannels()) channel.RemoveUser(userId);
+        foreach (var channel in _channels.GetChannels()) channel.RemoveUser(session.User.Id);
 
-        _sessions.TryRemove(userId, out _);
+        _sessions.TryRemove(session.Token, out _);
     }
 
 
@@ -139,7 +139,7 @@ public class SessionRepository
             }
         };
 
-        _sessions.TryAdd(bot.Id, session);
+        _sessions.TryAdd(session.Token, session);
     }
 
     private void ClearInactiveSessions()
@@ -150,7 +150,7 @@ public class SessionRepository
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
-            RemoveSession(session.User.Id);
+            RemoveSession(session);
         }
     }
 }

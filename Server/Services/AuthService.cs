@@ -45,8 +45,7 @@ public static class AuthService
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-        if (sessions.IsUserOnline(user.Id))
-            return RejectLogin(response, "User is already logged in. Try again later in another minute.");
+        if (sessions.IsUserOnline(user.Id)) sessions.GetSession(userId: user.Id)?.SendNewLogin();
 
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
