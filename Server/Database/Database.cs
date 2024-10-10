@@ -235,7 +235,8 @@ public sealed class SunriseDb
         int? limit = null)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
-            .PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId);
+            .PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId)
+            .PrependAnd("IsRanked", OperatorEnum.Equals, true);
 
         var scores = await _orm.SelectManyAsync<Score>(exp,
         [
@@ -249,17 +250,18 @@ public sealed class SunriseDb
 
     public async Task<List<Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
-        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode);
+        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("UserId", OperatorEnum.Equals,
+            userId);
 
         switch (type)
         {
             case ScoreTableType.Best:
-                exp = exp.PrependAnd("UserId", OperatorEnum.Equals, userId);
-                break;
-            case ScoreTableType.Recent:
-                exp = exp.PrependAnd("UserId", OperatorEnum.Equals, userId);
+                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true);
                 break;
             case ScoreTableType.Top:
+                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true);
+                break;
+            case ScoreTableType.Recent:
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);

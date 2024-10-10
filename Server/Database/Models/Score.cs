@@ -48,6 +48,7 @@ public class Score
     public string Grade { get; set; }
 
     [Column(DataTypes.Boolean, false)] public bool IsPassed { get; set; }
+    [Column(DataTypes.Boolean, false)] public bool IsRanked { get; set; }
 
     [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
@@ -65,10 +66,7 @@ public class Score
     public double PerformancePoints { get; set; }
 
     // TODO: Deprecate local properties.
-    // NOTE: May save beatmap as JSON in the db?. With recalculated difficulty rating if we played with mods and know if hash was different. 
     // Local properties
-    public Beatmap Beatmap { get; set; }
-
     public int? LeaderboardRank { get; set; }
 
     public async Task<int> GetLeaderboardRank()
@@ -103,13 +101,13 @@ public class Score
         Grade = split[12];
         Mods = (Mods)int.Parse(split[13]);
         IsPassed = bool.Parse(split[14]);
+        IsRanked = beatmap.IsScoreable;
         GameMode = (GameMode)int.Parse(split[15]);
         WhenPlayed = DateTime.UtcNow;
         OsuVersion = split[17];
         ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null);
         Accuracy = Calculators.CalculateAccuracy(this);
         PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
-        Beatmap = beatmap;
         return this;
     }
 
