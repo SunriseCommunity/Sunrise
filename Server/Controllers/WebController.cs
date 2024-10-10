@@ -135,6 +135,12 @@ public class WebController : ControllerBase
         return new FileContentResult(image, "image/jpeg");
     }
 
+    [HttpGet("/home/account/edit")]
+    public IActionResult EditAvatar()
+    {
+        return Redirect("https://osu-sunrise.top/settings");
+    }
+
     [Obsolete("Temporary while I work on the website")]
     [Route("/beatmapsets/{*path}")]
     [HttpGet]
