@@ -14,7 +14,7 @@ public class UserStatsSnapshot
     [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
     [Column(DataTypes.Nvarchar, int.MaxValue, false)]
-    public string SnapshotsJson { get; private set; } = "[]";
+    public string SnapshotsJson { get; set; } = "[]";
 
     public void SetSnapshots(List<StatsSnapshot> value)
     {

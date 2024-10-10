@@ -81,25 +81,6 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Obsolete("This endpoint is deprecated and will be removed in the future")]
-    [Route("{id:int}/graph/scores")]
-    public async Task<IActionResult> GetUserGraphScores(int id, [FromQuery(Name = "mode")] int mode)
-    {
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
-
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(id);
-
-        if (user == null) return NotFound(new ErrorResponse("User not found"));
-
-        var scores = await database.GetUserBestScores(id, (GameMode)mode);
-
-        var top100Scores = scores.Take(100).Select(score => new ScoreResponse(score)).ToList();
-
-        return Ok(new ScoresResponse(top100Scores, scores.Count));
-    }
-
-    [HttpGet]
     [Route("{id:int}/graph")]
     public async Task<IActionResult> GetUserGraphData(int id, [FromQuery(Name = "mode")] int mode)
     {
@@ -112,12 +93,18 @@ public class UserController : ControllerBase
 
         var snapshots = (await database.GetUserStatsSnapshot(id, (GameMode)mode)).GetSnapshots();
 
+        snapshots.RemoveAll(x => x.SavedAt.Date == DateTime.UtcNow.Date);
+
         snapshots.Add(new StatsSnapshot
         {
             Rank = await database.GetUserRank(id, (GameMode)mode),
             CountryRank = await database.GetUserCountryRank(id, (GameMode)mode),
             PerformancePoints = userStats.PerformancePoints
         });
+
+        snapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
+
+        snapshots = snapshots.TakeLast(60).ToList();
 
         return Ok(new StatsSnapshotsResponse(snapshots));
     }
