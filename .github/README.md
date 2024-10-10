@@ -20,11 +20,11 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Chat Bot (as a replacement for Bancho Bot)
 - [x] Multiplayer
 - [x] !mp commands (mostly)
-- [ ] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
+- [x] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] osu!Direct
 - [x] Spectating
 - [x] Achievements (Medals)
-- [ ] Rank snapshots
+- [x] Rank snapshots
 
 ### Additional features
 
@@ -33,7 +33,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Redis caching for faster response times
 - [x] Docker support
 - [x] Database migrations
-- [ ] Database backups
+- [x] Database backups
 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
