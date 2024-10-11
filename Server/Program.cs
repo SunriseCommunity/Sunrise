@@ -15,15 +15,16 @@ builder.Configure();
 var app = builder.Build();
 
 app.UseHealthChecks("/health");
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = Array.Empty<IDashboardAuthorizationFilter>()
-});
 
 app.Setup();
 app.UseStaticBackgrounds();
 app.UseMiddlewares();
 app.Configure();
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = Array.Empty<IDashboardAuthorizationFilter>()
+});
 
 BackgroundTasks.Initialize();
 
