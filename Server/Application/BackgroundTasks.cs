@@ -11,9 +11,9 @@ public static class BackgroundTasks
 {
     public static void Initialize()
     {
-        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(), Cron.Daily);
+        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(), "0 3 * * *"); // 3 AM UTC
 
-        RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(), Cron.Daily);
+        RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(), "59 23 * * *"); // 11:59 PM UTC
     }
 
     public static async Task SaveStatsSnapshot()

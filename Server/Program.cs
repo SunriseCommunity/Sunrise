@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.Dashboard;
 using Sunrise.Server;
 using Sunrise.Server.Application;
 
@@ -14,7 +15,10 @@ builder.Configure();
 var app = builder.Build();
 
 app.UseHealthChecks("/health");
-app.UseHangfireDashboard();
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = Array.Empty<IDashboardAuthorizationFilter>()
+});
 
 app.Setup();
 app.UseStaticBackgrounds();
