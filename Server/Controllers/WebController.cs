@@ -141,6 +141,12 @@ public class WebController : ControllerBase
         return Redirect("https://osu-sunrise.top/settings");
     }
 
+    [HttpGet("/u/{id:int}")]
+    public IActionResult UserProfile(int id)
+    {
+        return Redirect($"https://osu-sunrise.top/user/{id}");
+    }
+
     [Obsolete("Temporary while I work on the website")]
     [Route("/beatmapsets/{*path}")]
     [HttpGet]
