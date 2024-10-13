@@ -147,8 +147,8 @@ public static class AuthService
         else if (username.Length is < 2 or > 32)
             errors["username"].Add("Invalid username. Length should be between 2 and 32 characters.");
 
-        if (!CharactersFilter.IsValidString(email!) || !email.Contains('@') || !email.Contains('.'))
-            errors["user_email"].Add("Invalid email. It should contain '@' and '.'.");
+        if (!CharactersFilter.IsValidString(email!) || !email.IsValidEmail())
+            errors["user_email"].Add("Invalid email. It should be a valid email address.");
 
         if (!CharactersFilter.IsValidString(password!))
             errors["password"].Add("Invalid password. It should contain only alphanumeric characters.");

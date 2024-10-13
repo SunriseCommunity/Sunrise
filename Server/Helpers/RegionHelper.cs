@@ -24,22 +24,15 @@ public static class RegionHelper
 
         if (!string.IsNullOrEmpty(xForwardedFor))
         {
-            var ipAddresses = xForwardedFor.Split(new[]
-                {
+            var ipAddresses = xForwardedFor.Split([
                     ','
-                },
+                ],
                 StringSplitOptions.RemoveEmptyEntries);
 
-            if (ipAddresses.Length > 0)
-            {
-                ipAddress = ipAddresses[0].Trim();
-            }
+            if (ipAddresses.Length > 0) ipAddress = ipAddresses[0].Trim();
         }
 
-        if (string.IsNullOrEmpty(ipAddress))
-        {
-            ipAddress = request.HttpContext.Connection.RemoteIpAddress?.ToString();
-        }
+        if (string.IsNullOrEmpty(ipAddress)) ipAddress = request.HttpContext.Connection.RemoteIpAddress?.ToString();
 
         return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
     }
@@ -56,10 +49,7 @@ public static class RegionHelper
 
     public static short GetCountryCode(string cc)
     {
-        if (Enum.TryParse(typeof(CountryCodes), cc, true, out var result))
-        {
-            return (short)result;
-        }
+        if (Enum.TryParse(typeof(CountryCodes), cc, true, out var result)) return (short)result;
 
         return 0;
     }

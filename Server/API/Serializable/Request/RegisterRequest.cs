@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Sunrise.Server.API.Serializable.Request;
 
-public class TokenRequest
+public class RegisterRequest
 {
     [JsonPropertyName("username")]
     [JsonRequired]
@@ -11,4 +11,8 @@ public class TokenRequest
     [JsonPropertyName("password")]
     [JsonRequired]
     public string? Password { get; set; }
+
+    [JsonPropertyName("email")]
+    [JsonRequired]
+    public string? Email { get; set; }
 }

@@ -10,4 +10,9 @@ public static class CharactersFilter
 
         return Regex.IsMatch(str, pattern);
     }
+
+    public static bool IsValidEmail(this string str)
+    {
+        return Regex.IsMatch(str, @"^.+@.+\.[a-zA-Z]{2,256}$");
+    }
 }
