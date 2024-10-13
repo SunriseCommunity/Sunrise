@@ -22,7 +22,7 @@ public sealed class Middleware(
 
         var path = context.Request.Path;
 
-        if ((path.StartsWithSegments("/metrics") || path.StartsWithSegments("/hangfire")) && !ip.IsFromLocalNetwork() &&
+        if (path.StartsWithSegments("/metrics") && !ip.IsFromLocalNetwork() &&
             !ip.IsFromDocker())
         {
             context.Response.StatusCode = StatusCodes.Status404NotFound;
