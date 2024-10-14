@@ -58,28 +58,28 @@ public static class ScoreService
         var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
         await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
 
-        if (SubmitScoreHelper.IsScoreFailed(score))
+        if (replay is { Length: >= 24 })
         {
-            await database.UpdateUserStats(userStats);
-            return "error: no"; // Don't submit failed scores
+            var replayFile = await database.UploadReplay(userStats.UserId, replay);
+            score.ReplayFileId = replayFile.Id;
         }
 
-        if (replay is { Length: < 24 } or null)
+        if (!SubmitScoreHelper.IsScoreFailed(score) && score.ReplayFileId == null)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Replay file is too small");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Replay file not found for passed score");
             return "error: no";
         }
 
-        var replayFile = await database.UploadReplay(userStats.UserId, replay);
-        score.ReplayFileId = replayFile.Id;
+        await database.InsertScore(score);
+        await database.UpdateUserStats(userStats);
+
+        if (SubmitScoreHelper.IsScoreFailed(score))
+            return "error: no"; // No need to create chart for failed scores
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
             beatmap.DifficultyRating = await Calculators
                 .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
-
-        await database.InsertScore(score);
-        await database.UpdateUserStats(userStats);
 
         var newPBest = scores.GetNewPersonalScore(score);
         userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);

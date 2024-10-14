@@ -15,10 +15,10 @@ public static class AssetService
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var score = await database.GetScore(scoreId);
-        if (score == null)
+        if (score?.ReplayFileId == null)
             return null;
 
-        var replay = await database.GetReplay(score.ReplayFileId);
+        var replay = await database.GetReplay(score.ReplayFileId.Value);
 
         return replay;
     }

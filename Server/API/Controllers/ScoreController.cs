@@ -35,10 +35,10 @@ public class ScoreController : ControllerBase
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var score = await database.GetScore(id);
-        if (score == null)
-            return NotFound(new ErrorResponse("Score not found"));
+        if (score?.ReplayFileId == null)
+            return NotFound(new ErrorResponse("Score or replay not found"));
 
-        var replay = await database.GetReplay(score.ReplayFileId);
+        var replay = await database.GetReplay(score.ReplayFileId.Value);
         if (replay == null)
             return NotFound(new ErrorResponse("Replay not found"));
 

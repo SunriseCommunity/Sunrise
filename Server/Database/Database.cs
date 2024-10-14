@@ -246,7 +246,7 @@ public sealed class SunriseDb
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
             .PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId)
-            .PrependAnd("IsRanked", OperatorEnum.Equals, true);
+            .PrependAnd("IsRanked", OperatorEnum.Equals, true).PrependAnd("IsPassed", OperatorEnum.Equals, true);
 
         var scores = await _orm.SelectManyAsync<Score>(exp,
         [
@@ -266,10 +266,12 @@ public sealed class SunriseDb
         switch (type)
         {
             case ScoreTableType.Best:
-                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true);
+                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true)
+                    .PrependAnd("IsPassed", OperatorEnum.Equals, true);
                 break;
             case ScoreTableType.Top:
-                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true);
+                exp = exp.PrependAnd("IsRanked", OperatorEnum.Equals, true)
+                    .PrependAnd("IsPassed", OperatorEnum.Equals, true);
                 break;
             case ScoreTableType.Recent:
                 break;
@@ -323,7 +325,7 @@ public sealed class SunriseDb
         LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode", OperatorEnum.Equals,
-            (int)gameMode);
+            (int)gameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
 
         if (type is LeaderboardType.GlobalWithMods) exp.PrependAnd("Mods", OperatorEnum.Equals, (int)mods);
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
@@ -532,7 +534,7 @@ public sealed class SunriseDb
     public async Task<int> GetLeaderboardRank(Score score)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, score.BeatmapHash).PrependAnd("GameMode",
-            OperatorEnum.Equals, (int)score.GameMode);
+            OperatorEnum.Equals, (int)score.GameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
         var scores = await _orm.SelectManyAsync<Score>(exp);
 
         return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;

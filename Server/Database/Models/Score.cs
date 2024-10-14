@@ -22,7 +22,7 @@ public class Score
     [Column(DataTypes.Nvarchar, 64, false)]
     public string BeatmapHash { get; set; }
 
-    [Column(DataTypes.Int, false)] public int ReplayFileId { get; set; }
+    [Column(DataTypes.Int)] public int? ReplayFileId { get; set; }
 
     [Column(DataTypes.Int, false)] public int TotalScore { get; set; }
 
