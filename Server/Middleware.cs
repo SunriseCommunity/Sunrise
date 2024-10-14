@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.RateLimiting;
+using Hangfire.Dashboard;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.Server.Application;
 using Sunrise.Server.Helpers;
@@ -56,6 +57,7 @@ public sealed class Middleware(
         await next(context);
     }
 
+
     private TokenBucketRateLimiter GetRateLimiter(IPAddress key)
     {
         return cache.GetOrCreate(key,
@@ -71,5 +73,16 @@ public sealed class Middleware(
                     ReplenishmentPeriod = TimeSpan.FromSeconds(Configuration.GeneralWindow)
                 });
             }) ?? throw new InvalidOperationException($"Failed to create rate limiter for {key}");
+    }
+}
+
+public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
+{
+    public bool Authorize(DashboardContext context)
+    {
+        var ip = RegionHelper.GetUserIpAddress(context.GetHttpContext().Request);
+
+        return ip.IsFromLocalNetwork() ||
+               ip.IsFromDocker();
     }
 }
