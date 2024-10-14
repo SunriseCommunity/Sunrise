@@ -36,7 +36,8 @@ public sealed class SunriseDb
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
-            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot), typeof(LoginEvent)
+            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot), typeof(LoginEvent),
+            typeof(UserFavouriteBeatmap)
         ]);
 
         if (appliedMigrations <= 0 && !Configuration.ClearCacheOnStartup) return;
@@ -535,6 +536,53 @@ public sealed class SunriseDb
         var scores = await _orm.SelectManyAsync<Score>(exp);
 
         return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;
+    }
+
+    public async Task AddFavouriteBeatmap(int userId, int beatmapSetId)
+    {
+        var favourite = new UserFavouriteBeatmap
+        {
+            UserId = userId,
+            BeatmapSetId = beatmapSetId
+        };
+
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+            beatmapSetId);
+        var favouriteExists = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
+
+        if (favouriteExists != null)
+            return;
+
+        await _orm.InsertAsync(favourite);
+    }
+
+    public async Task RemoveFavouriteBeatmap(int userId, int beatmapSetId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+            beatmapSetId);
+        var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
+
+        if (favourite == null)
+            return;
+
+        await _orm.DeleteAsync(favourite);
+    }
+
+    public async Task<bool> IsBeatmapSetFavourited(int userId, int beatmapSetId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+            beatmapSetId);
+        var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
+
+        return favourite != null;
+    }
+
+    public async Task<List<int>> GetUserFavouriteBeatmaps(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        var favourites = await _orm.SelectManyAsync<UserFavouriteBeatmap>(exp);
+
+        return favourites.Select(x => x.BeatmapSetId).ToList();
     }
 
     public async Task<List<int>> GetMostPlayedBeatmapsIds(GameMode? gameMode, int page = 1, int limit = 100)

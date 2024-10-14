@@ -2,6 +2,7 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
@@ -116,6 +117,39 @@ public class WebController : ControllerBase
     {
         var result = AssetService.GetSeasonalBackgrounds();
         return Ok(result);
+    }
+
+    [HttpGet(RequestType.OsuAddFavourite)]
+    public async Task<IActionResult> AddFavourite([FromQuery(Name = "u")] string username,
+        [FromQuery(Name = "h")] string passhash,
+        [FromQuery(Name = "a")] int beatmapSetId)
+    {
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+            return Ok("error: pass");
+
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapSetId);
+        if (beatmapSet == null)
+            return Ok("error: beatmap");
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        await database.AddFavouriteBeatmap(session.User.Id, beatmapSetId);
+
+        return Ok();
+    }
+
+    [HttpGet(RequestType.OsuGetFavourites)]
+    public async Task<IActionResult> AddFavourites([FromQuery(Name = "u")] string username,
+        [FromQuery(Name = "h")] string passhash)
+    {
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+            return Ok("error: pass");
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var favourites = await database.GetUserFavouriteBeatmaps(session.User.Id);
+
+        return Ok(string.Join("/n", favourites.Select(x => x)));
     }
 
     [HttpPost(RequestType.PostRegister)]
