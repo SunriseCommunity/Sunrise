@@ -38,6 +38,8 @@ public static class RequestType
     public const string OsuSession = "osu-session.php";
     public const string CheckUpdates = "check-updates.php";
     public const string OsuGetSeasonalBackground = "osu-getseasonal.php";
+    public const string OsuGetFavourites = "osu-getfavourites.php";
+    public const string OsuAddFavourite = "osu-addfavourite.php";
     public const string PostRegister = "/users";
 
     public static bool IsValidRequestType(this string requestType)
