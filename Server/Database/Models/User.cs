@@ -18,6 +18,9 @@ public class User
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Passhash { get; set; }
 
+    [Column(DataTypes.Nvarchar, int.MaxValue)]
+    public string? Description { get; set; }
+
     [Column(DataTypes.Int, false)] public short Country { get; set; }
 
     [Column(DataTypes.Int, false)] public UserPrivileges Privilege { get; set; }

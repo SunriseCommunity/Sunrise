@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     [HttpPost("token")]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request)
     {
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
@@ -37,7 +37,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public IActionResult RefreshToken([FromBody] RefreshTokenRequest? request)
     {
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var newToken = AuthService.RefreshToken(request.RefreshToken);
@@ -50,7 +50,7 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest? request)
     {
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
