@@ -187,6 +187,7 @@ public class Session : BaseSession
         return _helper.GetBytesToSend();
     }
 
+    // NOTE: Don't use this method directly, it will be called by database if user is updated.
     public async Task UpdateUser(User? user = null)
     {
         if (user == null)

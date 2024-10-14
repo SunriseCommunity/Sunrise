@@ -13,7 +13,14 @@ public static class BanchoService
     {
         try
         {
-            foreach (var packet in BanchoSerializer.DeserializePackets(buffer))
+            var packets = BanchoSerializer.DeserializePackets(buffer).ToList();
+
+            // Note: In theory if user upon login still has a pending disconnect packet, we should ignore it.
+            // Afraid this running this every time might cause issues, need to investigate.
+            if (packets.Any(p => p.Type == PacketType.ClientDisconnect && p.Type == PacketType.ClientStatusRequestOwn))
+                packets = packets.Where(p => p.Type != PacketType.ClientDisconnect).ToList();
+
+            foreach (var packet in packets)
                 await PacketRepository.HandlePacket(packet, session);
         }
         catch (Exception e)

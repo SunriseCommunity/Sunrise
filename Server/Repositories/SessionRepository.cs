@@ -62,6 +62,10 @@ public class SessionRepository
     {
         foreach (var channel in _channels.GetChannels()) channel.RemoveUser(session.User.Id);
 
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        session.User.LastOnlineTime = DateTime.UtcNow;
+        _ = database.UpdateUser(session.User);
+
         _sessions.TryRemove(session.Token, out _);
     }
 
