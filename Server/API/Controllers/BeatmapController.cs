@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
+using Sunrise.Server.Database;
 using Sunrise.Server.Managers;
 using AuthService = Sunrise.Server.API.Services.AuthService;
 
@@ -39,5 +41,39 @@ public class BeatmapController : ControllerBase
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
         return Ok(new BeatmapSetResponse(beatmapSet));
+    }
+
+    [HttpGet("beatmapset/{id:int}")]
+    public async Task<IActionResult> BeatmapSetFavourite(int id, [FromQuery] bool favourite)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Unauthorized"));
+
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, id);
+        if (beatmapSet == null)
+            return NotFound(new ErrorResponse("Beatmap set not found"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        if (favourite)
+            await database.AddFavouriteBeatmap(session.User.Id, id);
+        else
+            await database.RemoveFavouriteBeatmap(session.User.Id, id);
+
+        return new OkResult();
+    }
+
+    [HttpGet("beatmapset/{id:int}/favourited")]
+    public async Task<IActionResult> GetFavourited(int id)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Unauthorized"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var favourited = await database.IsBeatmapSetFavourited(session.User.Id, id);
+
+        return Ok(new { favourited });
     }
 }

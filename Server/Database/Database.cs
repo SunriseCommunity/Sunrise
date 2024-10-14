@@ -556,6 +556,27 @@ public sealed class SunriseDb
         await _orm.InsertAsync(favourite);
     }
 
+    public async Task RemoveFavouriteBeatmap(int userId, int beatmapSetId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+            beatmapSetId);
+        var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
+
+        if (favourite == null)
+            return;
+
+        await _orm.DeleteAsync(favourite);
+    }
+
+    public async Task<bool> IsBeatmapSetFavourited(int userId, int beatmapSetId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+            beatmapSetId);
+        var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
+
+        return favourite != null;
+    }
+
     public async Task<List<int>> GetUserFavouriteBeatmaps(int userId)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId);

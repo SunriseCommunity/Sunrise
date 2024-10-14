@@ -7,10 +7,12 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using AuthService = Sunrise.Server.API.Services.AuthService;
 
 namespace Sunrise.Server.API.Controllers;
 
@@ -134,6 +136,34 @@ public class UserController : ControllerBase
             .ToList();
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/favourites")]
+    public async Task<IActionResult> GetUserGraphScores(int id,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0)
+    {
+        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        var favourites = await database.GetUserFavouriteBeatmaps(id);
+
+        var offsetFavouriteIds = favourites.Skip(page * limit ?? 0).Take(limit ?? 50).ToList();
+
+        var offsetFavourites = offsetFavouriteIds.Select(async setId =>
+        {
+            var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId);
+            return new BeatmapSetResponse(beatmapSet);
+        }).Select(task => task.Result).ToList();
+
+        return Ok(new BeatmapSetsResponse(offsetFavourites, favourites.Count));
     }
 
     [HttpGet]
