@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.API.Managers;
+using Sunrise.Server.API.Serializable.Request;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
@@ -80,6 +81,28 @@ public class UserController : ControllerBase
             return Unauthorized(new ErrorResponse("Invalid session"));
 
         return await GetUser(session.User.Id, mode);
+    }
+
+    [HttpPost]
+    [Route("edit/description")]
+    public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest? request)
+    {
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("Description is required"));
+
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (request.Description!.Length > 2000)
+            return BadRequest(new ErrorResponse("Description is too long. Max 2000 characters"));
+
+        session.User.Description = request.Description;
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        await database.UpdateUser(session.User);
+
+        return new OkResult();
     }
 
     [HttpGet]
