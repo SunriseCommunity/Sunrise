@@ -116,7 +116,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetUserGraphScores(int id,
         [FromQuery(Name = "mode")] int mode,
         [FromQuery(Name = "type")] int? scoresType,
-        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 0)
     {
         if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
@@ -137,6 +137,39 @@ public class UserController : ControllerBase
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));
     }
+
+
+    [HttpGet]
+    [Route("{id:int}/mostplayed")]
+    public async Task<IActionResult> GetUserMostPlayedMaps(int id,
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "limit")] int? limit = 15,
+        [FromQuery(Name = "page")] int? page = 0)
+    {
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
+
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(id);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        var beatmapsIds = await database.GetUserMostPlayedMapsIds(id, (GameMode)mode);
+
+        var offsetBeatmaps = beatmapsIds.Skip(page * limit ?? 0).Take(limit ?? 50).Select(async bId =>
+        {
+            var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: bId);
+            var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
+
+            return new BeatmapResponse(beatmap, beatmapSet);
+        }).Select(task => task.Result).ToList();
+
+        return Ok(new BeatmapsResponse(offsetBeatmaps, beatmapsIds.Count));
+    }
+
 
     [HttpGet]
     [Route("{id:int}/favourites")]
