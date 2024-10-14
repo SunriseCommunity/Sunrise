@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using osu.Shared;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
@@ -47,5 +48,24 @@ public class ScoreController : ControllerBase
         var replayFileName = await replayFile.GetFileName(session);
 
         return File(replayStream.ToArray(), "application/octet-stream", replayFileName);
+    }
+
+    [HttpGet("/score/top")]
+    public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "limit")] int? limit = 15,
+        [FromQuery(Name = "page")] int? page = 0)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+
+        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        var scores = await database.GetTopScores((GameMode)mode);
+
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score))
+            .ToList();
+
+        return Ok(new ScoresResponse(offsetScores, scores.Count));
     }
 }

@@ -133,6 +133,20 @@ public sealed class SunriseDb
         ], user);
     }
 
+    public async Task<List<Score>> GetTopScores(GameMode mode)
+    {
+        var exp = new Expr("GameMode", OperatorEnum.Equals,
+            (int)mode).PrependAnd("IsRanked", OperatorEnum.Equals, true).PrependAnd("IsPassed", OperatorEnum.Equals,
+            true);
+
+        var scores = await _orm.SelectManyAsync<Score>(exp,
+        [
+            new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending)
+        ]);
+
+        return scores.ToList();
+    }
+
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await Redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
