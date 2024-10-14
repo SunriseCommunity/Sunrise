@@ -258,6 +258,20 @@ public sealed class SunriseDb
         return limit == null ? bestScores : bestScores.Take(limit.Value).ToList();
     }
 
+    public async Task<List<int>> GetUserMostPlayedMapsIds(int userId, GameMode mode)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals,
+            (int)mode);
+
+        var scores = await _orm.SelectManyAsync<Score>(exp);
+
+        var mostPlayedBeatmap = scores.GroupBy(x => x.BeatmapId).OrderByDescending(x => x.Count()).Select(x => x.Key)
+            .ToList();
+
+        return mostPlayedBeatmap;
+    }
+
+
     public async Task<List<Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
         var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("UserId", OperatorEnum.Equals,
