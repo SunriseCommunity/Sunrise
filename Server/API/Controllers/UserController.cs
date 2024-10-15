@@ -182,15 +182,18 @@ public class UserController : ControllerBase
 
         var beatmapsIds = await database.GetUserMostPlayedMapsIds(id, (GameMode)mode);
 
-        var offsetBeatmaps = beatmapsIds.Skip(page * limit ?? 0).Take(limit ?? 50).Select(async bId =>
+        var offsetBeatmaps = beatmapsIds.Skip(page * limit ?? 0).Take(limit ?? 50).Select(async pair =>
         {
+            var bId = pair.Key;
+            var count = pair.Value;
+
             var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: bId);
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
-            return new BeatmapResponse(beatmap, beatmapSet);
+            return new MostPlayedBeatmapResponse(beatmap, count, beatmapSet);
         }).Select(task => task.Result).ToList();
 
-        return Ok(new BeatmapsResponse(offsetBeatmaps, beatmapsIds.Count));
+        return Ok(new MostPlayedResponse(offsetBeatmaps, beatmapsIds.Count));
     }
 
 
