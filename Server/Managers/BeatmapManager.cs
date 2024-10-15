@@ -45,10 +45,13 @@ public class BeatmapManager
             foreach (var b in beatmapSet.Beatmaps)
                 b.StatusString = "ranked";
 
-        foreach (var b in beatmapSet.Beatmaps)
-            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)], beatmapSet);
+        // NOTE: Redis cache Timespan is temporary solution until I'm working on proper beatmap mirror (other project).
 
-        await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet);
+        foreach (var b in beatmapSet.Beatmaps)
+            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)], beatmapSet,
+                TimeSpan.FromDays(30));
+        
+        await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet, TimeSpan.FromDays(30));
 
         return beatmapSet;
     }
