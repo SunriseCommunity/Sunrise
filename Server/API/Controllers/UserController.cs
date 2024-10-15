@@ -196,7 +196,6 @@ public class UserController : ControllerBase
         return Ok(new MostPlayedResponse(offsetBeatmaps, beatmapsIds.Count));
     }
 
-
     [HttpGet]
     [Route("{id:int}/favourites")]
     public async Task<IActionResult> GetUserGraphScores(int id,

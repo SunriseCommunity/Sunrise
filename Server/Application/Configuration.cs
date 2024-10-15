@@ -82,9 +82,10 @@ public static class Configuration
 
         new(ApiType.BeatmapSetSearch, ApiServer.CatboyBest,
             "https://catboy.best/api/v2/search?query={0}&limit={1}&offset={2}&status={3}&mode={4}", 1, 3),
+        new(ApiType.BeatmapSetDataById, ApiServer.CatboyBest, "https://catboy.best/api/v2/s/{0}", 0, 1),
 
         new(ApiType.BeatmapDownload, ApiServer.OsuDirect, "https://osu.direct/api/osu/{0}", 2, 1),
-        new(ApiType.BeatmapSetDataById, ApiServer.OsuDirect, "https://osu.direct/api/v2/s/{0}", 0, 1),
+        new(ApiType.BeatmapSetDataById, ApiServer.OsuDirect, "https://osu.direct/api/v2/s/{0}", 1, 1),
         new(ApiType.BeatmapSetDataByBeatmapId, ApiServer.OsuDirect, "https://osu.direct/api/v2/b/{0}?full=true", 0, 1),
         new(ApiType.BeatmapSetDataByHash, ApiServer.OsuDirect, "https://osu.direct/api/v2/md5/{0}?full=true", 0, 1),
         new(ApiType.BeatmapSetSearch, ApiServer.OsuDirect,
