@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Objects.Serializable;
 
@@ -67,6 +68,7 @@ public class Beatmap
     public double CS { get; set; }
 
     [JsonPropertyName("deleted_at")]
+    [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime? DeletedAt { get; set; }
 
     [JsonPropertyName("drain")]
@@ -79,6 +81,7 @@ public class Beatmap
     public bool IsScoreable { get; set; }
 
     [JsonPropertyName("last_updated")]
+    [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime LastUpdated { get; set; }
 
     [JsonPropertyName("mode_int")]

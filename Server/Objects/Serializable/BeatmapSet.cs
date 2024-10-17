@@ -35,9 +35,11 @@ public class BeatmapSet
     public BeatmapStatus Status => _statusMap[StatusString ?? "graveyard"];
 
     [JsonPropertyName("last_updated")]
+    [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime LastUpdated { get; set; }
 
     [JsonPropertyName("ranked_date")]
+    [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime? RankedDate { get; set; }
 
     [JsonPropertyName("video")]

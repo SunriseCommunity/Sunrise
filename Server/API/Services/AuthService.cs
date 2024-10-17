@@ -85,6 +85,7 @@ public static class AuthService
             "Sunrise",
             [
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+                // TODO: Add password hash claim for password reset !
             ],
             expires: DateTime.UtcNow.Add(expires),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)),

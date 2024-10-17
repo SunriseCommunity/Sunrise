@@ -32,7 +32,7 @@ public class BeatmapController : ControllerBase
     }
 
     [HttpGet("beatmapset/{id:int}")]
-    public async Task<IActionResult> GetBeatmapSet(int id)
+    public async Task<IActionResult> GetBeatmapSet(int id, [FromQuery] bool? favourite)
     {
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
@@ -40,28 +40,18 @@ public class BeatmapController : ControllerBase
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
+        if (favourite.HasValue && session.User.Username != "Guest")
+        {
+            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+            if (favourite.Value)
+                await database.AddFavouriteBeatmap(session.User.Id, id);
+            else
+                await database.RemoveFavouriteBeatmap(session.User.Id, id);
+
+            return new OkResult();
+        }
+
         return Ok(new BeatmapSetResponse(beatmapSet));
-    }
-
-    [HttpGet("beatmapset/{id:int}")]
-    public async Task<IActionResult> BeatmapSetFavourite(int id, [FromQuery] bool favourite)
-    {
-        var session = await Request.GetSessionFromRequest();
-        if (session == null)
-            return Unauthorized(new ErrorResponse("Unauthorized"));
-
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, id);
-        if (beatmapSet == null)
-            return NotFound(new ErrorResponse("Beatmap set not found"));
-
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-
-        if (favourite)
-            await database.AddFavouriteBeatmap(session.User.Id, id);
-        else
-            await database.RemoveFavouriteBeatmap(session.User.Id, id);
-
-        return new OkResult();
     }
 
     [HttpGet("beatmapset/{id:int}/favourited")]
@@ -74,6 +64,9 @@ public class BeatmapController : ControllerBase
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var favourited = await database.IsBeatmapSetFavourited(session.User.Id, id);
 
-        return Ok(new { favourited });
+        return Ok(new
+        {
+            favourited
+        });
     }
 }
