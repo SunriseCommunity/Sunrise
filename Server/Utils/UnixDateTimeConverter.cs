@@ -10,7 +10,15 @@ public class DateTimeUnixConverter : JsonConverter<DateTime>
         if (reader.TokenType == JsonTokenType.Number)
         {
             var unixTime = reader.GetInt64();
-            return DateTimeOffset.FromUnixTimeMilliseconds(unixTime).DateTime;
+            var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(unixTime).DateTime;
+
+            // 🚪🚶‍♂️ note: redis also uses unix time, but it's in seconds
+            if (dateTime.Year <= 1970)
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(unixTime).DateTime;
+            }
+
+            return dateTime;
         }
 
         if (reader.TokenType == JsonTokenType.String)
