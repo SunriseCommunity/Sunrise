@@ -17,6 +17,9 @@ public class BeatmapResponse(Beatmap beatmap, BeatmapSet? beatmapSet = null)
     [JsonPropertyName("version")]
     public string Version { get; set; } = beatmap.Version;
 
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = beatmap.StatusString;
+
     [JsonPropertyName("star_rating")]
     public double StarRating { get; set; } = beatmap.DifficultyRating;
 
