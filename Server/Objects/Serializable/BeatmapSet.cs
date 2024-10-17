@@ -29,6 +29,9 @@ public class BeatmapSet
     [JsonPropertyName("creator")]
     public string Creator { get; set; }
 
+    [JsonPropertyName("user_id")]
+    public int UserId { get; set; }
+
     [JsonPropertyName("status")]
     public string StatusString { get; set; }
 

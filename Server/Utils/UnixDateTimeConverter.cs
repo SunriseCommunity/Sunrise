@@ -10,7 +10,7 @@ public class DateTimeUnixConverter : JsonConverter<DateTime>
         if (reader.TokenType == JsonTokenType.Number)
         {
             var unixTime = reader.GetInt64();
-            return DateTimeOffset.FromUnixTimeSeconds(unixTime).DateTime;
+            return DateTimeOffset.FromUnixTimeMilliseconds(unixTime).DateTime;
         }
 
         if (reader.TokenType == JsonTokenType.String)

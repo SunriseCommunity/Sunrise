@@ -82,5 +82,8 @@ public class BeatmapResponse(Beatmap beatmap, BeatmapSet? beatmapSet = null)
 
     [JsonPropertyName("creator")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Creator { get; set; } = beatmapSet?.Creator;
+    public string? Creator { get; set; } = beatmapSet?.Creator; // TODO: Make custom beatmap API return creator name for beatmap
+
+    [JsonPropertyName("creator_id")]
+    public int CreatorId { get; set; } = beatmap.UserId;
 }
