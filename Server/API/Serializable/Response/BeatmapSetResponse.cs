@@ -26,6 +26,9 @@ public class BeatmapSetResponse(BeatmapSet beatmapSet)
     [JsonPropertyName("last_updated")]
     public DateTime LastUpdated { get; set; } = beatmapSet.LastUpdated;
 
+    [JsonPropertyName("submitted_date")]
+    public DateTime SubmittedDate { get; set; } = beatmapSet.SubmittedDate;
+
     [JsonPropertyName("ranked_date")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? RankedDate { get; set; } = beatmapSet.RankedDate;

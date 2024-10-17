@@ -45,6 +45,10 @@ public class BeatmapSet
     [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime? RankedDate { get; set; }
 
+    [JsonPropertyName("submitted_date")]
+    [JsonConverter(typeof(DateTimeUnixConverter))]
+    public DateTime SubmittedDate { get; set; }
+
     [JsonPropertyName("video")]
     public bool HasVideo { get; set; }
 
