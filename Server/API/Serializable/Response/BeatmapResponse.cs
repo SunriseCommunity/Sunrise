@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -22,22 +21,28 @@ public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? b
     [JsonPropertyName("status")]
     public string Status { get; set; } = beatmap.StatusString;
 
+    // NOTE: While it should for all star_rating which is not osu do recalculation, it's too heavy for the current manager 
+    // (need to download each difficulty and recalculate, for bulk requests it can take reaaaly long time).
+    // So, for now, I will just skip recalculation.
+    //
+    // TODO: In the future, add recalculation for all use cases.
+
     [JsonPropertyName("star_rating_osu")]
     public double StarRating { get; set; } = beatmap.ModeInt != 0 ? 0 : beatmap.DifficultyRating;
 
     [JsonPropertyName("star_rating_taiko")]
     public double StarRatingTaiko { get; set; } = beatmap.ModeInt is 1 or 0
-        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 1).Result
+        ? beatmap.DifficultyRating
         : 0;
 
     [JsonPropertyName("star_rating_ctb")]
     public double StarRatingCatch { get; set; } = beatmap.ModeInt is 2 or 0
-        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 2).Result
+        ? beatmap.DifficultyRating
         : 0;
 
     [JsonPropertyName("star_rating_mania")]
     public double StarRatingMania { get; set; } = beatmap.ModeInt is 3 or 0
-        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 3).Result
+        ? beatmap.DifficultyRating
         : 0;
 
     [JsonPropertyName("total_length")]
