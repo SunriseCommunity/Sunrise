@@ -44,7 +44,7 @@ public static class AssetService
 
         for (var i = 0; i < files.Length; i++) backgrounds[i] = Path.GetFileNameWithoutExtension(files[i]);
 
-        var seasonalBackgrounds = backgrounds.Select(x => $"https://{Configuration.Domain}/static/{x}.jpg").ToArray();
+        var seasonalBackgrounds = backgrounds.Select(x => $"https://a.{Configuration.Domain}/static/{x}.jpg").ToArray();
 
         return seasonalBackgrounds;
     }
