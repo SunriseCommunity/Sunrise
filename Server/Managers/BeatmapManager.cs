@@ -43,14 +43,19 @@ public class BeatmapManager
 
         if (Configuration.IgnoreBeatmapRanking)
             foreach (var b in beatmapSet.Beatmaps)
+            {
                 b.StatusString = "ranked";
+            }
 
         // NOTE: Redis cache Timespan is temporary solution until I'm working on proper beatmap mirror (other project).
 
         foreach (var b in beatmapSet.Beatmaps)
-            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)], beatmapSet,
+        {
+            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)],
+                beatmapSet,
                 TimeSpan.FromDays(30));
-        
+        }
+
         await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet, TimeSpan.FromDays(30));
 
         return beatmapSet;
@@ -58,7 +63,8 @@ public class BeatmapManager
 
     public static async Task<List<BeatmapSet>?> SearchBeatmapsByIds(Session session, List<int> ids)
     {
-        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session, ApiType.BeatmapsByBeatmapIds,
+        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session,
+            ApiType.BeatmapsByBeatmapIds,
             [string.Join(",", ids.Select(x => x.ToString()))]);
 
         if (beatmapSets == null) return null;
@@ -70,13 +76,16 @@ public class BeatmapManager
             {
                 b.StatusString = "ranked";
 
-                foreach (var beatmap in b.Beatmaps) beatmap.StatusString = "ranked";
+                foreach (var beatmap in b.Beatmaps)
+                {
+                    beatmap.StatusString = "ranked";
+                }
             }
 
         return beatmapSets;
     }
 
-    public static async Task<byte[]?> GetBeatmapFile(Session session, int beatmapId)
+    public static async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
         var beatmapFile = await database.GetBeatmapFile(beatmapId);

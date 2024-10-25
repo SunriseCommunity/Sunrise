@@ -37,7 +37,7 @@ public static class Calculators
         };
     }
 
-    public static async Task<double> RecalcuteBeatmapDifficulty(Session session, int beatmapId, int mode,
+    public static async Task<double> RecalcuteBeatmapDifficulty(BaseSession session, int beatmapId, int mode,
         Mods mods = Mods.None)
     {
         var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);
@@ -62,7 +62,7 @@ public static class Calculators
             _ => -1
         };
     }
-
+    
     public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session,
         int beatmapId, int mode, Mods mods = Mods.None)
     {

@@ -1,9 +1,10 @@
 using System.Text.Json.Serialization;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class BeatmapSetResponse(BeatmapSet beatmapSet)
+public class BeatmapSetResponse(BaseSession session, BeatmapSet beatmapSet)
 {
     [JsonPropertyName("id")]
     public int Id { get; set; } = beatmapSet.Id;
@@ -38,5 +39,5 @@ public class BeatmapSetResponse(BeatmapSet beatmapSet)
 
     [JsonPropertyName("beatmaps")]
     public List<BeatmapResponse> Beatmaps { get; set; } =
-        beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(beatmap)).ToList();
+        beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(session, beatmap)).ToList();
 }

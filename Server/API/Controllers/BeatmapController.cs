@@ -30,7 +30,7 @@ public class BeatmapController : ControllerBase
         if (beatmap == null)
             return NotFound(new ErrorResponse("Beatmap not found"));
 
-        return Ok(new BeatmapResponse(beatmap, beatmapSet));
+        return Ok(new BeatmapResponse(session, beatmap, beatmapSet));
     }
 
     [HttpGet("beatmap/{id:int}/leaderboard")]
@@ -51,7 +51,7 @@ public class BeatmapController : ControllerBase
         var modsEnum = Mods.None;
         if (mods != null && Enum.TryParse(mods, out modsEnum) == false)
             return BadRequest(new ErrorResponse("Invalid mods parameter"));
-        
+
         var scores = await database.GetBeatmapScoresById(id, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum, modsShouldEqual: false);
 
         var limitedScores = scores.Take(limit).Select(score => new ScoreResponse(score)).ToList();
@@ -78,7 +78,7 @@ public class BeatmapController : ControllerBase
             return new OkResult();
         }
 
-        return Ok(new BeatmapSetResponse(beatmapSet));
+        return Ok(new BeatmapSetResponse(session, beatmapSet));
     }
 
     [HttpGet("beatmapset/{id:int}/favourited")]

@@ -190,7 +190,7 @@ public class UserController : ControllerBase
             var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: bId);
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
-            return new MostPlayedBeatmapResponse(beatmap, count, beatmapSet);
+            return new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
         }).Select(task => task.Result).ToList();
 
         return Ok(new MostPlayedResponse(offsetBeatmaps, beatmapsIds.Count));
@@ -218,7 +218,7 @@ public class UserController : ControllerBase
         var offsetFavourites = offsetFavouriteIds.Select(async setId =>
         {
             var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId);
-            return new BeatmapSetResponse(beatmapSet);
+            return new BeatmapSetResponse(session, beatmapSet);
         }).Select(task => task.Result).ToList();
 
         return Ok(new BeatmapSetsResponse(offsetFavourites, favourites.Count));

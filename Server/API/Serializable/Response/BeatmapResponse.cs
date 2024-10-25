@@ -1,9 +1,11 @@
 using System.Text.Json.Serialization;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class BeatmapResponse(Beatmap beatmap, BeatmapSet? beatmapSet = null)
+public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? beatmapSet = null)
 {
     [JsonPropertyName("id")]
     public int Id { get; set; } = beatmap.Id;
@@ -20,8 +22,23 @@ public class BeatmapResponse(Beatmap beatmap, BeatmapSet? beatmapSet = null)
     [JsonPropertyName("status")]
     public string Status { get; set; } = beatmap.StatusString;
 
-    [JsonPropertyName("star_rating")]
-    public double StarRating { get; set; } = beatmap.DifficultyRating;
+    [JsonPropertyName("star_rating_osu")]
+    public double StarRating { get; set; } = beatmap.ModeInt != 0 ? 0 : beatmap.DifficultyRating;
+
+    [JsonPropertyName("star_rating_taiko")]
+    public double StarRatingTaiko { get; set; } = beatmap.ModeInt is 1 or 0
+        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 1).Result
+        : 0;
+
+    [JsonPropertyName("star_rating_ctb")]
+    public double StarRatingCatch { get; set; } = beatmap.ModeInt is 2 or 0
+        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 2).Result
+        : 0;
+
+    [JsonPropertyName("star_rating_mania")]
+    public double StarRatingMania { get; set; } = beatmap.ModeInt is 3 or 0
+        ? Calculators.RecalcuteBeatmapDifficulty(session, beatmap.Id, 3).Result
+        : 0;
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; } = beatmap.TotalLength;
