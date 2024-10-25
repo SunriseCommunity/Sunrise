@@ -40,6 +40,8 @@ public class BeatmapController : ControllerBase
         [FromQuery(Name = "mods")] string? mods = null,
         [FromQuery(Name = "limit")] int limit = 50)
     {
+        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
+
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var modeEnum = GameMode.Standard;
@@ -51,6 +53,14 @@ public class BeatmapController : ControllerBase
         var modsEnum = Mods.None;
         if (mods != null && Enum.TryParse(mods, out modsEnum) == false)
             return BadRequest(new ErrorResponse("Invalid mods parameter"));
+
+        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: id);
+        if (beatmapSet == null)
+            return NotFound(new ErrorResponse("Beatmap set not found"));
+
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
+        if (beatmap?.IsScoreable == false)
+            return Ok(new ScoresResponse([], 0));
 
         var scores = await database.GetBeatmapScoresById(id, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum, modsShouldEqual: false);
 
