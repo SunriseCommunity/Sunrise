@@ -23,7 +23,11 @@ public class ScoreController : ControllerBase
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
 
-        return Ok(new ScoreResponse(score));
+        var user = await database.GetUser(score.UserId);
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        return Ok(new ScoreResponse(score, user));
     }
 
     [HttpGet("replay")]
@@ -63,8 +67,7 @@ public class ScoreController : ControllerBase
 
         var scores = await database.GetTopScores((GameMode)mode);
 
-        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score))
-            .ToList();
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score, database.GetUser(score.UserId).Result)).ToList();
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));
     }

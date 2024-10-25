@@ -155,7 +155,7 @@ public class UserController : ControllerBase
 
         var scores = await database.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
 
-        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score))
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score, user))
             .ToList();
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));

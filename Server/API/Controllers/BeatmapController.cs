@@ -54,7 +54,7 @@ public class BeatmapController : ControllerBase
 
         var scores = await database.GetBeatmapScoresById(id, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum, modsShouldEqual: false);
 
-        var limitedScores = scores.Take(limit).Select(score => new ScoreResponse(score)).ToList();
+        var limitedScores = scores.Take(limit).Select(score => new ScoreResponse(score, database.GetUser(score.UserId).Result)).ToList();
         return Ok(new ScoresResponse(limitedScores, scores.Count));
     }
 
