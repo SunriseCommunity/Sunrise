@@ -48,7 +48,11 @@ public sealed class SunriseDb
         redis.FlushAllCache();
         _logger.LogInformation("Cache flushed. Rebuilding user ranks...");
 
-        for (var i = 0; i < 4; i++) SetAllUserRanks((GameMode)i).Wait();
+        for (var i = 0; i < 4; i++)
+        {
+            SetAllUserRanks((GameMode)i).Wait();
+        }
+
         _logger.LogInformation("User ranks rebuilt. Cache is now up to date.");
     }
 
@@ -127,16 +131,19 @@ public sealed class SunriseDb
             await session.UpdateUser(user);
 
         await Redis.Set(
-        [
-            RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
-            RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
-        ], user);
+            [
+                RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
+                RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
+            ],
+            user);
     }
 
     public async Task<List<Score>> GetTopScores(GameMode mode)
     {
-        var exp = new Expr("GameMode", OperatorEnum.Equals,
-            (int)mode).PrependAnd("IsRanked", OperatorEnum.Equals, true).PrependAnd("IsPassed", OperatorEnum.Equals,
+        var exp = new Expr("GameMode",
+            OperatorEnum.Equals,
+            (int)mode).PrependAnd("IsRanked", OperatorEnum.Equals, true).PrependAnd("IsPassed",
+            OperatorEnum.Equals,
             true);
 
         var scores = await _orm.SelectManyAsync<Score>(exp,
@@ -153,7 +160,8 @@ public sealed class SunriseDb
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
+            OperatorEnum.Equals,
             (int)mode);
         var stats = await _orm.SelectFirstAsync<UserStats?>(exp);
 
@@ -274,7 +282,8 @@ public sealed class SunriseDb
 
     public async Task<Dictionary<int, int>> GetUserMostPlayedMapsIds(int userId, GameMode mode)
     {
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
+            OperatorEnum.Equals,
             (int)mode);
 
         var scores = await _orm.SelectManyAsync<Score>(exp);
@@ -287,7 +296,8 @@ public sealed class SunriseDb
 
     public async Task<List<Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
-        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("UserId", OperatorEnum.Equals,
+        var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("UserId",
+            OperatorEnum.Equals,
             userId);
 
         switch (type)
@@ -348,10 +358,37 @@ public sealed class SunriseDb
         return scores.Count == 0 ? null : scores.OrderBy(x => x.WhenPlayed).ToList().Last();
     }
 
+    public async Task<List<Score>> GetBeatmapScoresById(int beatmapId, GameMode gameMode,
+        LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null, bool? modsShouldEqual = true)
+    {
+        var exp = new Expr("BeatmapId", OperatorEnum.Equals, beatmapId).PrependAnd("GameMode",
+            OperatorEnum.Equals,
+            (int)gameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
+
+        if (modsShouldEqual == true && type is LeaderboardType.GlobalWithMods) exp.PrependAnd("Mods", OperatorEnum.Equals, (int)mods);
+        if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
+
+        var scores = await _orm.SelectManyAsync<Score>(exp);
+        scores = scores.GetSortedScoresByScore();
+
+        if (modsShouldEqual == false && type is LeaderboardType.GlobalWithMods) scores = scores.Where(x => x.Mods.HasFlag(mods)).ToList();
+
+        foreach (var score in scores.ToList())
+        {
+            var scoreUser = await GetUser(score.UserId);
+
+            if (type == LeaderboardType.Country && scoreUser?.Country != user?.Country ||
+                scoreUser?.IsRestricted == true) scores.Remove(score);
+        }
+
+        return scores;
+    }
+
     public async Task<List<Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode,
         LeaderboardType type = LeaderboardType.Global, Mods mods = Mods.None, User? user = null)
     {
-        var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode", OperatorEnum.Equals,
+        var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash).PrependAnd("GameMode",
+            OperatorEnum.Equals,
             (int)gameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
 
         if (type is LeaderboardType.GlobalWithMods) exp.PrependAnd("Mods", OperatorEnum.Equals, (int)mods);
@@ -364,7 +401,7 @@ public sealed class SunriseDb
         {
             var scoreUser = await GetUser(score.UserId);
 
-            if ((type == LeaderboardType.Country && scoreUser?.Country != user?.Country) ||
+            if (type == LeaderboardType.Country && scoreUser?.Country != user?.Country ||
                 scoreUser?.IsRestricted == true) scores.Remove(score);
         }
 
@@ -376,7 +413,8 @@ public sealed class SunriseDb
         var cachedSnapshot = await Redis.Get<UserStatsSnapshot>(RedisKey.UserStatsSnapshot(userId, mode));
         if (cachedSnapshot != null) return cachedSnapshot;
 
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
+            OperatorEnum.Equals,
             (int)mode);
         var snapshot = await _orm.SelectFirstAsync<UserStatsSnapshot?>(exp);
 
@@ -561,7 +599,8 @@ public sealed class SunriseDb
     public async Task<int> GetLeaderboardRank(Score score)
     {
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, score.BeatmapHash).PrependAnd("GameMode",
-            OperatorEnum.Equals, (int)score.GameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
+            OperatorEnum.Equals,
+            (int)score.GameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
         var scores = await _orm.SelectManyAsync<Score>(exp);
 
         return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;
@@ -575,7 +614,8 @@ public sealed class SunriseDb
             BeatmapSetId = beatmapSetId
         };
 
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId",
+            OperatorEnum.Equals,
             beatmapSetId);
         var favouriteExists = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
 
@@ -587,7 +627,8 @@ public sealed class SunriseDb
 
     public async Task RemoveFavouriteBeatmap(int userId, int beatmapSetId)
     {
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId",
+            OperatorEnum.Equals,
             beatmapSetId);
         var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
 
@@ -599,7 +640,8 @@ public sealed class SunriseDb
 
     public async Task<bool> IsBeatmapSetFavourited(int userId, int beatmapSetId)
     {
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId", OperatorEnum.Equals,
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("BeatmapSetId",
+            OperatorEnum.Equals,
             beatmapSetId);
         var favourite = await _orm.SelectFirstAsync<UserFavouriteBeatmap?>(exp);
 
@@ -921,7 +963,8 @@ public sealed class SunriseDb
         var user = await GetUser(stats.UserId);
 
         await Redis.SortedSetAdd(RedisKey.LeaderboardGlobal(stats.GameMode), stats.UserId, stats.PerformancePoints);
-        await Redis.SortedSetAdd(RedisKey.LeaderboardCountry(stats.GameMode, (CountryCodes)user.Country), stats.UserId,
+        await Redis.SortedSetAdd(RedisKey.LeaderboardCountry(stats.GameMode, (CountryCodes)user.Country),
+            stats.UserId,
             stats.PerformancePoints);
 
         var newRank = await GetUserRank(stats.UserId, stats.GameMode);
@@ -960,7 +1003,9 @@ public sealed class SunriseDb
         usersStats.Sort((x, y) => y.PerformancePoints.CompareTo(x.PerformancePoints));
 
         foreach (var stats in usersStats)
+        {
             await UpdateUserStats(stats);
+        }
     }
 
     public async Task InitializeBotInDatabase()
