@@ -23,7 +23,8 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        if (await AssetService.SaveScreenshot(session, screenshot,
+        if (await AssetService.SaveScreenshot(session,
+                screenshot,
                 HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, error);
@@ -172,28 +173,26 @@ public class WebController : ControllerBase
     [HttpGet("/home/account/edit")]
     public IActionResult EditAvatar()
     {
-        return Redirect("https://osu-sunrise.top/settings");
+        return Redirect($"https://{Configuration.Domain}/settings");
     }
 
     [HttpGet("/u/{id:int}")]
     public IActionResult UserProfile(int id)
     {
-        return Redirect($"https://osu-sunrise.top/user/{id}");
+        return Redirect($"https://{Configuration.Domain}/user/{id}");
     }
 
-    [Obsolete("Temporary while I work on the website")]
     [Route("/beatmapsets/{*path}")]
     [HttpGet]
-    public IActionResult RedirectToMirrorSets(string path)
+    public IActionResult RedirectToSet(string path)
     {
-        return Redirect($"https://osu.direct/beatmapsets/{path}");
+        return Redirect($"https://{Configuration.Domain}/beatmapsets/{path}");
     }
 
-    [Obsolete("Temporary while I work on the website")]
     [Route("/beatmaps/{*path}")]
     [HttpGet]
-    public IActionResult RedirectToMirrorMaps(string path)
+    public IActionResult RedirectToMap(string path)
     {
-        return Redirect($"https://osu.direct/beatmaps/{path}");
+        return Redirect($"https://{Configuration.Domain}/beatmaps/{path}");
     }
 }

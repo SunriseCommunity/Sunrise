@@ -54,7 +54,7 @@ public class DirectController : ControllerBase
     [HttpGet("/d/{id}")]
     public IActionResult DownloadBeatmapSet(string id)
     {
-        return Redirect($"https://osu.direct/api/d/{id}");
+        return Redirect($"https://catboy.best/d/{id}");
     }
 }
 
