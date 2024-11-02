@@ -277,7 +277,10 @@ public sealed class SunriseDb
 
         var bestScores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
 
-        return limit == null ? bestScores : bestScores.Take(limit.Value).ToList();
+        // I wished I could just add it to the db query
+        var rankedScores = bestScores.Where(x => x.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved).ToList();
+
+        return limit == null ? rankedScores : rankedScores.Take(limit.Value).ToList();
     }
 
     public async Task<Dictionary<int, int>> GetUserMostPlayedMapsIds(int userId, GameMode mode)
@@ -334,7 +337,7 @@ public sealed class SunriseDb
                     .ToList();
                 break;
             case ScoreTableType.Best:
-                scores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();
+                scores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).Where(x => x.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved).ToList();
                 break;
         }
 
@@ -347,6 +350,21 @@ public sealed class SunriseDb
         var totalScores = await _orm.CountAsync<Score>(exp);
 
         return totalScores;
+    }
+
+    public async Task<IEnumerable<IGrouping<int, Score>>> GetScoresGroupedByBeatmapId()
+    {
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+
+        var scores = await _orm.SelectManyAsync<Score>(exp);
+
+        return scores.GroupBy(x => x.BeatmapId);
+    }
+
+    public async Task UpdateScore(Score score)
+    {
+        score = await _orm.UpdateAsync(score);
+        await Redis.Set(RedisKey.Score(score.Id), score);
     }
 
     public async Task<Score?> GetUserLastScore(int userId)

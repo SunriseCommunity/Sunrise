@@ -31,7 +31,12 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        if (!SubmitScoreHelper.IsScoreValid(session, score, osuVersion, clientHash, beatmapHash, beatmap.Checksum,
+        if (!SubmitScoreHelper.IsScoreValid(session,
+                score,
+                osuVersion,
+                clientHash,
+                beatmapHash,
+                beatmap.Checksum,
                 storyboardHash))
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
@@ -73,8 +78,9 @@ public static class ScoreService
         await database.InsertScore(score);
         await database.UpdateUserStats(userStats);
 
-        if (SubmitScoreHelper.IsScoreFailed(score))
-            return "error: no"; // No need to create chart for failed scores
+
+        if (SubmitScoreHelper.IsScoreFailed(score) || !score.IsRanked)
+            return "error: no"; // No need to create chart for failed or unranked scores
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
@@ -123,7 +129,10 @@ public static class ScoreService
 
         var leaderboardScores = scores.GetTopScores(50);
 
-        foreach (var score in leaderboardScores) responses.Add(await score.GetString());
+        foreach (var score in leaderboardScores)
+        {
+            responses.Add(await score.GetString());
+        }
 
         return string.Join("\n", responses);
     }

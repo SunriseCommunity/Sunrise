@@ -35,7 +35,8 @@ public static class SubmitScoreHelper
             string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
             string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
             string.Equals(score.ScoreHash, computedOnlineHash, StringComparison.Ordinal),
-            string.Equals(beatmapHash, onlineBeatmapHash,
+            string.Equals(beatmapHash,
+                onlineBeatmapHash,
                 StringComparison
                     .Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
         }.All(x => x);
@@ -46,12 +47,13 @@ public static class SubmitScoreHelper
         Score? prevScore)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
+        var dontShowPp = beatmap.Status != BeatmapStatus.Ranked && beatmap.Status != BeatmapStatus.Approved;
 
         // TODO: Change playcount and passcount to be from out db
         var beatmapInfo =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
-        var scoreInfo = string.Join("|", GetChart(prevScore, newScore));
+        var scoreInfo = string.Join("|", GetChart(prevScore, newScore, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
                          string.Join("|", GetChart(prevUser, user));
 
@@ -79,7 +81,7 @@ public static class SubmitScoreHelper
         return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
     }
 
-    private static List<string> GetChart<T>(T before, T after)
+    private static List<string> GetChart<T>(T before, T after, bool dontShowPp = false)
     {
         string[] chartEntries =
         [
@@ -105,8 +107,18 @@ public static class SubmitScoreHelper
                 _ => entry
             };
 
-            result.Add(GetChartEntry(lowerFirst, before?.GetType().GetProperty(obj)?.GetValue(before),
-                after?.GetType().GetProperty(obj)?.GetValue(after)));
+            var beforeValue = before?.GetType().GetProperty(obj)?.GetValue(before);
+            var afterValue = after?.GetType().GetProperty(obj)?.GetValue(after);
+
+            if (dontShowPp && entry == "Pp")
+            {
+                beforeValue = null;
+                afterValue = null;
+            }
+
+            result.Add(GetChartEntry(lowerFirst,
+                beforeValue,
+                afterValue));
         }
 
         return result;

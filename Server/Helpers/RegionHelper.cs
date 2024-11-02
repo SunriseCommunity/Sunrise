@@ -24,10 +24,7 @@ public static class RegionHelper
 
         if (!string.IsNullOrEmpty(xForwardedFor))
         {
-            var ipAddresses = xForwardedFor.Split([
-                    ','
-                ],
-                StringSplitOptions.RemoveEmptyEntries);
+            var ipAddresses = xForwardedFor.Split([","], StringSplitOptions.RemoveEmptyEntries);
 
             if (ipAddresses.Length > 0) ipAddress = ipAddresses[0].Trim();
         }

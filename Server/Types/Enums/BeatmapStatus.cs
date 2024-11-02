@@ -2,6 +2,7 @@
 
 public enum BeatmapStatus
 {
+    Unknown = -2,
     NotSubmitted = -1,
     Pending = 0,
     NeedsUpdate = 1,

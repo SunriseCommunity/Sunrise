@@ -1,4 +1,5 @@
 ﻿using osu.Shared;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
@@ -7,35 +8,50 @@ namespace Sunrise.Server.Database.Models;
 [Table("user_stats")]
 public class UserStats
 {
-    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)]
+    public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)] public int UserId { get; set; }
+    [Column(DataTypes.Int, false)]
+    public int UserId { get; set; }
 
-    [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
+    [Column(DataTypes.Int, false)]
+    public GameMode GameMode { get; set; }
 
     [Column(DataTypes.Double, 3, 2, false)]
     public double Accuracy { get; set; }
 
-    [Column(DataTypes.Int, false)] public long TotalScore { get; set; }
+    [Column(DataTypes.Int, false)]
+    public long TotalScore { get; set; }
 
-    [Column(DataTypes.Int, false)] public long RankedScore { get; set; }
+    [Column(DataTypes.Int, false)]
+    public long RankedScore { get; set; }
 
-    [Column(DataTypes.Int, false)] public int PlayCount { get; set; }
+    [Column(DataTypes.Int, false)]
+    public int PlayCount { get; set; }
 
     [Column(DataTypes.Double, int.MaxValue, int.MaxValue, false)]
     public double PerformancePoints { get; set; }
 
-    [Column(DataTypes.Int, false)] public int MaxCombo { get; set; }
+    [Column(DataTypes.Int, false)]
+    public int MaxCombo { get; set; }
 
-    [Column(DataTypes.Int, false)] public int PlayTime { get; set; }
+    [Column(DataTypes.Int, false)]
+    public int PlayTime { get; set; }
 
-    [Column(DataTypes.Int, false)] public int TotalHits { get; set; }
+    [Column(DataTypes.Int, false)]
+    public int TotalHits { get; set; }
 
-    [Column(DataTypes.Long)] public long? BestGlobalRank { get; set; }
-    [Column(DataTypes.DateTime)] public DateTime? BestGlobalRankDate { get; set; }
+    [Column(DataTypes.Long)]
+    public long? BestGlobalRank { get; set; }
 
-    [Column(DataTypes.Long)] public long? BestCountryRank { get; set; }
-    [Column(DataTypes.DateTime)] public DateTime? BestCountryRankDate { get; set; }
+    [Column(DataTypes.DateTime)]
+    public DateTime? BestGlobalRankDate { get; set; }
+
+    [Column(DataTypes.Long)]
+    public long? BestCountryRank { get; set; }
+
+    [Column(DataTypes.DateTime)]
+    public DateTime? BestCountryRankDate { get; set; }
 
     // Local property
     public long? Rank { get; set; }
@@ -56,7 +72,8 @@ public class UserStats
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
 
-        if (isFailed || !score.IsRanked) return;
+        if (isFailed || !score.IsRanked || score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
+            return;
 
         UpdateMaxCombo(score.MaxCombo);
 
