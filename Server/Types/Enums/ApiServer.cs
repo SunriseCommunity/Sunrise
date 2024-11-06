@@ -6,6 +6,6 @@ public enum ApiServer
     Nerinyan = 1,
     CatboyBest = 2,
     OsuDirect = 3,
-    OsuOkayu = 4,
-    OldPpy = 5
+    OldPpy = 5,
+    Observatory = 6
 }

@@ -105,7 +105,22 @@ public class RequestsHelper
 
         try
         {
-            var response = await Client.GetAsync(requestUri);
+            HttpResponseMessage response;
+
+            if (server == ApiServer.Observatory)
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+
+                if (!string.IsNullOrEmpty(Configuration.ObservatoryApiKey))
+                    request.Headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
+
+                response = await Client.SendAsync(request);
+            }
+            else
+            {
+                response = await Client.GetAsync(requestUri);
+            }
+
             var rateLimit = string.Empty;
             var rateLimitReset = "60";
             IEnumerable<string>? rateLimitHeader;
@@ -128,15 +143,16 @@ public class RequestsHelper
                     break;
                 case ApiServer.OldPpy:
                 case ApiServer.Nerinyan:
+                case ApiServer.Observatory:
                     break;
-                case ApiServer.OsuOkayu:
                 default:
                     Logger.LogWarning($"Server {server} rate limit headers wasn't set. Ignoring rate limit.");
                     break;
             }
 
             if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
-                await redis.Set(RedisKey.ApiServerRateLimited(server), true,
+                await redis.Set(RedisKey.ApiServerRateLimited(server),
+                    true,
                     TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt)
                         ? rateLimitResetInt
                         : 60));
@@ -144,9 +160,9 @@ public class RequestsHelper
             if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
             {
                 Logger.LogWarning(
-                    $"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 10 minutes.");
+                    $"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 1 minute.");
 
-                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
 
                 return (default, true);
             }
