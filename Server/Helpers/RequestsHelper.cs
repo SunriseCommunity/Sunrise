@@ -204,6 +204,8 @@ public class RequestsHelper
         var results = HttpUtility.ParseQueryString(url);
         var nonEmpty = new Dictionary<string, string>();
 
+        if (string.IsNullOrWhiteSpace(results.AllKeys[0])) return url;
+
         foreach (var k in results.AllKeys)
         {
             if (!string.IsNullOrWhiteSpace(results[k]))
