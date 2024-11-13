@@ -79,14 +79,7 @@ public static class Configuration
     private static string ObservatoryUrl =>
         Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
 
-    public static List<ExternalApi> ExternalApis { get; } =
-    [
-        new ExternalApi(ApiType.BeatmapsByBeatmapIds,
-            ApiServer.Nerinyan,
-            "https://proxy.nerinyan.moe/search?option=mapId&s=-2,-1,0,1,2,3,4&q={0}",
-            1,
-            1)
-    ];
+    public static List<ExternalApi> ExternalApis { get; } = [];
 
     public static void Initialize()
     {
