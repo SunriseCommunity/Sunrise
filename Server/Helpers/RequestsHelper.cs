@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Web;
 using Sunrise.Server.Application;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
@@ -48,6 +49,7 @@ public class RequestsHelper
             }
 
             var requestUri = string.Format(api.Url, args);
+            requestUri = SerializeUrlQuery(requestUri);
 
             SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
 
@@ -195,5 +197,21 @@ public class RequestsHelper
             Logger.LogError(e, $"Failed to process request to {server} with uri {requestUri}");
             return (default, false);
         }
+    }
+
+    private static string SerializeUrlQuery(string url)
+    {
+        var results = HttpUtility.ParseQueryString(url);
+        var nonEmpty = new Dictionary<string, string>();
+
+        foreach (var k in results.AllKeys)
+        {
+            if (!string.IsNullOrWhiteSpace(results[k]))
+            {
+                nonEmpty.Add(k, results[k]);
+            }
+        }
+
+        return string.Join("&", nonEmpty.Select(kvp => $"{kvp.Key}={kvp.Value}"));
     }
 }
