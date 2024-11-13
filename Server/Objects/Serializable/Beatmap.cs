@@ -50,7 +50,7 @@ public class Beatmap
     public double AR { get; set; }
 
     [JsonPropertyName("bpm")]
-    public double BPM { get; set; }
+    public double BPM { get; set; } = 0;
 
     [JsonPropertyName("convert")]
     public bool Convert { get; set; }
@@ -100,7 +100,10 @@ public class Beatmap
     public string Url { get; set; }
 
     [JsonPropertyName("checksum")]
-    public string Checksum { get; set; }
+    public string? Checksum { get; set; }
+
+    [JsonPropertyName("failtimes")]
+    public FailTimes? FailTimes { get; set; }
 
     [JsonPropertyName("max_combo")]
     public int? MaxCombo { get; set; }
@@ -109,4 +112,13 @@ public class Beatmap
     {
         return $"[{DifficultyRating:F2}⭐] {Version.Replace('|', 'I')} {{cs: {CS} / od: {Accuracy} / ar: {AR} / hp: {Drain}}}@{ModeInt},";
     }
+}
+
+public class FailTimes
+{
+    [JsonPropertyName("exit")]
+    public int[]? Exit { get; set; }
+
+    [JsonPropertyName("fail")]
+    public int[]? Fail { get; set; }
 }

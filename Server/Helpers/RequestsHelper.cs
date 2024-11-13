@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Web;
 using Sunrise.Server.Application;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
@@ -48,6 +49,7 @@ public class RequestsHelper
             }
 
             var requestUri = string.Format(api.Url, args);
+            requestUri = SerializeUrlQuery(requestUri);
 
             SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
 
@@ -179,6 +181,7 @@ public class RequestsHelper
                 return (default, false);
             }
 
+
             switch (typeof(T))
             {
                 case not null when typeof(T) == typeof(byte[]):
@@ -187,6 +190,18 @@ public class RequestsHelper
                     return ((T)(object)await response.Content.ReadAsStringAsync(), false);
                 default:
                     var content = await response.Content.ReadAsStringAsync();
+
+                    var jsonDoc = JsonDocument.Parse(content);
+
+                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Object && jsonDoc.RootElement.TryGetProperty("status", out var status))
+                    {
+                        if (status.ValueKind == JsonValueKind.Number && status.GetInt32() != 200)
+                        {
+                            Logger.LogError($"Failed to process request to {server} with uri {requestUri}. Status: {status}");
+                            return (default, false);
+                        }
+                    }
+
                     return (JsonSerializer.Deserialize<T>(content), false);
             }
         }
@@ -195,5 +210,23 @@ public class RequestsHelper
             Logger.LogError(e, $"Failed to process request to {server} with uri {requestUri}");
             return (default, false);
         }
+    }
+
+    private static string SerializeUrlQuery(string url)
+    {
+        var results = HttpUtility.ParseQueryString(url);
+        var nonEmpty = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(results.AllKeys[0])) return url;
+
+        foreach (var k in results.AllKeys)
+        {
+            if (!string.IsNullOrWhiteSpace(results[k]))
+            {
+                nonEmpty.Add(k, results[k]);
+            }
+        }
+
+        return string.Join("&", nonEmpty.Select(kvp => $"{kvp.Key}={kvp.Value}"));
     }
 }

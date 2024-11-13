@@ -79,37 +79,7 @@ public static class Configuration
     private static string ObservatoryUrl =>
         Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
 
-
-    // TODO: Deprecate after proper (external) beatmap server will be implemented 
-    // For mor information, ask @richardscull
-
-    public static List<ExternalApi> ExternalApis { get; } =
-    [
-        new ExternalApi(ApiType.BeatmapDownload, ApiServer.OldPpy, "https://old.ppy.sh/osu/{0}", 0, 1),
-
-        new ExternalApi(ApiType.BeatmapSetSearch,
-            ApiServer.CatboyBest,
-            "https://catboy.best/api/v2/search?query={0}&limit={1}&offset={2}&status={3}&mode={4}",
-            1,
-            3),
-        new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.CatboyBest, "https://catboy.best/api/v2/s/{0}", 1, 1),
-
-        new ExternalApi(ApiType.BeatmapDownload, ApiServer.OsuDirect, "https://osu.direct/api/osu/{0}", 2, 1),
-        new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.OsuDirect, "https://osu.direct/api/v2/s/{0}", 1, 1),
-        new ExternalApi(ApiType.BeatmapSetDataByBeatmapId, ApiServer.OsuDirect, "https://osu.direct/api/v2/b/{0}?full=true", 1, 1),
-        new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.OsuDirect, "https://osu.direct/api/v2/md5/{0}?full=true", 1, 1),
-        new ExternalApi(ApiType.BeatmapSetSearch,
-            ApiServer.OsuDirect,
-            "https://osu.direct/api/v2/search/?q={0}&amount={1}&offset={2}&status={3}&mode={4}",
-            1,
-            3),
-
-        new ExternalApi(ApiType.BeatmapsByBeatmapIds,
-            ApiServer.Nerinyan,
-            "https://proxy.nerinyan.moe/search?option=mapId&s=-2,-1,0,1,2,3,4&q={0}",
-            1,
-            1)
-    ];
+    public static List<ExternalApi> ExternalApis { get; } = [];
 
     public static void Initialize()
     {
@@ -119,12 +89,18 @@ public static class Configuration
 
     private static void AddObservatoryUrls()
     {
-        if (string.IsNullOrEmpty(ObservatoryUrl)) return;
+        if (string.IsNullOrEmpty(ObservatoryUrl)) throw new Exception("Observatory URL is empty. Please check your configuration. Check README if you have issues with setting up Observatory.");
 
         ExternalApis.AddRange([
+            new ExternalApi(ApiType.BeatmapDownload, ApiServer.Observatory, $"http://{ObservatoryUrl}/osu/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataByBeatmapId, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/b/{{0}}?full=true", 0, 1),
-            new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/md5/{{0}}?full=true", 0, 1)
+            new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/md5/{{0}}?full=true", 0, 1),
+            new ExternalApi(ApiType.BeatmapSetSearch,
+                ApiServer.Observatory,
+                $"http://{ObservatoryUrl}/api/v2/search?query={{0}}&limit={{1}}&offset={{2}}&status={{3}}&mode={{4}}",
+                0,
+                3)
         ]);
     }
 
