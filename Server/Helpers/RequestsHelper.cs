@@ -181,6 +181,7 @@ public class RequestsHelper
                 return (default, false);
             }
 
+
             switch (typeof(T))
             {
                 case not null when typeof(T) == typeof(byte[]):
@@ -189,6 +190,18 @@ public class RequestsHelper
                     return ((T)(object)await response.Content.ReadAsStringAsync(), false);
                 default:
                     var content = await response.Content.ReadAsStringAsync();
+
+                    var jsonDoc = JsonDocument.Parse(content);
+
+                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Object && jsonDoc.RootElement.TryGetProperty("status", out var status))
+                    {
+                        if (status.ValueKind == JsonValueKind.Number && status.GetInt32() != 200)
+                        {
+                            Logger.LogError($"Failed to process request to {server} with uri {requestUri}. Status: {status}");
+                            return (default, false);
+                        }
+                    }
+
                     return (JsonSerializer.Deserialize<T>(content), false);
             }
         }
