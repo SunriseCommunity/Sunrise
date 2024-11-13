@@ -61,30 +61,6 @@ public class BeatmapManager
         return beatmapSet;
     }
 
-    public static async Task<List<BeatmapSet>?> SearchBeatmapsByIds(Session session, List<int> ids)
-    {
-        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session,
-            ApiType.BeatmapsByBeatmapIds,
-            [string.Join(",", ids.Select(x => x.ToString()))]);
-
-        if (beatmapSets == null) return null;
-
-        // TODO: Save beatmapSets to DB with beatmaps and add redis logic.
-
-        if (Configuration.IgnoreBeatmapRanking)
-            foreach (var b in beatmapSets)
-            {
-                b.StatusString = "ranked";
-
-                foreach (var beatmap in b.Beatmaps)
-                {
-                    beatmap.StatusString = "ranked";
-                }
-            }
-
-        return beatmapSets;
-    }
-
     public static async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
     {
         var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
