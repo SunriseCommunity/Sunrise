@@ -129,7 +129,6 @@ public class BeatmapSet
     [JsonPropertyName("user")]
     public CompactUser? User { get; set; }
 
-    // TODO: Deprecate
     public string ToSearchResult(Session session)
     {
         var beatmaps = Beatmaps.GroupBy(x => x.DifficultyRating).OrderBy(x => x.Key).SelectMany(x => x).Aggregate("",

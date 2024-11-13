@@ -68,7 +68,6 @@ public class Beatmap
     public double CS { get; set; }
 
     [JsonPropertyName("deleted_at")]
-    // TODO: Is this needed for Observatory?
     [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime? DeletedAt { get; set; }
 
@@ -82,7 +81,6 @@ public class Beatmap
     public bool IsScoreable { get; set; }
 
     [JsonPropertyName("last_updated")]
-    // TODO: Is this needed for Observatory?
     [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime LastUpdated { get; set; }
 
