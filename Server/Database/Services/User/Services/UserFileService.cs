@@ -28,25 +28,37 @@ public class UserFileService
         _redis = redis;
     }
 
-    public async Task<bool> SetAvatar(int id, byte[] avatar)
+    public async Task<bool> SetAvatar(int userId, byte[] avatar)
     {
-        var filePath = $"{DataPath}Files/Avatars/{id}.png";
+        var filePath = $"{DataPath}Files/Avatars/{userId}.png";
 
         if (!await LocalStorage.WriteFileAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256)))
             return false;
 
         var record = new UserFile
         {
-            OwnerId = id,
+            OwnerId = userId,
             Path = filePath,
             Type = FileType.Avatar
         };
+        
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
+        var prevRecord =  await _database.SelectFirstAsync<UserFile?>(exp);
 
-        record = await _database.WriteRecordAsync(record);
+        if (prevRecord != null)
+        {
+            record.Id = prevRecord.Id;
+            record = await _database.UpdateAsync(record);
+        }
+        else
+        {
+            record = await _database.InsertAsync(record);
+        }
+        
         if (record == null)
             return false;
 
-        await _redis.Set(RedisKey.AvatarRecord(id), record);
+        await _redis.Set(RedisKey.AvatarRecord(userId), record);
         return true;
     }
 
@@ -137,7 +149,19 @@ public class UserFileService
             Type = FileType.Banner
         };
 
-        record = await _database.WriteRecordAsync(record);
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
+        var prevRecord =  await _database.SelectFirstAsync<UserFile?>(exp);
+
+        if (prevRecord != null)
+        {
+            record.Id = prevRecord.Id;
+            record = await _database.UpdateAsync(record);
+        }
+        else
+        {
+            record = await _database.InsertAsync(record);
+        }
+        
         if (record == null)
             return false;
 
@@ -156,8 +180,7 @@ public class UserFileService
             return file;
         }
 
-        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
-        exp.PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
         var record = await _database.SelectFirstAsync<UserFile?>(exp);
 
         if (record == null && !fallToDefault) return null;
