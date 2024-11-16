@@ -4,7 +4,7 @@ using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
+using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 
@@ -60,11 +60,14 @@ public class SessionRepository
 
     public void RemoveSession(Session session)
     {
-        foreach (var channel in _channels.GetChannels()) channel.RemoveUser(session.User.Id);
+        foreach (var channel in _channels.GetChannels())
+        {
+            channel.RemoveUser(session.User.Id);
+        }
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         session.User.LastOnlineTime = DateTime.UtcNow;
-        _ = database.UpdateUser(session.User);
+        _ = database.UserService.UpdateUser(session.User);
 
         _sessions.TryRemove(session.Token, out _);
     }
@@ -111,9 +114,9 @@ public class SessionRepository
 
     private async void AddBotToSession()
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var bot = await database.GetUser(username: Configuration.BotUsername);
+        var bot = await database.UserService.GetUser(username: Configuration.BotUsername);
 
         if (bot == null)
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");

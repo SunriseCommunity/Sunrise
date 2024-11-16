@@ -106,7 +106,7 @@ public static class Configuration
 
     private static void EnsureBotExists()
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         database.InitializeBotInDatabase().Wait();
     }
 

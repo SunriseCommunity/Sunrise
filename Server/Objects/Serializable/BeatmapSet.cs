@@ -79,8 +79,7 @@ public class BeatmapSet
     [JsonPropertyName("deleted_at")]
     [JsonConverter(typeof(DateTimeUnixConverter))]
     public DateTime? DeletedAt { get; set; }
-
-
+    
     [JsonPropertyName("is_scoreable")]
     public bool IsScoreable { get; set; }
 

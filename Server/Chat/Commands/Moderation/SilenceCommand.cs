@@ -28,9 +28,9 @@ public class SilenceCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var user = await database.GetUser(userId);
+        var user = await database.UserService.GetUser(userId);
 
         if (user == null)
         {
@@ -96,7 +96,7 @@ public class SilenceCommand : IChatCommand
 
         sessions.WriteToAllSessions(PacketType.ServerUserSilenced, user.Id);
 
-        await database.UpdateUser(user);
+        await database.UserService.UpdateUser(user);
 
         CommandRepository.SendMessage(session,
             $"User {user.Username} ({user.Id}) has been silenced until {user.SilencedUntil:yyyy-MM-dd HH:mm:ss}. UTC+0 | Reason: {reason}");
