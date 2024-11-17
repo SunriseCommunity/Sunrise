@@ -42,9 +42,9 @@ public class RecalculateCommand : IChatCommand
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {
-            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-            var stats = await database.GetAllUserStats(mode, LeaderboardSortType.Pp);
+            var stats = await database.UserService.Stats.GetAllUserStats(mode, LeaderboardSortType.Pp);
 
             if (stats == null)
             {
@@ -62,7 +62,7 @@ public class RecalculateCommand : IChatCommand
                 stat.PerformancePoints = pp;
                 stat.Accuracy = acc;
 
-                await database.UpdateUserStats(stat);
+                await database.UserService.Stats.UpdateUserStats(stat);
             }
 
             CommandRepository.SendMessage(session,

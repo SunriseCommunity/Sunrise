@@ -18,11 +18,11 @@ public class BestCommand : IChatCommand
     {
         var userId = session.User.Id;
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         if (args is { Length: >= 1 })
         {
-            var user = await database.GetUser(username: args[0]);
+            var user = await database.UserService.GetUser(username: args[0]);
 
             if (user == null)
             {
@@ -33,7 +33,7 @@ public class BestCommand : IChatCommand
             userId = user.Id;
         }
 
-        var scores = await database.GetUserBestScores(userId, session.Attributes.Status.PlayMode);
+        var scores = await database.ScoreService.GetUserBestScores(userId, session.Attributes.Status.PlayMode);
 
         var bestScores = scores.OrderByDescending(x => x.PerformancePoints).Take(5).ToList();
 

@@ -3,7 +3,7 @@ using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
-namespace Sunrise.Server.Database.Models;
+namespace Sunrise.Server.Database.Models.User;
 
 [Table("user_stats")]
 public class UserStats

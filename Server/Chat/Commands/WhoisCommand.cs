@@ -19,9 +19,9 @@ public class WhoisCommand : IChatCommand
         }
 
         var username = args[0];
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var user = await database.GetUser(username: username);
+        var user = await database.UserService.GetUser(username: username);
 
         if (user == null)
         {

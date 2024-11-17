@@ -17,6 +17,6 @@ public class FriendsRemoveHandler : IHandler
 
         session.User.RemoveFriend(friendId.Value);
 
-        await ServicesProviderHolder.GetRequiredService<SunriseDb>().UpdateUser(session.User);
+        await ServicesProviderHolder.GetRequiredService<DatabaseManager>().UserService.UpdateUser(session.User);
     }
 }

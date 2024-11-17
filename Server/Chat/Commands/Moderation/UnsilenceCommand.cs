@@ -26,9 +26,9 @@ public class UnsilenceCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var user = await database.GetUser(userId);
+        var user = await database.UserService.GetUser(userId);
 
         if (user == null)
         {
@@ -50,7 +50,7 @@ public class UnsilenceCommand : IChatCommand
 
         player?.SendSilenceStatus();
 
-        await database.UpdateUser(user);
+        await database.UserService.UpdateUser(user);
 
         CommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been unsilenced.");
     }
