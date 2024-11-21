@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Database.Models;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -18,24 +18,18 @@ public class StatsSnapshotsResponse
         TotalCount = snapshots.Count;
     }
 
-    [JsonPropertyName("total_count")]
-    public int TotalCount { get; set; }
+    [JsonPropertyName("total_count")] public int TotalCount { get; set; }
 
-    [JsonPropertyName("snapshots")]
-    public List<StatsSnapshotResponse> Snapshots { get; set; }
+    [JsonPropertyName("snapshots")] public List<StatsSnapshotResponse> Snapshots { get; set; }
 }
 
 public class StatsSnapshotResponse
 {
-    [JsonPropertyName("country_rank")]
-    public long CountryRank { get; set; }
+    [JsonPropertyName("country_rank")] public long CountryRank { get; set; }
 
-    [JsonPropertyName("pp")]
-    public double PerformancePoints { get; set; }
+    [JsonPropertyName("pp")] public double PerformancePoints { get; set; }
 
-    [JsonPropertyName("global_rank")]
-    public long Rank { get; set; }
+    [JsonPropertyName("global_rank")] public long Rank { get; set; }
 
-    [JsonPropertyName("saved_at")]
-    public DateTime SavedAt { get; set; }
+    [JsonPropertyName("saved_at")] public DateTime SavedAt { get; set; }
 }

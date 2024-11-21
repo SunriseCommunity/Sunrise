@@ -4,7 +4,7 @@ using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
@@ -24,9 +24,9 @@ public static class AuthService
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var user = await database.UserService.GetUser(username: loginRequest.Username);
+        var user = await database.GetUser(username: loginRequest.Username);
 
         if (!CharactersFilter.IsValidString(loginRequest.Username, true))
             return RejectLogin(response, "Invalid characters in username or password.");
@@ -38,11 +38,10 @@ public static class AuthService
             return RejectLogin(response, "Invalid credentials.");
 
         if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivileges.Admin))
-            return RejectLogin(response,
-                "Server is currently in maintenance mode. Please try again later.",
+            return RejectLogin(response, "Server is currently in maintenance mode. Please try again later.",
                 LoginResponses.ServerError);
 
-        if (user.IsRestricted && await database.UserService.Moderation.IsRestricted(user.Id))
+        if (user.IsRestricted && await database.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
@@ -51,7 +50,7 @@ public static class AuthService
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
 
-        await database.LoggerService.AddNewLoginEvent(user.Id, ip.ToString(), sr);
+        await database.AddNewLoginEvent(user.Id, ip.ToString(), sr);
 
         var session = sessions.CreateSession(user, location, loginRequest);
 
@@ -97,10 +96,7 @@ public static class AuthService
 
         if (session.User.Privilege.HasFlag(UserPrivileges.Admin)) chatChannels.JoinChannel("#staff", session);
 
-        foreach (var channel in chatChannels.GetChannels(session))
-        {
-            session.SendChannelAvailable(channel);
-        }
+        foreach (var channel in chatChannels.GetChannels(session)) session.SendChannelAvailable(channel);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -159,13 +155,13 @@ public static class AuthService
         else if (password.Length is < 8 or > 32)
             errors["password"].Add("Invalid password. It should contain between 8 and 32 characters.");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var user = await database.UserService.GetUser(username: username);
+        var user = await database.GetUser(username: username);
 
         if (user != null) errors["username"].Add("User with this username already exists.");
 
-        user = await database.UserService.GetUser(email: email);
+        user = await database.GetUser(email: email);
 
         if (user != null) errors["user_email"].Add("User with this email already exists.");
 
@@ -192,7 +188,7 @@ public static class AuthService
             Privilege = UserPrivileges.User
         };
 
-        await database.UserService.InsertUser(user);
+        await database.InsertUser(user);
 
         return new OkObjectResult("");
     }
@@ -202,10 +198,7 @@ public static class AuthService
         var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
         var sb = new StringBuilder();
 
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
+        foreach (var b in data) sb.Append(b.ToString("x2"));
 
         return sb.ToString();
     }

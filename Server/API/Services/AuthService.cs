@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Utils;
@@ -30,8 +30,8 @@ public static class AuthService
         if (userId == null)
             return null;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(userId);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(userId);
 
         return user;
     }

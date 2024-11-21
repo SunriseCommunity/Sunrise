@@ -2,7 +2,6 @@ using osu.Shared.Serialization;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Utils;
 
@@ -18,8 +17,8 @@ public class ReplayFile
 
         if (user == null)
         {
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-            User = database.UserService.GetUser(score.UserId).Result;
+            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+            User = database.GetUser(score.UserId).Result;
         }
 
         if (User == null)

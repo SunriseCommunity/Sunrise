@@ -41,9 +41,9 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var groupedScores = await database.ScoreService.GetScoresGroupedByBeatmapId();
+        var groupedScores = await database.GetScoresGroupedByBeatmapId();
 
         var scoresReviewedTotal = 0;
 
@@ -71,7 +71,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
             foreach (var score in group)
             {
                 score.BeatmapStatus = status;
-                await database.ScoreService.UpdateScore(score);
+                await database.UpdateScore(score);
             }
 
             CommandRepository.SendMessage(session, $"Updated {group.Count()} scores for beatmap {group.Key} to status {status}");
