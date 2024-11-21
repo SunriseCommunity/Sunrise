@@ -63,8 +63,8 @@ public class BeatmapManager
 
     public static async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var beatmapFile = await database.GetBeatmapFile(beatmapId);
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var beatmapFile = await database.BeatmapService.Files.GetBeatmapFile(beatmapId);
 
         if (beatmapFile != null) return beatmapFile;
 
@@ -72,7 +72,7 @@ public class BeatmapManager
 
         if (beatmapFile == null) return null;
 
-        await database.SetBeatmapFile(beatmapId, beatmapFile);
+        await database.BeatmapService.Files.SetBeatmapFile(beatmapId, beatmapFile);
         return beatmapFile;
     }
 }

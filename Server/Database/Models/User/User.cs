@@ -2,12 +2,13 @@
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Core;
 
-namespace Sunrise.Server.Database.Models;
+namespace Sunrise.Server.Database.Models.User;
 
 [Table("user")]
 public class User
 {
-    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)]
+    public int Id { get; set; }
 
     [Column(DataTypes.Nvarchar, 64, false)]
     public string Username { get; set; }
@@ -21,11 +22,14 @@ public class User
     [Column(DataTypes.Nvarchar, int.MaxValue)]
     public string? Description { get; set; }
 
-    [Column(DataTypes.Int, false)] public short Country { get; set; }
+    [Column(DataTypes.Int, false)]
+    public short Country { get; set; }
 
-    [Column(DataTypes.Int, false)] public UserPrivileges Privilege { get; set; }
+    [Column(DataTypes.Int, false)]
+    public UserPrivileges Privilege { get; set; }
 
-    [Column(DataTypes.DateTime, false)] public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
+    [Column(DataTypes.DateTime, false)]
+    public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
 
     [Column(DataTypes.DateTime, false)]
     public DateTime LastOnlineTime { get; set; } =
@@ -34,9 +38,11 @@ public class User
     [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string Friends { get; set; } = string.Empty;
 
-    [Column(DataTypes.Boolean, false)] public bool IsRestricted { get; set; } = false;
+    [Column(DataTypes.Boolean, false)]
+    public bool IsRestricted { get; set; } = false;
 
-    [Column(DataTypes.DateTime, false)] public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
+    [Column(DataTypes.DateTime, false)]
+    public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
 
     public List<int> FriendsList => Friends.Split(',')
         .Where(x => !string.IsNullOrEmpty(x))

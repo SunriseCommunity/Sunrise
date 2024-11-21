@@ -42,7 +42,7 @@ public class BeatmapController : ControllerBase
     {
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var modeEnum = GameMode.Standard;
         if (mode != null && Enum.TryParse(mode, out modeEnum) == false)
@@ -62,9 +62,9 @@ public class BeatmapController : ControllerBase
         if (beatmap?.IsScoreable == false)
             return Ok(new ScoresResponse([], 0));
 
-        var scores = await database.GetBeatmapScoresById(id, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum, modsShouldEqual: false);
+        var scores = await database.ScoreService.GetBeatmapScoresById(id, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum, modsShouldEqual: false);
 
-        var limitedScores = scores.Take(limit).Select(score => new ScoreResponse(score, database.GetUser(score.UserId).Result)).ToList();
+        var limitedScores = scores.Take(limit).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
         return Ok(new ScoresResponse(limitedScores, scores.Count));
     }
 
@@ -79,11 +79,11 @@ public class BeatmapController : ControllerBase
 
         if (favourite.HasValue && session.User.Username != "Guest")
         {
-            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
             if (favourite.Value)
-                await database.AddFavouriteBeatmap(session.User.Id, id);
+                await database.UserService.Favourites.AddFavouriteBeatmap(session.User.Id, id);
             else
-                await database.RemoveFavouriteBeatmap(session.User.Id, id);
+                await database.UserService.Favourites.RemoveFavouriteBeatmap(session.User.Id, id);
 
             return new OkResult();
         }
@@ -98,8 +98,8 @@ public class BeatmapController : ControllerBase
         if (session == null)
             return Unauthorized(new ErrorResponse("Unauthorized"));
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var favourited = await database.IsBeatmapSetFavourited(session.User.Id, id);
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var favourited = await database.UserService.Favourites.IsBeatmapSetFavourited(session.User.Id, id);
 
         return Ok(new
         {
