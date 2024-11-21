@@ -40,16 +40,16 @@ public class BaseController(IMemoryCache cache) : ControllerBase
     [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
     public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var usersOnline = sessions.GetSessions().Count;
-        var totalUsers = await database.GetTotalUsers();
+        var totalUsers = await database.UserService.GetTotalUsers();
 
         if (detailed)
         {
-            var totalScores = await database.GetTotalScores();
+            var totalScores = await database.ScoreService.GetTotalScores();
             return Ok(new StatusResponse(usersOnline, totalUsers, totalScores));
         }
 

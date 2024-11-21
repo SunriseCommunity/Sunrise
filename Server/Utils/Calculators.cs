@@ -62,7 +62,7 @@ public static class Calculators
             _ => -1
         };
     }
-    
+
     public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session,
         int beatmapId, int mode, Mods mods = Mods.None)
     {
@@ -107,10 +107,10 @@ public static class Calculators
 
     public static async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
         if (score != null)
             userBests.Add(score);
 
@@ -131,10 +131,10 @@ public static class Calculators
 
     public static async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
         if (score != null)
             userBests.Add(score);
 

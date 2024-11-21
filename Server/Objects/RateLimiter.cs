@@ -52,8 +52,8 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow, bool actionOnLi
         var silenceTime = TimeSpan.FromMinutes(5);
         session.User.SilencedUntil = DateTime.UtcNow + silenceTime;
 
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        await database.UpdateUser(session
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        await database.UserService.UpdateUser(session
             .User); // NOTE: I have no guarantee that we will not overwrite some db changes here. Just pointing out.
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();

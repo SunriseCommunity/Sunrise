@@ -21,7 +21,9 @@ public static class BanchoService
                 packets = packets.Where(p => p.Type != PacketType.ClientDisconnect).ToList();
 
             foreach (var packet in packets)
+            {
                 await PacketRepository.HandlePacket(packet, session);
+            }
         }
         catch (Exception e)
         {
@@ -33,8 +35,8 @@ public static class BanchoService
 
     public static async Task<string?> GetFriends(string username)
     {
-        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-        var user = await database.GetUser(username: username);
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = await database.UserService.GetUser(username: username);
 
         if (user == null)
             return null;

@@ -4,7 +4,7 @@ using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Chat;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
+using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects.Multiplayer;
 using Sunrise.Server.Objects.Serializable;
@@ -192,8 +192,8 @@ public class Session : BaseSession
     {
         if (user == null)
         {
-            var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
-            user = await database.GetUser(User.Id);
+            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+            user = await database.UserService.GetUser(User.Id);
         }
 
         if (User.Id != user?.Id) throw new InvalidOperationException("Cannot update user with different ID.");
@@ -204,7 +204,9 @@ public class Session : BaseSession
     public void AddSpectator(Session session)
     {
         foreach (var spectator in Spectators)
+        {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.User.Id);
+        }
 
         _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.User.Id);
 
@@ -214,7 +216,9 @@ public class Session : BaseSession
     public void RemoveSpectator(Session session)
     {
         foreach (var spectator in Spectators)
+        {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.User.Id);
+        }
 
         _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.User.Id);
 
