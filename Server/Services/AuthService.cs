@@ -46,7 +46,14 @@ public static class AuthService
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-        if (sessions.IsUserOnline(user.Id)) sessions.GetSession(userId: user.Id)?.SendNewLogin();
+
+        var oldSession = sessions.GetSession(userId: user.Id);
+
+        if (oldSession != null)
+        {
+            oldSession.SendNotification("You have been logged in from another location. Please try again later.");
+            sessions.SoftRemoveSession(oldSession);
+        }
 
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
