@@ -2,19 +2,16 @@
 using osu.Shared;
 using Watson.ORM.Core;
 
-namespace Sunrise.Server.Database.Models.User;
+namespace Sunrise.Server.Database.Models;
 
 [Table("user_stats_snapshot")]
 public class UserStatsSnapshot
 {
-    [Column(true, DataTypes.Int, false)]
-    public int Id { get; set; }
+    [Column(true, DataTypes.Int, false)] public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int UserId { get; set; }
+    [Column(DataTypes.Int, false)] public int UserId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public GameMode GameMode { get; set; }
+    [Column(DataTypes.Int, false)] public GameMode GameMode { get; set; }
 
     [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string SnapshotsJson { get; set; } = "[]";

@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.API.Serializable.Response;
@@ -37,7 +36,6 @@ public class MedalsResponse(List<UserMedals> userMeals, List<Medal> medals)
 
     public class Category
     {
-        [JsonPropertyName("medals")]
-        public List<UserMedalResponse> Medals { get; set; }
+        [JsonPropertyName("medals")] public List<UserMedalResponse> Medals { get; set; }
     }
 }

@@ -4,7 +4,7 @@ using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
@@ -23,8 +23,8 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: request.Username, passhash: request.Password.GetPassHash());
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(username: request.Username, passhash: request.Password.GetPassHash());
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
@@ -53,13 +53,13 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: request.Username);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var user = await database.GetUser(username: request.Username);
 
         if (user != null)
             return BadRequest(new ErrorResponse("Username already in use"));
 
-        user = await database.UserService.GetUser(email: request.Email);
+        user = await database.GetUser(email: request.Email);
         if (user != null)
             return BadRequest(new ErrorResponse("Email already in use"));
 
@@ -89,7 +89,7 @@ public class AuthController : ControllerBase
             Privilege = UserPrivileges.User
         };
 
-        await database.UserService.InsertUser(user);
+        await database.InsertUser(user);
 
         var token = AuthService.GenerateTokens(user.Id);
 

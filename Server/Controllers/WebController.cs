@@ -71,17 +71,17 @@ public class WebController : ControllerBase
 
         var flags = (LastFmFlags)int.Parse(query[1..]);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         if ((flags & (LastFmFlags.HqAssembly | LastFmFlags.HqFile)) != 0)
         {
-            _ = database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
+            _ = database.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
             return Ok("-3");
         }
 
         if ((flags & LastFmFlags.RegistryEdits) != 0)
         {
-            _ = database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
+            _ = database.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
             return Ok("-3");
         }
 
@@ -133,8 +133,8 @@ public class WebController : ControllerBase
         if (beatmapSet == null)
             return Ok("error: beatmap");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Favourites.AddFavouriteBeatmap(session.User.Id, beatmapSetId);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        await database.AddFavouriteBeatmap(session.User.Id, beatmapSetId);
 
         return Ok();
     }
@@ -147,8 +147,8 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var favourites = await database.UserService.Favourites.GetUserFavouriteBeatmaps(session.User.Id);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var favourites = await database.GetUserFavouriteBeatmaps(session.User.Id);
 
         return Ok(string.Join("/n", favourites.Select(x => x)));
     }

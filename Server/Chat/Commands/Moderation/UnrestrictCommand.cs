@@ -25,9 +25,9 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.GetUser(userId);
 
         if (user == null)
         {
@@ -41,7 +41,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        await database.UserService.Moderation.UnrestrictPlayer(user.Id);
+        await database.UnrestrictPlayer(user.Id);
 
         CommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been unrestricted.");
     }

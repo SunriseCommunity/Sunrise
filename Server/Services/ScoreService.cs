@@ -29,7 +29,7 @@ public static class ScoreService
             return "error: no";
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         if (!SubmitScoreHelper.IsScoreValid(session,
                 score,
@@ -40,13 +40,13 @@ public static class ScoreService
                 storyboardHash))
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
-            await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
+            await database.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
             return "error: no";
         }
 
-        var scores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var scores = await database.GetBeatmapScores(score.BeatmapHash, score.GameMode);
 
-        var userStats = await database.UserService.Stats.GetUserStats(score.UserId, score.GameMode);
+        var userStats = await database.GetUserStats(score.UserId, score.GameMode);
 
         if (userStats == null)
         {
@@ -57,7 +57,7 @@ public static class ScoreService
         var prevUserStats = userStats.Clone();
         var prevPBest = scores.GetPersonalBestOf(score.UserId);
 
-        var prevUserRank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
+        var prevUserRank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
         prevUserStats.Rank = prevUserRank;
 
         var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
@@ -65,7 +65,7 @@ public static class ScoreService
 
         if (replay is { Length: >= 24 })
         {
-            var replayFile = await database.ScoreService.Files.UploadReplay(userStats.UserId, replay);
+            var replayFile = await database.UploadReplay(userStats.UserId, replay);
             score.ReplayFileId = replayFile.Id;
         }
 
@@ -75,8 +75,8 @@ public static class ScoreService
             return "error: no";
         }
 
-        await database.ScoreService.InsertScore(score);
-        await database.UserService.Stats.UpdateUserStats(userStats);
+        await database.InsertScore(score);
+        await database.UpdateUserStats(userStats);
 
 
         if (SubmitScoreHelper.IsScoreFailed(score) || !score.IsRanked)
@@ -88,7 +88,7 @@ public static class ScoreService
                 .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
         var newPBest = scores.GetNewPersonalScore(score);
-        userStats.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
+        userStats.Rank = await database.GetUserRank(userStats.UserId, userStats.GameMode);
 
         if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
         {
@@ -103,8 +103,8 @@ public static class ScoreService
     public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var scores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var scores = await database.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);

@@ -11,9 +11,6 @@ namespace Sunrise.Server.Database.Models;
 [Table("score")]
 public class Score
 {
-
-    private DatabaseManager database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
@@ -98,8 +95,8 @@ public class Score
 
     public async Task<int> GetLeaderboardRank()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        return await database.ScoreService.GetLeaderboardRank(this);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        return await database.GetLeaderboardRank(this);
     }
 
     public Score SetNewScoreFromString(string scoreString, Beatmap beatmap)
@@ -141,10 +138,10 @@ public class Score
 
     public async Task<string> GetString()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
         var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await database.UserService.GetUser(UserId))?.Username ?? "Unknown";
+        var username = (await database.GetUser(UserId))?.Username ?? "Unknown";
 
         const string hasReplay = "1"; // We don't store score without replays
 

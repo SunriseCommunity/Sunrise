@@ -33,9 +33,9 @@ public class RestrictCommand : IChatCommand
 
         var reason = string.Join(" ", args[1..]);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.GetUser(userId);
 
         if (user == null)
         {
@@ -49,9 +49,9 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        await database.UserService.Moderation.RestrictPlayer(user.Id, session.User.Id, reason);
+        await database.RestrictPlayer(user.Id, session.User.Id, reason);
 
-        var isRestricted = await database.UserService.Moderation.IsRestricted(user.Id);
+        var isRestricted = await database.IsRestricted(user.Id);
 
         CommandRepository.SendMessage(session,
             isRestricted

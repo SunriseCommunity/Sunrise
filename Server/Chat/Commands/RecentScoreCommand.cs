@@ -14,9 +14,9 @@ public class RecentScoreCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
 
-        var lastScore = await database.ScoreService.GetUserLastScore(session.User.Id);
+        var lastScore = await database.GetUserLastScore(session.User.Id);
 
         if (lastScore == null)
         {

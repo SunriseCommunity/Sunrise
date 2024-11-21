@@ -55,8 +55,8 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.GetMedalImage)]
     public async Task<IActionResult> GetMedalImage(int medalId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var medal = await database.MedalService.GetMedal(medalId);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        var medal = await database.GetMedal(medalId);
 
         if (medal == null)
             return NotFound();

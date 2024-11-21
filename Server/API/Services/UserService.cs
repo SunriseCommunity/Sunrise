@@ -1,5 +1,5 @@
 using Sunrise.Server.Application;
-using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.API.Services;

@@ -9,13 +9,13 @@ public static class ScoreService
 {
     public static async Task<Score?> GetScore(int id)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        return await database.ScoreService.GetScore(id);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        return await database.GetScore(id);
     }
 
     public static async Task<List<Score>> GetScoresByUser(int userId, GameMode mode)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        return await database.ScoreService.GetUserBestScores(userId, mode);
+        var database = ServicesProviderHolder.GetRequiredService<SunriseDb>();
+        return await database.GetUserBestScores(userId, mode);
     }
 }
