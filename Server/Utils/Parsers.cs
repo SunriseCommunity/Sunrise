@@ -7,9 +7,7 @@ using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Paddings;
 using Org.BouncyCastle.Crypto.Parameters;
 using osu.Shared;
-using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Utils;
@@ -61,6 +59,8 @@ public static class Parsers
         return Encoding.UTF8.GetString(outputBytes);
     }
 
+    // TODO: Split everything here to extension methods
+
     public static string SecondsToString(int seconds)
     {
         var time = TimeSpan.FromSeconds(seconds);
@@ -111,11 +111,6 @@ public static class Parsers
             .Aggregate(ModsShorted.None, (current, kvp) => current | kvp.Key);
 
         return (Mods)mods;
-    }
-
-    public static Score TryParseToScore(this string scoreString, Beatmap beatmap, string version)
-    {
-        return new Score().SetNewScoreFromString(scoreString, beatmap);
     }
 
     public static string ToHash(this string s)

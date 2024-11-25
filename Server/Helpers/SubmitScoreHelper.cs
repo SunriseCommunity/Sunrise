@@ -2,6 +2,7 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;

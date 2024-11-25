@@ -2,7 +2,7 @@ using DatabaseWrapper.Core;
 using ExpressionTree;
 using osu.Shared;
 using Sunrise.Server.Database.Services.Score.Services;
-using Sunrise.Server.Helpers;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
@@ -195,7 +195,7 @@ public class ScoreService
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
-        scores = scores.GetSortedScoresByScore();
+        scores = scores.GetScoresGroupedByUsersBest();
 
         if (modsShouldEqual == false && type is LeaderboardType.GlobalWithMods) scores = scores.Where(x => x.Mods.HasFlag(mods)).ToList();
 
@@ -217,7 +217,7 @@ public class ScoreService
             (int)score.GameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
 
-        return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;
+        return scores.GetScoresGroupedByUsersBest().FindIndex(x => x.Id == score.Id) + 1;
     }
 
     public async Task<List<Models.Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode,
@@ -231,7 +231,7 @@ public class ScoreService
         if (type is LeaderboardType.Friends) exp.PrependAnd("UserId", OperatorEnum.In, user?.FriendsList);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
-        scores = scores.GetSortedScoresByScore();
+        scores = scores.GetScoresGroupedByUsersBest();
 
         foreach (var score in scores.ToList())
         {

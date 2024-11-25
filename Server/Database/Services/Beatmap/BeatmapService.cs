@@ -1,5 +1,5 @@
-using Sunrise.Server.Application;
 using Sunrise.Server.Database.Services.Beatmap.Services;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
@@ -79,14 +79,7 @@ public class BeatmapService
 
         if (beatmapSet == null) return null;
 
-        // TODO: Have it as extension method
-        if (Configuration.IgnoreBeatmapRanking)
-        {
-            foreach (var b in beatmapSet.Beatmaps)
-            {
-                b.StatusString = "ranked";
-            }
-        }
+        beatmapSet.UpdateBeatmapRanking();
 
         return beatmapSet;
     }

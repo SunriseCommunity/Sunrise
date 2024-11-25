@@ -53,6 +53,7 @@ public class UserStats
     [Column(DataTypes.DateTime)]
     public DateTime? BestCountryRankDate { get; set; }
 
+    // TODO: Remove local to extend of class
     // Local property
     public long? Rank { get; set; }
 
@@ -71,7 +72,7 @@ public class UserStats
         IncreaseTotalHits(score);
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
-        
+
         if (isFailed || !score.IsRanked)
             return;
 

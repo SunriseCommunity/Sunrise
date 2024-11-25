@@ -1,5 +1,6 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
@@ -33,12 +34,7 @@ public static class BeatmapManager
             // TODO: Save null to cache if it requested map not found.
             return null;
 
-        // TODO: Have it as extension method
-        if (Configuration.IgnoreBeatmapRanking)
-            foreach (var b in beatmapSet.Beatmaps)
-            {
-                b.StatusString = "ranked";
-            }
+        beatmapSet.UpdateBeatmapRanking();
 
         await database.BeatmapService.SetCachedBeatmapSet(beatmapSet);
 

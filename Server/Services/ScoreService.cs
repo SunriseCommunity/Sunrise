@@ -1,6 +1,7 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
@@ -19,9 +20,9 @@ public static class ScoreService
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
         if (beatmap == null || beatmapSet == null)
-            throw new Exception("Invalid request: BeatmapFile not found");
+            throw new Exception("Invalid request: BeatmapSet not found");
 
-        var score = scoreSerialized.TryParseToScore(beatmap, osuVersion);
+        var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap);
 
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
         {
@@ -31,20 +32,23 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        if (!SubmitScoreHelper.IsScoreValid(session,
-                score,
-                osuVersion,
-                clientHash,
-                beatmapHash,
-                beatmap.Checksum,
-                storyboardHash))
+        var isScoreValid = SubmitScoreHelper.IsScoreValid(session,
+            score,
+            osuVersion,
+            clientHash,
+            beatmapHash,
+            beatmap.Checksum,
+            storyboardHash);
+
+        if (!isScoreValid)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
             return "error: no";
         }
 
-        var scores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var databaseScores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var scores = databaseScores.ToLocalScores();
 
         var userStats = await database.UserService.Stats.GetUserStats(score.UserId, score.GameMode);
 
@@ -78,7 +82,6 @@ public static class ScoreService
         await database.ScoreService.InsertScore(score);
         await database.UserService.Stats.UpdateUserStats(userStats);
 
-
         if (SubmitScoreHelper.IsScoreFailed(score) || !score.IsRanked)
             return "error: no"; // No need to create chart for failed or unranked scores
 
@@ -87,10 +90,12 @@ public static class ScoreService
             beatmap.DifficultyRating = await Calculators
                 .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
-        var newPBest = scores.GetNewPersonalScore(score);
+        var updatedScores = scores.UpsertUserScoreToSortedScores(score);
+        var newPBest = updatedScores.GetPersonalBestOf(score.UserId);
+
         userStats.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
 
-        if (newPBest.LeaderboardRank == 1 && prevPBest?.LeaderboardRank != 1)
+        if (newPBest?.LeaderboardPosition == 1 && scores.Count > 0 && scores[0].UserId != score.UserId)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
             channels.GetChannel(session, "#announce")
@@ -104,7 +109,8 @@ public static class ScoreService
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var scores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
+        var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
+        var scores = databaseScores.ToLocalScores();
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
@@ -127,7 +133,7 @@ public static class ScoreService
         var personalBest = scores.GetPersonalBestOf(session.User.Id);
         responses.Add(personalBest != null ? await personalBest.GetString() : "");
 
-        var leaderboardScores = scores.GetTopScores(50);
+        var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);
 
         foreach (var score in leaderboardScores)
         {

@@ -4,7 +4,7 @@ using RosuPP;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
-using Sunrise.Server.Helpers;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Beatmap = RosuPP.Beatmap;
@@ -119,7 +119,7 @@ public static class Calculators
         var top100Scores = userBests.Take(100).ToList();
 
         // Sorting again because we previously added a new score
-        top100Scores = top100Scores.GetSortedScoresByPP(false);
+        top100Scores = top100Scores.SortScoresByPerformancePoints();
 
         var weightedAccuracy = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.Accuracy)
@@ -143,7 +143,7 @@ public static class Calculators
         var top100Scores = userBests.Take(100).ToList();
 
         // Sorting again because we previously added a new score
-        top100Scores = top100Scores.GetSortedScoresByPP(false);
+        top100Scores = top100Scores.SortScoresByPerformancePoints();
 
         const double bonusNumber = 416.6667;
         var weightedPp = top100Scores
