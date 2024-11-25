@@ -41,10 +41,11 @@ public class ScoreService
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp,
         [
-            new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending)
+            new ResultOrder("TotalScore", OrderDirectionEnum.Descending)
         ]);
 
-        return scores.ToList();
+        // sort by performance points
+        return scores.GroupBy(x => x.BeatmapId).Select(x => x.OrderByDescending(y => y.TotalScore).First()).OrderByDescending(x => x.PerformancePoints).ToList();
     }
 
     public async Task InsertScore(Models.Score score)
@@ -78,7 +79,7 @@ public class ScoreService
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp,
         [
-            new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending)
+            new ResultOrder("TotalScore", OrderDirectionEnum.Descending)
         ]);
 
         var bestScores = scores.GroupBy(x => x.BeatmapId).Select(x => x.First()).ToList();

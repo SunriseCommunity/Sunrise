@@ -68,6 +68,10 @@ public class Score
     [Column(DataTypes.Boolean, false)]
     public bool IsPassed { get; set; }
 
+    /**
+     * TODO: Rename to IsScoreable
+     * Is true if the beatmap is ranked, approved or loved. False otherwise.
+     */
     [Column(DataTypes.Boolean, false)]
     public bool IsRanked { get; set; }
 
