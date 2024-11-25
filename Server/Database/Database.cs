@@ -21,12 +21,12 @@ public sealed class DatabaseManager
 
     private readonly ILogger<DatabaseManager> _logger;
     private readonly WatsonORM _orm = new(new DatabaseSettings(DataPath + Database));
+    private readonly RedisRepository _redis;
+
     public readonly BeatmapService BeatmapService;
     public readonly LoggerService LoggerService;
     public readonly MedalService MedalService;
-
     public readonly ScoreService ScoreService;
-
     public readonly UserService UserService;
 
     public DatabaseManager(RedisRepository redis)
@@ -34,19 +34,17 @@ public sealed class DatabaseManager
         var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
         _logger = loggerFactory.CreateLogger<DatabaseManager>();
 
-        Redis = redis;
-        
-        UserService = new UserService(this, Redis, _orm);
-        BeatmapService = new BeatmapService(this,Redis, _orm);
-        ScoreService = new ScoreService(this,Redis, _orm);
-        MedalService = new MedalService(this,Redis, _orm);
-        LoggerService = new LoggerService(this,Redis, _orm);
+        _redis = redis;
+
+        UserService = new UserService(this, _redis, _orm);
+        BeatmapService = new BeatmapService(this, _redis, _orm);
+        ScoreService = new ScoreService(this, _redis, _orm);
+        MedalService = new MedalService(this, _redis, _orm);
+        LoggerService = new LoggerService(this, _redis, _orm);
 
         _orm.InitializeDatabase();
         CheckMigrations();
     }
-
-    public RedisRepository Redis { get; } // TODO: Make private
 
     public async Task InitializeBotInDatabase()
     {
@@ -56,7 +54,7 @@ public sealed class DatabaseManager
         var bot = new User
         {
             Username = Configuration.BotUsername,
-            Country = (short)CountryCodes.AQ, 
+            Country = (short)CountryCodes.AQ,
             Privilege = UserPrivileges.User,
             RegisterDate = DateTime.Now,
             Passhash = "12345678",
@@ -89,7 +87,7 @@ public sealed class DatabaseManager
         _logger.LogInformation($"Applied {appliedMigrations} migrations");
         _logger.LogWarning("Cache will be flushed due to database changes. This may cause performance issues.");
 
-        Redis.FlushAllCache();
+        _redis.FlushAllCache();
         _logger.LogInformation("Cache flushed. Rebuilding user ranks...");
 
         for (var i = 0; i < 4; i++)
