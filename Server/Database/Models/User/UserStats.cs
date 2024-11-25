@@ -71,13 +71,13 @@ public class UserStats
         IncreaseTotalHits(score);
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
-
-        if (isFailed || !score.IsRanked || score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
+        
+        if (isFailed || !score.IsRanked)
             return;
 
         UpdateMaxCombo(score.MaxCombo);
 
-        if (isNewScore || isBetterScore)
+        if ((isNewScore || isBetterScore) && score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
