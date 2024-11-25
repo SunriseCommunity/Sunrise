@@ -96,6 +96,7 @@ public static class Parsers
         var shortedMods = string.Join("",
             Enum.GetValues<ModsShorted>()
                 .Where(x => mods.HasFlag((Mods)x) && x != ModsShorted.None)
+                .Where(x => !(mods.HasFlag(Mods.Nightcore) && x == (ModsShorted)Mods.DoubleTime))
                 .Select(x => x.ToString()));
 
         return string.IsNullOrEmpty(shortedMods) ? string.Empty : $"+{shortedMods} ";
