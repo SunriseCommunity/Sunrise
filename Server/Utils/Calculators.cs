@@ -108,6 +108,9 @@ public static class Calculators
     public static async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = await database.UserService.GetUser(userId);
+        
+        if (user.IsRestricted) return 0;
 
         // Get users top scores sorted by pp in descending order
         var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
@@ -132,6 +135,9 @@ public static class Calculators
     public static async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = await database.UserService.GetUser(userId);
+        
+        if (user.IsRestricted) return 0;
 
         // Get users top scores sorted by pp in descending order
         var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);

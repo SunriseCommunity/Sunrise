@@ -43,6 +43,13 @@ public class ScoreService
         [
             new ResultOrder("PerformancePoints", OrderDirectionEnum.Descending)
         ]);
+        
+        foreach (var score in scores.ToList())
+        {
+            var scoreUser = await _services.UserService.GetUser(score.UserId);
+
+            if (scoreUser?.IsRestricted == true) scores.Remove(score);
+        }
 
         return scores.ToList();
     }
@@ -72,6 +79,10 @@ public class ScoreService
     public async Task<List<Models.Score>> GetUserBestScores(int userId, GameMode mode, int excludeBeatmapId = -1,
         int? limit = null)
     {
+        var user = await _services.UserService.GetUser(userId);
+        
+        if (user.IsRestricted) return [];
+        
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
             .PrependAnd("BeatmapId", OperatorEnum.NotEquals, excludeBeatmapId)
             .PrependAnd("IsRanked", OperatorEnum.Equals, true).PrependAnd("IsPassed", OperatorEnum.Equals, true);
@@ -91,6 +102,10 @@ public class ScoreService
 
     public async Task<Dictionary<int, int>> GetUserMostPlayedMapsIds(int userId, GameMode mode)
     {
+        var user = await _services.UserService.GetUser(userId);
+        
+        if (user.IsRestricted) return [];
+        
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
             OperatorEnum.Equals,
             (int)mode);
@@ -105,6 +120,10 @@ public class ScoreService
 
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
+        var user = await _services.UserService.GetUser(userId);
+        
+        if (user.IsRestricted) return [];
+        
         var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode).PrependAnd("UserId",
             OperatorEnum.Equals,
             userId);
@@ -215,6 +234,12 @@ public class ScoreService
             OperatorEnum.Equals,
             (int)score.GameMode).PrependAnd("IsPassed", OperatorEnum.Equals, true);
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
+        
+        foreach (var scoreFromList in scores.ToList())
+        {
+            var scoreUser = await _services.UserService.GetUser(scoreFromList.UserId);
+            if (scoreUser?.IsRestricted == true) scores.Remove(scoreFromList);
+        }
 
         return scores.GetSortedScoresByScore().FindIndex(x => x.Id == score.Id) + 1;
     }

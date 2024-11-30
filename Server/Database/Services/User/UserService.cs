@@ -118,13 +118,14 @@ public class UserService
             user);
     }
 
+    // Note: Unsafe cache?
     public async Task<List<Models.User.User>?> GetAllUsers(bool useCache = true)
     {
         var cachedStats = await _redis.Get<List<Models.User.User>>(RedisKey.AllUsers());
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null));
+        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("IsRestricted", OperatorEnum.Equals, false));
 
         if (users == null) return null;
 
