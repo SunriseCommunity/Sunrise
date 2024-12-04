@@ -7,6 +7,7 @@ using Sunrise.Server.Database.Models;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Types.Enums;
 using Beatmap = RosuPP.Beatmap;
 using Mods = osu.Shared.Mods;
 
@@ -110,21 +111,21 @@ public static class Calculators
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        var userBestScores = await database.ScoreService.GetUserScores(userId, mode, ScoreTableType.Best);
+
+        if (userBestScores.Count == 0 && score == null) return 0;
+
         if (score != null)
-            userBests.Add(score);
+        {
+            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
+        }
 
-        if (userBests.Count == 0) return 0;
-
-        var top100Scores = userBests.Take(100).ToList();
-
-        // Sorting again because we previously added a new score
-        top100Scores = top100Scores.SortScoresByPerformancePoints();
+        var top100Scores = userBestScores.Take(100).ToList();
 
         var weightedAccuracy = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.Accuracy)
             .Sum();
-        var bonusAccuracy = 100 / (20 * (1 - Math.Pow(0.95, userBests.Count)));
+        var bonusAccuracy = 100 / (20 * (1 - Math.Pow(0.95, userBestScores.Count)));
 
         return weightedAccuracy * bonusAccuracy / 100;
     }
@@ -134,22 +135,22 @@ public static class Calculators
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         // Get users top scores sorted by pp in descending order
-        var userBests = await database.ScoreService.GetUserBestScores(userId, mode, score?.BeatmapId ?? 0);
+        var userBestScores = await database.ScoreService.GetUserScores(userId, mode, ScoreTableType.Best);
+
+        if (userBestScores.Count == 0 && score == null) return 0;
+
         if (score != null)
-            userBests.Add(score);
+        {
+            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
+        }
 
-        if (userBests.Count == 0) return 0;
-
-        var top100Scores = userBests.Take(100).ToList();
-
-        // Sorting again because we previously added a new score
-        top100Scores = top100Scores.SortScoresByPerformancePoints();
+        var top100Scores = userBestScores.Take(100).ToList();
 
         const double bonusNumber = 416.6667;
         var weightedPp = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.PerformancePoints)
             .Sum();
-        var bonusPp = bonusNumber * (1 - Math.Pow(0.9994, userBests.Count));
+        var bonusPp = bonusNumber * (1 - Math.Pow(0.9994, userBestScores.Count));
 
         return weightedPp + bonusPp;
     }

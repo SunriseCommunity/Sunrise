@@ -1,5 +1,4 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
@@ -73,12 +72,12 @@ public class UserStats
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
 
-        if (isFailed || !score.IsRanked)
+        if (isFailed || !score.IsScoreable)
             return;
 
         UpdateMaxCombo(score.MaxCombo);
 
-        if ((isNewScore || isBetterScore) && score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
+        if ((isNewScore || isBetterScore) && score.LocalProperties.IsRanked)
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 

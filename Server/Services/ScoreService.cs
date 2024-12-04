@@ -8,6 +8,7 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
 
@@ -48,7 +49,9 @@ public static class ScoreService
         }
 
         var databaseScores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
-        var scores = databaseScores.ToLocalScores();
+
+        var globalScores = databaseScores.UpdateLeaderboardPositions();
+        var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).UpdateLeaderboardPositions();
 
         var userStats = await database.UserService.Stats.GetUserStats(score.UserId, score.GameMode);
 
@@ -59,7 +62,7 @@ public static class ScoreService
         }
 
         var prevUserStats = userStats.Clone();
-        var prevPBest = scores.GetPersonalBestOf(score.UserId);
+        var prevPBest = globalScores.GetPersonalBestOf(score.UserId);
 
         var prevUserRank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
         prevUserStats.Rank = prevUserRank;
@@ -73,29 +76,49 @@ public static class ScoreService
             score.ReplayFileId = replayFile.Id;
         }
 
-        if (!SubmitScoreHelper.IsScoreFailed(score) && score.ReplayFileId == null)
+        var isCurrentScoreFailed = SubmitScoreHelper.IsScoreFailed(score);
+
+        if (!isCurrentScoreFailed && score.ReplayFileId == null)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Replay file not found for passed score");
             return "error: no";
         }
 
+        var scoreWithSameHash = globalScores.FirstOrDefault(x => x.ScoreHash == score.ScoreHash);
+
+        if (scoreWithSameHash != null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Score with same hash already exists");
+            return "error: no";
+        }
+
+        var prevPBestWithSameMods = scoresWithSameMods.GetPersonalBestOf(score.UserId);
+        SubmitScoreHelper.UpdateSubmissionStatus(score, prevPBestWithSameMods);
+
+        if (prevPBestWithSameMods != null && score.SubmissionStatus == SubmissionStatus.Best)
+        {
+            // Best score shouldn't be failed, but adding this check just in case
+            prevPBestWithSameMods.SubmissionStatus = prevPBestWithSameMods.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+            await database.ScoreService.UpdateScore(prevPBestWithSameMods);
+        }
+
         await database.ScoreService.InsertScore(score);
         await database.UserService.Stats.UpdateUserStats(userStats);
 
-        if (SubmitScoreHelper.IsScoreFailed(score) || !score.IsRanked)
-            return "error: no"; // No need to create chart for failed or unranked scores
+        if (isCurrentScoreFailed || !score.IsScoreable)
+            return "error: no"; // No need to create chart for failed or for scores that are not scoreable
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
             beatmap.DifficultyRating = await Calculators
                 .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
-        var updatedScores = scores.UpsertUserScoreToSortedScores(score);
+        var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
         var newPBest = updatedScores.GetPersonalBestOf(score.UserId);
 
         userStats.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
 
-        if (newPBest?.LeaderboardPosition == 1 && scores.Count > 0 && scores[0].UserId != score.UserId)
+        if (newPBest?.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
             channels.GetChannel(session, "#announce")
@@ -110,7 +133,7 @@ public static class ScoreService
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
-        var scores = databaseScores.ToLocalScores();
+        var scores = databaseScores.UpdateLeaderboardPositions();
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
