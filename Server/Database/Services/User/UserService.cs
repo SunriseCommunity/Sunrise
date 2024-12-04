@@ -55,6 +55,7 @@ public class UserService
         }
 
         await _redis.Set(RedisKey.UserById(user.Id), user);
+        await _redis.Remove(RedisKey.AllUsers());
 
         return user;
     }
@@ -109,6 +110,8 @@ public class UserService
 
         if (session != null)
             await session.UpdateUser(user);
+        
+        await _redis.Remove(RedisKey.AllUsers());
 
         await _redis.Set(
             [
@@ -117,8 +120,7 @@ public class UserService
             ],
             user);
     }
-
-    // Note: Unsafe cache?
+    
     public async Task<List<Models.User.User>?> GetAllUsers(bool useCache = true)
     {
         var cachedStats = await _redis.Get<List<Models.User.User>>(RedisKey.AllUsers());
@@ -144,7 +146,7 @@ public class UserService
 
     public async Task<long> GetTotalUsers()
     {
-        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("IsRestricted", OperatorEnum.Equals, false);
         return await _database.CountAsync<Models.User.User>(exp);
     }
 }
