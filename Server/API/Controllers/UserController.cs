@@ -240,7 +240,7 @@ public class UserController : ControllerBase
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var users = await database.UserService.GetAllUsers();
+        var users = await database.UserService.GetAllUsers(false);
 
         if (users == null) return NotFound(new ErrorResponse("Users not found"));
 

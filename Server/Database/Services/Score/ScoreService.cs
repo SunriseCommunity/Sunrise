@@ -52,6 +52,12 @@ public class ScoreService
             .PrependAnd("SubmissionStatus", OperatorEnum.Equals, (int)SubmissionStatus.Best);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
+      
+        foreach (var score in scores.ToList())
+        {
+            var scoreUser = await _services.UserService.GetUser(score.UserId);
+            if (scoreUser?.IsRestricted == true) scores.Remove(score);
+        }
 
         return scores.GetScoresGroupedByBeatmapBest().SortScoresByPerformancePoints();
     }
@@ -72,6 +78,9 @@ public class ScoreService
 
     public async Task<Dictionary<int, int>> GetUserMostPlayedBeatmapsIds(int userId, GameMode mode)
     {
+        var user = await _services.UserService.GetUser(userId);
+        if (user.IsRestricted) return [];
+      
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
 
@@ -124,6 +133,9 @@ public class ScoreService
 
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
+        var user = await _services.UserService.GetUser(userId);
+        if (user.IsRestricted) return [];
+      
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
 

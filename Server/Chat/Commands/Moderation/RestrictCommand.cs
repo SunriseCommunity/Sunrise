@@ -1,3 +1,4 @@
+using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -5,6 +6,7 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Moderation;
 
@@ -52,7 +54,19 @@ public class RestrictCommand : IChatCommand
         await database.UserService.Moderation.RestrictPlayer(user.Id, session.User.Id, reason);
 
         var isRestricted = await database.UserService.Moderation.IsRestricted(user.Id);
+        
+        for (var i = 0; i < 4; i++)
+        {
+            var stat = await database.UserService.Stats.GetUserStats(user.Id, (GameMode)i);
+            var pp = await Calculators.CalculateUserWeightedPerformance(user.Id, (GameMode)i);
+            var acc = await Calculators.CalculateUserWeightedAccuracy(user.Id, (GameMode)i);
 
+            stat.PerformancePoints = pp;
+            stat.Accuracy = acc;
+
+            await database.UserService.Stats.UpdateUserStats(stat);
+        }
+        
         CommandRepository.SendMessage(session,
             isRestricted
                 ? $"User {user.Username} ({user.Id}) has been restricted."

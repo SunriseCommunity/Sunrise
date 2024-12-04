@@ -79,8 +79,6 @@ public class UserStatsService
         return stats;
     }
 
-
-
     public async Task UpdateUserStats(UserStats stats)
     {
         stats = await SetUserRank(stats);
@@ -96,7 +94,6 @@ public class UserStatsService
 
         await _redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
     }
-
 
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
