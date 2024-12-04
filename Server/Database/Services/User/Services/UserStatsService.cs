@@ -176,8 +176,8 @@ public class UserStatsService
     public async Task SetAllUserRanks(GameMode mode)
     {
         var usersStats = await GetAllUserStats(mode, LeaderboardSortType.Pp);
-        if (usersStats == null) return;
-
+        if (usersStats.Count == 0) return;
+        
         usersStats.Sort((x, y) => y.PerformancePoints.CompareTo(x.PerformancePoints));
 
         foreach (var stats in usersStats)
