@@ -1,12 +1,18 @@
 using osu.Shared;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Core;
+using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Database.Models;
 
 [Table("score")]
 public class Score
 {
+    public Score()
+    {
+        LocalProperties = new LocalProperties(this);
+    }
+
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
@@ -61,13 +67,11 @@ public class Score
     [Column(DataTypes.Boolean, false)]
     public bool IsPassed { get; set; }
 
-    /**
-     * TODO: Add IsScoreable
-     * Is true if the beatmap is ranked, approved or loved. False otherwise.
-     */
-
     [Column(DataTypes.Boolean, false)]
-    public bool IsRanked { get; set; }
+    public bool IsScoreable { get; set; }
+
+    [Column(DataTypes.Int, false)]
+    public SubmissionStatus SubmissionStatus { get; set; }
 
     [Column(DataTypes.Int, false)]
     public GameMode GameMode { get; set; }
@@ -89,4 +93,22 @@ public class Score
 
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double PerformancePoints { get; set; }
+
+    public LocalProperties LocalProperties { get; set; }
+}
+
+public class LocalProperties(Score score)
+{
+    /**
+     * <summary>
+     *     Simplifies some mods to their base form.
+     *     <example>
+     *         DTNC -> DT
+     *     </example>
+     * </summary>
+     */
+    public Mods SerializedMods => score.Mods & ~Mods.Nightcore;
+    public bool IsRanked => score.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved;
+    
+    public int LeaderboardPosition { get; set; }
 }
