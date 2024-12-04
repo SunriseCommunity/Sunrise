@@ -107,11 +107,6 @@ public class Beatmap
 
     [JsonPropertyName("max_combo")]
     public int? MaxCombo { get; set; }
-
-    public string ToSearchEntity()
-    {
-        return $"[{DifficultyRating:F2}⭐] {Version.Replace('|', 'I')} {{cs: {CS} / od: {Accuracy} / ar: {AR} / hp: {Drain}}}@{ModeInt},";
-    }
 }
 
 public class FailTimes

@@ -65,7 +65,7 @@ public class ScoreController : ControllerBase
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        var scores = await database.ScoreService.GetTopScores((GameMode)mode);
+        var scores = await database.ScoreService.GetBestScoresByGameMode((GameMode)mode);
 
         var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
 

@@ -180,7 +180,7 @@ public class UserController : ControllerBase
 
         if (user == null) return NotFound(new ErrorResponse("User not found"));
 
-        var beatmapsIds = await database.ScoreService.GetUserMostPlayedMapsIds(id, (GameMode)mode);
+        var beatmapsIds = await database.ScoreService.GetUserMostPlayedBeatmapsIds(id, (GameMode)mode);
 
         var offsetBeatmaps = beatmapsIds.Skip(page * limit ?? 0).Take(limit ?? 50).Select(async pair =>
         {

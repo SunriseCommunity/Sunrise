@@ -1,5 +1,4 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
@@ -53,6 +52,7 @@ public class UserStats
     [Column(DataTypes.DateTime)]
     public DateTime? BestCountryRankDate { get; set; }
 
+    // TODO: Remove local to extend of class
     // Local property
     public long? Rank { get; set; }
 
@@ -72,12 +72,12 @@ public class UserStats
         IncreasePlayTime(timeElapsed);
         IncreasePlaycount();
 
-        if (isFailed || !score.IsRanked || score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
+        if (isFailed || !score.IsScoreable)
             return;
 
         UpdateMaxCombo(score.MaxCombo);
 
-        if (isNewScore || isBetterScore)
+        if ((isNewScore || isBetterScore) && score.LocalProperties.IsRanked)
         {
             RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
