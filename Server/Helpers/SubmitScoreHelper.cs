@@ -122,7 +122,7 @@ public static class SubmitScoreHelper
             var obj = entry switch
             {
                 "RankedScore" => typeof(T) == typeof(Score) ? "TotalScore" : "RankedScore",
-                "Rank" => typeof(T) == typeof(Score) ? "LocalProperties.LeaderboardPosition" : "Rank",
+                "Rank" => typeof(T) == typeof(Score) ? "LocalProperties.LeaderboardPosition" : "LocalProperties.Rank",
                 "Pp" => "PerformancePoints",
                 _ => entry
             };

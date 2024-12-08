@@ -65,7 +65,7 @@ public static class ScoreService
         var prevPBest = globalScores.GetPersonalBestOf(score.UserId);
 
         var prevUserRank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
-        prevUserStats.Rank = prevUserRank;
+        prevUserStats.LocalProperties.Rank = prevUserRank;
 
         var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
         await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
@@ -116,7 +116,7 @@ public static class ScoreService
         var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
         var newPBest = updatedScores.GetPersonalBestOf(score.UserId);
 
-        userStats.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
+        userStats.LocalProperties.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
 
         if (newPBest?.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
