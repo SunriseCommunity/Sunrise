@@ -180,7 +180,7 @@ public class UserController : ControllerBase
 
         if (user == null) return NotFound(new ErrorResponse("User not found"));
 
-        var beatmapsIds = await database.ScoreService.GetUserMostPlayedMapsIds(id, (GameMode)mode);
+        var beatmapsIds = await database.ScoreService.GetUserMostPlayedBeatmapsIds(id, (GameMode)mode);
 
         var offsetBeatmaps = beatmapsIds.Skip(page * limit ?? 0).Take(limit ?? 50).Select(async pair =>
         {
@@ -240,7 +240,7 @@ public class UserController : ControllerBase
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var users = await database.UserService.GetAllUsers(false);
+        var users = await database.UserService.GetAllUsers();
 
         if (users == null) return NotFound(new ErrorResponse("Users not found"));
 

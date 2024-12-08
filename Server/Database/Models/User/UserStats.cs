@@ -1,6 +1,4 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 using Watson.ORM.Core;
 
 namespace Sunrise.Server.Database.Models.User;
@@ -8,6 +6,11 @@ namespace Sunrise.Server.Database.Models.User;
 [Table("user_stats")]
 public class UserStats
 {
+    public UserStats()
+    {
+        LocalProperties = new LocalProperties();
+    }
+
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
@@ -53,64 +56,15 @@ public class UserStats
     [Column(DataTypes.DateTime)]
     public DateTime? BestCountryRankDate { get; set; }
 
-    // Local property
-    public long? Rank { get; set; }
+    public LocalProperties LocalProperties { get; set; }
 
     public UserStats Clone()
     {
         return (UserStats)MemberwiseClone();
     }
+}
 
-    public async Task UpdateWithScore(Score score, Score? prevScore, int timeElapsed)
-    {
-        var isNewScore = prevScore == null;
-        var isBetterScore = !isNewScore && score.TotalScore > prevScore!.TotalScore;
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
-
-        IncreaseTotalScore(score.TotalScore);
-        IncreaseTotalHits(score);
-        IncreasePlayTime(timeElapsed);
-        IncreasePlaycount();
-
-        if (isFailed || !score.IsRanked || score.BeatmapStatus != BeatmapStatus.Ranked && score.BeatmapStatus != BeatmapStatus.Approved)
-            return;
-
-        UpdateMaxCombo(score.MaxCombo);
-
-        if (isNewScore || isBetterScore)
-        {
-            RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
-
-            PerformancePoints =
-                await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
-            Accuracy = await Calculators.CalculateUserWeightedAccuracy(score.UserId, score.GameMode, score);
-        }
-    }
-
-    private void IncreaseTotalHits(Score newScore)
-    {
-        TotalHits += newScore.Count300 + newScore.Count100 + newScore.Count50;
-        if (GameMode is GameMode.Taiko or GameMode.Mania)
-            TotalHits += newScore.CountGeki + newScore.CountKatu;
-    }
-
-    private void UpdateMaxCombo(int combo)
-    {
-        MaxCombo = Math.Max(MaxCombo, combo);
-    }
-
-    private void IncreasePlayTime(int time)
-    {
-        PlayTime += time;
-    }
-
-    private void IncreaseTotalScore(long score)
-    {
-        TotalScore += score;
-    }
-
-    private void IncreasePlaycount()
-    {
-        PlayCount++;
-    }
+public class LocalProperties
+{
+    public long? Rank { get; set; }
 }

@@ -1,18 +1,17 @@
 using osu.Shared;
-using Sunrise.Server.Application;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
 using Watson.ORM.Core;
+using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Database.Models;
 
 [Table("score")]
 public class Score
 {
-
-    private DatabaseManager database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+    public Score()
+    {
+        LocalProperties = new LocalProperties(this);
+    }
 
     [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
@@ -69,7 +68,10 @@ public class Score
     public bool IsPassed { get; set; }
 
     [Column(DataTypes.Boolean, false)]
-    public bool IsRanked { get; set; }
+    public bool IsScoreable { get; set; }
+
+    [Column(DataTypes.Int, false)]
+    public SubmissionStatus SubmissionStatus { get; set; }
 
     [Column(DataTypes.Int, false)]
     public GameMode GameMode { get; set; }
@@ -92,87 +94,21 @@ public class Score
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double PerformancePoints { get; set; }
 
-    // TODO: Deprecate local properties.
-    // Local properties
-    public int? LeaderboardRank { get; set; }
+    public LocalProperties LocalProperties { get; set; }
+}
 
-    public async Task<int> GetLeaderboardRank()
-    {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        return await database.ScoreService.GetLeaderboardRank(this);
-    }
-
-    public Score SetNewScoreFromString(string scoreString, Beatmap beatmap)
-    {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
-        var split = scoreString.Split(':');
-        var session = sessions.GetSession(split[1].Trim());
-
-        if (session == null)
-            throw new Exception("Session not found for score submission");
-
-        BeatmapHash = split[0];
-        UserId = session.User.Id;
-        BeatmapId = beatmap.Id;
-        ScoreHash = split[2];
-        Count300 = int.Parse(split[3]);
-        Count100 = int.Parse(split[4]);
-        Count50 = int.Parse(split[5]);
-        CountGeki = int.Parse(split[6]);
-        CountKatu = int.Parse(split[7]);
-        CountMiss = int.Parse(split[8]);
-        TotalScore = int.Parse(split[9]);
-        MaxCombo = int.Parse(split[10]);
-        Perfect = bool.Parse(split[11]);
-        Grade = split[12];
-        Mods = (Mods)int.Parse(split[13]);
-        IsPassed = bool.Parse(split[14]);
-        IsRanked = beatmap.IsScoreable;
-        GameMode = (GameMode)int.Parse(split[15]);
-        WhenPlayed = DateTime.UtcNow;
-        OsuVersion = split[17];
-        BeatmapStatus = beatmap.Status;
-        ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null);
-        Accuracy = Calculators.CalculateAccuracy(this);
-        PerformancePoints = Calculators.CalculatePerformancePoints(session, this);
-        return this;
-    }
-
-    public async Task<string> GetString()
-    {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var time = (int)WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await database.UserService.GetUser(UserId))?.Username ?? "Unknown";
-
-        const string hasReplay = "1"; // We don't store score without replays
-
-        return
-            $"{Id}|{username}|{TotalScore}|{MaxCombo}|{Count50}|{Count100}|{Count300}|{CountMiss}|{CountKatu}|{CountGeki}|{Perfect}|{(int)Mods}|{UserId}|{LeaderboardRank ?? 0}|{time}|{hasReplay}";
-    }
-
-    public string ComputeOnlineHash(string username, string clientHash, string? storyboardHash)
-    {
-        return string.Format(
-            "chickenmcnuggets{0}o15{1}{2}smustard{3}{4}uu{5}{6}{7}{8}{9}{10}{11}Q{12}{13}{15}{14:yyMMddHHmmss}{16}{17}",
-            Count300 + Count100,
-            Count50,
-            CountGeki,
-            CountKatu,
-            CountMiss,
-            BeatmapHash,
-            MaxCombo,
-            Perfect,
-            username,
-            TotalScore,
-            Grade,
-            (int)Mods,
-            IsPassed,
-            (int)GameMode,
-            ClientTime,
-            OsuVersion,
-            clientHash,
-            storyboardHash).CreateMD5();
-    }
+public class LocalProperties(Score score)
+{
+    /**
+     * <summary>
+     *     Simplifies some mods to their base form.
+     *     <example>
+     *         DTNC -> DT
+     *     </example>
+     * </summary>
+     */
+    public Mods SerializedMods => score.Mods & ~Mods.Nightcore;
+    public bool IsRanked => score.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved;
+    
+    public int LeaderboardPosition { get; set; }
 }

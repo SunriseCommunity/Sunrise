@@ -7,6 +7,7 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Repositories;
 
@@ -58,8 +59,17 @@ public class SessionRepository
         return session;
     }
 
-    public void RemoveSession(Session session)
+    /*
+     * Soft remove current session from chats, multiplayer and spectating.
+     * While not removing it, so on request we could find current session and send LoginReply
+     */
+    public void SoftRemoveSession(Session session)
     {
+        session.Match?.RemovePlayer(session);
+
+        session.Spectating?.RemoveSpectator(session);
+        session.Spectating = null;
+
         foreach (var channel in _channels.GetChannels())
         {
             channel.RemoveUser(session.User.Id);
@@ -68,6 +78,13 @@ public class SessionRepository
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         session.User.LastOnlineTime = DateTime.UtcNow;
         _ = database.UserService.UpdateUser(session.User);
+
+        session.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
+    }
+
+    public void RemoveSession(Session session)
+    {
+        SoftRemoveSession(session);
 
         _sessions.TryRemove(session.Token, out _);
     }

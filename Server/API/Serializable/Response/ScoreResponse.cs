@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using osu.Shared;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;

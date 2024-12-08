@@ -1,4 +1,4 @@
-using Sunrise.Server.Application;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
@@ -27,7 +27,7 @@ public static class BeatmapService
     {
         var parsedStatus = Parsers.WebStatusToSearchStatus(ranked);
         var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
-        
+
         var beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, page, query);
 
         if (beatmapSets == null)
@@ -50,18 +50,10 @@ public static class BeatmapService
 
         if (beatmapSets == null) return null;
 
-        // TODO: Save beatmapSets to DB with beatmaps and add redis logic.
-
-        if (Configuration.IgnoreBeatmapRanking)
-            foreach (var b in beatmapSets)
-            {
-                b.StatusString = "ranked";
-
-                foreach (var beatmap in b.Beatmaps)
-                {
-                    beatmap.StatusString = "ranked";
-                }
-            }
+        foreach (var set in beatmapSets)
+        {
+            set.UpdateBeatmapRanking();
+        }
 
         return beatmapSets;
     }

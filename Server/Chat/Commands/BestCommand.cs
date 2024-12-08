@@ -4,6 +4,7 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
 
@@ -33,7 +34,7 @@ public class BestCommand : IChatCommand
             userId = user.Id;
         }
 
-        var scores = await database.ScoreService.GetUserBestScores(userId, session.Attributes.Status.PlayMode);
+        var scores = await database.ScoreService.GetUserScores(userId, session.Attributes.Status.PlayMode, ScoreTableType.Best);
 
         var bestScores = scores.OrderByDescending(x => x.PerformancePoints).Take(5).ToList();
 

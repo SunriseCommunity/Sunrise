@@ -67,15 +67,6 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
-    public void SendNewLogin()
-    {
-        var message =
-            "You have been logged in from another location. Please try again later.";
-
-        _helper.WritePacket(PacketType.ServerLoginReply, (int)LoginResponses.InvalidCredentials);
-        _helper.WritePacket(PacketType.ServerNotification, message);
-    }
-
     public void SendJoinChannel(ChatChannel channel)
     {
         _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel.Name);

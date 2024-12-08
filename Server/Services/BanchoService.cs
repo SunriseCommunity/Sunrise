@@ -17,7 +17,7 @@ public static class BanchoService
 
             // Note: In theory if user upon login still has a pending disconnect packet, we should ignore it.
             // Afraid this running this every time might cause issues, need to investigate.
-            if (packets.Any(p => p.Type == PacketType.ClientDisconnect && p.Type == PacketType.ClientStatusRequestOwn))
+            if (packets.Any(p => p.Type is PacketType.ClientDisconnect) && packets.Any(p => p.Type is PacketType.ClientStatusRequestOwn))
                 packets = packets.Where(p => p.Type != PacketType.ClientDisconnect).ToList();
 
             foreach (var packet in packets)

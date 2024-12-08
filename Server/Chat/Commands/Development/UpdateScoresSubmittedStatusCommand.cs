@@ -1,7 +1,7 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
-using Sunrise.Server.Managers;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
@@ -10,8 +10,8 @@ using Sunrise.Server.Types.Interfaces;
 
 namespace Sunrise.Server.Chat.Commands.Development;
 
-[ChatCommand("updatescoresbeatmapstatus", requiredPrivileges: UserPrivileges.Developer)]
-public class UpdateScoresBeatmapsStatusCommand : IChatCommand
+[ChatCommand("updatescoressubmittedstatus", requiredPrivileges: UserPrivileges.Developer)]
+public class UpdateScoresSubmittedStatusCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
@@ -26,11 +26,11 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = UpdateScoresBeatmapStatus(session);
+        _ = UpdateScoresSubmittedStatus(session);
         return Task.CompletedTask;
     }
 
-    private async Task UpdateScoresBeatmapStatus(Session session)
+    private async Task UpdateScoresSubmittedStatus(Session session)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -50,40 +50,36 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         foreach (var group in groupedScores)
         {
-            var isNeedsUpdate = group.Any(s => s.BeatmapStatus == BeatmapStatus.Unknown);
 
             scoresReviewedTotal += group.Count();
 
+            var isNeedsUpdate = group.Any(s => s.SubmissionStatus == SubmissionStatus.Unknown);
             if (!isNeedsUpdate) continue;
 
-            var beatmap = await BeatmapManager.GetBeatmapSet(session, beatmapId: group.Key);
+            var usersScores = group.ToList().GroupScoresByUserId();
 
-            var status = BeatmapStatus.NotSubmitted;
-
-            if (beatmap == null)
+            foreach (var userScores in usersScores)
             {
-                CommandRepository.SendMessage(session, $"Beatmap {group.Key} not found. Setting status to graveyard.");
-            }
-            else
-            {
-                status = beatmap.Status;
+                var scoresByMods = userScores.ToList().GroupBy(x => x.Mods);
+
+                foreach (var scores in scoresByMods)
+                {
+                    var bestScore = scores.Where(x => x.IsPassed).MaxBy(x => x.TotalScore);
+
+                    foreach (var score in scores)
+                    {
+                        score.SubmissionStatus = score == bestScore ? SubmissionStatus.Best : score.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+                        await database.ScoreService.UpdateScore(score);
+                    }
+                }
             }
 
-            foreach (var score in group)
-            {
-                score.BeatmapStatus = status;
-                await database.ScoreService.UpdateScore(score);
-            }
-
-            CommandRepository.SendMessage(session, $"Updated {group.Count()} scores for beatmap {group.Key} to status {status}");
+            CommandRepository.SendMessage(session, $"Updated {group.Count()} submitted statuses for scores {group.Key}");
             CommandRepository.SendMessage(session, $"Total scores reviewed: {scoresReviewedTotal}");
-
-            // Prevent rate limiting on beatmap mirrors
-            await Task.Delay(2000);
         }
 
         CommandRepository.SendMessage(session,
-            $"Updating beatmap status on scores is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
+            $"Updating submitted statuses on scores is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         Configuration.OnMaintenance = false;
 
