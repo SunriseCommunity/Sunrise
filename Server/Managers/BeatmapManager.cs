@@ -1,31 +1,24 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Repositories;
-using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Managers;
 
-public class BeatmapManager
+public static class BeatmapManager
 {
     public static async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
         string? beatmapHash = null, int? beatmapId = null)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null) return null;
 
-        var redis = ServicesProviderHolder.GetRequiredService<RedisRepository>();
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var beatmapSet = await redis.Get<BeatmapSet?>([
-            RedisKey.BeatmapSetBySetId(beatmapSetId ?? -1), RedisKey.BeatmapSetByHash(beatmapHash ?? ""),
-            RedisKey.BeatmapSetByBeatmapId(beatmapId ?? -1)
-        ]);
-
+        var beatmapSet = await database.BeatmapService.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
         if (beatmapSet != null) return beatmapSet;
-
-        // TODO: Add beatmapSet in to DB with beatmaps and move redis logic also to DB.
 
         if (beatmapId != null)
             beatmapSet =
@@ -41,22 +34,9 @@ public class BeatmapManager
             // TODO: Save null to cache if it requested map not found.
             return null;
 
-        if (Configuration.IgnoreBeatmapRanking)
-            foreach (var b in beatmapSet.Beatmaps)
-            {
-                b.StatusString = "ranked";
-            }
+        beatmapSet.UpdateBeatmapRanking();
 
-        // NOTE: Redis cache Timespan is temporary solution until I'm working on proper beatmap mirror (other project).
-
-        foreach (var b in beatmapSet.Beatmaps)
-        {
-            await redis.Set([RedisKey.BeatmapSetByHash(b.Checksum), RedisKey.BeatmapSetByBeatmapId(b.Id)],
-                beatmapSet,
-                TimeSpan.FromDays(30));
-        }
-
-        await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet, TimeSpan.FromDays(30));
+        await database.BeatmapService.SetCachedBeatmapSet(beatmapSet);
 
         return beatmapSet;
     }

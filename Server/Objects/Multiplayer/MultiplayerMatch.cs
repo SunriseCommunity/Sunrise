@@ -48,8 +48,10 @@ public class MultiplayerMatch
             if (updatedMatch.SpecialModes == MultiSpecialModes.FreeMod)
             {
                 foreach (var (slot, index) in updatedMatch.SlotId.Select((value, i) => (value, i)))
+                {
                     if (slot != -1)
                         Slots[index].UpdateMods(Match.ActiveMods & ~(Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime));
+                }
 
                 updatedMatch.ActiveMods &= Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime;
             }
@@ -62,13 +64,16 @@ public class MultiplayerMatch
                 updatedMatch.ActiveMods |= hostMods;
 
                 foreach (var (slot, index) in updatedMatch.SlotId.Select((value, i) => (value, i)))
+                {
                     if (slot != -1)
                         Slots[index].UpdateMods(Mods.None);
+                }
             }
         }
 
         if (updatedMatch.MultiTeamType != Match.MultiTeamType)
             foreach (var (slot, index) in updatedMatch.SlotId.Select((value, i) => (value, i)))
+            {
                 switch (updatedMatch.MultiTeamType)
                 {
                     case MultiTeamTypes.TagTeamVs:
@@ -81,6 +86,7 @@ public class MultiplayerMatch
                         Slots[index].UpdateTeam(SlotTeams.Neutral);
                         break;
                 }
+            }
 
         Match = updatedMatch;
         ApplyNewChanges();
@@ -143,7 +149,8 @@ public class MultiplayerMatch
 
     public void StartGame()
     {
-        if (Match.InProgress)
+        // Soft fix for InProgress being falsely true
+        if (Match.InProgress && Slots.Values.Any(s => s is { Status: MultiSlotStatus.Playing }))
             return;
 
         foreach (var slot in Slots.Values)
@@ -426,7 +433,10 @@ public class MultiplayerMatch
 
     private void UpdateSlots()
     {
-        foreach (var (slot, index) in Slots.Values.Select((value, i) => (value, i))) SetSlot(slot, index);
+        foreach (var (slot, index) in Slots.Values.Select((value, i) => (value, i)))
+        {
+            SetSlot(slot, index);
+        }
     }
 
     private void SetSlot(MultiplayerSlot slot, int index = -1)
@@ -455,7 +465,10 @@ public class MultiplayerMatch
         var removedPlayers = Players.Keys.Except(Match.SlotId).ToArray();
         var addedPlayers = Match.SlotId.Except(removedPlayers).Where(x => x != -1).ToArray();
 
-        foreach (var addedPlayer in addedPlayers) Players[addedPlayer].Match = this;
+        foreach (var addedPlayer in addedPlayers)
+        {
+            Players[addedPlayer].Match = this;
+        }
 
         foreach (var removedPlayer in removedPlayers)
         {

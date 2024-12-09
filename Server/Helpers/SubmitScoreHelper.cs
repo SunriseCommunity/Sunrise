@@ -2,10 +2,12 @@
 using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Helpers;
 
@@ -23,6 +25,23 @@ public static class SubmitScoreHelper
     {
         var message = string.Format(MetricsError, score.ScoreHash, session.User.Username, session.User.Id, reason);
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
+    }
+
+    public static void UpdateSubmissionStatus(Score score, Score? prevPBest)
+    {
+        if (IsScoreFailed(score))
+        {
+            score.SubmissionStatus = SubmissionStatus.Failed;
+            return;
+        }
+
+        if (prevPBest is null || score.TotalScore > prevPBest.TotalScore)
+        {
+            score.SubmissionStatus = SubmissionStatus.Best;
+            return;
+        }
+
+        score.SubmissionStatus = SubmissionStatus.Submitted;
     }
 
     public static bool IsScoreValid(Session session, Score score, string osuVersion, string clientHash,
@@ -103,13 +122,13 @@ public static class SubmitScoreHelper
             var obj = entry switch
             {
                 "RankedScore" => typeof(T) == typeof(Score) ? "TotalScore" : "RankedScore",
-                "Rank" => typeof(T) == typeof(Score) ? "LeaderboardRank" : "Rank",
+                "Rank" => typeof(T) == typeof(Score) ? "LocalProperties.LeaderboardPosition" : "LocalProperties.Rank",
                 "Pp" => "PerformancePoints",
                 _ => entry
             };
 
-            var beforeValue = before?.GetType().GetProperty(obj)?.GetValue(before);
-            var afterValue = after?.GetType().GetProperty(obj)?.GetValue(after);
+            var beforeValue = GetPropertyValue(before, obj);
+            var afterValue = GetPropertyValue(after, obj);
 
             if (dontShowPp && entry == "Pp")
             {
@@ -123,6 +142,27 @@ public static class SubmitScoreHelper
         }
 
         return result;
+    }
+
+    private static object? GetPropertyValue(object? obj, string propertyPath)
+    {
+        if (obj == null || string.IsNullOrEmpty(propertyPath))
+            return null;
+
+        var properties = propertyPath.Split('.');
+
+        foreach (var prop in properties)
+        {
+            if (obj == null) return null;
+
+            var propertyInfo = obj.GetType().GetProperty(prop);
+            if (propertyInfo == null)
+                throw new ArgumentException($"Property {prop} not found in {obj.GetType().Name}");
+
+            obj = propertyInfo.GetValue(obj);
+        }
+
+        return obj;
     }
 
     private static string GetChartEntry(string name, object? before, object? after)

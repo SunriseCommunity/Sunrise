@@ -19,9 +19,10 @@ public static class RedisKey
     public static string UserStats(int userId, GameMode mode) { return $"user:{userId}:stats:{(int)mode}"; }
     public static string AllUserStats(GameMode mode) { return $"user:all:stats:{(int)mode}"; }
     public static string AllUsers() { return "user:all"; }
-    public static string BeatmapSetByHash(string hash) { return $"beatmapset:hash:{hash}"; }
-    public static string BeatmapSetByBeatmapId(int id) { return $"beatmapset:beatmap:{id}"; }
-    public static string BeatmapSetBySetId(int id) { return $"beatmapset:set:{id}"; }
+    public static string BeatmapSetIdByHash(string hash) { return $"beatmapset_id:beatmap_hash:{hash}"; }
+    public static string BeatmapSetIdByBeatmapId(int id) { return $"beatmapset_id:beatmap_id:{id}"; }
+    
+    public static string BeatmapSetBySetId(int id) { return $"beatmapset:set_id:{id}"; }
     public static string Score(int scoreId) { return $"score:{scoreId}"; }
     public static string Scores(string id, string type) { return $"scores:{id}:leaderboardtype:{type}"; }
     public static string BeatmapSearch(string search) { return $"beatmapset:serach:{search}"; }
