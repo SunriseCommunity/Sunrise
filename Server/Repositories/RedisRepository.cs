@@ -12,13 +12,18 @@ public class RedisRepository
     private static readonly bool UseCache = Configuration.UseCache;
 
     private readonly IDatabase _redis = RedisConnection.GetDatabase();
+    
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
+    {
+        IncludeFields = true
+    };
 
     public async Task<T?> Get<T>(string key)
     {
         if (!UseCache) return default;
 
         var value = await _redis.StringGetAsync(key);
-        return value.HasValue ? JsonSerializer.Deserialize<T>(value!) : default;
+        return value.HasValue ? JsonSerializer.Deserialize<T>(value!, JsonSerializerOptions) : default;
     }
 
     public async Task<T?> Get<T>(string[] keys)
@@ -29,7 +34,7 @@ public class RedisRepository
 
         foreach (var value in values)
             if (value.HasValue)
-                return JsonSerializer.Deserialize<T>(value!);
+                return JsonSerializer.Deserialize<T>(value!, JsonSerializerOptions);
 
         return default;
     }
