@@ -88,6 +88,22 @@ public class WebController : ControllerBase
         return Ok();
     }
 
+
+
+    [HttpPost(RequestType.OsuGetBeatmapInfo)]
+    public IActionResult GetBeatmapInfo()
+    {
+        // This is a dummy response for a multiplayer matches.
+        // By my understanding, client sends us list of Filenames and/or Ids to be parsed into a list of beatmaps.
+        // This is probably done to ensure that downloaded beatmaps are the same for all players.
+        // BUT - we can't really find beatmaps by their filenames (check PS to find out why), so we just return a dummy response.
+        // With that we both satisfy the client and don't break anything. Even if map is not ranked, we will handle it properly on submission.
+        // P.S: Due to sanitization of filename, artist/title/creator not always match their actual values.
+        // If you found any problem with this solution, please create an issue for it. -richardscull
+
+        return Ok(string.Join("\n", Enumerable.Range(0, 100).Select(i => $"{i}||||1|N|N|N|N")));
+    }
+
     [HttpGet(RequestType.OsuMarkAsRead)]
     public IActionResult OsuMarkAsRead()
     {

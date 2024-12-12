@@ -34,6 +34,7 @@ public static class RequestType
     public const string OsuError = "osu-error.php";
     public const string LastFm = "lastfm.php";
     public const string OsuMarkAsRead = "osu-markasread.php";
+    public const string OsuGetBeatmapInfo = "osu-getbeatmapinfo.php";
     public const string BanchoConnect = "bancho_connect.php";
     public const string OsuSession = "osu-session.php";
     public const string CheckUpdates = "check-updates.php";
