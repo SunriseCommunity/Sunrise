@@ -128,5 +128,8 @@ Data/Backups/*
 # Logs
 logs/*
 
+# Grafana 
+grafana
+
 # Ignore appsettings.Production.json
 appsettings.Production.json
