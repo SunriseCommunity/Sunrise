@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.API.Managers;
@@ -390,6 +391,32 @@ public class UserController : ControllerBase
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
             return BadRequest(new ErrorResponse(error ?? "Failed to set banner"));
         }
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.ResetPass)]
+    public async Task<IActionResult> ResetPass([FromBody] ResetPassRequest? request)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (request == null || request.CurrentPassword == null || request.NewPassword == null)
+            return BadRequest(new ErrorResponse("Current password and new password is required"));
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var passcheck = await database.UserService.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: session.User.Username);
+
+        if (passcheck == null)
+            return BadRequest(new ErrorResponse("Current password is incorrect"));
+
+        if (request.NewPassword.Length is < 8 or > 32)
+            return BadRequest(new ErrorResponse("Password length should be between 8 and 32 characters."));
+
+        session.User.Passhash = request.NewPassword.GetPassHash();
+
+        await database.UserService.UpdateUser(session.User);
 
         return new OkResult();
     }
