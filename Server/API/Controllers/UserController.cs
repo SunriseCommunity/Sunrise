@@ -393,4 +393,27 @@ public class UserController : ControllerBase
 
         return new OkResult();
     }
+
+    [HttpPost(RequestType.ResetPass)]
+    public async Task<IActionResult> ResetPass([FromBody] ResetPassRequest? request)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var passcheck = await database.UserService.GetUser(passhash: request.OldPassword.GetPassHash(), username: session.User.Username);
+        
+        if (passcheck == null)
+            return BadRequest(new ErrorResponse("Invalid credentials"));
+
+        if (request.NewPassword.Length is < 8 or > 32)
+            return BadRequest(new ErrorResponse("Password length should be between 8 and 32 characters."));
+
+        session.User.Passhash = request.NewPassword.GetPassHash();
+
+        await database.UserService.UpdateUser(session.User);
+
+        return new OkResult();        
+    }
 }
