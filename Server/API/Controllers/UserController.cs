@@ -402,14 +402,14 @@ public class UserController : ControllerBase
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
-        if (request == null || request.OldPassword == null || request.NewPassword == null)
-            return BadRequest(new ErrorResponse("No assigned old or new password"));
+        if (request == null || request.CurrentPassword == null || request.NewPassword == null)
+            return BadRequest(new ErrorResponse("Current password and new password is required"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var passcheck = await database.UserService.GetUser(passhash: request.OldPassword.GetPassHash(), username: session.User.Username);
+        var passcheck = await database.UserService.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: session.User.Username);
 
         if (passcheck == null)
-            return BadRequest(new ErrorResponse("Invalid credentials"));
+            return BadRequest(new ErrorResponse("Current password is incorrect"));
 
         if (request.NewPassword.Length is < 8 or > 32)
             return BadRequest(new ErrorResponse("Password length should be between 8 and 32 characters."));
@@ -418,6 +418,6 @@ public class UserController : ControllerBase
 
         await database.UserService.UpdateUser(session.User);
 
-        return new OkResult();        
+        return new OkResult();
     }
 }
