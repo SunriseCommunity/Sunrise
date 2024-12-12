@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.API.Managers;
@@ -401,9 +402,12 @@ public class UserController : ControllerBase
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
+        if (request == null || request.OldPassword == null || request.NewPassword == null)
+            return BadRequest(new ErrorResponse("No assigned old or new password"));
+
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var passcheck = await database.UserService.GetUser(passhash: request.OldPassword.GetPassHash(), username: session.User.Username);
-        
+
         if (passcheck == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
 
