@@ -401,9 +401,9 @@ public class UserController : ControllerBase
         var session = await Request.GetSessionFromRequest();
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-
-        if (request == null || request.CurrentPassword == null || request.NewPassword == null)
-            return BadRequest(new ErrorResponse("Current password and new password is required"));
+        
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var passcheck = await database.UserService.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: session.User.Username);
