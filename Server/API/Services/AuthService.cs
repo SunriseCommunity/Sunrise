@@ -7,6 +7,7 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Services;
@@ -64,9 +65,16 @@ public static class AuthService
 
             if (result.Identity is not ClaimsIdentity identity)
                 return false;
-
+            
             var userIdClaim = identity.FindFirst(ClaimTypes.NameIdentifier) ?? identity.FindFirst("sub");
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var id))
+                return false;
+            
+            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+            var user = database.UserService.GetUser(id).Result;
+            
+            var hashClaim = identity.FindFirst(ClaimTypes.Hash); 
+            if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
                 return false;
 
             userId = id;
@@ -80,12 +88,18 @@ public static class AuthService
 
     private static string GenerateJwtToken(int userId, TimeSpan expires)
     {
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = database.UserService.GetUser(userId).Result;
+        
+        if (user == null)
+            throw new Exception("User not found while generating token");
+        
         var token = new JwtSecurityToken(
             "Sunrise",
             "Sunrise",
             [
-                new Claim(ClaimTypes.NameIdentifier, userId.ToString())
-                // TODO: Add password hash claim for password reset !
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Hash, $"{userId}{user.Passhash}".ToHash()),
             ],
             expires: DateTime.UtcNow.Add(expires),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)),
