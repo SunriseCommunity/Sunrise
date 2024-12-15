@@ -29,6 +29,7 @@ WHERE Id IN (
                ROW_NUMBER() OVER (PARTITION BY OwnerId, Type ORDER BY CreatedAt ASC) AS rn
 
         FROM user_file
+        WHERE Type IN (1, 2) -- Avatar and Banner
     )
     WHERE rn > 1
 );
