@@ -42,13 +42,15 @@ public class UserFileService
             Type = FileType.Avatar
         };
         
-        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Avatar);
         var prevRecord =  await _database.SelectFirstAsync<UserFile?>(exp);
 
         if (prevRecord != null)
         {
             record.Id = prevRecord.Id;
+            record.CreatedAt = prevRecord.CreatedAt;
             record = await _database.UpdateAsync(record);
+
         }
         else
         {
@@ -155,6 +157,7 @@ public class UserFileService
         if (prevRecord != null)
         {
             record.Id = prevRecord.Id;
+            record.CreatedAt = prevRecord.CreatedAt;
             record = await _database.UpdateAsync(record);
         }
         else
