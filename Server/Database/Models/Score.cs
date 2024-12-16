@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using osu.Shared;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Core;
@@ -94,6 +95,7 @@ public class Score
     [Column(DataTypes.Decimal, 100, 2, false)]
     public double PerformancePoints { get; set; }
 
+    [JsonIgnore]
     public LocalProperties LocalProperties { get; set; }
 }
 
@@ -108,7 +110,8 @@ public class LocalProperties(Score score)
      * </summary>
      */
     public Mods SerializedMods => score.Mods & ~Mods.Nightcore;
+
     public bool IsRanked => score.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved;
-    
+
     public int LeaderboardPosition { get; set; }
 }
