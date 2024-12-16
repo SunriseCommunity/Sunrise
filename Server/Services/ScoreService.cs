@@ -33,6 +33,14 @@ public static class ScoreService
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
+        // Note: I don't think mrekk will play on our server, so there is 99% that score with 2000 pp would be cheated
+        if (score.PerformancePoints >= 2000)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Too many performance points. Cheating?");
+            await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Auto-restricted for submitting impossible score");
+            return "error: no";
+        }
+
         var isScoreValid = SubmitScoreHelper.IsScoreValid(session,
             score,
             osuVersion,
@@ -104,6 +112,8 @@ public static class ScoreService
 
         await database.ScoreService.InsertScore(score);
         await database.UserService.Stats.UpdateUserStats(userStats);
+        
+        
 
         if (isCurrentScoreFailed || !score.IsScoreable)
             return "error: no"; // No need to create chart for failed or for scores that are not scoreable
