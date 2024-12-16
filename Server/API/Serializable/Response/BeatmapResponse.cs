@@ -21,29 +21,36 @@ public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? b
     [JsonPropertyName("status")]
     public string Status { get; set; } = beatmap.StatusString;
 
-    // NOTE: While it should for all star_rating which is not osu do recalculation, it's too heavy for the current manager 
-    // (need to download each difficulty and recalculate, for bulk requests it can take reaaaly long time).
-    // So, for now, I will just skip recalculation.
-    //
-    // TODO: In the future, add recalculation for all use cases.
-
     [JsonPropertyName("star_rating_osu")]
-    public double StarRating { get; set; } = beatmap.ModeInt != 0 ? 0 : beatmap.DifficultyRating;
+    public double StarRating { get; set; } = beatmap.ModeInt switch
+    {
+        0 => beatmap.DifficultyRating,
+        _ => 0
+    };
 
     [JsonPropertyName("star_rating_taiko")]
-    public double StarRatingTaiko { get; set; } = beatmap.ModeInt is 1 or 0
-        ? beatmap.DifficultyRating
-        : 0;
+    public double StarRatingTaiko { get; set; } = beatmap.ModeInt switch
+    {
+        1 => beatmap.DifficultyRating,
+        0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 1 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+        _ => 0
+    };
 
     [JsonPropertyName("star_rating_ctb")]
-    public double StarRatingCatch { get; set; } = beatmap.ModeInt is 2 or 0
-        ? beatmap.DifficultyRating
-        : 0;
+    public double StarRatingCatch { get; set; } = beatmap.ModeInt switch
+    {
+        2 => beatmap.DifficultyRating,
+        0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 2 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+        _ => 0
+    };
 
     [JsonPropertyName("star_rating_mania")]
-    public double StarRatingMania { get; set; } = beatmap.ModeInt is 3 or 0
-        ? beatmap.DifficultyRating
-        : 0;
+    public double StarRatingMania { get; set; } = beatmap.ModeInt switch
+    {
+        3 => beatmap.DifficultyRating,
+        0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 3 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+        _ => 0
+    };
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; } = beatmap.TotalLength;
@@ -107,8 +114,10 @@ public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? b
 
     [JsonPropertyName("creator")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Creator { get; set; } = beatmapSet?.Creator; // TODO: Make custom beatmap API return creator name for beatmap
+    public string? Creator { get; set; } = beatmapSet?.RelatedUsers?.FirstOrDefault(u => u.Id == beatmap.UserId)?.Username ?? "Unknown";
 
     [JsonPropertyName("creator_id")]
     public int CreatorId { get; set; } = beatmap.UserId;
+
+    // TODO: Add playcount and favourite count
 }

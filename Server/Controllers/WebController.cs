@@ -88,8 +88,6 @@ public class WebController : ControllerBase
         return Ok();
     }
 
-
-
     [HttpPost(RequestType.OsuGetBeatmapInfo)]
     public IActionResult GetBeatmapInfo()
     {

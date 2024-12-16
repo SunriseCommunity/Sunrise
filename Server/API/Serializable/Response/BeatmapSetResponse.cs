@@ -39,5 +39,17 @@ public class BeatmapSetResponse(BaseSession session, BeatmapSet beatmapSet)
 
     [JsonPropertyName("beatmaps")]
     public List<BeatmapResponse> Beatmaps { get; set; } =
-        beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(session, beatmap)).ToList();
+        beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(session, beatmap, beatmapSet)).ToList();
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = beatmapSet.Description?.description ?? "";
+
+    [JsonPropertyName("genre")]
+    public string Genre { get; set; } = beatmapSet.Genre?.Name ?? "Unknown";
+
+    [JsonPropertyName("language")]
+    public string Language { get; set; } = beatmapSet.Language?.Name ?? "Unknown";
+
+    [JsonPropertyName("tags")]
+    public string[] Tags { get; set; } = beatmapSet.Tags.Split(' ');
 }

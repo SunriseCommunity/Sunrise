@@ -114,13 +114,13 @@ public class BeatmapSet
     public Beatmap[] ConvertedBeatmaps { get; set; }
 
     [JsonPropertyName("description")]
-    public BeatmapSetDescription Description { get; set; }
+    public BeatmapSetDescription? Description { get; set; }
 
     [JsonPropertyName("genre")]
     public BeatmapSetGenre Genre { get; set; }
 
     [JsonPropertyName("language")]
-    public BeatmapSetLanguage Language { get; set; }
+    public BeatmapSetLanguage? Language { get; set; }
 
     [JsonPropertyName("related_users")]
     public CompactUser[]? RelatedUsers { get; set; }
@@ -191,6 +191,9 @@ public class BeatmapSetDescription
 
 public class CompactUser
 {
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
     [JsonPropertyName("avatar_url")]
     public string AvatarUrl { get; set; }
 
