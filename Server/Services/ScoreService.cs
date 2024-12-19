@@ -27,16 +27,16 @@ public static class ScoreService
 
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid mods");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid mods");
             return "error: no";
         }
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        // Note: I don't think mrekk will play on our server, so there is 99% that score with 2000 pp would be cheated
-        if (score.PerformancePoints >= 2000)
+        // Note: I don't think mrekk will play on our server, so there is 99% that score with >=2500 pp would be cheated
+        if (score.PerformancePoints >= 2500)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Too many performance points. Cheating?");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Auto-restricted for submitting impossible score");
             return "error: no";
         }
@@ -51,7 +51,7 @@ public static class ScoreService
 
         if (!isScoreValid)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Invalid checksums");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid checksums");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Invalid checksums on score submission");
             return "error: no";
         }
@@ -65,7 +65,7 @@ public static class ScoreService
 
         if (userStats == null)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "User stats not found");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "User stats not found");
             return "error: no";
         }
 
@@ -88,7 +88,7 @@ public static class ScoreService
 
         if (!isCurrentScoreFailed && score.ReplayFileId == null)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Replay file not found for passed score");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Replay file not found for passed score");
             return "error: no";
         }
 
@@ -96,7 +96,7 @@ public static class ScoreService
 
         if (scoreWithSameHash != null)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, score, "Score with same hash already exists");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
             return "error: no";
         }
 
@@ -112,8 +112,7 @@ public static class ScoreService
 
         await database.ScoreService.InsertScore(score);
         await database.UserService.Stats.UpdateUserStats(userStats);
-        
-        
+
 
         if (isCurrentScoreFailed || !score.IsScoreable)
             return "error: no"; // No need to create chart for failed or for scores that are not scoreable

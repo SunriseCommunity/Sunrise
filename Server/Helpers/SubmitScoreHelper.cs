@@ -21,9 +21,9 @@ public static class SubmitScoreHelper
             $"[https://osu.{Configuration.Domain}/user/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
     }
 
-    public static void ReportRejectionToMetrics(Session session, Score score, string reason)
+    public static void ReportRejectionToMetrics(Session session, string scoreData, string reason)
     {
-        var message = string.Format(MetricsError, score.ScoreHash, session.User.Username, session.User.Id, reason);
+        var message = string.Format(MetricsError, scoreData, session.User.Username, session.User.Id, reason);
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
     }
 
@@ -50,7 +50,7 @@ public static class SubmitScoreHelper
         var userOsuVersion = session.Attributes.OsuVersion?.Split(".")[0] ?? "";
         var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
 
-        return new[]
+        var checks = new[]
         {
             string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
             string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
@@ -59,7 +59,15 @@ public static class SubmitScoreHelper
                 onlineBeatmapHash,
                 StringComparison
                     .Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
-        }.All(x => x);
+        };
+
+        if (checks.All(x => x))
+        {
+            return true;
+        }
+
+        ReportRejectionToMetrics(session, $"b{osuVersion}|{userOsuVersion}|{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}", "Invalid checksums on score submission");
+        return false;
     }
 
     public static async Task<string> GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser,
