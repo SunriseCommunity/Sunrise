@@ -104,6 +104,7 @@ public enum CountryCodes : short
     KH = 114,
     KI = 115,
     KM = 116,
+    KR = 119,
     KW = 120,
     KY = 121,
     KZ = 122,
