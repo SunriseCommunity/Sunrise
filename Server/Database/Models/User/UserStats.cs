@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using osu.Shared;
+﻿using osu.Shared;
 using Watson.ORM.Core;
 
 namespace Sunrise.Server.Database.Models.User;
@@ -57,7 +56,6 @@ public class UserStats
     [Column(DataTypes.DateTime)]
     public DateTime? BestCountryRankDate { get; set; }
 
-    [JsonIgnore]
     public LocalProperties LocalProperties { get; set; }
 
     public UserStats Clone()

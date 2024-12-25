@@ -11,12 +11,12 @@ public class RedisRepository
 
     private static readonly bool UseCache = Configuration.UseCache;
 
-    private readonly IDatabase _redis = RedisConnection.GetDatabase();
-    
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
         IncludeFields = true
     };
+
+    private readonly IDatabase _redis = RedisConnection.GetDatabase();
 
     public async Task<T?> Get<T>(string key)
     {
@@ -33,8 +33,10 @@ public class RedisRepository
         var values = await _redis.StringGetAsync(keys.Select(x => (RedisKey)x).ToArray());
 
         foreach (var value in values)
+        {
             if (value.HasValue)
                 return JsonSerializer.Deserialize<T>(value!, JsonSerializerOptions);
+        }
 
         return default;
     }
@@ -43,7 +45,8 @@ public class RedisRepository
     {
         if (!UseCache) return;
 
-        await _redis.StringSetAsync(new RedisKey(key), JsonSerializer.Serialize(value),
+        await _redis.StringSetAsync(new RedisKey(key),
+            JsonSerializer.Serialize(value, JsonSerializerOptions),
             cacheTime ?? TimeSpan.FromSeconds(Configuration.RedisCacheLifeTime));
     }
 
@@ -52,7 +55,9 @@ public class RedisRepository
         if (!UseCache) return;
 
         foreach (var t in keys)
+        {
             await Set(t, value, cacheTime);
+        }
     }
 
     public async Task Remove(string key)
@@ -77,11 +82,13 @@ public class RedisRepository
         var entries = await _redis.SortedSetRangeByRankAsync(key);
 
         foreach (var entry in entries)
+        {
             if (entry.ToString().EndsWith(":" + value))
             {
                 var rank = await _redis.SortedSetRankAsync(key, entry, Order.Descending);
                 return rank;
             }
+        }
 
         return null;
     }
@@ -91,8 +98,10 @@ public class RedisRepository
         var entries = await _redis.SortedSetRangeByRankAsync(key);
 
         foreach (var entry in entries)
+        {
             if (entry.ToString().EndsWith(":" + value))
                 return await _redis.SortedSetRemoveAsync(key, entry);
+        }
 
         return false;
     }
