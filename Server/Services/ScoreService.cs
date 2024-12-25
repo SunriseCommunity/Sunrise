@@ -43,7 +43,6 @@ public static class ScoreService
 
         var isScoreValid = SubmitScoreHelper.IsScoreValid(session,
             score,
-            osuVersion,
             clientHash,
             beatmapHash,
             beatmap.Checksum,

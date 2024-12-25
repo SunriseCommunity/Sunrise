@@ -44,15 +44,13 @@ public static class SubmitScoreHelper
         score.SubmissionStatus = SubmissionStatus.Submitted;
     }
 
-    public static bool IsScoreValid(Session session, Score score, string osuVersion, string clientHash,
+    public static bool IsScoreValid(Session session, Score score, string clientHash,
         string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
     {
-        var userOsuVersion = session.Attributes.OsuVersion?.Split(".")[0] ?? "";
         var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
 
         var checks = new[]
         {
-            string.Equals($"b{osuVersion}", userOsuVersion, StringComparison.Ordinal),
             string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
             string.Equals(score.ScoreHash, computedOnlineHash, StringComparison.Ordinal),
             string.Equals(beatmapHash,
@@ -66,7 +64,7 @@ public static class SubmitScoreHelper
             return true;
         }
 
-        ReportRejectionToMetrics(session, $"b{osuVersion}|{userOsuVersion}|{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}", "Invalid checksums on score submission");
+        ReportRejectionToMetrics(session, $"{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}", "Invalid checksums on score submission");
         return false;
     }
 
