@@ -52,6 +52,8 @@ public static class Configuration
     public static bool IgnoreBeatmapRanking =>
         Config.GetSection("General").GetValue<bool?>("IgnoreBeatmapRanking") ?? false;
 
+    public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
+
     public static string[] BannedIps => Config.GetSection("General").GetSection("BannedIps").Get<string[]>() ?? [];
 
     // Bot section
@@ -90,7 +92,7 @@ public static class Configuration
     private static void AddObservatoryUrls()
     {
         if (string.IsNullOrEmpty(ObservatoryUrl)) throw new Exception("Observatory URL is empty. Please check your configuration. Check README if you have issues with setting up Observatory.");
-        
+
         ExternalApis.AddRange([
             new ExternalApi(ApiType.BeatmapDownload, ApiServer.Observatory, $"http://{ObservatoryUrl}/osu/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}", 0, 1),
@@ -114,8 +116,6 @@ public static class Configuration
     {
         var apiToken = Config.GetSection("API").GetValue<string?>("TokenSecret");
         if (string.IsNullOrEmpty(apiToken)) throw new Exception("API token is empty. Please check your configuration.");
-        
-        
 
         return apiToken;
     }

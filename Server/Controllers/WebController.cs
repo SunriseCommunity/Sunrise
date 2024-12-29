@@ -130,6 +130,9 @@ public class WebController : ControllerBase
     [HttpGet(RequestType.OsuGetSeasonalBackground)]
     public IActionResult GetSeasonal()
     {
+        if (!Configuration.UseCustomBackgrounds)
+            return Redirect($"https://osu.ppy.sh/web/{RequestType.OsuGetSeasonalBackground}");
+
         var result = AssetService.GetSeasonalBackgrounds();
         return Ok(result);
     }
