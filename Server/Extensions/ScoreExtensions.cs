@@ -126,6 +126,8 @@ public static class ScoreExtensions
             ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null)
         };
 
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+
         score.Accuracy = Calculators.CalculateAccuracy(score);
         score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score);
 
