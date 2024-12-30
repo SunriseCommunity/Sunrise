@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using osu.Shared;
 using RosuPP;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
@@ -10,6 +9,7 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Enums;
 using Beatmap = RosuPP.Beatmap;
 using Mods = osu.Shared.Mods;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Utils;
 
@@ -24,7 +24,7 @@ public static class Calculators
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
         var beatmap = Beatmap.FromBytes(bytesPointer);
 
-        beatmap.Convert((Mode)score.GameMode);
+        beatmap.Convert((Mode)score.GameMode.ToVanillaGameMode());
 
         var result = GetUserPerformance(score).Calculate(beatmap.Context);
 
@@ -48,7 +48,8 @@ public static class Calculators
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
         var beatmap = Beatmap.FromBytes(bytesPointer);
 
-        beatmap.Convert((Mode)mode);
+        var scoreVanillaGameMode = mode % 4;
+        beatmap.Convert((Mode)scoreVanillaGameMode);
 
         var difficulty = Difficulty.New();
         difficulty.IMods((uint)mods);
@@ -74,7 +75,8 @@ public static class Calculators
         var bytesPointer = new Sliceu8(GCHandle.Alloc(beatmapBytes, GCHandleType.Pinned), (uint)beatmapBytes.Length);
         var beatmap = Beatmap.FromBytes(bytesPointer);
 
-        beatmap.Convert((Mode)mode);
+        var scoreVanillaGameMode = mode % 4;
+        beatmap.Convert((Mode)scoreVanillaGameMode);
 
         var ppList = new List<double>();
 
@@ -109,7 +111,7 @@ public static class Calculators
     public static async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        
+
         var user = await database.UserService.GetUser(userId);
         if (user == null || user.IsRestricted) return 0;
 
@@ -136,7 +138,7 @@ public static class Calculators
     public static async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        
+
         var user = await database.UserService.GetUser(userId);
         if (user == null || user.IsRestricted) return 0;
 
@@ -165,11 +167,12 @@ public static class Calculators
     {
         var totalHits = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
 
-        if (score.GameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
+        var scoreVanillaGameMode = score.GameMode.ToVanillaGameMode();
+        if ((GameMode)scoreVanillaGameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
 
         if (totalHits == 0) return 0;
 
-        return score.GameMode switch
+        return (GameMode)scoreVanillaGameMode switch
         {
             GameMode.Standard => (float)(score.Count300 * 300 + score.Count100 * 100 + score.Count50 * 50) /
                 (totalHits * 300) * 100,

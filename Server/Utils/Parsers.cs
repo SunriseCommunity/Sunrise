@@ -136,4 +136,9 @@ public static class Parsers
     {
         return (int)time.TotalSeconds;
     }
+
+    public static bool IsSingleMod(this Mods flags)
+    {
+        return flags != Mods.None && (flags & flags - 1) == 0;
+    }
 }

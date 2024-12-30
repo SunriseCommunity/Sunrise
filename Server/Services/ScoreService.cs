@@ -8,6 +8,7 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
@@ -28,6 +29,14 @@ public static class ScoreService
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid mods");
+            return "error: no";
+        }
+
+        // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
+        var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
+        if ((int)score.GameMode < 4 && notStandardMods is not Mods.None || !notStandardMods.IsSingleMod())
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
             return "error: no";
         }
 
@@ -136,11 +145,14 @@ public static class ScoreService
         return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods,
+    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
+
+        gameMode = gameMode.EnrichWithMods(mods);
+
+        var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, session.User);
         var scores = databaseScores.UpdateLeaderboardPositions();
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);

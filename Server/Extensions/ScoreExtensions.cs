@@ -5,6 +5,7 @@ using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Extensions;
 
@@ -82,12 +83,13 @@ public static class ScoreExtensions
     {
         var leaderboard = GetScoresGroupedByUsersBest(scores);
 
-        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode); 
+        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode);
+
         foreach (var oldScore in oldScores)
         {
             scores.Remove(oldScore);
         }
-        
+
         leaderboard.Add(score);
         leaderboard = GetScoresGroupedByUsersBest(leaderboard);
         leaderboard = leaderboard.SortScoresByTotalScore();
@@ -130,6 +132,7 @@ public static class ScoreExtensions
 
         score.Accuracy = Calculators.CalculateAccuracy(score);
         score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score);
+        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
 
         return score;
     }
@@ -173,7 +176,7 @@ public static class ScoreExtensions
             score.Grade,
             (int)score.Mods,
             score.IsPassed,
-            (int)score.GameMode,
+            (int)score.GameMode.ToVanillaGameMode(),
             score.ClientTime,
             score.OsuVersion,
             clientHash,

@@ -91,9 +91,26 @@ public static class SubmitScoreHelper
 
     public static bool IsHasInvalidMods(Mods mods)
     {
-        // TODO: Support Relax and SCV2 at some point.
-        return mods.HasFlag(Mods.Relax) || mods.HasFlag(Mods.Autoplay) || mods.HasFlag(Mods.Target) ||
-               mods.HasFlag(Mods.ScoreV2);
+        return mods.HasFlag(Mods.Target);
+    }
+
+    /// <summary>
+    ///     This method checks if the score has any non-standard mods.
+    ///     If the score has any of the following mods, it will be considered as non-standard:
+    ///     <see cref="Mods.ScoreV2" />, <see cref="Mods.Relax" />, <see cref="Mods.Autoplay" />
+    /// </summary>
+    /// <param name="mods"></param>
+    /// <returns></returns>
+    public static Mods TryGetSelectedNotStandardMods(Mods mods)
+    {
+        Mods[] prioritizedMods =
+        [
+            Mods.ScoreV2,
+            Mods.Relax,
+            Mods.Autoplay
+        ];
+
+        return prioritizedMods.Where(mod => mods.HasFlag(mod)).Aggregate(Mods.None, (current, mod) => current | mod);
     }
 
     public static int GetTimeElapsed(Score score, int scoreTime, int scoreFailTime)

@@ -1,9 +1,9 @@
 using System.IO.Compression;
 using Hangfire;
-using osu.Shared;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Types.Enums;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Application;
 
@@ -20,9 +20,9 @@ public static class BackgroundTasks
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        for (var i = 0; i < 4; i++)
+        foreach (var i in Enum.GetValues<GameMode>())
         {
-            var usersStats = await database.UserService.Stats.GetAllUserStats((GameMode)i, LeaderboardSortType.Pp);
+            var usersStats = await database.UserService.Stats.GetAllUserStats(i, LeaderboardSortType.Pp);
 
             foreach (var stats in usersStats)
             {

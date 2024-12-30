@@ -1,7 +1,5 @@
 using System.Text.Json;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using osu.Shared;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Request;
 using Sunrise.Server.API.Serializable.Response;
@@ -15,6 +13,7 @@ using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 using AuthService = Sunrise.Server.API.Services.AuthService;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Controllers;
 
@@ -54,7 +53,6 @@ public class UserController : ControllerBase
         if (mode == null) return Ok(new UserResponse(user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var stats = await database.UserService.Stats.GetUserStats(id, (GameMode)mode);
@@ -110,7 +108,8 @@ public class UserController : ControllerBase
     [Route("{id:int}/graph")]
     public async Task<IActionResult> GetUserGraphData(int id, [FromQuery(Name = "mode")] int mode)
     {
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var userStats = await database.UserService.Stats.GetUserStats(id, (GameMode)mode);
@@ -145,7 +144,8 @@ public class UserController : ControllerBase
     {
         if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
 
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -170,7 +170,8 @@ public class UserController : ControllerBase
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 0)
     {
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -236,7 +237,8 @@ public class UserController : ControllerBase
         if (leaderboardType is < 0 or > 1 or null)
             return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
 
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -341,7 +343,8 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetUserMedals(int id,
         [FromQuery(Name = "mode")] int mode)
     {
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
@@ -401,7 +404,7 @@ public class UserController : ControllerBase
         var session = await Request.GetSessionFromRequest();
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 

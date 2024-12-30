@@ -1,5 +1,4 @@
 ﻿using DatabaseWrapper.Core;
-using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
@@ -11,6 +10,7 @@ using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database;
 
@@ -90,7 +90,7 @@ public sealed class DatabaseManager
         _redis.FlushAllCache();
         _logger.LogInformation("Cache flushed. Rebuilding user ranks...");
 
-        for (var i = 0; i < 4; i++)
+        foreach (var i in Enum.GetValues(typeof(GameMode)))
         {
             UserService.Stats.SetAllUserRanks((GameMode)i).Wait();
         }

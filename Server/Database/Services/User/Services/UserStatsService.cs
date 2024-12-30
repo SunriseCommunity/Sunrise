@@ -1,11 +1,11 @@
 using DatabaseWrapper.Core;
 using ExpressionTree;
-using osu.Shared;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Services.User.Services;
 
@@ -44,8 +44,19 @@ public class UserStatsService
 
         if (stats == null)
         {
-            _logger.LogCritical($"User stats not found for user {userId} in mode {mode}. Is database corrupted?");
-            return null;
+            var user = await _services.UserService.GetUser(userId);
+            if (user == null) return null;
+
+            _logger.LogCritical($"User stats not found for user {userId} in mode {mode}. Creating new stats.");
+
+            stats = new UserStats
+            {
+                UserId = userId,
+                GameMode = mode
+            };
+
+            await InsertUserStats(stats);
+            stats = await _database.SelectFirstAsync<UserStats?>(exp);
         }
 
         await _redis.Set(RedisKey.UserStats(userId, mode), stats);
@@ -174,7 +185,7 @@ public class UserStatsService
     {
         var usersStats = await GetAllUserStats(mode, LeaderboardSortType.Pp);
         if (usersStats.Count == 0) return;
-        
+
         usersStats.Sort((x, y) => y.PerformancePoints.CompareTo(x.PerformancePoints));
 
         foreach (var stats in usersStats)
