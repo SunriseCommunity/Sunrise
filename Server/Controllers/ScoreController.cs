@@ -6,6 +6,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Controllers;
 
@@ -39,8 +40,15 @@ public class ScoreController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var result = await ScoreService.SubmitScore(session, scoreSerialized, beatmapHash, scoreTime, scoreFailTime,
-            osuVersion, clientHash, replayFile, storyboardHash);
+        var result = await ScoreService.SubmitScore(session,
+            scoreSerialized,
+            beatmapHash,
+            scoreTime,
+            scoreFailTime,
+            osuVersion,
+            clientHash,
+            replayFile,
+            storyboardHash);
         return await Task.FromResult<IActionResult>(Ok(result));
     }
 

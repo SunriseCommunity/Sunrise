@@ -1,4 +1,3 @@
-using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -8,6 +7,7 @@ using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Chat.Commands.Development;
 

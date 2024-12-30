@@ -9,6 +9,7 @@ using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Types.Enums;
 using AuthService = Sunrise.Server.API.Services.AuthService;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Controllers;
 

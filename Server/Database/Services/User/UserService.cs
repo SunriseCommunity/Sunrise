@@ -1,11 +1,11 @@
 using ExpressionTree;
-using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Database.Services.User.Services;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
 using Watson.ORM.Sqlite;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Services.User;
 
@@ -110,7 +110,7 @@ public class UserService
 
         if (session != null)
             await session.UpdateUser(user);
-        
+
         await _redis.Remove(RedisKey.AllUsers());
 
         await _redis.Set(
@@ -120,7 +120,7 @@ public class UserService
             ],
             user);
     }
-    
+
     public async Task<List<Models.User.User>?> GetAllUsers(bool useCache = true)
     {
         var cachedStats = await _redis.Get<List<Models.User.User>>(RedisKey.AllUsers());

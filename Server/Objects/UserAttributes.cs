@@ -1,10 +1,11 @@
 using HOPEless.Bancho.Objects;
-using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Types.Enums;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Objects;
 
@@ -55,7 +56,7 @@ public class UserAttributes
             CountryCode = byte.Parse((Country ?? User.Country).ToString()),
             Permissions = User.GetPrivilegeRank(), // FIXME: Chat color doesn't work
             Rank = (int)userRank,
-            PlayMode = GetCurrentGameMode(),
+            PlayMode = GetCurrentGameMode().ToVanillaGameMode(),
             UsesOsuClient = UsesOsuClient
         };
     }
@@ -89,7 +90,7 @@ public class UserAttributes
 
     public GameMode GetCurrentGameMode()
     {
-        return Status.PlayMode;
+        return ((GameMode)Status.PlayMode).EnrichWithMods(Status.CurrentMods);
     }
 
     public BanchoUserStatus GetPlayerStatus()

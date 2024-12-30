@@ -1,4 +1,3 @@
-using osu.Shared;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -7,6 +6,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Chat.Commands.Development;
 
@@ -47,7 +47,6 @@ public class UpdateUsersBestComboCommand : IChatCommand
         {
             var allScores = await database.ScoreService.GetBestScoresByGameMode(mode);
             var groupedScores = allScores.Where(x => x.IsScoreable).GroupBy(x => x.UserId);
-
 
             foreach (var group in groupedScores)
             {

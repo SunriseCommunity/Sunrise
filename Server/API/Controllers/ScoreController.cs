@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using osu.Shared;
 using Sunrise.Server.API.Managers;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Controllers;
 
@@ -61,7 +61,8 @@ public class ScoreController : ControllerBase
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        if (mode is < 0 or > 3) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 

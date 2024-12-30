@@ -1,9 +1,9 @@
 using ExpressionTree;
-using osu.Shared;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
 using Watson.ORM.Sqlite;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Services.User.Services;
 

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
-using osu.Shared;
 using Sunrise.Server.Database.Models.User;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Serializable.Response;
 

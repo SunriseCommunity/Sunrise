@@ -8,6 +8,7 @@ using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Services.Score;
 
@@ -52,7 +53,7 @@ public class ScoreService
             .PrependAnd("SubmissionStatus", OperatorEnum.Equals, (int)SubmissionStatus.Best);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
-      
+
         foreach (var score in scores.ToList())
         {
             var scoreUser = await _services.UserService.GetUser(score.UserId);
@@ -80,7 +81,7 @@ public class ScoreService
     {
         var user = await _services.UserService.GetUser(userId);
         if (user.IsRestricted) return [];
-      
+
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
 
@@ -135,7 +136,7 @@ public class ScoreService
     {
         var user = await _services.UserService.GetUser(userId);
         if (user.IsRestricted) return [];
-      
+
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
 

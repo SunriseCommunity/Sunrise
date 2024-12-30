@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
-using osu.Shared;
 using Watson.ORM.Core;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Models.User;
 

@@ -34,7 +34,7 @@ public class BestCommand : IChatCommand
             userId = user.Id;
         }
 
-        var scores = await database.ScoreService.GetUserScores(userId, session.Attributes.Status.PlayMode, ScoreTableType.Best);
+        var scores = await database.ScoreService.GetUserScores(userId, (GameMode)session.Attributes.Status.PlayMode, ScoreTableType.Best);
 
         var bestScores = scores.OrderByDescending(x => x.PerformancePoints).Take(5).ToList();
 
