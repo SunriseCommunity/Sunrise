@@ -23,15 +23,22 @@ public static class ScoreService
         if (beatmap == null || beatmapSet == null)
             throw new Exception("Invalid request: BeatmapSet not found");
 
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+
         var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap);
+        var dbScore = await database.ScoreService.GetScore(score.ScoreHash);
+
+        if (dbScore != null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
+            return "error: no";
+        }
 
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid mods");
             return "error: no";
         }
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         // Note: I don't think mrekk will play on our server, so there is 99% that score with >=2500 pp would be cheated
         if (score.PerformancePoints >= 2500)
