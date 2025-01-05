@@ -162,7 +162,7 @@ public class ScoreService
                 scoreUser?.IsRestricted == true) scores.Remove(score);
         }
 
-        return scores.SortScoresByTotalScore();
+        return scores.SortScoresByTheirScoreValue();
     }
 
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)

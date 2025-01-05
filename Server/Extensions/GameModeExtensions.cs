@@ -36,4 +36,12 @@ public static class GameModeExtensions
 
         return mode;
     }
+
+    public static bool IsGameModeWithoutScoreMultiplier(this GameMode mode)
+    {
+        var isRelax = mode is GameMode.RelaxStandard or GameMode.RelaxTaiko or GameMode.RelaxCatchTheBeat;
+        var isAutopilot = mode == GameMode.AutopilotStandard;
+
+        return isRelax || isAutopilot;
+    }
 }

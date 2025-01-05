@@ -41,11 +41,11 @@ public static class ScoreService
             return "error: no";
         }
 
-
         var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
 
-        var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && notStandardMods is not Mods.None;
-        var isNonSupportedNonStandardMod = (int)score.GameMode < 4 && notStandardMods is not Mods.None;
+        var hasNonStandardMods = notStandardMods is not Mods.None;
+        var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
+        var isNonSupportedNonStandardMod = (int)score.GameMode < 4 && hasNonStandardMods;
 
         // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
         if (isHasMoreThanOneNotStandardMod || isNonSupportedNonStandardMod)
@@ -53,9 +53,9 @@ public static class ScoreService
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
             return "error: no";
         }
-      
-        // Note: I don't think mrekk will play on our server, so there is 99% that score with >=2500 pp would be cheated
-        if (score.PerformancePoints >= 2500)
+
+        // Auto-restrict players who submit scores with too many performance points on standard game modes
+        if (score.PerformancePoints >= 2500 && !hasNonStandardMods)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Auto-restricted for submitting impossible score");
