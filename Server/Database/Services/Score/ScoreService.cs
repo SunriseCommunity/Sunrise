@@ -60,7 +60,7 @@ public class ScoreService
             if (scoreUser?.IsRestricted == true) scores.Remove(score);
         }
 
-        return scores.GetScoresGroupedByBeatmapBest().SortScoresByPerformancePoints();
+        return scores.GetScoresGroupedByUsersBest().SortScoresByPerformancePoints();
     }
 
     public async Task<Models.Score?> GetScore(int id)
