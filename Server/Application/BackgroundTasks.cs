@@ -31,7 +31,7 @@ public static class BackgroundTasks
 
                 rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
 
-                if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[..68];
+                if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
 
                 rankSnapshots.Add(new StatsSnapshot
                 {
