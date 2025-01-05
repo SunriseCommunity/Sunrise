@@ -3,7 +3,7 @@ using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using GameMode = osu.Shared.GameMode;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -34,7 +34,7 @@ public class ScoreResponse(Score score, User user)
     public int CountMiss { get; set; } = score.CountMiss;
 
     [JsonPropertyName("game_mode")]
-    public GameMode GameMode { get; set; } = score.GameMode;
+    public GameMode GameMode { get; set; } = score.GameMode.ToVanillaGameMode();
 
     [JsonPropertyName("grade")]
     public string Grade { get; set; } = score.Grade;
