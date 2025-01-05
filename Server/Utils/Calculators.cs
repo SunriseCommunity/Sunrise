@@ -167,12 +167,12 @@ public static class Calculators
     {
         var totalHits = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
 
-        var scoreVanillaGameMode = score.GameMode.ToVanillaGameMode();
-        if ((GameMode)scoreVanillaGameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
+        var scoreVanillaGameMode = (GameMode)score.GameMode.ToVanillaGameMode();
+        if (scoreVanillaGameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
 
         if (totalHits == 0) return 0;
 
-        return (GameMode)scoreVanillaGameMode switch
+        return scoreVanillaGameMode switch
         {
             GameMode.Standard => (float)(score.Count300 * 300 + score.Count100 * 100 + score.Count50 * 50) /
                 (totalHits * 300) * 100,
