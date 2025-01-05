@@ -23,7 +23,8 @@ public static class RedisKey
     public static string BeatmapSetIdByBeatmapId(int id) { return $"beatmapset_id:beatmap_id:{id}"; }
     
     public static string BeatmapSetBySetId(int id) { return $"beatmapset:set_id:{id}"; }
-    public static string Score(int scoreId) { return $"score:{scoreId}"; }
+    public static string ScoreById(int scoreId) { return $"score:id:{scoreId}"; }
+    public static string ScoreIdByScoreHash(string hash) { return $"score_id:score_hash:{hash}"; }
     public static string Scores(string id, string type) { return $"scores:{id}:leaderboardtype:{type}"; }
     public static string BeatmapSearch(string search) { return $"beatmapset:serach:{search}"; }
     public static string UserMedals(int userId, GameMode? mode = null) { return $"user:{userId}:{(mode.HasValue ? (int)mode : "all" )}:medals"; }

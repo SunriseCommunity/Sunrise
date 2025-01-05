@@ -36,13 +36,19 @@ public class ScoreService
     public async Task InsertScore(Models.Score score)
     {
         score = await _database.InsertAsync(score);
-        await _redis.Set(RedisKey.Score(score.Id), score);
+        await SetCachedScore(score);
     }
 
     public async Task UpdateScore(Models.Score score)
     {
         score = await _database.UpdateAsync(score);
-        await _redis.Set(RedisKey.Score(score.Id), score);
+        await SetCachedScore(score);
+    }
+
+    public async Task MarkAsDeleted(Models.Score score)
+    {
+        score.SubmissionStatus = SubmissionStatus.Deleted;
+        await UpdateScore(score);
     }
 
     public async Task<List<Models.Score>> GetBestScoresByGameMode(GameMode mode)
@@ -65,16 +71,42 @@ public class ScoreService
 
     public async Task<Models.Score?> GetScore(int id)
     {
-        var cachedScore = await _redis.Get<Models.Score?>(RedisKey.Score(id));
+        var cachedScore = await _redis.Get<Models.Score?>(RedisKey.ScoreById(id));
         if (cachedScore != null) return cachedScore;
 
-        var exp = new Expr("Id", OperatorEnum.Equals, id);
+        var exp = new Expr("Id", OperatorEnum.Equals, id)
+            .PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
         var score = await _database.SelectFirstAsync<Models.Score?>(exp);
-        if (score == null) throw new Exception("Score not found");
+        if (score == null) return null;
 
-        await _redis.Set(RedisKey.Score(id), score);
+        await SetCachedScore(score);
 
         return score;
+    }
+
+    public async Task<Models.Score?> GetScore(string scoreHash)
+    {
+        var cachedScoreId = await _redis.Get<Models.Score?>(RedisKey.ScoreIdByScoreHash(scoreHash));
+
+        if (cachedScoreId != null)
+        {
+            var cachedScore = await GetScore(cachedScoreId.Id);
+            if (cachedScore != null) return cachedScore;
+        }
+
+        var exp = new Expr("ScoreHash", OperatorEnum.Equals, scoreHash).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
+        var score = await _database.SelectFirstAsync<Models.Score?>(exp);
+        if (score == null) return null;
+
+        await SetCachedScore(score);
+
+        return score;
+    }
+
+    public async Task SetCachedScore(Models.Score score)
+    {
+        await _redis.Set(RedisKey.ScoreById(score.Id), score);
+        await _redis.Set(RedisKey.ScoreIdByScoreHash(score.ScoreHash), score);
     }
 
     public async Task<Dictionary<int, int>> GetUserMostPlayedBeatmapsIds(int userId, GameMode mode)
@@ -83,7 +115,8 @@ public class ScoreService
         if (user.IsRestricted) return [];
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
-            .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+            .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
+            .PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
         return scores
@@ -94,7 +127,7 @@ public class ScoreService
 
     public async Task<Models.Score?> GetUserLastScore(int userId)
     {
-        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
 
         // TODO: Check if still works.
         var score = await _database.SelectFirstAsync<Models.Score>(exp,
@@ -138,7 +171,8 @@ public class ScoreService
         if (user.IsRestricted) return [];
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
-            .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+            .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
+            .PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
 
         switch (type)
         {
@@ -187,7 +221,7 @@ public class ScoreService
 
     public async Task<long> GetTotalScores()
     {
-        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
         var totalScores = await _database.CountAsync<Models.Score>(exp);
 
         return totalScores;
@@ -195,7 +229,7 @@ public class ScoreService
 
     public async Task<List<Models.Score>> GetAllScores()
     {
-        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
         return await _database.SelectManyAsync<Models.Score>(exp);
     }
 }
