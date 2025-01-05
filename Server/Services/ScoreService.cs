@@ -32,9 +32,13 @@ public static class ScoreService
             return "error: no";
         }
 
-        // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
         var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
-        if ((int)score.GameMode < 4 && notStandardMods is not Mods.None || !notStandardMods.IsSingleMod())
+
+        var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && notStandardMods is not Mods.None;
+        var isNonSupportedNonStandardMod = (int)score.GameMode < 4 && notStandardMods is not Mods.None;
+
+        // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
+        if (isHasMoreThanOneNotStandardMod || isNonSupportedNonStandardMod)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
             return "error: no";
