@@ -25,7 +25,7 @@ public static class GameModeExtensions
                 case Mods.Relax:
                     mode += 4;
                     break;
-                case Mods.Autoplay:
+                case Mods.Relax2:
                     mode += 8;
                     break;
             }

@@ -97,7 +97,7 @@ public static class SubmitScoreHelper
     /// <summary>
     ///     This method checks if the score has any non-standard mods.
     ///     If the score has any of the following mods, it will be considered as non-standard:
-    ///     <see cref="Mods.ScoreV2" />, <see cref="Mods.Relax" />, <see cref="Mods.Autoplay" />
+    ///     <see cref="Mods.ScoreV2" />, <see cref="Mods.Relax" />, <see cref="Mods.Relax2" />
     /// </summary>
     /// <param name="mods"></param>
     /// <returns></returns>
@@ -107,7 +107,7 @@ public static class SubmitScoreHelper
         [
             Mods.ScoreV2,
             Mods.Relax,
-            Mods.Autoplay
+            Mods.Relax2
         ];
 
         return prioritizedMods.Where(mod => mods.HasFlag(mod)).Aggregate(Mods.None, (current, mod) => current | mod);
