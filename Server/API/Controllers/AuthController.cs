@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
-        
+
         if (user.IsRestricted)
             return BadRequest(new ErrorResponse("Your account is restricted"));
 
@@ -55,7 +55,7 @@ public class AuthController : ControllerBase
     {
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
-        
+
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var user = await database.UserService.GetUser(username: request.Username);
 
@@ -83,8 +83,6 @@ public class AuthController : ControllerBase
 
         var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
 
-        Console.WriteLine(location.Ip);
-        
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 

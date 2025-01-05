@@ -14,9 +14,9 @@ public enum ModsShorted
     HT = 256,
     NC = 512,
     FL = 1024,
-    AP = 2048,
+    AT = 2048,
     SO = 4096,
-    R2 = 8192,
+    AP = 8192, // Relax2 -> AutoPilot -> AP
     PF = 16384,
     K4 = 32768,
     K5 = 65536,

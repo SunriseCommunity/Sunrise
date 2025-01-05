@@ -5,6 +5,7 @@ using Sunrise.Server.Database.Models;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Extensions;
 
@@ -39,7 +40,7 @@ public static class ScoreExtensions
         return GroupScoresByUserId(scores)
             .Select(x => x.ToList()
                 .GroupScoresByBeatmapId()
-                .Select(y => y.OrderByDescending(z => z.TotalScore)
+                .Select(y => y.OrderByDescending(z => z.GameMode.IsGameModeWithoutScoreMultiplier() ? z.PerformancePoints : z.TotalScore)
                     .First()))
             .SelectMany(x => x)
             .ToList();
@@ -47,7 +48,7 @@ public static class ScoreExtensions
 
     public static List<T> GetScoresGroupedByBeatmapBest<T>(this List<T> scores) where T : Score
     {
-        return GroupScoresByBeatmapId(scores).Select(x => x.OrderByDescending(y => y.TotalScore).First()).ToList();
+        return GroupScoresByBeatmapId(scores).Select(x => x.OrderByDescending(y => y.GameMode.IsGameModeWithoutScoreMultiplier() ? y.PerformancePoints : y.TotalScore).First()).ToList();
     }
 
     public static IEnumerable<IGrouping<int, T>> GroupScoresByBeatmapId<T>(this List<T> scores) where T : Score
@@ -78,19 +79,38 @@ public static class ScoreExtensions
         return scores;
     }
 
+    /// <summary>
+    ///     Sorts the scores by their score value.
+    ///     Score value is determined if the game mode has a score multiplier or not.
+    ///     For game modes with score multiplier, the scores are sorted by their total score.
+    ///     For game modes without score multiplier, the scores are sorted by their performance points.
+    /// </summary>
+    /// <param name="scores"></param>
+    /// <typeparam name="T"></typeparam>
+    /// <returns></returns>
+    public static List<T> SortScoresByTheirScoreValue<T>(this List<T> scores) where T : Score
+    {
+        var isWithoutScoreMultiplier = scores.FirstOrDefault()?.GameMode.IsGameModeWithoutScoreMultiplier() ?? false;
+
+        return isWithoutScoreMultiplier
+            ? scores.SortScoresByPerformancePoints()
+            : scores.SortScoresByTotalScore();
+    }
+
     public static List<T> UpsertUserScoreToSortedScores<T>(this List<T> scores, T score) where T : Score
     {
         var leaderboard = GetScoresGroupedByUsersBest(scores);
 
-        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode); 
+        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode);
+
         foreach (var oldScore in oldScores)
         {
             scores.Remove(oldScore);
         }
-        
+
         leaderboard.Add(score);
         leaderboard = GetScoresGroupedByUsersBest(leaderboard);
-        leaderboard = leaderboard.SortScoresByTotalScore();
+        leaderboard = leaderboard.SortScoresByTheirScoreValue();
         leaderboard = leaderboard.UpdateLeaderboardPositions();
 
         return leaderboard.ToList();
@@ -130,6 +150,7 @@ public static class ScoreExtensions
 
         score.Accuracy = Calculators.CalculateAccuracy(score);
         score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score);
+        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
 
         return score;
     }
@@ -144,6 +165,12 @@ public static class ScoreExtensions
         return scores;
     }
 
+
+    /// <summary>
+    ///     Used in leaderboard responses.
+    /// </summary>
+    /// <param name="score"></param>
+    /// <returns></returns>
     public static async Task<string> GetString(this Score score)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
@@ -152,8 +179,11 @@ public static class ScoreExtensions
         var username = (await database.UserService.GetUser(score.UserId))?.Username ?? "Unknown";
         var hasReplay = score.ReplayFileId != null ? "1" : "0";
 
+        // If the game mode is not scoreable, we should return the performance points instead of the total score
+        var totalScore = score.GameMode.IsGameModeWithoutScoreMultiplier() ? (int)score.PerformancePoints : score.TotalScore;
+
         return
-            $"{score.Id}|{username}|{score.TotalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{score.LocalProperties.LeaderboardPosition}|{time}|{hasReplay}";
+            $"{score.Id}|{username}|{totalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{score.LocalProperties.LeaderboardPosition}|{time}|{hasReplay}";
     }
 
     public static string ComputeOnlineHash(this Score score, string username, string clientHash, string? storyboardHash)
@@ -173,7 +203,7 @@ public static class ScoreExtensions
             score.Grade,
             (int)score.Mods,
             score.IsPassed,
-            (int)score.GameMode,
+            (int)score.GameMode.ToVanillaGameMode(),
             score.ClientTime,
             score.OsuVersion,
             clientHash,

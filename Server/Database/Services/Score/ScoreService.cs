@@ -8,6 +8,7 @@ using Sunrise.Server.Types;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Services.Score;
 
@@ -65,7 +66,7 @@ public class ScoreService
             if (scoreUser?.IsRestricted == true) scores.Remove(score);
         }
 
-        return scores.GetScoresGroupedByBeatmapBest().SortScoresByPerformancePoints();
+        return scores.GetScoresGroupedByUsersBest().SortScoresByPerformancePoints();
     }
 
     public async Task<Models.Score?> GetScore(int id)
@@ -161,7 +162,7 @@ public class ScoreService
                 scoreUser?.IsRestricted == true) scores.Remove(score);
         }
 
-        return scores.SortScoresByTotalScore();
+        return scores.SortScoresByTheirScoreValue();
     }
 
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)

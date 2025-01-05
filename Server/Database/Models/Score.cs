@@ -1,7 +1,9 @@
 using osu.Shared;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Core;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Database.Models;
 
@@ -115,7 +117,7 @@ public class LocalProperties
     public LocalProperties FromScore(Score score)
     {
         SerializedMods = score.Mods & ~Mods.Nightcore;
-        IsRanked = score.BeatmapStatus is BeatmapStatus.Ranked or BeatmapStatus.Approved;
+        IsRanked = score.BeatmapStatus.IsRanked();
         LeaderboardPosition = -1;
         return this;
     }

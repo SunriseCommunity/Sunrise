@@ -9,6 +9,7 @@ using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Types.Enums;
 using AuthService = Sunrise.Server.API.Services.AuthService;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Controllers;
 
@@ -65,7 +66,7 @@ public class BeatmapController : ControllerBase
 
         var scores = await database.ScoreService.GetBeatmapScores(beatmap.Checksum, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum);
 
-        var limitedScores = scores.SortScoresByTotalScore().Take(limit).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
+        var limitedScores = scores.SortScoresByTheirScoreValue().Take(limit).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
         return Ok(new ScoresResponse(limitedScores, scores.Count));
     }
 

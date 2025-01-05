@@ -2,6 +2,7 @@ using osu.Shared;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Extensions;
 

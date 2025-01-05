@@ -8,6 +8,7 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
@@ -40,8 +41,21 @@ public static class ScoreService
             return "error: no";
         }
 
-        // Note: I don't think mrekk will play on our server, so there is 99% that score with >=2500 pp would be cheated
-        if (score.PerformancePoints >= 2500)
+        var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
+
+        var hasNonStandardMods = notStandardMods is not Mods.None;
+        var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
+        var isNonSupportedNonStandardMod = (int)score.GameMode < 4 && hasNonStandardMods;
+
+        // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
+        if (isHasMoreThanOneNotStandardMod || isNonSupportedNonStandardMod)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
+            return "error: no";
+        }
+
+        // Auto-restrict players who submit scores with too many performance points on standard game modes
+        if (score.PerformancePoints >= 2500 && !hasNonStandardMods)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Auto-restricted for submitting impossible score");
@@ -143,11 +157,14 @@ public static class ScoreService
         return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode mode, Mods mods,
+    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, mode, leaderboardType, mods, session.User);
+
+        gameMode = gameMode.EnrichWithMods(mods);
+
+        var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, session.User);
         var scores = databaseScores.UpdateLeaderboardPositions();
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
