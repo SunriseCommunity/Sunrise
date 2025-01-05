@@ -21,6 +21,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Multiplayer
 - [x] !mp commands (mostly)
 - [x] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
+- [x] Support for non-standard gamemodes (e.g. Relax, Autopilot, ScoreV2)
 - [x] osu!Direct
 - [x] Spectating
 - [x] Achievements (Medals)
