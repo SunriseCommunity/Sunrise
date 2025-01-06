@@ -27,11 +27,11 @@ public class BackupDatabaseCommand : IChatCommand
         return Task.CompletedTask;
     }
 
-    private Task StartDatabaseBackup(Session session)
+    private async Task StartDatabaseBackup(Session session)
     {
-        BackgroundTasks.BackupDatabase();
+        await Task.Run(BackgroundTasks.BackupDatabase);
+
         CommandRepository.SendMessage(session, "Database backup has been completed. Server is no longer in maintenance mode.");
         Configuration.OnMaintenance = false;
-        return Task.CompletedTask;
     }
 }
