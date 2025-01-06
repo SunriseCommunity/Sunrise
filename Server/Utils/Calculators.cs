@@ -186,6 +186,9 @@ public static class Calculators
 
     private static Performance GetUserPerformance(Score score)
     {
+        // Ignore Relax mod for more enhanced calculation
+        var mods = score.Mods & ~Mods.Relax;
+
         var performance = Performance.New();
         performance.Accuracy((uint)score.Accuracy);
         performance.Combo((uint)score.MaxCombo);
@@ -193,7 +196,7 @@ public static class Calculators
         performance.N100((uint)score.Count100);
         performance.N50((uint)score.Count50);
         performance.Misses((uint)score.CountMiss);
-        performance.IMods((uint)score.Mods);
+        performance.IMods((uint)mods);
         return performance;
     }
 }
