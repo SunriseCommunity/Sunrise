@@ -227,9 +227,11 @@ public class ScoreService
         return totalScores;
     }
 
-    public async Task<List<Models.Score>> GetAllScores()
+    public async Task<List<Models.Score>> GetAllScores(GameMode? mode = null)
     {
         var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
+        if (mode != null) exp.PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+
         return await _database.SelectManyAsync<Models.Score>(exp);
     }
 }

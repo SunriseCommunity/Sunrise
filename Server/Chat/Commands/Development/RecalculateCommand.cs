@@ -46,7 +46,7 @@ public class RecalculateCommand : IChatCommand
 
             var stats = await database.UserService.Stats.GetAllUserStats(mode, LeaderboardSortType.Pp);
 
-            if (stats == null)
+            if (stats.Count == 0)
             {
                 CommandRepository.SendMessage(session, $"No stats found for mode {mode}. Skipping.");
                 continue;
