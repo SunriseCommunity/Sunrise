@@ -40,6 +40,12 @@ public class UserService
 
     public async Task<Models.User.User> InsertUser(Models.User.User user)
     {
+        if (await GetUser(username: user.Username) != null)
+            throw new Exception("User with this username already exists");
+
+        if (await GetUser(email: user.Email) != null)
+            throw new Exception("User with this email already exists");
+
         user = await _database.InsertAsync(user);
 
         var modes = Enum.GetValues<GameMode>();
