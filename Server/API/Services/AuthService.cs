@@ -7,7 +7,6 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Services;
@@ -39,8 +38,13 @@ public static class AuthService
 
     public static (string?, int) RefreshToken(string token)
     {
-        return (!ValidateJwtToken(token, out var userId) ? null : GenerateJwtToken(userId!.Value, TokenExpires),
-            TokenExpires.ToSeconds());
+        var newToken = ValidateJwtToken(token, out var userId) ? GenerateJwtToken(userId!.Value, TokenExpires) : null;
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+
+        var isUserRestricted = database.UserService.Moderation.IsRestricted(userId!.Value).Result;
+
+        return isUserRestricted ? (null, 0) : (newToken, TokenExpires.ToSeconds());
     }
 
     private static bool ValidateJwtToken(string token, out int? userId)
@@ -65,15 +69,15 @@ public static class AuthService
 
             if (result.Identity is not ClaimsIdentity identity)
                 return false;
-            
+
             var userIdClaim = identity.FindFirst(ClaimTypes.NameIdentifier) ?? identity.FindFirst("sub");
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var id))
                 return false;
-            
+
             var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
             var user = database.UserService.GetUser(id).Result;
-            
-            var hashClaim = identity.FindFirst(ClaimTypes.Hash); 
+
+            var hashClaim = identity.FindFirst(ClaimTypes.Hash);
             if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
                 return false;
 
@@ -90,16 +94,16 @@ public static class AuthService
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var user = database.UserService.GetUser(userId).Result;
-        
+
         if (user == null)
             throw new Exception("User not found while generating token");
-        
+
         var token = new JwtSecurityToken(
             "Sunrise",
             "Sunrise",
             [
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
-                new Claim(ClaimTypes.Hash, $"{userId}{user.Passhash}".ToHash()),
+                new Claim(ClaimTypes.Hash, $"{userId}{user.Passhash}".ToHash())
             ],
             expires: DateTime.UtcNow.Add(expires),
             signingCredentials: new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)),

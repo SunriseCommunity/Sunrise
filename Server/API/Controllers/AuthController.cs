@@ -30,7 +30,14 @@ public class AuthController : ControllerBase
             return BadRequest(new ErrorResponse("Invalid credentials"));
 
         if (user.IsRestricted)
-            return BadRequest(new ErrorResponse("Your account is restricted"));
+        {
+            var restriction = await database.UserService.Moderation.GetRestrictionReason(user.Id);
+            return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
+        }
+
+        var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
+        if (Configuration.BannedIps.Contains(location.Ip))
+            return BadRequest(new ErrorResponse("Your IP address is banned."));
 
         var token = AuthService.GenerateTokens(user.Id);
 
@@ -38,14 +45,18 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public IActionResult RefreshToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
+        var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
+        if (Configuration.BannedIps.Contains(location.Ip))
+            return BadRequest(new ErrorResponse("Your IP address is banned."));
+
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var newToken = AuthService.RefreshToken(request.RefreshToken);
         if (newToken.Item1 == null)
-            return BadRequest(new ErrorResponse("Invalid refresh_token provided"));
+            return BadRequest(new ErrorResponse("Invalid refresh_token provided or user is restricted."));
 
         return Ok(new RefreshTokenResponse(newToken.Item1, newToken.Item2));
     }

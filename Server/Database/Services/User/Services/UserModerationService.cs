@@ -24,6 +24,13 @@ public class UserModerationService
         _redis = redis;
     }
 
+    public async Task<string> GetRestrictionReason(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        var restriction = await _database.SelectFirstAsync<Restriction?>(exp);
+        return restriction?.Reason ?? string.Empty;
+    }
+
     public async Task<bool> IsRestricted(int userId)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId);

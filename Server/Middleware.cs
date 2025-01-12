@@ -15,13 +15,13 @@ public sealed class Middleware(
     {
         var ip = RegionHelper.GetUserIpAddress(context.Request);
 
-        if (Configuration.BannedIps.Contains(ip.ToString()))
+        var path = context.Request.Path;
+
+        if (Configuration.BannedIps.Contains(ip.ToString()) && !context.Request.Host.Host.StartsWith("api."))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
         }
-
-        var path = context.Request.Path;
 
         if (path.StartsWithSegments("/metrics") && !ip.IsFromLocalNetwork() &&
             !ip.IsFromDocker())
