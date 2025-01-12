@@ -271,17 +271,25 @@ public class UserController : ControllerBase
 
     [HttpGet]
     [Route("search")]
-    public async Task<IActionResult> GetLeaderboard(
-        [FromQuery(Name = "query")] string query)
+    public async Task<IActionResult> GetUsers(
+        [FromQuery(Name = "query")] string query,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 0
+    )
     {
         if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var users = await database.UserService.SearchUsers(query);
 
         if (users == null) return NotFound(new ErrorResponse("Users not found"));
 
-        return Ok(users.Select(x => new UserResponse(x)));
+        var offsetUsers = users.Skip(page * limit ?? 0).Take(limit ?? 50).ToList();
+
+        return Ok(offsetUsers.Select(x => new UserResponse(x)));
     }
 
     [HttpGet]
