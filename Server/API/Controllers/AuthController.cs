@@ -106,7 +106,7 @@ public class AuthController : ControllerBase
             Privilege = UserPrivileges.User
         };
 
-        await database.UserService.InsertUser(user);
+        user = await database.UserService.InsertUser(user);
 
         var token = AuthService.GenerateTokens(user.Id);
 
