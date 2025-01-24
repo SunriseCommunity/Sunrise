@@ -3,6 +3,7 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Utils;
 using Watson.ORM.Sqlite;
 
 namespace Sunrise.Server.Database.Services.User.Services;
@@ -63,6 +64,7 @@ public class UserModerationService
 
         user.IsRestricted = false;
         await _services.UserService.UpdateUser(user);
+        await UpdateUserStats(user.Id);
     }
 
     public async Task RestrictPlayer(int userId, int executorId, string reason, TimeSpan? expiresAfter = null)
@@ -86,9 +88,25 @@ public class UserModerationService
         user.IsRestricted = true;
         await _services.UserService.UpdateUser(user);
         await _database.InsertAsync(restriction);
+        await UpdateUserStats(user.Id);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var session = sessions.GetSession(userId: userId);
         session?.SendRestriction(reason);
+    }
+
+    private async Task UpdateUserStats(int userId)
+    {
+        foreach (var i in Enum.GetValues(typeof(GameMode)))
+        {
+            var stat = await _services.UserService.Stats.GetUserStats(userId, (GameMode)i);
+            var pp = await Calculators.CalculateUserWeightedPerformance(userId, (GameMode)i);
+            var acc = await Calculators.CalculateUserWeightedAccuracy(userId, (GameMode)i);
+
+            stat.PerformancePoints = pp;
+            stat.Accuracy = acc;
+
+            await _services.UserService.Stats.UpdateUserStats(stat);
+        }
     }
 }

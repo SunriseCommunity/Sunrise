@@ -55,18 +55,6 @@ public class RestrictCommand : IChatCommand
 
         var isRestricted = await database.UserService.Moderation.IsRestricted(user.Id);
 
-        foreach (var i in Enum.GetValues(typeof(GameMode)))
-        {
-            var stat = await database.UserService.Stats.GetUserStats(user.Id, (GameMode)i);
-            var pp = await Calculators.CalculateUserWeightedPerformance(user.Id, (GameMode)i);
-            var acc = await Calculators.CalculateUserWeightedAccuracy(user.Id, (GameMode)i);
-
-            stat.PerformancePoints = pp;
-            stat.Accuracy = acc;
-
-            await database.UserService.Stats.UpdateUserStats(stat);
-        }
-
         CommandRepository.SendMessage(session,
             isRestricted
                 ? $"User {user.Username} ({user.Id}) has been restricted."
