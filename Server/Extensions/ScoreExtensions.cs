@@ -105,7 +105,7 @@ public static class ScoreExtensions
 
         foreach (var oldScore in oldScores)
         {
-            scores.Remove(oldScore);
+            leaderboard.Remove(oldScore);
         }
 
         leaderboard.Add(score);
