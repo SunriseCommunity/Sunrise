@@ -451,9 +451,13 @@ public class UserController : ControllerBase
             return BadRequest(new ErrorResponse("Invalid username"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var foundUserByUsername = await database.UserService.GetUser(username: request.NewUsername);
 
-        if (foundUserByUsername != null && !foundUserByUsername.IsActive())
+        var lastUsernameChange = await database.EventService.UserEvent.GetLastUsernameChange(session.User.Id);
+        if (lastUsernameChange != null && lastUsernameChange.Time.AddHours(1) > DateTime.UtcNow)
+            return BadRequest(new ErrorResponse("You can change your username only once per hour. Please try again later."));
+
+        var foundUserByUsername = await database.UserService.GetUser(username: request.NewUsername);
+        if (foundUserByUsername != null && foundUserByUsername.IsActive())
             return BadRequest(new ErrorResponse("Username is already taken"));
 
         if (foundUserByUsername != null)
@@ -467,10 +471,8 @@ public class UserController : ControllerBase
         var oldUsername = session.User.Username;
         session.User.Username = request.NewUsername;
 
-        await database.UserService.UpdateUserUsername(session.User, oldUsername, request.NewUsername);
-
         var ip = RegionHelper.GetUserIpAddress(Request);
-        await database.EventService.UserEvent.CreateNewUserChangeUsernameEvent(session.User.Id, ip.ToString(), oldUsername, request.NewUsername);
+        await database.UserService.UpdateUserUsername(session.User, oldUsername, request.NewUsername, null, ip.ToString());
 
         return new OkResult();
     }

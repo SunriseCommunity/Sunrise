@@ -109,12 +109,13 @@ public class UserService
     }
 
 
-    public async Task UpdateUserUsername(Models.User.User user, string oldUsername, string newUsername)
+    public async Task UpdateUserUsername(Models.User.User user, string oldUsername, string newUsername, int? updatedById = null, string? userIp = null)
     {
         user.Username = newUsername;
         await UpdateUser(user);
 
-        await _services.EventService.UserEvent.CreateNewUserChangeUsernameEvent(user.Id, user.Username, oldUsername, newUsername);
+        var ip = userIp ?? "";
+        await _services.EventService.UserEvent.CreateNewUserChangeUsernameEvent(user.Id, ip, oldUsername, newUsername, updatedById);
     }
 
     public async Task UpdateUser(Models.User.User user)

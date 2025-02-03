@@ -1,3 +1,4 @@
+using DatabaseWrapper.Core;
 using ExpressionTree;
 using Sunrise.Server.Database.Models.Event;
 using Sunrise.Server.Repositories;
@@ -83,7 +84,19 @@ public class UserEventService
         await _database.InsertAsync(changePasswordEvent);
     }
 
-    public async Task CreateNewUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername)
+
+    public async Task<EventUser?> GetLastUsernameChange(int userId)
+    {
+        var lastUsernameChange = await _database.SelectFirstAsync<EventUser>(new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd(
+                new Expr("EventType", OperatorEnum.Equals, (int)UserEventType.ChangeUsername)),
+            [
+                new ResultOrder("Id", OrderDirectionEnum.Descending)
+            ]);
+
+        return lastUsernameChange;
+    }
+
+    public async Task CreateNewUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername, int? updatedById = null)
     {
         var changeUsernameEvent = new EventUser
         {
@@ -95,7 +108,8 @@ public class UserEventService
         changeUsernameEvent.SetData(new
         {
             OldUsername = oldUsername,
-            NewUsername = newUsername
+            NewUsername = newUsername,
+            UpdatedById = updatedById
         });
 
         await _database.InsertAsync(changeUsernameEvent);
