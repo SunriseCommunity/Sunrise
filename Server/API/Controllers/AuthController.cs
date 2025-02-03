@@ -5,6 +5,7 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
@@ -78,16 +79,12 @@ public class AuthController : ControllerBase
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: request.Username);
 
-        if (user != null)
-            return BadRequest(new ErrorResponse("Username already in use"));
-
-        user = await database.UserService.GetUser(email: request.Email);
-        if (user != null)
+        var foundUserByEmail = await database.UserService.GetUser(email: request.Email);
+        if (foundUserByEmail != null)
             return BadRequest(new ErrorResponse("Email already in use"));
 
-        if (!CharactersFilter.IsValidUsername(request.Username!, true))
+        if (!request.Username.IsValidUsername(true))
             return BadRequest(new ErrorResponse("Invalid characters in username."));
 
         if (request.Username.Length is < 2 or > 32)
@@ -111,7 +108,19 @@ public class AuthController : ControllerBase
         if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
             return BadRequest(new ErrorResponse("Please don't create multiple accounts. You have been warned."));
 
-        user = new User
+        var foundUserByUsername = await database.UserService.GetUser(username: request.Username);
+        if (foundUserByUsername != null && foundUserByUsername.IsActive())
+            return BadRequest(new ErrorResponse("Username is already taken"));
+
+        if (foundUserByUsername != null)
+        {
+            await database.UserService.UpdateUserUsername(
+                foundUserByUsername,
+                foundUserByUsername.Username,
+                foundUserByUsername.Username.SetUsernameAsOld());
+        }
+
+        var newUser = new User
         {
             Username = request.Username,
             Passhash = request.Password.GetPassHash(),
@@ -120,11 +129,11 @@ public class AuthController : ControllerBase
             Privilege = UserPrivileges.User
         };
 
-        user = await database.UserService.InsertUser(user);
+        newUser = await database.UserService.InsertUser(newUser);
 
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, location.Ip, user);
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, location.Ip, newUser);
 
-        var token = AuthService.GenerateTokens(user.Id);
+        var token = AuthService.GenerateTokens(newUser.Id);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }

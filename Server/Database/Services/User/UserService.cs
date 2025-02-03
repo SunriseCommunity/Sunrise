@@ -72,20 +72,21 @@ public class UserService
     {
         var redisKeys = new List<string>
         {
-            RedisKey.UserById(id ?? 0),
-            RedisKey.UserByEmail(email ?? "")
+            RedisKey.UserIdByEmail(email ?? "")
         };
 
         if (username != null)
         {
             if (passhash != null)
-                redisKeys.Add(RedisKey.UserByUsernameAndPassHash(username, passhash));
+                redisKeys.Add(RedisKey.UserIdByUsernameAndPassHash(username, passhash));
             else
-                redisKeys.Add(RedisKey.UserByUsername(username));
+                redisKeys.Add(RedisKey.UserIdByUsername(username));
         }
 
-        var cachedUser = await _redis.Get<Models.User.User?>([.. redisKeys]);
+        var cachedUserId = await _redis.Get<int?>([.. redisKeys]);
+        if (cachedUserId != null && useCache) id = cachedUserId;
 
+        var cachedUser = await _redis.Get<Models.User.User?>(RedisKey.UserById(id ?? 0));
         if (cachedUser != null && useCache) return cachedUser;
 
         if (passhash != null && id == null && username == null && email == null)
@@ -101,15 +102,34 @@ public class UserService
 
         if (user == null) return null;
 
-        await _redis.Set(
-            [RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)],
-            user);
+        await _redis.Set(RedisKey.UserById(user.Id), user);
+        await _redis.Set([RedisKey.UserIdByUsername(user.Username), RedisKey.UserIdByEmail(user.Email), RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)], user.Id);
 
         return user;
     }
 
+
+    public async Task UpdateUserUsername(Models.User.User user, string oldUsername, string newUsername)
+    {
+        user.Username = newUsername;
+        await UpdateUser(user);
+
+        await _services.EventService.UserEvent.CreateNewUserChangeUsernameEvent(user.Id, user.Username, oldUsername, newUsername);
+    }
+
     public async Task UpdateUser(Models.User.User user)
     {
+        var oldUser = await GetUser(id: user.Id);
+        if (oldUser == null) throw new Exception("User not found");
+
+        await _redis.Remove(
+        [
+            RedisKey.UserById(oldUser.Id),
+            RedisKey.UserIdByUsername(oldUser.Username),
+            RedisKey.UserIdByEmail(oldUser.Email),
+            RedisKey.UserIdByUsernameAndPassHash(oldUser.Username, oldUser.Passhash)
+        ]);
+
         await _database.UpdateAsync(user);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
@@ -120,12 +140,8 @@ public class UserService
 
         await _redis.Remove(RedisKey.AllUsers());
 
-        await _redis.Set(
-            [
-                RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
-                RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
-            ],
-            user);
+        await _redis.Set(RedisKey.UserById(user.Id), user);
+        await _redis.Set([RedisKey.UserIdByUsername(user.Username), RedisKey.UserIdByEmail(user.Email), RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)], user.Id);
     }
 
     public async Task<bool> DeleteUser(int userId)
@@ -162,8 +178,10 @@ public class UserService
 
         await _redis.Remove(
         [
-            RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
-            RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
+            RedisKey.UserById(user.Id),
+            RedisKey.UserIdByUsername(user.Username),
+            RedisKey.UserIdByEmail(user.Email),
+            RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)
         ]);
 
         return true;

@@ -13,9 +13,12 @@ public static class RequestType
     public const string GetMedalHighImage = "medals/client/{medalId:int}@2x.png";
     public const string BannerUpload = "upload/banner";
     public const string AvatarUpload = "upload/avatar";
-    public const string ResetPass = "password/reset";
     public const string MenuContent = "menu-content.json";
     public const string EventBanner = "events/EventBanner.jpg";
+
+    // API controller
+    public const string ResetPass = "password/reset";
+    public const string UsernameChange = "username/change";
 
     // Bancho controller
     public const string BanchoProcess = "/";

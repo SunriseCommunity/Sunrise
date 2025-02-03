@@ -7,6 +7,7 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
@@ -432,6 +433,44 @@ public class UserController : ControllerBase
 
         var ip = RegionHelper.GetUserIpAddress(Request);
         await database.EventService.UserEvent.CreateNewUserChangePasswordEvent(session.User.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.UsernameChange)]
+    public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest? request)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        if (!request.NewUsername.IsValidUsername(true))
+            return BadRequest(new ErrorResponse("Invalid username"));
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var foundUserByUsername = await database.UserService.GetUser(username: request.NewUsername);
+
+        if (foundUserByUsername != null && !foundUserByUsername.IsActive())
+            return BadRequest(new ErrorResponse("Username is already taken"));
+
+        if (foundUserByUsername != null)
+        {
+            await database.UserService.UpdateUserUsername(
+                foundUserByUsername,
+                foundUserByUsername.Username,
+                foundUserByUsername.Username.SetUsernameAsOld());
+        }
+
+        var oldUsername = session.User.Username;
+        session.User.Username = request.NewUsername;
+
+        await database.UserService.UpdateUserUsername(session.User, oldUsername, request.NewUsername);
+
+        var ip = RegionHelper.GetUserIpAddress(Request);
+        await database.EventService.UserEvent.CreateNewUserChangeUsernameEvent(session.User.Id, ip.ToString(), oldUsername, request.NewUsername);
 
         return new OkResult();
     }

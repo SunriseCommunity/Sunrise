@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
@@ -153,8 +154,8 @@ public static class AuthService
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
             return new BadRequestObjectResult("Invalid request: Missing parameters");
 
-        if (!CharactersFilter.IsValidUsername(username!, true))
-            errors["username"].Add("Invalid username. It should contain only alphanumeric characters.");
+        if (!username.IsValidUsername(true))
+            errors["username"].Add("Invalid username. Remember that it should not contain special characters or bad words.");
         else if (username.Length is < 2 or > 32)
             errors["username"].Add("Invalid username. Length should be between 2 and 32 characters.");
 
@@ -168,13 +169,14 @@ public static class AuthService
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var user = await database.UserService.GetUser(username: username);
 
-        if (user != null) errors["username"].Add("User with this username already exists.");
+        var foundUserByEmail = await database.UserService.GetUser(email: email);
 
-        user = await database.UserService.GetUser(email: email);
+        if (foundUserByEmail != null) errors["user_email"].Add("User with this email already exists.");
 
-        if (user != null) errors["user_email"].Add("User with this email already exists.");
+        var foundUserByUsername = await database.UserService.GetUser(username: username);
+
+        if (foundUserByUsername != null && foundUserByUsername.IsActive()) errors["username"].Add("User with this username already exists.");
 
         var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip.ToString());
         if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
@@ -194,7 +196,15 @@ public static class AuthService
         var passhash = password.GetPassHash();
         var location = await RegionHelper.GetRegion(ip);
 
-        user = new User
+        if (foundUserByUsername != null)
+        {
+            await database.UserService.UpdateUserUsername(
+                foundUserByUsername,
+                foundUserByUsername.Username,
+                foundUserByUsername.Username.SetUsernameAsOld());
+        }
+
+        var newUser = new User
         {
             Username = username!,
             Email = email!,
@@ -203,9 +213,9 @@ public static class AuthService
             Privilege = UserPrivileges.User
         };
 
-        user = await database.UserService.InsertUser(user);
+        newUser = await database.UserService.InsertUser(newUser);
 
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, ip.ToString(), user);
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
 
         return new OkObjectResult("");
     }

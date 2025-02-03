@@ -83,6 +83,24 @@ public class UserEventService
         await _database.InsertAsync(changePasswordEvent);
     }
 
+    public async Task CreateNewUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername)
+    {
+        var changeUsernameEvent = new EventUser
+        {
+            EventType = UserEventType.ChangeUsername,
+            UserId = userId,
+            Ip = ip
+        };
+
+        changeUsernameEvent.SetData(new
+        {
+            OldUsername = oldUsername,
+            NewUsername = newUsername
+        });
+
+        await _database.InsertAsync(changeUsernameEvent);
+    }
+
     public async Task<bool> IsUserHasAnyLoginEvent(int userId)
     {
         var loginEvent = await _database.SelectFirstAsync<EventUser>(new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd(
