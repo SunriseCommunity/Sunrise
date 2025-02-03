@@ -5,8 +5,6 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Chat.Commands.Moderation;
 
@@ -37,7 +35,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        if (user.IsRestricted == false)
+        if (user.IsRestricted() == false)
         {
             CommandRepository.SendMessage(session, "User is not restricted... yet.");
             return;

@@ -4,6 +4,7 @@ using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Database.Services.User.Services;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types;
+using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
 using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
@@ -71,20 +72,21 @@ public class UserService
     {
         var redisKeys = new List<string>
         {
-            RedisKey.UserById(id ?? 0),
-            RedisKey.UserByEmail(email ?? "")
+            RedisKey.UserIdByEmail(email ?? "")
         };
 
         if (username != null)
         {
             if (passhash != null)
-                redisKeys.Add(RedisKey.UserByUsernameAndPassHash(username, passhash));
+                redisKeys.Add(RedisKey.UserIdByUsernameAndPassHash(username, passhash));
             else
-                redisKeys.Add(RedisKey.UserByUsername(username));
+                redisKeys.Add(RedisKey.UserIdByUsername(username));
         }
 
-        var cachedUser = await _redis.Get<Models.User.User?>([.. redisKeys]);
+        var cachedUserId = await _redis.Get<int?>([.. redisKeys]);
+        if (cachedUserId != null && useCache) id = cachedUserId;
 
+        var cachedUser = await _redis.Get<Models.User.User?>(RedisKey.UserById(id ?? 0));
         if (cachedUser != null && useCache) return cachedUser;
 
         if (passhash != null && id == null && username == null && email == null)
@@ -100,15 +102,35 @@ public class UserService
 
         if (user == null) return null;
 
-        await _redis.Set(
-            [RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email)],
-            user);
+        await _redis.Set(RedisKey.UserById(user.Id), user);
+        await _redis.Set([RedisKey.UserIdByUsername(user.Username), RedisKey.UserIdByEmail(user.Email), RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)], user.Id);
 
         return user;
     }
 
+
+    public async Task UpdateUserUsername(Models.User.User user, string oldUsername, string newUsername, int? updatedById = null, string? userIp = null)
+    {
+        user.Username = newUsername;
+        await UpdateUser(user);
+
+        var ip = userIp ?? "";
+        await _services.EventService.UserEvent.CreateNewUserChangeUsernameEvent(user.Id, ip, oldUsername, newUsername, updatedById);
+    }
+
     public async Task UpdateUser(Models.User.User user)
     {
+        var oldUser = await GetUser(id: user.Id);
+        if (oldUser == null) throw new Exception("User not found");
+
+        await _redis.Remove(
+        [
+            RedisKey.UserById(oldUser.Id),
+            RedisKey.UserIdByUsername(oldUser.Username),
+            RedisKey.UserIdByEmail(oldUser.Email),
+            RedisKey.UserIdByUsernameAndPassHash(oldUser.Username, oldUser.Passhash)
+        ]);
+
         await _database.UpdateAsync(user);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
@@ -119,23 +141,62 @@ public class UserService
 
         await _redis.Remove(RedisKey.AllUsers());
 
-        await _redis.Set(
-            [
-                RedisKey.UserById(user.Id), RedisKey.UserByUsername(user.Username), RedisKey.UserByEmail(user.Email),
-                RedisKey.UserByUsernameAndPassHash(user.Username, user.Passhash)
-            ],
-            user);
+        await _redis.Set(RedisKey.UserById(user.Id), user);
+        await _redis.Set([RedisKey.UserIdByUsername(user.Username), RedisKey.UserIdByEmail(user.Email), RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)], user.Id);
     }
 
-    public async Task<List<Models.User.User>?> GetAllUsers(bool useCache = true)
+    public async Task<bool> DeleteUser(int userId)
+    {
+        var user = await GetUser(id: userId);
+        if (user == null) return false;
+
+        var isUserHasAnyLoginEvent = await _services.EventService.UserEvent.IsUserHasAnyLoginEvent(user.Id);
+        var isUserHasAnyScore = await _services.ScoreService.GetUserLastScore(userId) != null;
+
+        if (isUserHasAnyLoginEvent || isUserHasAnyScore || user.Username == Configuration.BotUsername)
+        {
+            _logger.LogWarning($"User {user.Username} has login events or some active score. Deleting user with any of these conditions is not allowed.");
+            return false;
+        }
+
+        foreach (var mode in Enum.GetValues<GameMode>())
+        {
+            await Stats.DeleteUserStats(user.Id, mode);
+            var userScores = await _services.ScoreService.GetUserScores(user.Id, mode, ScoreTableType.Recent);
+
+            foreach (var score in userScores)
+            {
+                await _services.ScoreService.MarkAsDeleted(score);
+            }
+        }
+
+        await Medals.DeleteUsersMedals(user.Id);
+        await Stats.Snapshots.DeleteUserStatsSnapshot(user.Id);
+        await Favourites.DeleteUsersFavouriteBeatmaps(user.Id);
+        await Files.DeleteUsersFiles(user.Id);
+
+        await _database.DeleteAsync(user);
+
+        await _redis.Remove(
+        [
+            RedisKey.UserById(user.Id),
+            RedisKey.UserIdByUsername(user.Username),
+            RedisKey.UserIdByEmail(user.Email),
+            RedisKey.UserIdByUsernameAndPassHash(user.Username, user.Passhash)
+        ]);
+
+        return true;
+    }
+
+    public async Task<List<Models.User.User>> GetAllUsers(bool useCache = true)
     {
         var cachedStats = await _redis.Get<List<Models.User.User>>(RedisKey.AllUsers());
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("IsRestricted", OperatorEnum.Equals, false));
+        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null));
 
-        if (users == null) return null;
+        if (users == null) return [];
 
         await _redis.Set(RedisKey.AllUsers(), users);
 
@@ -152,7 +213,7 @@ public class UserService
 
     public async Task<long> GetTotalUsers()
     {
-        var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("IsRestricted", OperatorEnum.Equals, false);
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
         return await _database.CountAsync<Models.User.User>(exp);
     }
 }

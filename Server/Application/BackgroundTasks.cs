@@ -14,6 +14,8 @@ public static class BackgroundTasks
         RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(), "0 3 * * *"); // 3 AM UTC
 
         RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(), "59 23 * * *"); // 11:59 PM UTC
+
+        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(), "0 1 * * *"); // 1 AM UTC
     }
 
     public static async Task SaveStatsSnapshot()
@@ -24,8 +26,13 @@ public static class BackgroundTasks
         {
             var usersStats = await database.UserService.Stats.GetAllUserStats(i, LeaderboardSortType.Pp);
 
+            var users = await database.UserService.GetAllUsers();
+
             foreach (var stats in usersStats)
             {
+                var user = users.FirstOrDefault(x => x.Id == stats.UserId);
+                if (user == null || !user.IsActive()) continue;
+
                 var currentSnapshot = await database.UserService.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
                 var rankSnapshots = currentSnapshot.GetSnapshots();
 
@@ -43,6 +50,19 @@ public static class BackgroundTasks
                 currentSnapshot.SetSnapshots(rankSnapshots);
                 await database.UserService.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
             }
+        }
+    }
+
+    public static async Task DisableInactiveUsers()
+    {
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+
+        var users = await database.UserService.GetAllUsers();
+        if (users == null) return;
+
+        foreach (var user in users.Where(user => user.LastOnlineTime.AddDays(90) < DateTime.UtcNow))
+        {
+            await database.UserService.Moderation.DisableUser(user.Id);
         }
     }
 

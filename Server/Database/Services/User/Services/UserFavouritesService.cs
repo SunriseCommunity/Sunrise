@@ -70,4 +70,10 @@ public class UserFavouritesService
 
         return favourites.Select(x => x.BeatmapSetId).ToList();
     }
+
+    public async Task DeleteUsersFavouriteBeatmaps(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        await _database.DeleteManyAsync<UserFavouriteBeatmap>(exp);
+    }
 }

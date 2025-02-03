@@ -26,7 +26,7 @@ public class UserResponse(User user, string? status = null)
     public DateTime LastOnlineTime { get; set; } = user.LastOnlineTime;
 
     [JsonPropertyName("restricted")]
-    public bool IsRestricted { get; set; } = user.IsRestricted;
+    public bool IsRestricted { get; set; } = user.IsRestricted();
 
     [JsonPropertyName("silenced_until")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

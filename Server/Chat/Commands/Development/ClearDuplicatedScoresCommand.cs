@@ -25,7 +25,8 @@ public class ClearDuplicatedScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = ClearDuplicatedScores(session);
+        Task.Run(() => ClearDuplicatedScores(session));
+
         return Task.CompletedTask;
     }
 

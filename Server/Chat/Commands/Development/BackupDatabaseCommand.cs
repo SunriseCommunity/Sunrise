@@ -22,7 +22,7 @@ public class BackupDatabaseCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = StartDatabaseBackup(session);
+        Task.Run(() => StartDatabaseBackup(session));
 
         return Task.CompletedTask;
     }

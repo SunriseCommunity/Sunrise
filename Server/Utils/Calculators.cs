@@ -113,7 +113,7 @@ public static class Calculators
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var user = await database.UserService.GetUser(userId);
-        if (user == null || user.IsRestricted) return 0;
+        if (user == null || !user.IsActive()) return 0;
 
         // Get users top scores sorted by pp in descending order
         var userBestScores = await database.ScoreService.GetUserScores(userId, mode, ScoreTableType.Best);
@@ -140,7 +140,7 @@ public static class Calculators
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var user = await database.UserService.GetUser(userId);
-        if (user == null || user.IsRestricted) return 0;
+        if (user == null || !user.IsActive()) return 0;
 
         // Get users top scores sorted by pp in descending order
         var userBestScores = await database.ScoreService.GetUserScores(userId, mode, ScoreTableType.Best);

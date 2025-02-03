@@ -27,7 +27,8 @@ public class AppendNewUserStatsCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = AppendMissingUserStats(session);
+        Task.Run(() => AppendMissingUserStats(session));
+
         return Task.CompletedTask;
     }
 

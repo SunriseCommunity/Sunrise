@@ -62,9 +62,9 @@ public class UserModerationService
         if (user == null)
             return;
 
-        user.IsRestricted = false;
+        user.AccountStatus = UserAccountStatus.Active;
         await _services.UserService.UpdateUser(user);
-        await UpdateUserStats(user.Id);
+        await RefreshUserStats(user.Id);
     }
 
     public async Task RestrictPlayer(int userId, int executorId, string reason, TimeSpan? expiresAfter = null)
@@ -85,21 +85,55 @@ public class UserModerationService
         if (user.Privilege >= UserPrivileges.Admin)
             return;
 
-        user.IsRestricted = true;
+        user.AccountStatus = UserAccountStatus.Restricted;
         await _services.UserService.UpdateUser(user);
         await _database.InsertAsync(restriction);
-        await UpdateUserStats(user.Id);
+        await RefreshUserStats(user.Id);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         var session = sessions.GetSession(userId: userId);
         session?.SendRestriction(reason);
     }
 
-    private async Task UpdateUserStats(int userId)
+    public async Task<bool> EnableUser(int userId)
+    {
+        var user = await _services.UserService.GetUser(userId);
+        if (user == null) return false;
+
+        user.AccountStatus = UserAccountStatus.Active;
+
+        await _services.UserService.UpdateUser(user);
+        await RefreshUserStats(user.Id);
+
+        return true;
+    }
+
+    public async Task<bool> DisableUser(int userId)
+    {
+        var user = await _services.UserService.GetUser(userId);
+        if (user == null) return false;
+
+        if (user.Username == Configuration.BotUsername)
+        {
+            _logger.LogWarning($"User {user.Username} is bot. Disabling bot user is not allowed.");
+            return false;
+        }
+
+        user.AccountStatus = UserAccountStatus.Disabled;
+        await _services.UserService.UpdateUser(user);
+        await RefreshUserStats(user.Id);
+
+        return true;
+    }
+
+    private async Task RefreshUserStats(int userId)
     {
         foreach (var i in Enum.GetValues(typeof(GameMode)))
         {
             var stat = await _services.UserService.Stats.GetUserStats(userId, (GameMode)i);
+            if (stat == null)
+                continue;
+
             var pp = await Calculators.CalculateUserWeightedPerformance(userId, (GameMode)i);
             var acc = await Calculators.CalculateUserWeightedAccuracy(userId, (GameMode)i);
 

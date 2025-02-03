@@ -38,8 +38,8 @@ public class User
     [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string Friends { get; set; } = string.Empty;
 
-    [Column(DataTypes.Boolean, false)]
-    public bool IsRestricted { get; set; } = false;
+    [Column(DataTypes.Int, false)]
+    public UserAccountStatus AccountStatus { get; set; } = UserAccountStatus.Active;
 
     [Column(DataTypes.DateTime, false)]
     public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
@@ -77,5 +77,15 @@ public class User
         if (Privilege.HasFlag(UserPrivileges.Supporter)) privilegeRank |= PlayerRank.Supporter;
 
         return privilegeRank;
+    }
+
+    public bool IsRestricted()
+    {
+        return AccountStatus == UserAccountStatus.Restricted;
+    }
+
+    public bool IsActive()
+    {
+        return AccountStatus == UserAccountStatus.Active;
     }
 }

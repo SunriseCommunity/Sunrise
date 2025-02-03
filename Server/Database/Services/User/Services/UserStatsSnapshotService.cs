@@ -53,6 +53,15 @@ public class UserStatsSnapshotService
         await _redis.Set(RedisKey.UserStatsSnapshot(snapshot.UserId, snapshot.GameMode), snapshot);
     }
 
+    public async Task DeleteUserStatsSnapshot(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        var snapshot = await _database.SelectFirstAsync<UserStatsSnapshot?>(exp);
+        if (snapshot == null) return;
+
+        await _redis.Remove(RedisKey.UserStatsSnapshot(snapshot.UserId, snapshot.GameMode));
+    }
+
     public async Task<UserStatsSnapshot> InsertUserStatsSnapshot(UserStatsSnapshot snapshot)
     {
         snapshot = await _database.InsertAsync(snapshot);

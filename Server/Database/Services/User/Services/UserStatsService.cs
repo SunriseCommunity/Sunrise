@@ -34,7 +34,6 @@ public class UserStatsService
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await _redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
-
         if (cachedStats != null && useCache) return cachedStats;
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
@@ -44,9 +43,6 @@ public class UserStatsService
 
         if (stats == null)
         {
-            var user = await _services.UserService.GetUser(userId);
-            if (user == null) return null;
-
             _logger.LogCritical($"User stats not found for user {userId} in mode {mode}. Creating new stats.");
 
             stats = new UserStats
@@ -104,6 +100,16 @@ public class UserStatsService
         stats = await _database.InsertAsync(stats);
 
         await _redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
+    }
+
+    public async Task DeleteUserStats(int userId, GameMode mode)
+    {
+        await RemoveUserRank(userId, mode);
+
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+        await _database.DeleteManyAsync<UserStats>(exp);
+
+        await _redis.Remove(RedisKey.UserStats(userId, mode));
     }
 
     public async Task<long> GetUserRank(int userId, GameMode mode)

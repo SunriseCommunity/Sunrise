@@ -26,7 +26,8 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = UpdateUsersBestCombo(session);
+        Task.Run(() => UpdateUsersBestCombo(session));
+
         return Task.CompletedTask;
     }
 

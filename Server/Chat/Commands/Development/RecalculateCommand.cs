@@ -27,7 +27,8 @@ public class RecalculateCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = RecalculateUserStats(session);
+        Task.Run(() => RecalculateUserStats(session));
+
         return Task.CompletedTask;
     }
 

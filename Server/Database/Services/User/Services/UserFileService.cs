@@ -41,9 +41,9 @@ public class UserFileService
             Path = filePath,
             Type = FileType.Avatar
         };
-        
+
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Avatar);
-        var prevRecord =  await _database.SelectFirstAsync<UserFile?>(exp);
+        var prevRecord = await _database.SelectFirstAsync<UserFile?>(exp);
 
         if (prevRecord != null)
         {
@@ -56,7 +56,7 @@ public class UserFileService
         {
             record = await _database.InsertAsync(record);
         }
-        
+
         if (record == null)
             return false;
 
@@ -152,7 +152,7 @@ public class UserFileService
         };
 
         var exp = new Expr("OwnerId", OperatorEnum.Equals, userId).PrependAnd("Type", OperatorEnum.Equals, (int)FileType.Banner);
-        var prevRecord =  await _database.SelectFirstAsync<UserFile?>(exp);
+        var prevRecord = await _database.SelectFirstAsync<UserFile?>(exp);
 
         if (prevRecord != null)
         {
@@ -164,7 +164,7 @@ public class UserFileService
         {
             record = await _database.InsertAsync(record);
         }
-        
+
         if (record == null)
             return false;
 
@@ -196,5 +196,11 @@ public class UserFileService
         await _redis.Set(RedisKey.BannerRecord(userId), record);
 
         return file;
+    }
+
+    public async Task DeleteUsersFiles(int userId)
+    {
+        var exp = new Expr("OwnerId", OperatorEnum.Equals, userId);
+        await _database.DeleteManyAsync<UserFile>(exp);
     }
 }

@@ -5,6 +5,7 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
@@ -29,7 +30,7 @@ public class AuthController : ControllerBase
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
 
-        if (user.IsRestricted)
+        if (user.IsRestricted())
         {
             var restriction = await database.UserService.Moderation.GetRestrictionReason(user.Id);
             return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
@@ -40,6 +41,16 @@ public class AuthController : ControllerBase
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
         var token = AuthService.GenerateTokens(user.Id);
+
+        var loginData = new
+        {
+            RequestHeader = Request.Headers.UserAgent,
+            RequestIp = location.Ip,
+            RequestCountry = location.Country,
+            RequestTime = DateTime.UtcNow
+        };
+
+        await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, location.Ip, false, loginData);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }
@@ -68,16 +79,12 @@ public class AuthController : ControllerBase
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: request.Username);
 
-        if (user != null)
-            return BadRequest(new ErrorResponse("Username already in use"));
-
-        user = await database.UserService.GetUser(email: request.Email);
-        if (user != null)
+        var foundUserByEmail = await database.UserService.GetUser(email: request.Email);
+        if (foundUserByEmail != null)
             return BadRequest(new ErrorResponse("Email already in use"));
 
-        if (!CharactersFilter.IsValidString(request.Username!, true))
+        if (!request.Username.IsValidUsername(true))
             return BadRequest(new ErrorResponse("Invalid characters in username."));
 
         if (request.Username.Length is < 2 or > 32)
@@ -95,9 +102,25 @@ public class AuthController : ControllerBase
         var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
 
         if (Configuration.BannedIps.Contains(location.Ip))
-            return BadRequest(new ErrorResponse("Your IP address is banned."));
+            return BadRequest(new ErrorResponse("Your IP address is banned. Please contact support."));
 
-        user = new User
+        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(location.Ip);
+        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
+            return BadRequest(new ErrorResponse("Please don't create multiple accounts. You have been warned."));
+
+        var foundUserByUsername = await database.UserService.GetUser(username: request.Username);
+        if (foundUserByUsername != null && foundUserByUsername.IsActive())
+            return BadRequest(new ErrorResponse("Username is already taken"));
+
+        if (foundUserByUsername != null)
+        {
+            await database.UserService.UpdateUserUsername(
+                foundUserByUsername,
+                foundUserByUsername.Username,
+                foundUserByUsername.Username.SetUsernameAsOld());
+        }
+
+        var newUser = new User
         {
             Username = request.Username,
             Passhash = request.Password.GetPassHash(),
@@ -106,9 +129,11 @@ public class AuthController : ControllerBase
             Privilege = UserPrivileges.User
         };
 
-        user = await database.UserService.InsertUser(user);
+        newUser = await database.UserService.InsertUser(newUser);
 
-        var token = AuthService.GenerateTokens(user.Id);
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, location.Ip, newUser);
+
+        var token = AuthService.GenerateTokens(newUser.Id);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }

@@ -7,6 +7,8 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
+using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -428,6 +430,49 @@ public class UserController : ControllerBase
         session.User.Passhash = request.NewPassword.GetPassHash();
 
         await database.UserService.UpdateUser(session.User);
+
+        var ip = RegionHelper.GetUserIpAddress(Request);
+        await database.EventService.UserEvent.CreateNewUserChangePasswordEvent(session.User.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.UsernameChange)]
+    public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest? request)
+    {
+        var session = await Request.GetSessionFromRequest();
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        if (!request.NewUsername.IsValidUsername(true))
+            return BadRequest(new ErrorResponse("Invalid username"));
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+
+        var lastUsernameChange = await database.EventService.UserEvent.GetLastUsernameChange(session.User.Id);
+        if (lastUsernameChange != null && lastUsernameChange.Time.AddHours(1) > DateTime.UtcNow)
+            return BadRequest(new ErrorResponse("You can change your username only once per hour. Please try again later."));
+
+        var foundUserByUsername = await database.UserService.GetUser(username: request.NewUsername);
+        if (foundUserByUsername != null && foundUserByUsername.IsActive())
+            return BadRequest(new ErrorResponse("Username is already taken"));
+
+        if (foundUserByUsername != null)
+        {
+            await database.UserService.UpdateUserUsername(
+                foundUserByUsername,
+                foundUserByUsername.Username,
+                foundUserByUsername.Username.SetUsernameAsOld());
+        }
+
+        var oldUsername = session.User.Username;
+        session.User.Username = request.NewUsername;
+
+        var ip = RegionHelper.GetUserIpAddress(Request);
+        await database.UserService.UpdateUserUsername(session.User, oldUsername, request.NewUsername, null, ip.ToString());
 
         return new OkResult();
     }
