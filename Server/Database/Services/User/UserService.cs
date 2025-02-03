@@ -213,7 +213,7 @@ public class UserService
 
     public async Task<long> GetTotalUsers()
     {
-        var exp = new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("AccountStatus", OperatorEnum.Equals, (int)UserAccountStatus.Active);
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
         return await _database.CountAsync<Models.User.User>(exp);
     }
 }
