@@ -25,6 +25,9 @@ public static class UserService
         if (user.Privilege.HasFlag(UserPrivileges.Supporter))
             badges.Add("supporter");
 
+        if (user.AccountStatus == UserAccountStatus.Restricted)
+            badges.Add("restricted");
+
         return badges;
     }
 }
