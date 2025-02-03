@@ -59,7 +59,7 @@ public sealed class DatabaseManager
             RegisterDate = DateTime.Now,
             Passhash = "12345678",
             Email = "bot@mail.com",
-            IsRestricted = true // Bot is restricted by default to prevent users from logging in as it
+            AccountStatus = UserAccountStatus.Restricted // TODO: Find a better way to handle this
         };
 
         bot = await UserService.InsertUser(bot);
