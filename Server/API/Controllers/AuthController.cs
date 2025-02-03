@@ -87,7 +87,7 @@ public class AuthController : ControllerBase
         if (user != null)
             return BadRequest(new ErrorResponse("Email already in use"));
 
-        if (!CharactersFilter.IsValidString(request.Username!, true))
+        if (!CharactersFilter.IsValidUsername(request.Username!, true))
             return BadRequest(new ErrorResponse("Invalid characters in username."));
 
         if (request.Username.Length is < 2 or > 32)

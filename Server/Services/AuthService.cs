@@ -153,7 +153,7 @@ public static class AuthService
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
             return new BadRequestObjectResult("Invalid request: Missing parameters");
 
-        if (!CharactersFilter.IsValidString(username!, true))
+        if (!CharactersFilter.IsValidUsername(username!, true))
             errors["username"].Add("Invalid username. It should contain only alphanumeric characters.");
         else if (username.Length is < 2 or > 32)
             errors["username"].Add("Invalid username. Length should be between 2 and 32 characters.");

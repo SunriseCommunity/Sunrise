@@ -14,7 +14,8 @@
       "CallsPerWindow": 100,
       "Window": 10
     },
-    "BannedIps": []
+    "BannedIps": [],
+    "BannedUsernamesPath": "./Data/Files/banned-usernames.txt"
   },
   "Redis": {
     "ConnectionString": "redis",

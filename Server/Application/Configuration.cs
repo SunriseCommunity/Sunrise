@@ -56,6 +56,8 @@ public static class Configuration
 
     public static string[] BannedIps => Config.GetSection("General").GetSection("BannedIps").Get<string[]>() ?? [];
 
+    public static string BannedUsernamesPath => Config.GetSection("General").GetSection("BannedUsernamesPath").Get<string>() ?? "";
+
     // Bot section
     public static string BotUsername => Config.GetSection("Bot").GetValue<string?>("Username") ?? "";
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
