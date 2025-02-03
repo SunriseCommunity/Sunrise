@@ -129,7 +129,6 @@ public class ScoreService
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("SubmissionStatus", OperatorEnum.NotEquals, (int)SubmissionStatus.Deleted);
 
-        // TODO: Check if still works.
         var score = await _database.SelectFirstAsync<Models.Score>(exp,
         [
             new ResultOrder("WhenPlayed", OrderDirectionEnum.Descending)

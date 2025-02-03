@@ -106,6 +106,16 @@ public class UserStatsService
         await _redis.Set(RedisKey.UserStats(stats.UserId, stats.GameMode), stats);
     }
 
+    public async Task DeleteUserStats(int userId, GameMode mode)
+    {
+        await RemoveUserRank(userId, mode);
+
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode", OperatorEnum.Equals, (int)mode);
+        await _database.DeleteManyAsync<UserStats>(exp);
+
+        await _redis.Remove(RedisKey.UserStats(userId, mode));
+    }
+
     public async Task<long> GetUserRank(int userId, GameMode mode)
     {
         var rank = await _redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), userId);

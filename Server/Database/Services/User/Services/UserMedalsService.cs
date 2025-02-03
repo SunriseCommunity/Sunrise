@@ -57,4 +57,11 @@ public class UserMedalsService
         await _database.InsertAsync(userMedal);
         await _redis.Remove(RedisKey.UserMedals(userId));
     }
+
+    public async Task DeleteUsersMedals(int userId)
+    {
+        var exp = new Expr("UserId", OperatorEnum.Equals, userId);
+        await _database.DeleteManyAsync<UserMedals>(exp);
+        await _redis.Remove(RedisKey.UserMedals(userId));
+    }
 }

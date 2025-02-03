@@ -67,6 +67,13 @@ public class RedisRepository
         await _redis.KeyDeleteAsync(key);
     }
 
+    public async Task Remove(string[] keys)
+    {
+        if (!UseCache) return;
+
+        await _redis.KeyDeleteAsync(keys.Select(x => (RedisKey)x).ToArray());
+    }
+
     public async Task<bool> SortedSetAdd(string key, int value, double score)
     {
         var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
