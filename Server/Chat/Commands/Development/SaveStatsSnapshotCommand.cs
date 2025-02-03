@@ -22,7 +22,8 @@ public class SaveStatsSnapshotCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = StartSaveStatsSnapshot(session);
+        Task.Run(() => StartSaveStatsSnapshot(session));
+
         return Task.CompletedTask;
     }
 

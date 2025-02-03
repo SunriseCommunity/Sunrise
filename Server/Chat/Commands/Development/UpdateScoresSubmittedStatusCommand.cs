@@ -26,7 +26,8 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = UpdateScoresSubmittedStatus(session);
+        Task.Run(() => UpdateScoresSubmittedStatus(session));
+
         return Task.CompletedTask;
     }
 

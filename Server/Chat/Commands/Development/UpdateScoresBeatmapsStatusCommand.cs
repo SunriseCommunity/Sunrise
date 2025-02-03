@@ -26,7 +26,8 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = UpdateScoresBeatmapStatus(session);
+        Task.Run(() => UpdateScoresBeatmapStatus(session));
+
         return Task.CompletedTask;
     }
 

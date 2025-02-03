@@ -39,7 +39,8 @@ public class RecalculateScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        _ = RecalculateScores(session, mode);
+        Task.Run(() => RecalculateScores(session, mode));
+
         return Task.CompletedTask;
     }
 
