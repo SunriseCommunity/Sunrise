@@ -42,7 +42,7 @@ public static class AuthService
                 "Server is currently in maintenance mode. Please try again later.",
                 LoginResponses.ServerError);
 
-        if (user.IsRestricted && await database.UserService.Moderation.IsRestricted(user.Id))
+        if (user.IsRestricted() && await database.UserService.Moderation.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();

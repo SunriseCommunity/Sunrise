@@ -29,7 +29,7 @@ public class AuthController : ControllerBase
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
 
-        if (user.IsRestricted)
+        if (user.IsRestricted())
         {
             var restriction = await database.UserService.Moderation.GetRestrictionReason(user.Id);
             return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));

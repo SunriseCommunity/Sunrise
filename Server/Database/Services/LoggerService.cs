@@ -1,4 +1,4 @@
-using Sunrise.Server.Application;
+using ExpressionTree;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Repositories;
 using Watson.ORM.Sqlite;
@@ -12,7 +12,7 @@ public class LoggerService
     private readonly RedisRepository _redis;
     private readonly DatabaseManager _services;
 
-    public LoggerService(DatabaseManager services,RedisRepository redis, WatsonORM database)
+    public LoggerService(DatabaseManager services, RedisRepository redis, WatsonORM database)
     {
         var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
         _logger = loggerFactory.CreateLogger<LoggerService>();
@@ -33,5 +33,17 @@ public class LoggerService
         };
 
         await _database.InsertAsync(loginEvent);
+    }
+
+    public async Task<bool> IsUserHasAnyLoginEvent(int userId)
+    {
+        var loginEvent = await _database.SelectFirstAsync<LoginEvent>(new Expr("UserId", OperatorEnum.Equals, userId));
+
+        if (loginEvent == null)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

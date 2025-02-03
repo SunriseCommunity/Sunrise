@@ -62,7 +62,7 @@ public class UserModerationService
         if (user == null)
             return;
 
-        user.IsRestricted = false;
+        user.AccountStatus = UserAccountStatus.Active;
         await _services.UserService.UpdateUser(user);
         await UpdateUserStats(user.Id);
     }
@@ -85,7 +85,7 @@ public class UserModerationService
         if (user.Privilege >= UserPrivileges.Admin)
             return;
 
-        user.IsRestricted = true;
+        user.AccountStatus = UserAccountStatus.Restricted;
         await _services.UserService.UpdateUser(user);
         await _database.InsertAsync(restriction);
         await UpdateUserStats(user.Id);

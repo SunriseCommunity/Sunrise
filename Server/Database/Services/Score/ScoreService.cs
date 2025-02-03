@@ -63,7 +63,7 @@ public class ScoreService
         foreach (var score in scores.ToList())
         {
             var scoreUser = await _services.UserService.GetUser(score.UserId);
-            if (scoreUser?.IsRestricted == true) scores.Remove(score);
+            if (scoreUser?.IsRestricted() == true) scores.Remove(score);
         }
 
         return scores.GetScoresGroupedByUsersBest().SortScoresByPerformancePoints();
@@ -112,7 +112,7 @@ public class ScoreService
     public async Task<Dictionary<int, int>> GetUserMostPlayedBeatmapsIds(int userId, GameMode mode)
     {
         var user = await _services.UserService.GetUser(userId);
-        if (user.IsRestricted) return [];
+        if (user.IsRestricted()) return [];
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
@@ -159,7 +159,7 @@ public class ScoreService
             var scoreUser = await _services.UserService.GetUser(score.UserId);
 
             if (type == LeaderboardType.Country && scoreUser?.Country != user?.Country ||
-                scoreUser?.IsRestricted == true) scores.Remove(score);
+                scoreUser?.IsRestricted() == true) scores.Remove(score);
         }
 
         return scores.SortScoresByTheirScoreValue();
@@ -168,7 +168,7 @@ public class ScoreService
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
         var user = await _services.UserService.GetUser(userId);
-        if (user.IsRestricted) return [];
+        if (user.IsRestricted()) return [];
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)mode)
