@@ -187,15 +187,15 @@ public class UserService
         return true;
     }
 
-    public async Task<List<Models.User.User>?> GetAllUsers(bool useCache = true)
+    public async Task<List<Models.User.User>> GetAllUsers(bool useCache = true)
     {
         var cachedStats = await _redis.Get<List<Models.User.User>>(RedisKey.AllUsers());
 
         if (cachedStats != null && useCache) return cachedStats;
 
-        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null).PrependAnd("AccountStatus", OperatorEnum.Equals, (int)UserAccountStatus.Active));
+        var users = await _database.SelectManyAsync<Models.User.User>(new Expr("Id", OperatorEnum.IsNotNull, null));
 
-        if (users == null) return null;
+        if (users == null) return [];
 
         await _redis.Set(RedisKey.AllUsers(), users);
 

@@ -61,7 +61,14 @@ public static class AuthService
 
         await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, ip.ToString(), true, sr);
 
+
         var session = sessions.CreateSession(user, location, loginRequest);
+
+        if (user.AccountStatus == UserAccountStatus.Disabled)
+        {
+            await database.UserService.Moderation.EnableUser(user.Id);
+            session.SendNotification("Welcome back! Your account has been re-enabled. It may take a few seconds to load your data.");
+        }
 
         response.Headers["cho-token"] = session.Token;
 

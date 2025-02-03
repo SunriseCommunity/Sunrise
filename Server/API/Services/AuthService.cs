@@ -7,6 +7,7 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Services;
@@ -80,6 +81,12 @@ public static class AuthService
             var hashClaim = identity.FindFirst(ClaimTypes.Hash);
             if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
                 return false;
+
+            if (user.AccountStatus == UserAccountStatus.Disabled)
+            {
+                database.UserService.Moderation.EnableUser(user.Id).Wait();
+                // TODO: Send message from bot about account being enabled
+            }
 
             userId = id;
             return true;
