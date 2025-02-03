@@ -58,7 +58,7 @@ public static class AuthService
         var location = await RegionHelper.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
 
-        await database.LoggerService.AddNewLoginEvent(user.Id, ip.ToString(), sr);
+        await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, ip.ToString(), true, sr);
 
         var session = sessions.CreateSession(user, location, loginRequest);
 
@@ -176,6 +176,10 @@ public static class AuthService
 
         if (user != null) errors["user_email"].Add("User with this email already exists.");
 
+        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip.ToString());
+        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
+            errors["username"].Add("Please don't create multiple accounts. You have been warned.");
+
         if (errors.Any(x => x.Value.Count > 0))
             return new BadRequestObjectResult(new
             {
@@ -199,7 +203,9 @@ public static class AuthService
             Privilege = UserPrivileges.User
         };
 
-        await database.UserService.InsertUser(user);
+        user = await database.UserService.InsertUser(user);
+
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, ip.ToString(), user);
 
         return new OkObjectResult("");
     }

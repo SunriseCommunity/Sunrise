@@ -1,9 +1,11 @@
 ﻿using DatabaseWrapper.Core;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Database.Models.Event;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Database.Services;
 using Sunrise.Server.Database.Services.Beatmap;
+using Sunrise.Server.Database.Services.Event;
 using Sunrise.Server.Database.Services.Score;
 using Sunrise.Server.Database.Services.User;
 using Sunrise.Server.Managers;
@@ -24,7 +26,7 @@ public sealed class DatabaseManager
     private readonly RedisRepository _redis;
 
     public readonly BeatmapService BeatmapService;
-    public readonly LoggerService LoggerService;
+    public readonly EventService EventService;
     public readonly MedalService MedalService;
     public readonly ScoreService ScoreService;
     public readonly UserService UserService;
@@ -40,7 +42,7 @@ public sealed class DatabaseManager
         BeatmapService = new BeatmapService(this, _redis, _orm);
         ScoreService = new ScoreService(this, _redis, _orm);
         MedalService = new MedalService(this, _redis, _orm);
-        LoggerService = new LoggerService(this, _redis, _orm);
+        EventService = new EventService(this, _redis, _orm);
 
         _orm.InitializeDatabase();
         CheckMigrations();
@@ -78,7 +80,7 @@ public sealed class DatabaseManager
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),
-            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot), typeof(LoginEvent),
+            typeof(Medal), typeof(MedalFile), typeof(UserMedals), typeof(UserStatsSnapshot), typeof(EventUser),
             typeof(UserFavouriteBeatmap)
         ]);
 

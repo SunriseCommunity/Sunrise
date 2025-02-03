@@ -133,7 +133,7 @@ public class UserService
         var user = await GetUser(id: userId);
         if (user == null) return false;
 
-        var isUserHasAnyLoginEvent = await _services.LoggerService.IsUserHasAnyLoginEvent(user.Id);
+        var isUserHasAnyLoginEvent = await _services.EventService.UserEvent.IsUserHasAnyLoginEvent(user.Id);
         var isUserHasAnyScore = await _services.ScoreService.GetUserLastScore(userId) != null;
 
         if (isUserHasAnyLoginEvent || isUserHasAnyScore || user.Username == Configuration.BotUsername)

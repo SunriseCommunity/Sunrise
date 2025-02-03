@@ -7,6 +7,7 @@ using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Helpers;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -428,6 +429,9 @@ public class UserController : ControllerBase
         session.User.Passhash = request.NewPassword.GetPassHash();
 
         await database.UserService.UpdateUser(session.User);
+
+        var ip = RegionHelper.GetUserIpAddress(Request);
+        await database.EventService.UserEvent.CreateNewUserChangePasswordEvent(session.User.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
 
         return new OkResult();
     }

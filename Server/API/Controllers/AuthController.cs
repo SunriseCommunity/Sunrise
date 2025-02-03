@@ -41,6 +41,16 @@ public class AuthController : ControllerBase
 
         var token = AuthService.GenerateTokens(user.Id);
 
+        var loginData = new
+        {
+            RequestHeader = Request.Headers.UserAgent,
+            RequestIp = location.Ip,
+            RequestCountry = location.Country,
+            RequestTime = DateTime.UtcNow
+        };
+
+        await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, location.Ip, false, loginData);
+
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }
 
@@ -95,7 +105,11 @@ public class AuthController : ControllerBase
         var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
 
         if (Configuration.BannedIps.Contains(location.Ip))
-            return BadRequest(new ErrorResponse("Your IP address is banned."));
+            return BadRequest(new ErrorResponse("Your IP address is banned. Please contact support."));
+
+        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(location.Ip);
+        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
+            return BadRequest(new ErrorResponse("Please don't create multiple accounts. You have been warned."));
 
         user = new User
         {
@@ -107,6 +121,8 @@ public class AuthController : ControllerBase
         };
 
         user = await database.UserService.InsertUser(user);
+
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, location.Ip, user);
 
         var token = AuthService.GenerateTokens(user.Id);
 
