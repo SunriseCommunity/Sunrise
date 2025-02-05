@@ -18,11 +18,11 @@ namespace Sunrise.Server.Database;
 
 public sealed class DatabaseManager
 {
-    private const string DataPath = Configuration.DataPath;
-    private const string Database = Configuration.DatabaseName;
+    private static readonly string DataPath = Configuration.DataPath;
+    private static readonly string Database = Configuration.DatabaseName;
 
     private readonly ILogger<DatabaseManager> _logger;
-    private readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Directory.GetCurrentDirectory(), DataPath, Database)}; Pooling=false;"));
+    private readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(DataPath, Database)}; Pooling=false;"));
     private readonly RedisRepository _redis;
 
     public readonly BeatmapService BeatmapService;
@@ -67,7 +67,7 @@ public sealed class DatabaseManager
         bot = await UserService.InsertUser(bot);
         if (bot == null) throw new Exception("Failed to insert bot into the database");
 
-        var botAvatar = await File.ReadAllBytesAsync($"{DataPath}Files/Assets/BotAvatar.png");
+        var botAvatar = await File.ReadAllBytesAsync(Path.Combine(DataPath, "Files/Assets/BotAvatar.png"));
         await UserService.Files.SetAvatar(bot.Id, botAvatar);
     }
 
@@ -76,7 +76,7 @@ public sealed class DatabaseManager
         _orm.InitializeTable(typeof(Migration));
 
         var migrationManager = new MigrationManager(_orm);
-        var appliedMigrations = migrationManager.ApplyMigrations($"{Configuration.DataPath}Migrations");
+        var appliedMigrations = migrationManager.ApplyMigrations(Path.Combine(DataPath, "Migrations"));
 
         _orm.InitializeTables([
             typeof(User), typeof(UserStats), typeof(UserFile), typeof(Restriction), typeof(BeatmapFile), typeof(Score),

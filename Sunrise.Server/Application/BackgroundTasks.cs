@@ -68,7 +68,7 @@ public static class BackgroundTasks
 
     public static void BackupDatabase()
     {
-        const string filesPath = Configuration.DataPath;
+        var filesPath = Configuration.DataPath;
 
         var databasePath = Path.Combine(filesPath, Configuration.DatabaseName);
         var backupDbPath = Path.Combine(filesPath, "Backup.db.tmp");

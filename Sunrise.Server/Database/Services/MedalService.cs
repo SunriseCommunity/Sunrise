@@ -1,4 +1,5 @@
 using ExpressionTree;
+using Sunrise.Server.Application;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Storages;
@@ -60,7 +61,8 @@ public class MedalService
 
         if (cachedRecord != null)
         {
-            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            var cachedImagePath = isHighRes ? cachedRecord.Path.Replace(".png", "@2x.png") : cachedRecord.Path;
+            file = await LocalStorage.ReadFileAsync(Path.Combine(Configuration.DataPath, cachedImagePath));
             return file;
         }
 
@@ -70,7 +72,8 @@ public class MedalService
         if (record == null)
             return null;
 
-        file = await LocalStorage.ReadFileAsync(isHighRes ? record.Path.Replace(".png", "@2x.png") : record.Path);
+        var imagePath = isHighRes ? record.Path.Replace(".png", "@2x.png") : record.Path;
+        file = await LocalStorage.ReadFileAsync(Path.Combine(Configuration.DataPath, imagePath));
         if (file == null)
             return null;
 

@@ -10,7 +10,7 @@ namespace Sunrise.Server.Database.Services.Beatmap.Services;
 
 public class BeatmapFileService
 {
-    private const string DataPath = Configuration.DataPath;
+    private static readonly string DataPath = Configuration.DataPath;
 
     private readonly WatsonORM _database;
 
@@ -28,13 +28,14 @@ public class BeatmapFileService
 
     public async Task SetBeatmapFile(int beatmapId, byte[] beatmap)
     {
-        var filePath = $"{DataPath}Files/Beatmaps/{beatmapId}.osu";
+        var beatmapPath = $"Files/Beatmaps/{beatmapId}.osu";
+        var filePath = Path.Combine(DataPath, beatmapPath);
         await File.WriteAllBytesAsync(filePath, beatmap);
 
         var record = new BeatmapFile
         {
             BeatmapId = beatmapId,
-            Path = filePath
+            Path = beatmapPath
         };
 
         record = await _database.InsertAsync(record);
@@ -44,11 +45,13 @@ public class BeatmapFileService
     public async Task<byte[]?> GetBeatmapFile(int beatmapId)
     {
         var cachedRecord = await _redis.Get<BeatmapFile?>(RedisKey.BeatmapRecord(beatmapId));
+        string? filePath;
         byte[]? file;
 
         if (cachedRecord != null)
         {
-            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            filePath = Path.Combine(DataPath, cachedRecord.Path);
+            file = await LocalStorage.ReadFileAsync(filePath);
             return file;
         }
 
@@ -57,7 +60,8 @@ public class BeatmapFileService
 
         if (record == null) return null;
 
-        file = await LocalStorage.ReadFileAsync(record.Path);
+        filePath = Path.Combine(DataPath, record.Path);
+        file = await LocalStorage.ReadFileAsync(filePath);
 
         if (file == null) return null;
 

@@ -11,7 +11,7 @@ namespace Sunrise.Server.Database.Services.Score.Services;
 
 public class ScoreFileService
 {
-    private const string DataPath = Configuration.DataPath;
+    private static readonly string DataPath = Configuration.DataPath;
 
     private readonly WatsonORM _database;
 
@@ -31,8 +31,10 @@ public class ScoreFileService
     // TODO: Rename to insert?
     public async Task<UserFile> UploadReplay(int userId, IFormFile replay)
     {
-        var fileName = $"{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.osr";
-        var filePath = $"{DataPath}Files/Replays/{fileName}";
+        var replayName = $"{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.osr";
+        var replayFile = $"Files/Replays/{replayName}";
+        
+        var filePath = Path.Combine(DataPath, replayFile);
 
         await using var stream = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite);
         await replay.CopyToAsync(stream);
@@ -41,7 +43,7 @@ public class ScoreFileService
         var record = new UserFile
         {
             OwnerId = userId,
-            Path = filePath,
+            Path = replayFile,
             Type = FileType.Replay
         };
 
@@ -53,11 +55,13 @@ public class ScoreFileService
     public async Task<byte[]?> GetReplay(int replayId)
     {
         var cachedRecord = await _redis.Get<UserFile>(RedisKey.ReplayRecord(replayId));
+        string? filePath;
         byte[]? file;
 
         if (cachedRecord != null)
         {
-            file = await LocalStorage.ReadFileAsync(cachedRecord.Path);
+            filePath = Path.Combine(DataPath, cachedRecord.Path);
+            file = await LocalStorage.ReadFileAsync(filePath);
             return file;
         }
 
@@ -67,7 +71,8 @@ public class ScoreFileService
         if (record == null)
             return null;
 
-        file = await LocalStorage.ReadFileAsync(record.Path);
+        filePath = Path.Combine(DataPath, record.Path);
+        file = await LocalStorage.ReadFileAsync(filePath);
         if (file == null)
             return null;
 

@@ -79,8 +79,7 @@ public static class Bootstrap
         app.UseStaticFiles(new StaticFileOptions
         {
             FileProvider =
-                new PhysicalFileProvider(
-                    Path.Combine(Directory.GetCurrentDirectory(), "../Data/Files/SeasonalBackgrounds")),
+                new PhysicalFileProvider(Path.Combine(Configuration.DataPath, "Files/SeasonalBackgrounds")),
             RequestPath = "/static"
         });
     }

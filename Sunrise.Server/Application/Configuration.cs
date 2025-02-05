@@ -7,8 +7,7 @@ namespace Sunrise.Server.Application;
 
 public static class Configuration
 {
-    public const string DataPath = "../Data/"; 
-    public const string DatabaseName = "sunrise.db";
+
     private static readonly string? Env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
@@ -32,6 +31,13 @@ public static class Configuration
 
     public static int ApiWindow =>
         Config.GetSection("API").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
+    
+    // Files section
+    private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
+    public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;
+    public static string DatabaseName => Config.GetSection("Files").GetValue<string?>("DatabaseName") ?? "";
+    public static string BannedUsernamesName => Config.GetSection("Files").GetValue<string?>("BannedUsernamesName") ?? "";
+    
 
     // General section
     public static string WelcomeMessage => Config.GetSection("General").GetValue<string?>("WelcomeMessage") ?? "";
@@ -56,9 +62,7 @@ public static class Configuration
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
 
     public static string[] BannedIps => Config.GetSection("General").GetSection("BannedIps").Get<string[]>() ?? [];
-
-    public static string BannedUsernamesPath => Config.GetSection("General").GetSection("BannedUsernamesPath").Get<string>() ?? "";
-
+    
     // Bot section
     public static string BotUsername => Config.GetSection("Bot").GetValue<string?>("Username") ?? "";
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
