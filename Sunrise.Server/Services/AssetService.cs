@@ -8,6 +8,7 @@ namespace Sunrise.Server.Services;
 
 public static class AssetService
 {
+    private static readonly string DataPath = Configuration.DataPath;
     private const int Megabyte = 1024 * 1024;
 
     public static async Task<byte[]?> GetOsuReplayBytes(int scoreId)
@@ -37,7 +38,7 @@ public static class AssetService
 
     public static string[] GetSeasonalBackgrounds()
     {
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "../Data/Files/SeasonalBackgrounds");
+        var basePath = Path.Combine(DataPath, "Files/SeasonalBackgrounds");
 
         var files = Directory.GetFiles(basePath).Where(x => x.EndsWith(".jpg")).ToArray();
         var backgrounds = new string[files.Length];
@@ -109,7 +110,7 @@ public static class AssetService
 
     public static async Task<byte[]?> GetEventBanner()
     {
-        return await LocalStorage.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "../Data/Files/Assets/EventBanner.png"));
+        return await LocalStorage.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"));
     }
 
     public static async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
@@ -117,11 +118,14 @@ public static class AssetService
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var medalImage = await database.MedalService.GetMedalImage(medalFileId, isHighRes);
 
-        return medalImage ?? await LocalStorage.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), "../Data/Files/Medals/default.png"));
+        const string defaultImagePath = "Files/Medals/default.png";
+        var defaultImage = isHighRes ? defaultImagePath.Replace(".png", "@2x.png") : defaultImagePath;
+
+        return medalImage ?? await LocalStorage.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
     }
 
     public static async Task<byte[]?> GetPeppyImage()
     {
-        return await LocalStorage.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(),"../Data/Files/Assets/Peppy.jpg"));
+        return await LocalStorage.ReadFileAsync(Path.Combine(DataPath,"Files/Assets/Peppy.jpg"));
     }
 }
