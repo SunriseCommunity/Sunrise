@@ -73,6 +73,17 @@ public static class Bootstrap
         builder.Services.AddSingleton<RedisRepository>();
         builder.Services.AddSingleton<DatabaseManager>();
     }
+    
+    public static void WarmUpSingletons(this WebApplication app)
+    {
+        app.Services.GetRequiredService<SessionRepository>();
+        app.Services.GetRequiredService<ChannelRepository>();
+        app.Services.GetRequiredService<RateLimitRepository>();
+        app.Services.GetRequiredService<MatchRepository>();
+
+        app.Services.GetRequiredService<RedisRepository>();
+        app.Services.GetRequiredService<DatabaseManager>();
+    }
 
     public static void UseStaticBackgrounds(this WebApplication app)
     {

@@ -18,7 +18,6 @@ var app = builder.Build();
 
 app.UseHealthChecks("/health");
 
-
 if (Configuration.UseHangfire) 
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
@@ -29,6 +28,8 @@ app.Setup();
 app.UseStaticBackgrounds();
 app.UseMiddlewares();
 app.Configure();
+
+app.WarmUpSingletons();
 
 if (Configuration.UseHangfire)
     BackgroundTasks.Initialize();
