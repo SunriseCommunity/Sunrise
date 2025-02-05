@@ -80,7 +80,7 @@ public static class Bootstrap
         {
             FileProvider =
                 new PhysicalFileProvider(
-                    Path.Combine(Directory.GetCurrentDirectory(), "Data/Files/SeasonalBackgrounds")),
+                    Path.Combine(Directory.GetCurrentDirectory(), "../Data/Files/SeasonalBackgrounds")),
             RequestPath = "/static"
         });
     }

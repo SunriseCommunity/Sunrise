@@ -154,7 +154,7 @@ public static class CommandRepository
             if (attribute.Prefix != string.Empty) Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
 
             var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredPrivileges, attribute.IsGlobal);
-            Handlers.Add($"{attribute.Prefix} {attribute.Command}".Trim(),
+            Handlers.TryAdd($"{attribute.Prefix} {attribute.Command}".Trim(),
                 command); // .Trim() => https://imgur.com/a/0rsYZRv
         }
     }

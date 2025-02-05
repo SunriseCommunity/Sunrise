@@ -126,7 +126,7 @@ Data/Backups/*
 *.tmp
 
 # Logs
-logs/*
+*/logs/*
 
 # Grafana 
 grafana

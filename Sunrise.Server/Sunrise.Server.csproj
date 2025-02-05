@@ -4,6 +4,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>Sunrise.Server</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,16 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include=".github\README.md"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Content Include=".github\readme.jpg"/>
-        <Content Update="appsettings.Production.json.example">
-            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        </Content>
+        <InternalsVisibleTo Include="Sunrise.Server.Tests"/>
     </ItemGroup>
 
     <Target Name="CopyPpDll" AfterTargets="AfterBuild">

@@ -7,12 +7,13 @@ namespace Sunrise.Server.Application;
 
 public static class Configuration
 {
-    public const string DataPath = "./Data/";
+    public const string DataPath = "../Data/"; 
     public const string DatabaseName = "sunrise.db";
     private static readonly string? Env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
-        .AddJsonFile("appsettings.json", false).AddJsonFile($"appsettings.{Env}.json", false).Build();
+        .AddJsonFile("appsettings.json", false)
+        .AddJsonFile($"appsettings.{Env}.json", false).Build();
 
     // API section
     private static string? _webTokenSecret;

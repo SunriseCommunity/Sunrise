@@ -51,7 +51,7 @@ public class PacketRepository
             if (attribute == null || instance == null) continue;
 
             var handler = new PacketHandler(instance, attribute.SuppressLogger);
-            Handlers.Add(attribute.PacketType, handler);
+            Handlers.TryAdd(attribute.PacketType, handler);
         }
     }
 

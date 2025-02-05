@@ -22,7 +22,7 @@ public sealed class DatabaseManager
     private const string Database = Configuration.DatabaseName;
 
     private readonly ILogger<DatabaseManager> _logger;
-    private readonly WatsonORM _orm = new(new DatabaseSettings(DataPath + Database));
+    private readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Directory.GetCurrentDirectory(), DataPath, Database)}; Pooling=false;"));
     private readonly RedisRepository _redis;
 
     public readonly BeatmapService BeatmapService;

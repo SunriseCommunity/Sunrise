@@ -30,7 +30,7 @@ public static class UsernameExtensions
 
     private static async Task<bool> IsUsernameDisallowed(string str)
     {
-        var path = Configuration.BannedUsernamesPath;
+        var path = Configuration.BannedUsernamesPath; // TODO: Should be DataPath + BannedUsernamesPath 
 
         if (string.IsNullOrEmpty(path))
         {
