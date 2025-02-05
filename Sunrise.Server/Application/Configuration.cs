@@ -76,6 +76,9 @@ public static class Configuration
         Config.GetSection("Redis").GetValue<bool?>("ClearCacheOnStartup") ?? false;
 
     // Hangfire section
+    public static bool UseHangfire =>
+        Config.GetSection("Hangfire").GetValue<bool?>("UseHangfire") ?? false;
+    
     public static string HangfireConnection =>
         Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
 
