@@ -20,7 +20,7 @@ public static class UsernameExtensions
 
     public static bool IsValidUsername(this string str, bool allowRussian = false)
     {
-        if (SpecialStrings.Any(str.ToLower().Contains))
+        if (SpecialStrings.Any(str.ToLower().Contains) || IsUsernameDisallowed(str).Result)
         {
             return false;
         }
@@ -30,7 +30,7 @@ public static class UsernameExtensions
 
     private static async Task<bool> IsUsernameDisallowed(string str)
     {
-        var path = Configuration.BannedUsernamesPath; // TODO: Should be DataPath + BannedUsernamesPath 
+        var path = Path.Combine(Configuration.DataPath, Configuration.BannedUsernamesName);
 
         if (string.IsNullOrEmpty(path))
         {
