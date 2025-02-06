@@ -2,8 +2,9 @@ using System.Text.Json.Serialization;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class ErrorResponse(string message)
+[method: JsonConstructor]
+public class ErrorResponse(string error)
 {
     [JsonPropertyName("error")]
-    public string Error { get; set; } = message;
+    public string Error { get; } = error;
 }

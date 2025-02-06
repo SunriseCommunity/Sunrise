@@ -40,10 +40,13 @@ public static class AuthService
     public static (string?, int) RefreshToken(string token)
     {
         var newToken = ValidateJwtToken(token, out var userId) ? GenerateJwtToken(userId!.Value, TokenExpires) : null;
+        
+        if (userId == null)
+            return (null, 0);
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var isUserRestricted = database.UserService.Moderation.IsRestricted(userId!.Value).Result;
+        var isUserRestricted = database.UserService.Moderation.IsRestricted(userId.Value).Result;
 
         return isUserRestricted ? (null, 0) : (newToken, TokenExpires.ToSeconds());
     }
