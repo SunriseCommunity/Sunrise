@@ -2,22 +2,11 @@
 
 namespace Sunrise.Server.Tests.Core;
 
-public class DatabaseFixture : IDisposable
+public class DatabaseFixture : IDisposable, IClassFixture<EnvironmentFixture>
 {
-    public DatabaseFixture()
-    {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Tests");
-        ConfigureCurrentDirectory();
-    }
-    
     public void Dispose()
-    {
-       Directory.Delete(Path.Combine(Configuration.DataPath), true);
-    }
-    
-    private static void ConfigureCurrentDirectory()
-    {
-        if (Directory.GetCurrentDirectory().Contains("bin"))    
-            Directory.SetCurrentDirectory(Path.Combine(Directory.GetCurrentDirectory(), "../../../../"));
+    { 
+        if (Directory.Exists(Configuration.DataPath))
+            Directory.Delete(Path.Combine(Configuration.DataPath), true);
     }
 }

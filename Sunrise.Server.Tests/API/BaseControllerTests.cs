@@ -5,11 +5,10 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API;
 
-public class BaseControllerTests : DatabaseTest
+public class BaseControllerTests : ApiTest
 {
     [Fact]
     public async Task TestPingReturnsOk()
