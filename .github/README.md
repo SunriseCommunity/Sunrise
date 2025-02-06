@@ -29,6 +29,7 @@ website. The server is currently in development and is not yet ready for public 
 
 ### Additional features
 
+- [x] Automated tests (unit and integration)
 - [x] Prometheus metrics with Grafana dashboard
 - [x] Rate limiter for both internal and external requests
 - [x] Redis caching for faster response times
@@ -49,7 +50,7 @@ website. The server is currently in development and is not yet ready for public 
    ```
 4. Set up the beatmap manager by following the instructions in
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
-   you need to set the `General:ObservatoryUrl` in the `appsettings.{Your Environment}.json` file to the address of the beatmap manager.
+   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.{Your Environment}.json` file to the address of the beatmap manager.
 5. Run the project
 6. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
