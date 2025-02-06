@@ -31,4 +31,4 @@ jobs:
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d
       - name: Test
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test --verbosity normal
