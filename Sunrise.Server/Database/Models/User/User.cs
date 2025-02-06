@@ -26,7 +26,7 @@ public class User
     public short Country { get; set; }
 
     [Column(DataTypes.Int, false)]
-    public UserPrivileges Privilege { get; set; }
+    public UserPrivileges Privilege { get; set; } = UserPrivileges.User;
 
     [Column(DataTypes.DateTime, false)]
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
