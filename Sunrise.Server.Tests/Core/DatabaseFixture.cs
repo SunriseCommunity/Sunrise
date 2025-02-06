@@ -12,7 +12,7 @@ public class DatabaseFixture : IDisposable
     
     public void Dispose()
     {
-       // Directory.Delete(Path.Combine(Configuration.DataPath), true);
+       Directory.Delete(Path.Combine(Configuration.DataPath), true);
     }
     
     private static void ConfigureCurrentDirectory()
