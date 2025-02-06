@@ -5,37 +5,58 @@ using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class UserResponse(User user, string? status = null)
+public class UserResponse
 {
+    
+    [JsonConstructor]
+    public UserResponse()
+    { }
+    
+    public UserResponse(User user, string? status = null)
+    {
+        Id = user.Id;
+        Username = user.Username;
+        Description = user.Description;
+        Country = ((CountryCodes)user.Country).ToString();
+        RegisterDate = user.RegisterDate;
+        LastOnlineTime = user.LastOnlineTime;
+        IsRestricted = user.IsRestricted();
+        SilencedUntil = user.SilencedUntil > DateTime.UtcNow ? user.SilencedUntil : null!;
+        Badges = UserService.GetUserBadges(user);
+        UserStatus = status;
+    }
+    
+    
+    
     [JsonPropertyName("user_id")]
-    public int Id { get; set; } = user.Id;
+    public int Id { get; set; }
 
     [JsonPropertyName("username")]
-    public string Username { get; set; } = user.Username;
+    public string Username { get; set; } 
 
     [JsonPropertyName("description")]
-    public string? Description { get; set; } = user.Description;
+    public string? Description { get; set; }
 
     [JsonPropertyName("country_code")]
-    public string Country { get; set; } = ((CountryCodes)user.Country).ToString();
+    public string Country { get; set; } 
 
     [JsonPropertyName("register_date")]
-    public DateTime RegisterDate { get; set; } = user.RegisterDate;
+    public DateTime RegisterDate { get; set; } 
 
     [JsonPropertyName("last_online_time")]
-    public DateTime LastOnlineTime { get; set; } = user.LastOnlineTime;
+    public DateTime LastOnlineTime { get; set; } 
 
     [JsonPropertyName("restricted")]
-    public bool IsRestricted { get; set; } = user.IsRestricted();
+    public bool IsRestricted { get; set; }
 
     [JsonPropertyName("silenced_until")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public DateTime? SilencedUntil { get; set; } = user.SilencedUntil > DateTime.UtcNow ? user.SilencedUntil : null!;
+    public DateTime? SilencedUntil { get; set; } 
 
     [JsonPropertyName("badges")]
-    public List<string> Badges { get; set; } = UserService.GetUserBadges(user);
+    public List<string> Badges { get; set; }
 
     [JsonPropertyName("user_status")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? UserStatus { get; set; } = status;
+    public string? UserStatus { get; set; } 
 }

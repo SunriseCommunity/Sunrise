@@ -1,10 +1,14 @@
 using DatabaseWrapper.Core;
+using Microsoft.AspNetCore.Http;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Objects;
 using Sunrise.Server.Services;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Tests.Utils;
+using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
 
 namespace Sunrise.Server.Tests.Core.Abstracts;
@@ -20,15 +24,9 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
         _orm.InitializeDatabase();
     }
 
-    protected static async Task<User> CreateTestUser(User? user = null)
+    protected static async Task<User> CreateTestUser()
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        if (user != null)
-        {
-            user = await database.UserService.InsertUser(user);
-            return user;
-        }
 
         var username = MockUtil.GetRandomUsername();
         while (await database.UserService.GetUser(username: username) != null)
@@ -36,7 +34,7 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             username = MockUtil.GetRandomUsername();
         }
 
-        user = new User
+        var user = new User
         {
             Username = username,
             Email = MockUtil.GetRandomEmail(username),
@@ -44,8 +42,49 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             Country = MockUtil.GetRandomCountryCode(),
         };
 
-        user = await database.UserService.InsertUser(user);
-        return user;
+        return await CreateTestUser(user);
+    }
+
+    protected static async Task<User> CreateTestUser(User user)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        return await database.UserService.InsertUser(user);
+    }
+
+    protected static async Task<Score> CreateTestScore(bool withReplay = true)
+    {
+        var user = await CreateTestUser();
+        return await CreateTestScore(user, withReplay);
+    }
+
+    protected static async Task<Score> CreateTestScore(Score score, bool withReplay = true)
+    {
+        var user = await CreateTestUser();
+        return await CreateTestScore(user, withReplay);
+    }
+
+    protected static async Task<Score> CreateTestScore(User user, bool withReplay = true)
+    {
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var replayRecordId = MockUtil.GetRandomInteger(length: 6);
+
+        if (withReplay)
+        {
+            IFormFile formFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", $"{MockUtil.GetRandomString(6)}.osr");
+            var replayRecord = await database.ScoreService.Files.UploadReplay(user.Id, formFile);
+            replayRecordId = replayRecord.Id;
+        }
+
+        var score = MockUtil.GetRandomScore();
+        score.UserId = user.Id;
+        score.ReplayFileId = replayRecordId;
+        score.IsScoreable = true;
+        score.IsPassed = true;
+        score.SubmissionStatus = SubmissionStatus.Best;
+
+        score = await database.ScoreService.InsertScore(score);
+
+        return score;
     }
 
     private static void CreateFilesCopy()
