@@ -9,7 +9,7 @@ using Sunrise.Server.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API;
 
-public class BaseControllerTests  : DatabaseTest
+public class BaseControllerTests : DatabaseTest
 {
     [Fact]
     public async Task TestPingReturnsOk()

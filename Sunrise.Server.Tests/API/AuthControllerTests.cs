@@ -1,12 +1,13 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API;
 
-[Collection(nameof(SystemCollectionsWithoutParallelization))]
-public class AuthControllerTests
+public class AuthControllerTests : ApiTest
 {
     [Fact]
     public async Task Get_User_Token()
