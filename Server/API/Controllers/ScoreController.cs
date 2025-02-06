@@ -51,6 +51,7 @@ public class ScoreController : ControllerBase
         var replayStream = await replayFile.ReadReplay();
         var replayFileName = await replayFile.GetFileName(session);
 
+        Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
         return File(replayStream.ToArray(), "application/octet-stream", replayFileName);
     }
 
