@@ -1,35 +1,623 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Sunrise.Server.API.Serializable.Request;
 using Sunrise.Server.API.Serializable.Response;
+using Sunrise.Server.Application;
+using Sunrise.Server.Database;
+using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Services;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Tests.Utils;
+using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Tests.API;
 
 public class AuthControllerTests : ApiTest
 {
+    private const string BannedIp = "192.100.175.91";
+    
     [Fact]
-    public async Task Get_User_Token()
+    public async Task TestGetUserAuthTokens()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        var password = MockUtil.GetRandomPassword();
+        var user = await CreateTestUser(new User()
+        {
+            Username = "user",
+            Email = "user@mail.com",
+            Passhash = password.GetPassHash(),
+            Country =  MockUtil.GetRandomCountryCode()
+        });
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = user.Username,
+                Password = password
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responseTokens = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        
+        Assert.NotNull(responseTokens);
+        Assert.NotNull(responseTokens.Token);
+        Assert.NotNull(responseTokens.RefreshToken);
+        
+        Assert.True(responseTokens.ExpiresIn > 0);
+    }
+    
+    [Fact]
+    public async Task TestGetUserAuthTokensMissingBody()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token", new { });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseTokens = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Contains("One or more required fields are missing", responseTokens?.Error);
+    }
+    
+    [Fact]
+    public async Task TestGetInvalidUserAuthTokens()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = "invalid",
+                Password = "invalid"
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseTokens = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Contains("Invalid credentials", responseTokens?.Error);
+    }
+    
+    [Fact]
+    public async Task TestGetUserAuthTokensInvalidPassword()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = user.Username,
+                Password = "invalid"
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseTokens = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Contains("Invalid credentials", responseTokens?.Error);
+    }
+    
+    [Fact]
+    public async Task TestGetRestrictedUserInvalidAuthTokens()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        var password =  MockUtil.GetRandomPassword();
+        var user = await CreateTestUser(new User()
+        {
+            Username = "user",
+            Email = "user@mail.com",
+            Passhash = password.GetPassHash(),
+            Country =  MockUtil.GetRandomCountryCode()
+        });
+        
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = user.Username,
+                Password = password
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseTokens = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        
+        Assert.Contains("Your account is restricted", responseTokens?.Error);
+    }
+    
+    [Fact]
+    public async Task TestGetBannedIpUserAuthTokens()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        var password =  MockUtil.GetRandomPassword();
+        var user = await CreateTestUser(new User()
+        {
+            Username = "user",
+            Email = "user@mail.com",
+            Passhash = password.GetPassHash(),
+            Country =  MockUtil.GetRandomCountryCode()
+        });
+        
+        // Act
+        var response = await client.UseUserIp(BannedIp).PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = user.Username,
+                Password = password
+            });
+        
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseTokens = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        
+        Assert.Contains("Your IP address is banned", responseTokens?.Error);
+    }
+
+    [Fact]
+    public async Task TestRefreshToken()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/refresh",
+            new RefreshTokenRequest
+            {
+                RefreshToken = tokens.RefreshToken
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responseTokens = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+
+        Assert.NotNull(responseTokens);
+        Assert.NotNull(responseTokens.Token);
+        Assert.True(responseTokens.ExpiresIn > 0);
+    }
+    
+    [Fact]
+    public async Task TestMissingRefreshToken()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
         // Act
-        var response = await client.PostAsJsonAsync("auth/token",
-            new
+        var response = await client.PostAsJsonAsync("auth/refresh", new  { });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        
+        Assert.Contains("One or more required fields are missing", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestInvalidRefreshToken()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var refreshToken = Guid.NewGuid().ToString("N");
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/refresh",
+            new RefreshTokenRequest
             {
-                username = "user",
-                password = "password"
+                RefreshToken = refreshToken
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        
+        Assert.Contains("Invalid refresh_token", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRestrictedUserInvalidRefreshToken()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        
+        var tokens = await GetUserAuthTokens(user);
+        
+        // Act
+        var response = await client.PostAsJsonAsync("auth/refresh",
+            new RefreshTokenRequest
+            {
+                RefreshToken = tokens.RefreshToken
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        
+        Assert.Contains("Invalid refresh_token", error?.Error);
+    }
+
+    [Fact]
+    public async Task TestBannedIpUserRefreshToken()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+
+        // Act
+        var response = await client.UseUserIp(BannedIp).PostAsJsonAsync("auth/refresh",
+            new RefreshTokenRequest
+            {
+               RefreshToken = tokens.RefreshToken
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Your IP address is banned", error?.Error);
+    }
+
+
+    [Fact]
+    public async Task TestRegisterUser()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        
+        var responseString = await response.Content.ReadAsStringAsync();
+        var responseTokens = JsonSerializer.Deserialize<TokenResponse>(responseString);
+        
+        Assert.NotNull(responseTokens);
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = await database.UserService.GetUser(username: username);
+
+        Assert.NotNull(user);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserCreatesRegisterEvent()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = MockUtil.GetRandomEmail();
+        
+        var ip = MockUtil.GetRandomIp();
+
+        // Act
+        var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+     
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var isEventRegistered = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip);
+        
+        Assert.True(isEventRegistered);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserGreeceFlag()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = MockUtil.GetRandomEmail();
+        
+        const string greeceIp = "102.38.248.255";
+
+        // Act
+        var response = await client.UseUserIp(greeceIp)
+            .PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
             });
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseToken = await response.Content.ReadFromJsonAsync<TokenResponse>();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", responseToken.Token);
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var user = await database.UserService.GetUser(username: username);
+
+        Assert.NotNull(user);
+        Assert.Equal((short)CountryCodes.GR, user.Country);
+    }
+
+    [Fact]
+    public async Task TestRegisterUserInvalidLengthUsername()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername(64);
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Username length", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserInvalidUsername()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        const string username = "peppy";
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Invalid characters", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserUsedUsername()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
         
-        Assert.NotNull(responseToken.Token);
+        var user = await CreateTestUser();
+
+        var password = MockUtil.GetRandomPassword();
+        var username = user.Username;
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Username is already taken", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserUsedEmail()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+        
+        var user = await CreateTestUser();
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = user.Email;
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Email already in use", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserInvalidEmail()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        const string email = "invalid";
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Invalid email address", error?.Error);
+    }
+
+    [Fact]
+    public async Task TestRegisterUserBannedIp()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.UseUserIp(BannedIp).PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Your IP address is banned", error?.Error);
+    }
+
+    [Fact]
+    public async Task TestRegisterUserWarnMultiaccount()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var ip = MockUtil.GetRandomIp();
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, ip, user);
+
+        var password = MockUtil.GetRandomPassword();
+        var username = MockUtil.GetRandomUsername();
+        var email = MockUtil.GetRandomEmail();
+
+        // Act
+        var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",
+            new RegisterRequest()
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("Please don't create multiple accounts", error?.Error);
     }
 }
