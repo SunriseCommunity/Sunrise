@@ -6,7 +6,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,17 +18,7 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d
       - name: Test
-        run: dotnet test --verbosity normal
+        run: dotnet test --no-build --verbosity normal
