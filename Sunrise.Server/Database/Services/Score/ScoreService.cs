@@ -33,10 +33,11 @@ public class ScoreService
 
     public ScoreFileService Files { get; }
 
-    public async Task InsertScore(Models.Score score)
+    public async Task<Models.Score> InsertScore(Models.Score score)
     {
         score = await _database.InsertAsync(score);
         await SetCachedScore(score);
+        return score;
     }
 
     public async Task UpdateScore(Models.Score score)
