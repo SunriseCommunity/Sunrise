@@ -56,7 +56,9 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
         if (!Directory.Exists(dataPath))
             Directory.CreateDirectory(dataPath);
 
-        FolderUtil.Copy(sourcePath, dataPath);
+        throw new Exception($"Directory {dataPath} has been created");
+
+        // FolderUtil.Copy(sourcePath, dataPath);
     }
 
     public virtual void Dispose()
