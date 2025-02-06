@@ -26,6 +26,9 @@ public class ScoreController : ControllerBase
         var user = await database.UserService.GetUser(score.UserId);
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
+        
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("Score not found"));
 
         return Ok(new ScoreResponse(score, user));
     }
@@ -42,6 +45,13 @@ public class ScoreController : ControllerBase
         var score = await database.ScoreService.GetScore(id);
         if (score?.ReplayFileId == null)
             return NotFound(new ErrorResponse("Score or replay not found"));
+        
+        var user = await database.UserService.GetUser(score.UserId);
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+        
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("Score not found"));
 
         var replay = await database.ScoreService.Files.GetReplay(score.ReplayFileId.Value);
         if (replay == null)
@@ -61,15 +71,23 @@ public class ScoreController : ControllerBase
         [FromQuery(Name = "page")] int? page = 0)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var scores = await database.ScoreService.GetBestScoresByGameMode((GameMode)mode);
 
-        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
+        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score =>
+        {
+            var result = database.UserService.GetUser(score.UserId).Result;
+            return result != null ? new ScoreResponse(score, result) : null;
+        }).ToList();
 
         return Ok(new ScoresResponse(offsetScores, scores.Count));
     }
