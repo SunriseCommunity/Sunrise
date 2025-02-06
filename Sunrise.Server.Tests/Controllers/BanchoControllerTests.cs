@@ -1,9 +1,9 @@
-using Sunrise.Server.Tests.Utils;
+using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Utils;
 
 namespace Sunrise.Server.Tests.Controllers;
 
-[Collection(nameof(SystemCollectionsWithoutParallelization))]
-public class BanchoControllerTests
+public class BanchoControllerTests : DatabaseTest
 {
     [Fact]
     public async Task Get_ReturnsImage()
