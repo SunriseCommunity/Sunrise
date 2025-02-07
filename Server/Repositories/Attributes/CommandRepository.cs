@@ -120,8 +120,10 @@ public static class CommandRepository
     private static (string?, string[]?) ActionToCommand(Session session, string message)
     {
         var action = message.Split(' ', 2).Length >= 2 ? message.Split(' ', 2)[1] : null;
+        
+        var beatmapsAction = new[] {"is listening to", "is watching", "is playing"};
 
-        if (action?.StartsWith("is listening to") == true || action?.StartsWith("is watching") == true)
+        if (beatmapsAction.Any(x => action?.StartsWith(x) == true))
         {
             if (message.Split('/').Length < 6) return (null, null);
 
