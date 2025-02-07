@@ -33,8 +33,8 @@ public class Score
     [Column(DataTypes.Int)]
     public int? ReplayFileId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int TotalScore { get; set; }
+    [Column(DataTypes.Long, false)]
+    public long TotalScore { get; set; }
 
     [Column(DataTypes.Int, false)]
     public int MaxCombo { get; set; }

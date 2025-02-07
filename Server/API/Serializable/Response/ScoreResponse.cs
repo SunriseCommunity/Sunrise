@@ -65,7 +65,7 @@ public class ScoreResponse(Score score, User user)
     public double PerformancePoints { get; set; } = score.PerformancePoints;
 
     [JsonPropertyName("total_score")]
-    public int TotalScore { get; set; } = score.TotalScore;
+    public long TotalScore { get; set; } = score.TotalScore;
 
     [JsonPropertyName("user_id")]
     public int UserId { get; set; } = score.UserId;

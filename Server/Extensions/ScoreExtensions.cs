@@ -132,7 +132,7 @@ public static class ScoreExtensions
             CountGeki = int.Parse(split[6]),
             CountKatu = int.Parse(split[7]),
             CountMiss = int.Parse(split[8]),
-            TotalScore = int.Parse(split[9]),
+            TotalScore = long.Parse(split[9]),
             MaxCombo = int.Parse(split[10]),
             Perfect = bool.Parse(split[11]),
             Grade = split[12],

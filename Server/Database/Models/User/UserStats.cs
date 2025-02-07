@@ -23,10 +23,10 @@ public class UserStats
     [Column(DataTypes.Double, 3, 2, false)]
     public double Accuracy { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [Column(DataTypes.Long, false)]
     public long TotalScore { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [Column(DataTypes.Long, false)]
     public long RankedScore { get; set; }
 
     [Column(DataTypes.Int, false)]
