@@ -12,9 +12,9 @@ public class RateLimits
 
 public class LimitsResponse
 {
-    private readonly int _beatmapRequestLimit = Configuration.ApiCallsPerWindow;
+    private static int BeatmapRequestLimit => Configuration.ApiCallsPerWindow;
 
-    private readonly int _totalLimit = Configuration.GeneralCallsPerWindow;
+    private static int TotalLimit => Configuration.GeneralCallsPerWindow;
 
     public LimitsResponse(long? remainingCallsValue, int? remainingBeatmapRequestsValue)
     {
@@ -23,13 +23,13 @@ public class LimitsResponse
        
         RateLimitsObj = new RateLimits
         {
-            TotalLimit = _totalLimit,
+            TotalLimit = TotalLimit,
             RemainingCalls = remainingCalls
         };
        
         RateLimitsBeatmap  = new RateLimits
         {
-            TotalLimit = _beatmapRequestLimit,
+            TotalLimit = BeatmapRequestLimit,
             RemainingCalls = remainingBeatmapRequests
         };
     }

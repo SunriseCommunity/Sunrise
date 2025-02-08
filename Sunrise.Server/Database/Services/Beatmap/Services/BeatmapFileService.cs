@@ -10,7 +10,7 @@ namespace Sunrise.Server.Database.Services.Beatmap.Services;
 
 public class BeatmapFileService
 {
-    private static readonly string DataPath = Configuration.DataPath;
+    private static string DataPath => Configuration.DataPath;
 
     private readonly WatsonORM _database;
 

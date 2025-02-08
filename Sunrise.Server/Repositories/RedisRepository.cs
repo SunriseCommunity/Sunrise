@@ -9,7 +9,7 @@ public class RedisRepository
     private static readonly ConnectionMultiplexer RedisConnection =
         ConnectionMultiplexer.Connect(Configuration.RedisConnection);
 
-    private static readonly bool UseCache = Configuration.UseCache;
+    private static bool UseCache => Configuration.UseCache;
 
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {

@@ -8,7 +8,7 @@ namespace Sunrise.Server.Services;
 
 public static class AssetService
 {
-    private static readonly string DataPath = Configuration.DataPath;
+    private static string DataPath => Configuration.DataPath;
     private const int Megabyte = 1024 * 1024;
 
     public static async Task<byte[]?> GetOsuReplayBytes(int scoreId)

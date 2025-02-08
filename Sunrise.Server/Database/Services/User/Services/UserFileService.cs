@@ -12,7 +12,7 @@ namespace Sunrise.Server.Database.Services.User.Services;
 
 public class UserFileService
 {
-    private static readonly string DataPath = Configuration.DataPath;
+    private static string DataPath => Configuration.DataPath;
     private readonly WatsonORM _database;
 
     private readonly ILogger _logger;

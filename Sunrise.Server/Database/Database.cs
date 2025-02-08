@@ -18,8 +18,8 @@ namespace Sunrise.Server.Database;
 
 public sealed class DatabaseManager
 {
-    private static readonly string DataPath = Configuration.DataPath;
-    private static readonly string Database = Configuration.DatabaseName;
+    private static string DataPath => Configuration.DataPath;
+    private static string Database => Configuration.DatabaseName;
 
     private readonly ILogger<DatabaseManager> _logger;
     private readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(DataPath, Database)}; Pooling=false;"));
