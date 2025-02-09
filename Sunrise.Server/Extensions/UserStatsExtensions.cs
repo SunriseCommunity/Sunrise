@@ -26,18 +26,19 @@ public static class UserStatsExtensions
 
         if ((isNewScore || isBetterScore) && score.LocalProperties.IsRanked)
         {
+            // If new score, add it to the ranked score. If a better score, add the difference between the new and the previous score.
             userStats.RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
-            userStats.PerformancePoints =
-                await Calculators.CalculateUserWeightedPerformance(score.UserId, score.GameMode, score);
-            userStats.Accuracy = await Calculators.CalculateUserWeightedAccuracy(score.UserId, score.GameMode, score);
+            userStats.PerformancePoints = 
+                await Calculators.CalculateUserWeightedPerformance(userStats.UserId, score.GameMode, score);
+            userStats.Accuracy = await Calculators.CalculateUserWeightedAccuracy(userStats.UserId, score.GameMode, score);
         }
     }
 
     private static void IncreaseTotalHits(this UserStats userStats, Score newScore)
     {
         userStats.TotalHits += newScore.Count300 + newScore.Count100 + newScore.Count50;
-        if (userStats.GameMode is GameMode.Taiko or GameMode.Mania)
+        if ((GameMode)userStats.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania)
             userStats.TotalHits += newScore.CountGeki + newScore.CountKatu;
     }
 

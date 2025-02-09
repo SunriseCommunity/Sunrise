@@ -31,7 +31,7 @@ public class UserStatsService
 
     public UserStatsSnapshotService Snapshots { get; }
 
-    public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
+    public async Task<UserStats> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await _redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
         if (cachedStats != null && useCache) return cachedStats;
@@ -53,6 +53,7 @@ public class UserStatsService
 
             await InsertUserStats(stats);
             stats = await _database.SelectFirstAsync<UserStats?>(exp);
+            if (stats == null) throw new Exception("Failed to create user stats for user " + userId);
         }
 
         await _redis.Set(RedisKey.UserStats(userId, mode), stats);
