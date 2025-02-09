@@ -1,5 +1,7 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Tests.Core.Extensions;
+using Sunrise.Server.Types.Enums;
 using GameMode = Sunrise.Server.Types.Enums.GameMode;
 using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
@@ -9,6 +11,10 @@ public class MockScoreService(MockService service)
 {
     private static readonly string[] BeatmapGradeChars = ["F", "D", "C", "B", "A", "S", "SH", "X", "XH"];
     
+    /// <summary>
+    /// Returns a random score.
+    /// Keep in mind that this score is not normalized, thus it may contain invalid values.
+    /// </summary>
     public Score GetRandomScore()
     {
         return new Score()
@@ -44,9 +50,12 @@ public class MockScoreService(MockService service)
     public Score GetBestScoreableRandomScore()
     {
         var score = GetRandomScore();
+        score.BeatmapStatus = BeatmapStatus.Ranked;
         score.SubmissionStatus = SubmissionStatus.Best;
         score.IsScoreable = true;
         score.IsPassed = true;
+        
+        score.Normalize();
         
         return score;
     }
