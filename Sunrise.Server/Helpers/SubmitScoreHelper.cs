@@ -27,7 +27,7 @@ public static class SubmitScoreHelper
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
     }
 
-    public static void UpdateSubmissionStatus(Score score, Score? prevPBest)
+    public static void UpdateSubmissionStatus(this Score score, Score? prevPBest)
     {
         if (IsScoreFailed(score))
         {

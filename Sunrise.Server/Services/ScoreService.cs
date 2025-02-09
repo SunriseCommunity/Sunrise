@@ -78,8 +78,8 @@ public static class ScoreService
 
         var databaseScores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
 
-        var globalScores = databaseScores.UpdateLeaderboardPositions();
-        var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).UpdateLeaderboardPositions();
+        var globalScores = databaseScores.EnrichWithLeaderboardPositions();
+        var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).EnrichWithLeaderboardPositions();
 
         var userStats = await database.UserService.Stats.GetUserStats(score.UserId, score.GameMode);
 
@@ -121,7 +121,7 @@ public static class ScoreService
         }
 
         var prevPBestWithSameMods = scoresWithSameMods.GetPersonalBestOf(score.UserId);
-        SubmitScoreHelper.UpdateSubmissionStatus(score, prevPBestWithSameMods);
+        score.UpdateSubmissionStatus(prevPBestWithSameMods);
 
         if (prevPBestWithSameMods != null && score.SubmissionStatus == SubmissionStatus.Best)
         {
@@ -165,7 +165,7 @@ public static class ScoreService
         gameMode = gameMode.EnrichWithMods(mods);
 
         var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, session.User);
-        var scores = databaseScores.UpdateLeaderboardPositions();
+        var scores = databaseScores.EnrichWithLeaderboardPositions();
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);

@@ -111,7 +111,7 @@ public static class ScoreExtensions
         leaderboard.Add(score);
         leaderboard = GetScoresGroupedByUsersBest(leaderboard);
         leaderboard = leaderboard.SortScoresByTheirScoreValue();
-        leaderboard = leaderboard.UpdateLeaderboardPositions();
+        leaderboard = leaderboard.EnrichWithLeaderboardPositions();
 
         return leaderboard.ToList();
     }
@@ -154,7 +154,7 @@ public static class ScoreExtensions
 
         return score;
     }
-    
+
     public static string ToScoreString(this Score score)
     {
         return string.Join(":",
@@ -181,7 +181,7 @@ public static class ScoreExtensions
     }
 
 
-    public static List<T> UpdateLeaderboardPositions<T>(this List<T> scores) where T : Score
+    public static List<T> EnrichWithLeaderboardPositions<T>(this List<T> scores) where T : Score
     {
         for (var i = 0; i < scores.Count; i++)
         {
