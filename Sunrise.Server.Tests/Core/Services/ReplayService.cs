@@ -8,9 +8,9 @@ public class ReplayService
 {
     private readonly MockService _mocker = new();
     
-    public IFormFile GenerateReplayFormFile()
+    public IFormFile GenerateReplayFormFile(int length = 1024)
     {
-        return GenerateReplayFormFile(new byte[1024], $"{_mocker.GetRandomString(6)}.osr");
+        return GenerateReplayFormFile(new byte[length], $"{_mocker.GetRandomString(6)}.osr");
     }
     
     public IFormFile GenerateReplayFormFile(ReplayFile replay)
