@@ -1,12 +1,15 @@
 ﻿using Sunrise.Server.Application;
+using Sunrise.Server.Tests.Core.Manager;
 
 namespace Sunrise.Server.Tests.Core;
 
 public class EnvironmentFixture : IDisposable
 {
+    private readonly EnvironmentVariableManager _envManager = new();
+    
     public EnvironmentFixture ()
     {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Tests");
+        _envManager.Set("ASPNETCORE_ENVIRONMENT", "Tests");
         ConfigureCurrentDirectory();
     }
     

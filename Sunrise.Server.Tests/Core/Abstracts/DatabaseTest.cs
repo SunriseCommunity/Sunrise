@@ -1,7 +1,5 @@
 using DatabaseWrapper.Core;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Sunrise.Server.API.Managers;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
@@ -10,10 +8,10 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
+using Sunrise.Server.Tests.Core.Manager;
 using Sunrise.Server.Tests.Core.Services;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Tests.Utils;
 using Sunrise.Server.Types.Enums;
 using Watson.ORM.Sqlite;
 
@@ -22,7 +20,10 @@ namespace Sunrise.Server.Tests.Core.Abstracts;
 [Collection("Database tests collection")]
 public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
 {
+    protected readonly EnvironmentVariableManager EnvManager = new();
+    
     private static readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
+    
     private readonly MockService _mocker = new();
     private readonly FileService _fileService = new();
 
@@ -110,12 +111,9 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             replayRecordId = replayRecord.Id;
         }
 
-        var score = _mocker.Score.GetRandomScore();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.ReplayFileId = replayRecordId;
-        score.IsScoreable = true;
-        score.IsPassed = true;
-        score.SubmissionStatus = SubmissionStatus.Best;
 
         score = await database.ScoreService.InsertScore(score);
 
@@ -145,9 +143,8 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
     
     private void UpdateRedisVariables(bool useRedis)
     {
-        Environment.SetEnvironmentVariable("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
-        Environment.SetEnvironmentVariable("Redis:UseCache", useRedis ? "true" : "false");
-        Configuration.GetConfig().Reload();
+        EnvManager.Set("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
+        EnvManager.Set("Redis:UseCache", useRedis ? "true" : "false");
     }
 
     public virtual void Dispose()
@@ -158,9 +155,8 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             _orm.Database.DropTable(table);
 
         _orm.Dispose();
+        EnvManager.Dispose();
         Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
-        
-        UpdateRedisVariables(false);
       
         GC.SuppressFinalize(this);
     }
