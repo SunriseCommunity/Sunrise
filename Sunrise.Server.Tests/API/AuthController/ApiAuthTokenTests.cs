@@ -6,13 +6,16 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Services;
 using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
 public class ApiAuthTokenTests : ApiTest
 {
-    private static readonly string BannedIp = Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
+    private readonly MockService _mocker = new();
+    
+    private static string BannedIp => Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
 
     [Fact]
     public async Task TestGetUserAuthTokens()
@@ -21,13 +24,13 @@ public class ApiAuthTokenTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
         
-        var password = MockUtil.GetRandomPassword();
+        var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User()
         {
             Username = "user",
             Email = "user@mail.com",
             Passhash = password.GetPassHash(),
-            Country =  MockUtil.GetRandomCountryCode()
+            Country =  _mocker.User.GetRandomCountryCode()
         });
 
         // Act
@@ -120,13 +123,13 @@ public class ApiAuthTokenTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
         
-        var password =  MockUtil.GetRandomPassword();
+        var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User()
         {
             Username = "user",
             Email = "user@mail.com",
             Passhash = password.GetPassHash(),
-            Country =  MockUtil.GetRandomCountryCode()
+            Country = _mocker.User.GetRandomCountryCode()
         });
         
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
@@ -155,13 +158,13 @@ public class ApiAuthTokenTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
         
-        var password =  MockUtil.GetRandomPassword();
+        var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User()
         {
             Username = "user",
             Email = "user@mail.com",
             Passhash = password.GetPassHash(),
-            Country =  MockUtil.GetRandomCountryCode()
+            Country = _mocker.User.GetRandomCountryCode()
         });
         
         // Act

@@ -1,4 +1,4 @@
-namespace Sunrise.Server.Tests.Utils;
+namespace Sunrise.Server.Tests.Core.Utils;
 
 public static class FolderUtil
 {

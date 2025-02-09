@@ -2,19 +2,22 @@ using System.Text.Json;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 
 namespace Sunrise.Server.Tests.API.BaseController;
 
 public class ApiBaseLimitsTests : ApiTest
 {
+    private readonly MockService _mocker = new();
+    
     [Fact]
     public async Task TestLimitsReturnsValidInfo()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        var ip = MockUtil.GetRandomIp();
+        var ip = _mocker.User.GetRandomIp();
         
         // Act
         var response = await client.UseUserIp(ip).GetAsync("/limits");
@@ -36,7 +39,7 @@ public class ApiBaseLimitsTests : ApiTest
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        var ip = MockUtil.GetRandomIp();
+        var ip = _mocker.User.GetRandomIp();
         
         // Act
         await client.UseUserIp(ip).GetAsync("/limits");
@@ -59,7 +62,7 @@ public class ApiBaseLimitsTests : ApiTest
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        var ip = MockUtil.GetRandomIp();
+        var ip = _mocker.User.GetRandomIp();
         
         // Act
         for (var i = 0; i < Configuration.GeneralCallsPerWindow; i++)

@@ -7,6 +7,7 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Services;
 using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Types.Enums;
 
@@ -14,7 +15,9 @@ namespace Sunrise.Server.Tests.API.AuthController;
 
 public class ApiAuthRegisterTests : ApiTest
 {
-    private static readonly string BannedIp = Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
+    private readonly MockService _mocker = new();
+    
+    private string BannedIp => Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
     
     [Fact]
     public async Task TestRegisterUser()
@@ -22,10 +25,10 @@ public class ApiAuthRegisterTests : ApiTest
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
-        var email = MockUtil.GetRandomEmail();
+        
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
@@ -57,11 +60,11 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
-        var email = MockUtil.GetRandomEmail();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
         
-        var ip = MockUtil.GetRandomIp();
+        var ip = _mocker.User.GetRandomIp();
 
         // Act
         var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",
@@ -88,9 +91,9 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
-        var email = MockUtil.GetRandomEmail();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
         
         const string greeceIp = "102.38.248.255";
 
@@ -121,9 +124,9 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername(64);
-        var email = MockUtil.GetRandomEmail();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername(64);
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
@@ -150,9 +153,9 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
+        var password = _mocker.User.GetRandomPassword();
         const string username = "peppy";
-        var email = MockUtil.GetRandomEmail();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
@@ -181,9 +184,9 @@ public class ApiAuthRegisterTests : ApiTest
         
         var user = await CreateTestUser();
 
-        var password = MockUtil.GetRandomPassword();
+        var password = _mocker.User.GetRandomPassword();
         var username = user.Username;
-        var email = MockUtil.GetRandomEmail();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
@@ -212,8 +215,8 @@ public class ApiAuthRegisterTests : ApiTest
         
         var user = await CreateTestUser();
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
         var email = user.Email;
 
         // Act
@@ -241,8 +244,8 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
         const string email = "invalid";
 
         // Act
@@ -270,9 +273,9 @@ public class ApiAuthRegisterTests : ApiTest
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
-        var email = MockUtil.GetRandomEmail();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.UseUserIp(BannedIp).PostAsJsonAsync("auth/register",
@@ -300,14 +303,14 @@ public class ApiAuthRegisterTests : ApiTest
         var client = app.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
-        var ip = MockUtil.GetRandomIp();
+        var ip = _mocker.User.GetRandomIp();
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, ip, user);
 
-        var password = MockUtil.GetRandomPassword();
-        var username = MockUtil.GetRandomUsername();
-        var email = MockUtil.GetRandomEmail();
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",

@@ -1,10 +1,13 @@
-﻿using Sunrise.Server.Tests.Core.Utils;
+﻿using Sunrise.Server.Tests.Core.Services.Mock;
+using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Tests.Utils;
 
 public class CharactersFilterTests
 {
+    private readonly MockService _mocker = new();
+    
     private static readonly string[] InvalidCharacters = [" ", "\ud83d\ude02", "ä", "漢", "/"];
 
     public static IEnumerable<object[]> GetInvalidCharacters()
@@ -68,7 +71,7 @@ public class CharactersFilterTests
     public void IsValidEmail_WithValidEmail_ReturnsTrue()
     {
         // Arrange
-        var email = MockUtil.GetRandomEmail();
+        var email = _mocker.User.GetRandomEmail();
 
         // Act
         var result = email.IsValidEmail();

@@ -4,6 +4,7 @@ using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Types.Enums;
 
@@ -11,6 +12,8 @@ namespace Sunrise.Server.Tests.API.ScoreController;
 
 public class ApiScoreGetScoreTopTests : ApiTest
 {
+    private readonly MockService _mocker = new();
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]
@@ -71,7 +74,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
         var gamemode = GameMode.Standard;
         
         var user = await CreateTestUser();
-        var score = MockUtil.GetBestScoreableRandomScore();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.GameMode = gamemode;
         await database.ScoreService.InsertScore(score);
@@ -96,13 +99,13 @@ public class ApiScoreGetScoreTopTests : ApiTest
         
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
        
-        var gamemode = MockUtil.GetRandomGameMode();
+        var gamemode = _mocker.Score.GetRandomGameMode();
         
         var randomInt = new Random().Next(1, 10);
         for (var i = 0; i < randomInt; i++)
         {
            var user = await CreateTestUser();
-           var score = MockUtil.GetBestScoreableRandomScore();
+           var score = _mocker.Score.GetBestScoreableRandomScore();
            score.UserId = user.Id;
            score.GameMode = gamemode;
 
@@ -129,13 +132,13 @@ public class ApiScoreGetScoreTopTests : ApiTest
         
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         
-        var gamemode =  MockUtil.GetRandomGameMode();
+        var gamemode =  _mocker.Score.GetRandomGameMode();
 
         var randomInt = new Random().Next(5, 10);
         for (var i = 0; i < randomInt; i++)
         {
             var user = await CreateTestUser();
-            var score = MockUtil.GetBestScoreableRandomScore();
+            var score = _mocker.Score.GetBestScoreableRandomScore();
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
@@ -162,13 +165,13 @@ public class ApiScoreGetScoreTopTests : ApiTest
         
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         
-        var gamemode =  MockUtil.GetRandomGameMode();
+        var gamemode =  _mocker.Score.GetRandomGameMode();
 
         var randomInt = new Random().Next(1, 10);
         for (var i = 0; i < randomInt; i++)
         {
             var user = await CreateTestUser();
-            var score = MockUtil.GetBestScoreableRandomScore();
+            var score = _mocker.Score.GetBestScoreableRandomScore();
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
@@ -200,20 +203,20 @@ public class ApiScoreGetScoreTopTests : ApiTest
         
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         
-        var gamemode =  MockUtil.GetRandomGameMode();
+        var gamemode = _mocker.Score.GetRandomGameMode();
 
         var randomInt = new Random().Next(1, 10);
         for (var i = 0; i < randomInt; i++)
         {
             var user = await CreateTestUser();
-            var score = MockUtil.GetBestScoreableRandomScore();
+            var score = _mocker.Score.GetBestScoreableRandomScore();
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
             await database.ScoreService.InsertScore(score);
         }
         
-        var scoreWithoutUser = MockUtil.GetRandomScore();
+        var scoreWithoutUser = _mocker.Score.GetRandomScore();
         scoreWithoutUser.UserId = -1;
         scoreWithoutUser.GameMode = gamemode;
         await database.ScoreService.InsertScore(scoreWithoutUser);

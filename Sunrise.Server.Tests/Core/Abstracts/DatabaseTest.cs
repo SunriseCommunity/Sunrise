@@ -1,11 +1,17 @@
 using DatabaseWrapper.Core;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Sunrise.Server.API.Managers;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
+using Sunrise.Server.Tests.Core.Services;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Tests.Utils;
 using Sunrise.Server.Types.Enums;
@@ -17,65 +23,94 @@ namespace Sunrise.Server.Tests.Core.Abstracts;
 public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
 {
     private static readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
+    private readonly MockService _mocker = new();
+    private readonly FileService _fileService = new();
 
-    protected DatabaseTest()
+    protected DatabaseTest(bool useRedis = false)
     {
+        UpdateRedisVariables(useRedis);
+        
         CreateFilesCopy();
         _orm.InitializeDatabase();
     }
+    
+    protected async Task<Session> CreateTestSession()
+    {
+        var user = await CreateTestUser();
+        return CreateTestSession(user);
+    }
+    
+    protected Session CreateTestSession(User user)
+    {
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var location = new Location();
+        var loginRequest = new LoginRequest(
+            user.Username, 
+            user.Passhash, 
+            _mocker.GetRandomString(6), 
+            0, 
+            _mocker.GetRandomBoolean(),  
+            _mocker.GetRandomString(), 
+            _mocker.GetRandomBoolean());
+        
+        var session = sessions.CreateSession(user, location, loginRequest);
 
-    protected static async Task<User> CreateTestUser()
+        return session;
+    }
+    
+
+    protected async Task<User> CreateTestUser()
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var username = MockUtil.GetRandomUsername();
+        var username = _mocker.User.GetRandomUsername();
         while (await database.UserService.GetUser(username: username) != null)
         {
-            username = MockUtil.GetRandomUsername();
+            username = _mocker.User.GetRandomUsername();
         }
 
         var user = new User
         {
             Username = username,
-            Email = MockUtil.GetRandomEmail(username),
-            Passhash = MockUtil.GetRandomPassword().GetPassHash(),
-            Country = MockUtil.GetRandomCountryCode(),
+            Email = _mocker.User.GetRandomEmail(username),
+            Passhash = _mocker.User.GetRandomPassword().GetPassHash(),
+            Country = _mocker.User.GetRandomCountryCode(),
         };
 
         return await CreateTestUser(user);
     }
 
-    protected static async Task<User> CreateTestUser(User user)
+    protected async Task<User> CreateTestUser(User user)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         return await database.UserService.InsertUser(user);
     }
 
-    protected static async Task<Score> CreateTestScore(bool withReplay = true)
+    protected async Task<Score> CreateTestScore(bool withReplay = true)
     {
         var user = await CreateTestUser();
         return await CreateTestScore(user, withReplay);
     }
 
-    protected static async Task<Score> CreateTestScore(Score score, bool withReplay = true)
+    protected  async Task<Score> CreateTestScore(Score score, bool withReplay = true)
     {
         var user = await CreateTestUser();
         return await CreateTestScore(user, withReplay);
     }
 
-    protected static async Task<Score> CreateTestScore(User user, bool withReplay = true)
+    protected  async Task<Score> CreateTestScore(User user, bool withReplay = true)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var replayRecordId = MockUtil.GetRandomInteger(length: 6);
+        var replayRecordId = _mocker.GetRandomInteger(length: 6);
 
         if (withReplay)
         {
-            IFormFile formFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", $"{MockUtil.GetRandomString(6)}.osr");
+            IFormFile formFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", $"{_mocker.GetRandomString(6)}.osr");
             var replayRecord = await database.ScoreService.Files.UploadReplay(user.Id, formFile);
             replayRecordId = replayRecord.Id;
         }
 
-        var score = MockUtil.GetRandomScore();
+        var score = _mocker.Score.GetRandomScore();
         score.UserId = user.Id;
         score.ReplayFileId = replayRecordId;
         score.IsScoreable = true;
@@ -86,8 +121,18 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
 
         return score;
     }
+    
+    protected async Task<(ReplayFile, int)> GetValidTestReplay()
+    {
+        var replayPath = _fileService.GetRandomFilePath("osr");
+        var replay = await Task.Run(() => new ReplayFile(replayPath));
+        
+       var beatmapId = await _mocker.Redis.MockLocalBeatmapFile(replay.GetScore().BeatmapHash);
 
-    private static void CreateFilesCopy()
+       return (replay, beatmapId);
+    }
+
+    private void CreateFilesCopy()
     {
         var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), Configuration.DataPath.Replace(".tmp", ""));
         var dataPath = Path.Combine(Directory.GetCurrentDirectory(), $"{Configuration.DataPath}");
@@ -96,6 +141,13 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             Directory.CreateDirectory(dataPath);
 
         FolderUtil.Copy(sourcePath, dataPath);
+    }
+    
+    private void UpdateRedisVariables(bool useRedis)
+    {
+        Environment.SetEnvironmentVariable("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
+        Environment.SetEnvironmentVariable("Redis:UseCache", useRedis ? "true" : "false");
+        Configuration.GetConfig().Reload();
     }
 
     public virtual void Dispose()
@@ -107,7 +159,9 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
 
         _orm.Dispose();
         Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
-
+        
+        UpdateRedisVariables(false);
+      
         GC.SuppressFinalize(this);
     }
 }

@@ -1,6 +1,8 @@
 ﻿using SixLabors.ImageSharp;
 using Sunrise.Server.Tests.Core;
 using Sunrise.Server.Tests.Core.Abstracts;
+using Sunrise.Server.Tests.Core.Services;
+using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Utils;
 
@@ -8,13 +10,16 @@ namespace Sunrise.Server.Tests.Utils;
 
 public class ImageToolsTests : FilesystemTest
 {
+    private readonly MockService _mocker = new();
+    private readonly FileService _fileService = new();
+    
     private const int Megabyte = 1024 * 1024;
     
     [Fact]
     public void TestResizeImage()
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath("jpg");
+        var imagePath =  _fileService.GetRandomFilePath("jpg");
         
         var imageBytes = File.ReadAllBytes(imagePath);
         var size = new Size(100, 100);
@@ -31,7 +36,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestResizeImageWithInvalidSize()
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath("jpg");
+        var imagePath =  _fileService.GetRandomFilePath("jpg");
         
         var imageBytes = File.ReadAllBytes(imagePath);
         var size = new Size(0, -100);
@@ -55,7 +60,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestResizeImageWithNotImage()
     {
         // Arrange
-        var textFilePath = FileMockUtil.GetRandomFilePath("txt");
+        var textFilePath =  _fileService.GetRandomFilePath("txt");
         
         var imageBytes = File.ReadAllBytes(textFilePath);
         var size = new Size(100, 100);
@@ -68,7 +73,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestIsValidImageCheckValidImage()
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath("jpg");
+        var imagePath =  _fileService.GetRandomFilePath("jpg");
         var imageBytes = File.ReadAllBytes(imagePath);
         
         // Act
@@ -82,7 +87,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestIsValidImageCheckInvalidImage()
     {
         // Arrange
-        var textFilePath = FileMockUtil.GetRandomFilePath("txt");
+        var textFilePath =  _fileService.GetRandomFilePath("txt");
         var imageBytes = File.ReadAllBytes(textFilePath);
         
         // Act
@@ -100,7 +105,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestGetImageType(string extension)
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath(extension);
+        var imagePath =  _fileService.GetRandomFilePath(extension);
         var imageBytes = File.ReadAllBytes(imagePath);
         
         // Act
@@ -114,7 +119,7 @@ public class ImageToolsTests : FilesystemTest
     public void IsHasValidImageAttributesWithValidImage()
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath("jpg", new FileSizeFilter { MaxSize = Megabyte * 5 });
+        var imagePath =  _fileService.GetRandomFilePath("jpg", new FileSizeFilter { MaxSize = Megabyte * 5 });
         var imageBytes = File.ReadAllBytes(imagePath);
         
         // Act
@@ -128,7 +133,7 @@ public class ImageToolsTests : FilesystemTest
     public void IsHasValidImageAttributesWithLargeImage()
     {
         // Arrange
-        var imagePath = FileMockUtil.GetRandomFilePath("png", new FileSizeFilter { MinSize = Megabyte * 5 });
+        var imagePath =  _fileService.GetRandomFilePath("png", new FileSizeFilter { MinSize = Megabyte * 5 });
         var imageBytes = File.ReadAllBytes(imagePath);
         
         // Act
@@ -142,7 +147,7 @@ public class ImageToolsTests : FilesystemTest
     public void IsHasValidImageAttributesWithInvalidImage()
     {
         // Arrange
-        var textFilePath = FileMockUtil.GetRandomFilePath("txt");
+        var textFilePath =  _fileService.GetRandomFilePath("txt");
         var imageBytes = File.ReadAllBytes(textFilePath);
         
         // Act
@@ -156,7 +161,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestGetImageTypeWithInvalidImage()
     {
         // Arrange
-        var textFilePath = FileMockUtil.GetRandomFilePath("txt");
+        var textFilePath =  _fileService.GetRandomFilePath("txt");
         var imageBytes = File.ReadAllBytes(textFilePath);
         
         // Act

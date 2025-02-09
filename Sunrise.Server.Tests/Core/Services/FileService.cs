@@ -1,5 +1,4 @@
-﻿
-namespace Sunrise.Server.Tests.Core.Utils;
+﻿namespace Sunrise.Server.Tests.Core.Services;
 
 public class FileSizeFilter
 {
@@ -7,25 +6,31 @@ public class FileSizeFilter
     public long? MinSize { get; set; }
 }
 
-public static class FileMockUtil
+public class FileService
 {
     private static readonly string ResoursesPath = Path.Combine(Directory.GetCurrentDirectory(), "Sunrise.Server.Tests/Core/Resources");
     
-    public static string GetRandomFilePath()
+    public string GetRandomFilePath()
     {
         var files = GetAllFilesRecursively(ResoursesPath);
         var random = new Random();
         return files[random.Next(files.Length)];
     }
     
-    public static string GetRandomFilePath(string extension, FileSizeFilter? fileSize = null)
+    public string GetRandomFilePath(string extension, FileSizeFilter? fileSize = null)
     {
         var files = GetAllFilesRecursively(ResoursesPath, $"*.{extension}", fileSize);
         var random = new Random();
         return files[random.Next(files.Length)];
     }
+    
+    public string? GetFileByName(string fileName)
+    {
+        var files = GetAllFilesRecursively(ResoursesPath, fileName);
+        return files.FirstOrDefault();
+    }
 
-    public static string[] GetAllFilesRecursively(string path, string searchPattern = "*", FileSizeFilter? fileSize = null)
+    public string[] GetAllFilesRecursively(string path, string searchPattern = "*", FileSizeFilter? fileSize = null)
     {
         var files = Directory.GetFiles(path, searchPattern, SearchOption.AllDirectories);
         
