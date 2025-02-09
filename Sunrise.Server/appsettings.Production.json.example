@@ -8,7 +8,7 @@
     "IncludeUserTokenInLogs": false,
     "UseCustomBackgrounds": true,
     "ObservatoryApiKey": "", 
-    "ObservatoryUrl": "",
+    "ObservatoryUrl": "host.docker.internal:3333",
     "OnMaintenance": false,
     "RateLimit": {
       "CallsPerWindow": 100,
@@ -20,7 +20,7 @@
       "BannedIps": []
   },
   "Files": {
-    "DataPath": "../Data",
+    "DataPath": "./Data",
     "DatabaseName": "sunrise.db",
     "BannedUsernamesName": "banned-usernames.txt"
   },

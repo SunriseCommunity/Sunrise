@@ -16,8 +16,6 @@ RUN dotnet publish "Sunrise.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 
-# I would be happy if someone could point me to a better way to do this
-COPY ["Sunrise.Server/Dependencies/rosu_pp_ffi.so", "/app/runtimes/linux-x64/native/rosu_pp_ffi.so"]
 COPY ["/sunrise.pfx", "/app/certificate.pfx"]
 
 COPY --from=publish /app/publish .

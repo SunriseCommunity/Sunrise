@@ -37,5 +37,11 @@
         <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(PublishDir)"/>
     </Target>
 
+    <Target Name="CopyPpSo" AfterTargets="AfterBuild">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
+    </Target>
 
+    <Target Name="CopyPpSoPublish" AfterTargets="Publish">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(PublishDir)/runtimes/linux-x64/native"/>
+    </Target>
 </Project>
