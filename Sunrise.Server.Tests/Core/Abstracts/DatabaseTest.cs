@@ -18,10 +18,8 @@ using Watson.ORM.Sqlite;
 namespace Sunrise.Server.Tests.Core.Abstracts;
 
 [Collection("Database tests collection")]
-public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
+public abstract class DatabaseTest : BaseTest, IDisposable
 {
-    protected readonly EnvironmentVariableManager EnvManager = new();
-    
     private static readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
     
     private readonly MockService _mocker = new();
@@ -69,14 +67,8 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
         {
             username = _mocker.User.GetRandomUsername();
         }
-
-        var user = new User
-        {
-            Username = username,
-            Email = _mocker.User.GetRandomEmail(username),
-            Passhash = _mocker.User.GetRandomPassword().GetPassHash(),
-            Country = _mocker.User.GetRandomCountryCode(),
-        };
+        
+        var user = _mocker.User.GetRandomUser(username);
 
         return await CreateTestUser(user);
     }
@@ -147,7 +139,7 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
         EnvManager.Set("Redis:UseCache", useRedis ? "true" : "false");
     }
 
-    public virtual void Dispose()
+    public new virtual void Dispose()
     {
         var tables = _orm.Database.ListTables();
 
@@ -155,7 +147,8 @@ public abstract class DatabaseTest : IDisposable, IClassFixture<DatabaseFixture>
             _orm.Database.DropTable(table);
 
         _orm.Dispose();
-        EnvManager.Dispose();
+        base.Dispose();
+        
         Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
       
         GC.SuppressFinalize(this);
