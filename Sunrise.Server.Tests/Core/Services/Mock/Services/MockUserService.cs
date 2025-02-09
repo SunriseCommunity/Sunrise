@@ -1,4 +1,6 @@
 ﻿using Sunrise.Server.Database.Models;
+using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
@@ -11,8 +13,41 @@ public class MockUserService(MockService service)
     {
         return $"{new Random().Next(0, 255)}.{new Random().Next(0, 255)}.{new Random().Next(0, 255)}.{new Random().Next(0, 255)}";
     }
-
-
+    
+    public UserStats GetRandomUserStats()
+    {
+        return new UserStats()
+        {
+            UserId = service.GetRandomInteger(length:6),
+            GameMode = service.Score.GetRandomGameMode(),
+            TotalScore = service.GetRandomInteger(length:6),
+            TotalHits = service.GetRandomInteger(length:3),
+            MaxCombo = service.GetRandomInteger(length:3),
+            PlayTime = service.GetRandomInteger(length:3),
+            PlayCount = service.GetRandomInteger(length:3),
+            RankedScore = service.GetRandomInteger(length:6),
+            PerformancePoints = service.GetRandomInteger(length:3),
+            Accuracy = service.GetRandomInteger(length:2),
+        };
+    }
+    
+    public User GetRandomUser()
+    {
+       var username = GetRandomUsername();
+       return GetRandomUser(username);
+    }
+    
+    public User GetRandomUser(string username)
+    {
+        return new User
+        {
+            Username = username,
+            Email = GetRandomEmail(username),
+            Passhash = GetRandomPassword().GetPassHash(),
+            Country = GetRandomCountryCode(),
+        };
+    }
+    
     public short GetRandomCountryCode()
     {
         var random = new Random();
