@@ -24,4 +24,8 @@
         <ProjectReference Include="..\Sunrise.Server\Sunrise.Server.csproj"/>
     </ItemGroup>
 
+    <Target Name="CopyPpDllForTests" AfterTargets="Build">
+        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Server\Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
+    </Target>
+
 </Project>
