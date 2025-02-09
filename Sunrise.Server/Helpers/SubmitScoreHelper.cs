@@ -91,7 +91,11 @@ public static class SubmitScoreHelper
 
     public static bool IsHasInvalidMods(Mods mods)
     {
-        return mods.HasFlag(Mods.Target);
+        return mods.HasFlag(Mods.Target) ||
+               mods.HasFlag(Mods.Random) ||
+               mods.HasFlag(Mods.KeyCoop) ||
+               mods.HasFlag(Mods.Cinema) ||
+               mods.HasFlag(Mods.Autoplay);
     }
 
     /// <summary>
