@@ -1,10 +1,13 @@
+using osu.Shared;
 using osu.Shared.Serialization;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Utils;
+using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Objects;
 
@@ -26,9 +29,43 @@ public class ReplayFile
             throw new Exception("User not found");
     }
 
+    public ReplayFile(string filePath)  
+    {  
+        Score = new Score();  
+        using var reader = new ReplayReader(File.Open(filePath, FileMode.Open));  
+  
+        Score.IsPassed = true;  
+        var vanillaGameMode = (GameMode)reader.ReadByte();
+        Score.OsuVersion = reader.ReadInt32().ToString();  
+        Score.BeatmapHash = reader.ReadString();  
+        reader.ReadString(); // Player name  
+        Score.ScoreHash = reader.ReadString();  
+        Score.Count300 = reader.ReadUInt16();  
+        Score.Count100 = reader.ReadUInt16();  
+        Score.Count50 = reader.ReadUInt16();  
+        Score.CountGeki = reader.ReadUInt16();  
+        Score.CountKatu = reader.ReadUInt16();  
+        Score.CountMiss = reader.ReadUInt16();  
+        Score.TotalScore = reader.ReadInt32();  
+        Score.MaxCombo = reader.ReadUInt16();  
+        Score.Perfect = reader.ReadBoolean();   
+        Score.Mods = (Mods)reader.ReadInt32();  
+        Score.GameMode = vanillaGameMode.EnrichWithMods(Score.Mods);
+        reader.ReadString(); // Life graph  
+        Score.WhenPlayed = reader.ReadDateTime();  
+        Data = reader.ReadByteArray(); // Replay data  
+        Score.Grade = "X"; // TODO: Implement grade calculation  
+        int.TryParse(Score.OsuVersion, out var version);  
+        if (version >= 20140721)  
+            Score.Id = (int)reader.ReadInt64();  
+    }  
+  
     private Score Score { get; }
     private User? User { get; }
     private byte[] Data { get; }
+      
+    public Score GetScore() => Score;  
+    public byte[] GetReplayData() => Data;
 
     public async Task<MemoryStream> ReadReplay()
     {

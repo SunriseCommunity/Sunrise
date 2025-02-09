@@ -154,6 +154,32 @@ public static class ScoreExtensions
 
         return score;
     }
+    
+    public static string ToScoreString(this Score score)
+    {
+        return string.Join(":",
+        [
+            score.BeatmapHash,
+            score.UserId.ToString(),
+            score.ScoreHash,
+            score.Count300.ToString(),
+            score.Count100.ToString(),
+            score.Count50.ToString(),
+            score.CountGeki.ToString(),
+            score.CountKatu.ToString(),
+            score.CountMiss.ToString(),
+            score.TotalScore.ToString(),
+            score.MaxCombo.ToString(),
+            score.Perfect.ToString(),
+            score.Grade,
+            ((int)score.Mods).ToString(),
+            score.IsPassed.ToString(),
+            ((int)score.GameMode.ToVanillaGameMode()).ToString(),
+            score.ClientTime.ToString("yyMMddHHmmss"),
+            score.OsuVersion
+        ]);
+    }
+
 
     public static List<T> UpdateLeaderboardPositions<T>(this List<T> scores) where T : Score
     {
