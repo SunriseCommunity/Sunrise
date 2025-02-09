@@ -31,8 +31,8 @@ public class UserAttributes
     private float Longitude { get; }
     private float Latitude { get; }
     private short? Country { get; }
-    public string? OsuVersion { get; }
-    public string? UserHash { get; }
+    public string OsuVersion { get; }
+    public string UserHash { get; }
     public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
     public bool ShowUserLocation { get; set; } = true;
