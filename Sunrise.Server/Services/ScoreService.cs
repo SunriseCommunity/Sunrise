@@ -55,7 +55,7 @@ public static class ScoreService
         }
 
         // Auto-restrict players who submit scores with too many performance points on standard game modes
-        if (score.PerformancePoints >= 2500 && !hasNonStandardMods && score.LocalProperties.IsRanked)
+        if (score.PerformancePoints >= Configuration.BannablePpThreshold && !hasNonStandardMods && score.LocalProperties.IsRanked)
         {
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
             await database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Auto-restricted for submitting impossible score");

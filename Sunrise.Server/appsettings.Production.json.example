@@ -13,8 +13,11 @@
     "RateLimit": {
       "CallsPerWindow": 100,
       "Window": 10
-    },
-    "BannedIps": []
+    }
+  },
+  "Moderation": {
+      "BannablePPThreshold": 2500,
+      "BannedIps": []
   },
   "Files": {
     "DataPath": "../Data",

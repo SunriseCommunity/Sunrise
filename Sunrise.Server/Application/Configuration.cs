@@ -65,7 +65,12 @@ public static class Configuration
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
 
-    public static string[] BannedIps => Config.GetSection("General").GetSection("BannedIps").Get<string[]>() ?? [];
+    
+    
+    // Moderation section
+    public static int BannablePpThreshold => Config.GetSection("Moderation").GetSection("BannablePPThreshold").Get<int?>() ?? 3000;
+    public static string[] BannedIps => Config.GetSection("Moderation").GetSection("BannedIps").Get<string[]>() ?? [];
+    
     
     // Bot section
     public static string BotUsername => Config.GetSection("Bot").GetValue<string?>("Username") ?? "";
