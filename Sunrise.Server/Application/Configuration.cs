@@ -12,7 +12,11 @@ public static class Configuration
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
         .AddJsonFile("appsettings.json", false)
-        .AddJsonFile($"appsettings.{Env}.json", false).Build();
+        .AddJsonFile($"appsettings.{Env}.json", false)
+        .AddEnvironmentVariables()
+        .Build();
+    
+    public static IConfigurationRoot GetConfig() => Config;
 
     // API section
     private static string? _webTokenSecret;
@@ -22,7 +26,7 @@ public static class Configuration
     {
         get { return _webTokenSecret ??= GetApiToken().ToHash(); }
     }
-
+    
     public static TimeSpan WebTokenExpiration =>
         TimeSpan.FromSeconds(Config.GetSection("API").GetValue<int?>("TokenExpiresIn") ?? 3600);
 
@@ -70,7 +74,7 @@ public static class Configuration
     // Redis section
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
-    public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? true;
+    public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? false;
 
     public static bool ClearCacheOnStartup =>
         Config.GetSection("Redis").GetValue<bool?>("ClearCacheOnStartup") ?? false;
