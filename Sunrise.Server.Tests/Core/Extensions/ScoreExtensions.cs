@@ -1,6 +1,7 @@
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects;
+using Sunrise.Server.Objects.Serializable;
 using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Tests.Core.Extensions;
@@ -11,6 +12,14 @@ public static class ScoreExtensions
     {
         score.UserId = session.User.Id;
         score.ScoreHash = score.ComputeOnlineHash(session.User.Username, session.Attributes.UserHash, storyboardHash);
+    }
+
+    public static void EnrichWithBeatmapData(this Score score, Beatmap beatmap)
+    {
+        score.BeatmapHash = beatmap.Checksum ?? throw new Exception("Beatmap checksum is null");
+        score.GameMode = (GameMode)beatmap.ModeInt;
+        score.BeatmapId = beatmap.Id;
+        score.BeatmapStatus = beatmap.Status;
     }
 
     public static void Normalize(this Score score)
