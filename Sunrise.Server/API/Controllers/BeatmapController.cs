@@ -94,8 +94,11 @@ public class BeatmapController : ControllerBase
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
-        if (favourite.HasValue && session.User.Username != "Guest")
+        if (favourite.HasValue)
         {
+            if (session.User.Username == "Guest")
+                return Unauthorized(new ErrorResponse("Unauthorized"));
+
             var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
             if (favourite.Value)
                 await database.UserService.Favourites.AddFavouriteBeatmap(session.User.Id, id);
