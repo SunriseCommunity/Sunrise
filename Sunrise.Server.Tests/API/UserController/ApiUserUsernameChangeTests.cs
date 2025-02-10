@@ -25,9 +25,9 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("user/username/change",
-            new EditDescriptionRequest
+            new UsernameChangeRequest
             {
-                Description = _mocker.GetRandomString()
+                NewUsername = _mocker.User.GetRandomUsername()
             });
 
         // Assert
@@ -53,9 +53,9 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("user/username/change",
-            new EditDescriptionRequest
+            new UsernameChangeRequest
             {
-                Description = _mocker.GetRandomString()
+                NewUsername = _mocker.User.GetRandomUsername()
             });
 
         // Assert
