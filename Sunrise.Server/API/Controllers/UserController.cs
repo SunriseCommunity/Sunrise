@@ -225,9 +225,14 @@ public class UserController : ControllerBase
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 0)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var user = await database.UserService.GetUser(id);
@@ -241,8 +246,8 @@ public class UserController : ControllerBase
         var offsetFavourites = offsetFavouriteIds.Select(async setId =>
         {
             var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId);
-            return new BeatmapSetResponse(session, beatmapSet);
-        }).Select(task => task.Result).ToList();
+            return beatmapSet == null ? null : new BeatmapSetResponse(session, beatmapSet);
+        }).Select(task => task.Result).Where(x => x != null).ToList();
 
         return Ok(new BeatmapSetsResponse(offsetFavourites, favourites.Count));
     }

@@ -2,9 +2,22 @@ using System.Text.Json.Serialization;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class BeatmapSetsResponse(List<BeatmapSetResponse> sets, int totalCount)
+public class BeatmapSetsResponse
 {
-    [JsonPropertyName("sets")] public List<BeatmapSetResponse> Sets { get; set; } = sets;
+    public BeatmapSetsResponse(List<BeatmapSetResponse> sets, int totalCount)
+    {
+        Sets = sets;
+        TotalCount = totalCount;
+    }
 
-    [JsonPropertyName("total_count")] public int TotalCount { get; set; } = totalCount;
+    [JsonConstructor]
+    public BeatmapSetsResponse()
+    {
+    }
+
+    [JsonPropertyName("sets")]
+    public List<BeatmapSetResponse> Sets { get; set; }
+
+    [JsonPropertyName("total_count")]
+    public int TotalCount { get; set; }
 }
