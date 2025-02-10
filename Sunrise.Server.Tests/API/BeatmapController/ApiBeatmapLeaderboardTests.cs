@@ -170,7 +170,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
         var client = app.CreateClient().UseClient("api");
 
         // Act
-        var response = await client.GetAsync("beatmap/1/leaderboard");
+        var response = await client.GetAsync("beatmap/1/leaderboard?mode=0");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
