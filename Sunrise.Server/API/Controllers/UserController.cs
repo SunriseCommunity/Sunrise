@@ -390,6 +390,12 @@ public class UserController : ControllerBase
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
+        if (Request.HasFormContentType == false)
+            return BadRequest(new ErrorResponse("Invalid content type"));
+
+        if (Request.Form.Files.Count == 0)
+            return BadRequest(new ErrorResponse("No files were uploaded"));
+
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();
         await file.CopyToAsync(buffer, Request.HttpContext.RequestAborted);
@@ -411,6 +417,12 @@ public class UserController : ControllerBase
         var session = await Request.GetSessionFromRequest();
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (Request.HasFormContentType == false)
+            return BadRequest(new ErrorResponse("Invalid content type"));
+
+        if (Request.Form.Files.Count == 0)
+            return BadRequest(new ErrorResponse("No files were uploaded"));
 
         var file = Request.Form.Files[0];
         using var buffer = new MemoryStream();
