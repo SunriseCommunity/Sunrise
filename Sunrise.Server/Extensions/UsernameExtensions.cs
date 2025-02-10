@@ -20,7 +20,9 @@ public static class UsernameExtensions
 
     public static bool IsValidUsername(this string str, bool allowRussian = false)
     {
-        if (SpecialStrings.Any(str.ToLower().Contains) || IsUsernameDisallowed(str).Result)
+        var isLengthValid = str.Length is >= 2 and <= 32;
+
+        if (!isLengthValid || SpecialStrings.Any(str.ToLower().Contains) || IsUsernameDisallowed(str).Result)
         {
             return false;
         }
