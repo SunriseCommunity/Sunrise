@@ -251,17 +251,23 @@ public class UserController : ControllerBase
     [Route("leaderboard")]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery(Name = "mode")] int mode,
-        [FromQuery(Name = "type")] int? leaderboardType,
+        [FromQuery(Name = "type")] int? leaderboardType = 0,
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 0)
     {
-        if (leaderboardType is < 0 or > 1 or null)
+
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (Enum.IsDefined(typeof(LeaderboardSortType), leaderboardType) != true)
             return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var users = await database.UserService.GetAllUsers();
