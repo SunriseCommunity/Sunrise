@@ -65,6 +65,9 @@ public class UserController : ControllerBase
 
         var stats = await database.UserService.Stats.GetUserStats(id, (GameMode)mode);
 
+        if (stats == null)
+            return NotFound(new ErrorResponse("User stats not found"));
+
         var globalRank = await database.UserService.Stats.GetUserRank(id, (GameMode)mode);
         var countryRank = await database.UserService.Stats.GetUserCountryRank(id, (GameMode)mode);
 
@@ -111,25 +114,37 @@ public class UserController : ControllerBase
     }
 
     [HttpGet]
-    [Route("{id:int}/graph")]
-    public async Task<IActionResult> GetUserGraphData(int id, [FromQuery(Name = "mode")] int mode)
+    [Route("{userId:int}/graph")]
+    public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] int? mode = null)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (mode == null)
+            return BadRequest(new ErrorResponse("Mode parameter is required"));
+
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var userStats = await database.UserService.Stats.GetUserStats(id, (GameMode)mode);
+
+        var user = await database.UserService.GetUser(userId);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        var userStats = await database.UserService.Stats.GetUserStats(userId, (GameMode)mode);
 
         if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
 
-        var snapshots = (await database.UserService.Stats.Snapshots.GetUserStatsSnapshot(id, (GameMode)mode)).GetSnapshots();
-
-        snapshots.RemoveAll(x => x.SavedAt.Date == DateTime.UtcNow.Date);
+        var snapshots = (await database.UserService.Stats.Snapshots.GetUserStatsSnapshot(userId, (GameMode)mode)).GetSnapshots();
 
         snapshots.Add(new StatsSnapshot
         {
-            Rank = await database.UserService.Stats.GetUserRank(id, (GameMode)mode),
-            CountryRank = await database.UserService.Stats.GetUserCountryRank(id, (GameMode)mode),
+            Rank = await database.UserService.Stats.GetUserRank(userId, (GameMode)mode),
+            CountryRank = await database.UserService.Stats.GetUserCountryRank(userId, (GameMode)mode),
             PerformancePoints = userStats.PerformancePoints
         });
 
