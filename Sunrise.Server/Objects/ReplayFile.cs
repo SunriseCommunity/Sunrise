@@ -29,43 +29,50 @@ public class ReplayFile
             throw new Exception("User not found");
     }
 
-    public ReplayFile(string filePath)  
-    {  
-        Score = new Score();  
-        using var reader = new ReplayReader(File.Open(filePath, FileMode.Open));  
-  
-        Score.IsPassed = true;  
+    public ReplayFile(string filePath)
+    {
+        Score = new Score();
+        using var reader = new ReplayReader(File.Open(filePath, FileMode.Open));
+
+        Score.IsPassed = true;
         var vanillaGameMode = (GameMode)reader.ReadByte();
-        Score.OsuVersion = reader.ReadInt32().ToString();  
-        Score.BeatmapHash = reader.ReadString();  
+        Score.OsuVersion = reader.ReadInt32().ToString();
+        Score.BeatmapHash = reader.ReadString();
         reader.ReadString(); // Player name  
-        Score.ScoreHash = reader.ReadString();  
-        Score.Count300 = reader.ReadUInt16();  
-        Score.Count100 = reader.ReadUInt16();  
-        Score.Count50 = reader.ReadUInt16();  
-        Score.CountGeki = reader.ReadUInt16();  
-        Score.CountKatu = reader.ReadUInt16();  
-        Score.CountMiss = reader.ReadUInt16();  
-        Score.TotalScore = reader.ReadInt32();  
-        Score.MaxCombo = reader.ReadUInt16();  
-        Score.Perfect = reader.ReadBoolean();   
-        Score.Mods = (Mods)reader.ReadInt32();  
+        Score.ScoreHash = reader.ReadString();
+        Score.Count300 = reader.ReadUInt16();
+        Score.Count100 = reader.ReadUInt16();
+        Score.Count50 = reader.ReadUInt16();
+        Score.CountGeki = reader.ReadUInt16();
+        Score.CountKatu = reader.ReadUInt16();
+        Score.CountMiss = reader.ReadUInt16();
+        Score.TotalScore = reader.ReadInt32();
+        Score.MaxCombo = reader.ReadUInt16();
+        Score.Perfect = reader.ReadBoolean();
+        Score.Mods = (Mods)reader.ReadInt32();
         Score.GameMode = vanillaGameMode.EnrichWithMods(Score.Mods);
         reader.ReadString(); // Life graph  
-        Score.WhenPlayed = reader.ReadDateTime();  
+        Score.WhenPlayed = reader.ReadDateTime();
         Data = reader.ReadByteArray(); // Replay data  
         Score.Grade = "X"; // TODO: Implement grade calculation  
-        int.TryParse(Score.OsuVersion, out var version);  
-        if (version >= 20140721)  
-            Score.Id = (int)reader.ReadInt64();  
-    }  
-  
+        int.TryParse(Score.OsuVersion, out var version);
+        if (version >= 20140721)
+            Score.Id = (int)reader.ReadInt64();
+    }
+
     private Score Score { get; }
     private User? User { get; }
     private byte[] Data { get; }
-      
-    public Score GetScore() => Score;  
-    public byte[] GetReplayData() => Data;
+
+    public Score GetScore()
+    {
+        return Score;
+    }
+
+    public byte[] GetReplayData()
+    {
+        return Data;
+    }
 
     public async Task<MemoryStream> ReadReplay()
     {
@@ -74,7 +81,7 @@ public class ReplayFile
 
         // My gratefulness to rxhddt and mrflashstudio for having open-source replay parsers. 
 
-        writer.Write((byte)Score.GameMode);
+        writer.Write((byte)Score.GameMode.ToVanillaGameMode());
         writer.Write(int.TryParse(Score.OsuVersion, out var osuVersion) ? osuVersion : 20140721);
         writer.Write(Score.BeatmapHash);
         writer.Write(User?.Username ?? "Unknown");
@@ -85,7 +92,7 @@ public class ReplayFile
         writer.Write((short)Score.CountGeki);
         writer.Write((short)Score.CountKatu);
         writer.Write((short)Score.CountMiss);
-        writer.Write(Score.TotalScore);
+        writer.Write((int)Score.TotalScore);
         writer.Write((short)Score.MaxCombo);
         writer.Write(Score.Perfect);
         writer.Write((int)Score.Mods);
