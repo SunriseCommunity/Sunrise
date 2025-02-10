@@ -428,7 +428,7 @@ public class UserController : ControllerBase
     }
 
     [HttpPost(RequestType.PasswordChange)]
-    public async Task<IActionResult> ChangePassword([FromBody] ResetPassRequest? request)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest? request)
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
@@ -437,14 +437,19 @@ public class UserController : ControllerBase
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var passcheck = await database.UserService.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: session.User.Username);
+        if (request.CurrentPassword == null || request.NewPassword == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        if (passcheck == null)
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var userByCurrentPassword = await database.UserService.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: session.User.Username);
+
+        if (userByCurrentPassword == null)
             return BadRequest(new ErrorResponse("Current password is incorrect"));
 
-        if (request.NewPassword.Length is < 8 or > 32)
-            return BadRequest(new ErrorResponse("Password length should be between 8 and 32 characters."));
+        var (isPasswordValid, error) = request.NewPassword.IsValidPassword();
+
+        if (!isPasswordValid)
+            return BadRequest(new ErrorResponse(error ?? "Invalid password"));
 
         session.User.Passhash = request.NewPassword.GetPassHash();
 

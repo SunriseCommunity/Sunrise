@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Sunrise.Server.API.Serializable.Request;
 
-public class ResetPassRequest
+public class ChangePasswordRequest
 {
     [JsonPropertyName("current_password")]
     [JsonRequired]
@@ -10,5 +10,5 @@ public class ResetPassRequest
 
     [JsonPropertyName("new_password")]
     [JsonRequired]
-    public string? NewPassword { get; set; } 
+    public string? NewPassword { get; set; }
 }
