@@ -157,7 +157,7 @@ public class UserController : ControllerBase
 
     [HttpGet]
     [Route("{id:int}/scores")]
-    public async Task<IActionResult> GetUserGraphScores(int id,
+    public async Task<IActionResult> GetUserScores(int id,
         [FromQuery(Name = "mode")] int mode,
         [FromQuery(Name = "type")] int? scoresType,
         [FromQuery(Name = "limit")] int? limit = 15,
@@ -221,7 +221,7 @@ public class UserController : ControllerBase
 
     [HttpGet]
     [Route("{id:int}/favourites")]
-    public async Task<IActionResult> GetUserGraphScores(int id,
+    public async Task<IActionResult> GetUserFavourites(int id,
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 0)
     {
@@ -298,7 +298,7 @@ public class UserController : ControllerBase
 
     [HttpGet]
     [Route("search")]
-    public async Task<IActionResult> GetUsers(
+    public async Task<IActionResult> SeachUsers(
         [FromQuery(Name = "query")] string query,
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 0
