@@ -28,6 +28,9 @@ public class UserController : ControllerBase
     [Route("{id:int}")]
     public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] int? mode)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         User user;
         var userStatus = "Offline";
 
@@ -52,14 +55,15 @@ public class UserController : ControllerBase
             user = userDb;
         }
 
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
         if (mode == null) return Ok(new UserResponse(user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         var stats = await database.UserService.Stats.GetUserStats(id, (GameMode)mode);
-
-        if (stats == null) return NotFound(new ErrorResponse("User stats not found"));
 
         var globalRank = await database.UserService.Stats.GetUserRank(id, (GameMode)mode);
         var countryRank = await database.UserService.Stats.GetUserCountryRank(id, (GameMode)mode);
