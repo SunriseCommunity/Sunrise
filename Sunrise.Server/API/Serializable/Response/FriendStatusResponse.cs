@@ -2,11 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class FriendStatusResponse(bool isFollowing, bool isFollowed)
+public class FriendStatusResponse(bool isFollowingYou, bool isFollowedByYou)
 {
-    [JsonPropertyName("is_following")]
-    public bool IsFollowing { get; set; } = isFollowing;
+    [JsonPropertyName("is_following_you")]
+    public bool IsFollowingYou { get; set; } = isFollowingYou;
 
-    [JsonPropertyName("is_followed")]
-    public bool IsFollowed { get; set; } = isFollowed;
+    [JsonPropertyName("is_followed_by_you")]
+    public bool IsFollowedByYou { get; set; } = isFollowedByYou;
 }
