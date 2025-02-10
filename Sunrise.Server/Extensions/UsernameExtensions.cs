@@ -18,16 +18,31 @@ public static class UsernameExtensions
         return $"{username}_old";
     }
 
-    public static bool IsValidUsername(this string str, bool allowRussian = false)
+    public static (bool, string?) IsValidUsername(this string str)
     {
         var isLengthValid = str.Length is >= 2 and <= 32;
 
-        if (!isLengthValid || SpecialStrings.Any(str.ToLower().Contains) || IsUsernameDisallowed(str).Result)
+        if (!isLengthValid)
         {
-            return false;
+            return (false, "Username length must be between 2 and 32 characters");
         }
 
-        return CharactersFilter.IsValidString(str, allowRussian);
+        if (SpecialStrings.Any(str.ToLower().Contains))
+        {
+            return (false, "Username contains unallowed strings, please remove them and try again.");
+        }
+
+        if (IsUsernameDisallowed(str).Result)
+        {
+            return (false, "Username contains unallowed strings, try to come up with a harmless and original nickname.");
+        }
+
+        if (!CharactersFilter.IsValidString(str, true))
+        {
+            return (false, "Username contains invalid characters");
+        }
+
+        return (true, null);
     }
 
     private static async Task<bool> IsUsernameDisallowed(string str)

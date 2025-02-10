@@ -172,7 +172,7 @@ public class ApiAuthRegisterTests : ApiTest
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("Invalid characters", error?.Error);
+        Assert.Contains("unallowed strings", error?.Error);
     }
     
     [Fact]

@@ -91,6 +91,8 @@ public class ApiUserUsernameChangeTests : ApiTest
     [InlineData("1")]
     [InlineData("peppy")]
     [InlineData("テスト")]
+    [InlineData("username ")]
+    [InlineData("user\nname")]
     [InlineData("username_old1")]
     [InlineData("1234567890123456789012345678901234567890")]
     public async Task TestUsernameChangeWithInvalidUsername(string newUsername)

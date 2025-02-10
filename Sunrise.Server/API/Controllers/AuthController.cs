@@ -84,20 +84,16 @@ public class AuthController : ControllerBase
         if (foundUserByEmail != null)
             return BadRequest(new ErrorResponse("Email already in use"));
 
-        if (!request.Username.IsValidUsername(true))
-            return BadRequest(new ErrorResponse("Invalid characters in username."));
-
-        if (request.Username.Length is < 2 or > 32)
-            return BadRequest(new ErrorResponse("Username length should be between 2 and 32 characters."));
+        var (isUsernameValid, usernameError) = request.Username.IsValidUsername();
+        if (!isUsernameValid)
+            return BadRequest(new ErrorResponse(usernameError ?? "Invalid username"));
 
         if (!CharactersFilter.IsValidString(request.Email!) || !request.Email.IsValidEmail())
             return BadRequest(new ErrorResponse("Invalid email address."));
 
-        if (!CharactersFilter.IsValidString(request.Password))
-            return BadRequest(new ErrorResponse("Invalid characters in password."));
-
-        if (request.Password.Length is < 8 or > 32)
-            return BadRequest(new ErrorResponse("Password length should be between 8 and 32 characters."));
+        var (isPasswordValid, passwordError) = request.Password.IsValidPassword();
+        if (!isPasswordValid)
+            return BadRequest(new ErrorResponse(passwordError ?? "Invalid password"));
 
         var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
 

@@ -32,9 +32,11 @@ public class UsernameCommand : IChatCommand
             return;
         }
 
-        if (!args[1].IsValidUsername(true) && args[1] != "filter")
+        var (isUsernameValid, error) = args[1].IsValidUsername();
+
+        if (!isUsernameValid && args[1] != "filter")
         {
-            CommandRepository.SendMessage(session, "Invalid username.");
+            CommandRepository.SendMessage(session, error ?? "Invalid username");
             return;
         }
 

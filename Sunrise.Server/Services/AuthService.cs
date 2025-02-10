@@ -161,21 +161,18 @@ public static class AuthService
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
             return new BadRequestObjectResult("Invalid request: Missing parameters");
 
-        if (!username.IsValidUsername(true))
-            errors["username"].Add("Invalid username. Remember that it should not contain special characters or bad words.");
-        else if (username.Length is < 2 or > 32)
-            errors["username"].Add("Invalid username. Length should be between 2 and 32 characters.");
+        var (isUsernameValid, usernameError) = username.IsValidUsername();
+        if (!isUsernameValid)
+            errors["username"].Add(usernameError ?? "Invalid username");
 
         if (!CharactersFilter.IsValidString(email!) || !email.IsValidEmail())
             errors["user_email"].Add("Invalid email. It should be a valid email address.");
 
-        if (!CharactersFilter.IsValidString(password!))
-            errors["password"].Add("Invalid password. It should contain only alphanumeric characters.");
-        else if (password.Length is < 8 or > 32)
-            errors["password"].Add("Invalid password. It should contain between 8 and 32 characters.");
+        var (isPasswordValid, passwordError) = password.IsValidPassword();
+        if (!isPasswordValid)
+            errors["password"].Add(passwordError ?? "Invalid password");
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
 
         var foundUserByEmail = await database.UserService.GetUser(email: email);
 

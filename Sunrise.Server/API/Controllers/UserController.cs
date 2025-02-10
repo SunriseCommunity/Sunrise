@@ -471,8 +471,12 @@ public class UserController : ControllerBase
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        if (!request.NewUsername.IsValidUsername(true))
-            return BadRequest(new ErrorResponse("Invalid username"));
+        if (request.NewUsername == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
+        if (!isUsernameValid)
+            return BadRequest(new ErrorResponse(error ?? "Invalid username"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
