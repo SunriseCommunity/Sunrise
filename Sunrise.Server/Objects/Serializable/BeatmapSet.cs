@@ -62,7 +62,7 @@ public class BeatmapSet
     [JsonPropertyName("status")]
     public string StatusString { get; set; }
 
-    public BeatmapStatus Status => _statusMap[StatusString ?? "graveyard"];
+    public BeatmapStatus Status => _statusMap.GetValueOrDefault(StatusString, BeatmapStatus.Pending);
 
     [JsonPropertyName("track_id")]
     public int? TrackId { get; set; }

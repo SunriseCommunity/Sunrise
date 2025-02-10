@@ -32,7 +32,7 @@ public class Beatmap
     [JsonPropertyName("status")]
     public string StatusString { get; set; }
 
-    public BeatmapStatus Status => _statusMap[StatusString ?? "graveyard"];
+    public BeatmapStatus Status => _statusMap.GetValueOrDefault(StatusString, BeatmapStatus.Pending);
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; }
