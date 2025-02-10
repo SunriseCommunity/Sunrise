@@ -4,11 +4,7 @@ namespace Sunrise.Server.Tests.Core.Services.Mock;
 
 public class MockService
 {
-    public MockScoreService Score { get; } 
-    public MockBeatmapService Beatmap { get; }
-    public MockUserService User { get; }
-    public MockRedisService Redis { get; }
-    
+
     public MockService()
     {
         Score = new MockScoreService(this);
@@ -17,6 +13,11 @@ public class MockService
         Redis = new MockRedisService(this);
     }
 
+    public MockScoreService Score { get; }
+    public MockBeatmapService Beatmap { get; }
+    public MockUserService User { get; }
+    public MockRedisService Redis { get; }
+
     public DateTime GetRandomDateTime()
     {
         var random = new Random();
@@ -24,21 +25,21 @@ public class MockService
         var range = (DateTime.Today - start).Days;
         return start.AddDays(random.Next(range));
     }
-    
+
     public bool GetRandomBoolean()
     {
         return new Random().Next(0, 2) == 1;
     }
-    
+
     public string GetRandomString(int length = 16)
     {
         var baseString = $"{Guid.NewGuid():N}";
-        var repeatedString = string.Concat(Enumerable.Repeat(baseString, (length / baseString.Length) + 1));
-        
+        var repeatedString = string.Concat(Enumerable.Repeat(baseString, length / baseString.Length + 1));
+
         return repeatedString[..length];
     }
-        
-    public int GetRandomInteger(int? maxInt = null, int? length = null)
+
+    public int GetRandomInteger(int? maxInt = null, int? length = null, int minInt = 0)
     {
         if (length.HasValue && maxInt == null)
         {
@@ -48,7 +49,7 @@ public class MockService
         {
             maxInt = int.MaxValue;
         }
-        
-        return new Random().Next(0, maxInt.Value);
+
+        return new Random().Next(minInt, maxInt.Value);
     }
 }
