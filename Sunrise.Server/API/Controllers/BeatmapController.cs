@@ -21,6 +21,12 @@ public class BeatmapController : ControllerBase
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
     public async Task<IActionResult> GetBeatmap(int id)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: id);
@@ -38,10 +44,16 @@ public class BeatmapController : ControllerBase
     [HttpGet("beatmap/{id:int}/leaderboard")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
     public async Task<IActionResult> GetBeatmapLeaderboard(int id,
-        [FromQuery(Name = "mode")] string? mode,
+        [FromQuery(Name = "mode")] string mode,
         [FromQuery(Name = "mods")] string? mods = null,
         [FromQuery(Name = "limit")] int limit = 50)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
@@ -64,7 +76,7 @@ public class BeatmapController : ControllerBase
         if (beatmap?.IsScoreable == false)
             return Ok(new ScoresResponse([], 0));
 
-        var scores = await database.ScoreService.GetBeatmapScores(beatmap.Checksum, modeEnum, modsEnum == Mods.None ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum);
+        var scores = await database.ScoreService.GetBeatmapScores(beatmap.Checksum, modeEnum, modsEnum == Mods.None && mods == null ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum);
 
         var limitedScores = scores.SortScoresByTheirScoreValue().Take(limit).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
         return Ok(new ScoresResponse(limitedScores, scores.Count));
@@ -73,6 +85,9 @@ public class BeatmapController : ControllerBase
     [HttpGet("beatmapset/{id:int}")]
     public async Task<IActionResult> GetBeatmapSet(int id, [FromQuery] bool? favourite)
     {
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
         var beatmapSet = await BeatmapManager.GetBeatmapSet(session, id);
@@ -96,6 +111,9 @@ public class BeatmapController : ControllerBase
     [HttpGet("beatmapset/{id:int}/favourited")]
     public async Task<IActionResult> GetFavourited(int id)
     {
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
         var session = await Request.GetSessionFromRequest();
         if (session == null)
             return Unauthorized(new ErrorResponse("Unauthorized"));
