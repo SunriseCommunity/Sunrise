@@ -7,13 +7,13 @@ using GameMode = osu.Shared.GameMode;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-
 public class ScoreResponse
 {
-    
+
     [JsonConstructor]
     public ScoreResponse()
-    { }
+    {
+    }
 
     public ScoreResponse(Score score, User user)
     {
@@ -40,7 +40,7 @@ public class ScoreResponse
         User = new UserResponse(user);
         Accuracy = score.Accuracy;
     }
-    
+
     [JsonPropertyName("accuracy")]
     public double Accuracy { get; set; }
 
@@ -103,6 +103,7 @@ public class ScoreResponse
     public int UserId { get; set; }
 
     [JsonPropertyName("when_played")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime WhenPlayed { get; set; }
 
     [JsonPropertyName("user")]

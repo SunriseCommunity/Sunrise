@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -83,6 +84,7 @@ public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? b
     public double CS { get; set; } = beatmap.CS;
 
     [JsonPropertyName("deleted_at")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? DeletedAt { get; set; } = beatmap.DeletedAt;
 
@@ -96,6 +98,7 @@ public class BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? b
     public bool IsScoreable { get; set; } = beatmap.IsScoreable;
 
     [JsonPropertyName("last_updated")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime LastUpdated { get; set; } = beatmap.LastUpdated;
 
     [JsonPropertyName("mode_int")]

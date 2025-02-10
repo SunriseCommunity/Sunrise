@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Utils;
 using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Serializable.Response;
@@ -69,11 +70,13 @@ public class UserStatsResponse
     public long? BestGlobalRank { get; set; }
 
     [JsonPropertyName("best_global_rank_date")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime? BestGlobalRankDate { get; set; }
 
     [JsonPropertyName("best_country_rank")]
     public long? BestCountryRank { get; set; }
 
     [JsonPropertyName("best_country_rank_date")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime? BestCountryRankDate { get; set; }
 }

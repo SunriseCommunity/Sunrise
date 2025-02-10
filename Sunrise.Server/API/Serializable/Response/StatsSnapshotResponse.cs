@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -16,6 +17,11 @@ public class StatsSnapshotsResponse
         }).ToList();
 
         TotalCount = snapshots.Count;
+    }
+
+    [JsonConstructor]
+    public StatsSnapshotsResponse()
+    {
     }
 
     [JsonPropertyName("total_count")]
@@ -37,5 +43,6 @@ public class StatsSnapshotResponse
     public long Rank { get; set; }
 
     [JsonPropertyName("saved_at")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime SavedAt { get; set; }
 }

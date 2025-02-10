@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Database.Models;
 using Sunrise.Server.Database.Models.User;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -16,5 +17,6 @@ public class UserMedalResponse(Medal data, UserMedals? medal)
     public string Description => data.Description;
 
     [JsonPropertyName("unlocked_at")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime? UnlockedAt => medal?.UnlockedAt;
 }

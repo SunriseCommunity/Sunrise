@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
+using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
@@ -25,12 +26,15 @@ public class BeatmapSetResponse(BaseSession session, BeatmapSet beatmapSet)
     public string StatusString { get; set; } = beatmapSet.StatusString;
 
     [JsonPropertyName("last_updated")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime LastUpdated { get; set; } = beatmapSet.LastUpdated;
 
     [JsonPropertyName("submitted_date")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime SubmittedDate { get; set; } = beatmapSet.SubmittedDate;
 
     [JsonPropertyName("ranked_date")]
+    [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? RankedDate { get; set; } = beatmapSet.RankedDate;
 
