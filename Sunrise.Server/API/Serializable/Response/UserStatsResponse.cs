@@ -4,53 +4,76 @@ using GameMode = Sunrise.Server.Types.Enums.GameMode;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class UserStatsResponse(UserStats stats, int globalRank, int countryRank)
+public class UserStatsResponse
 {
+    public UserStatsResponse(UserStats stats, int globalRank, int countryRank)
+    {
+        UserId = stats.UserId;
+        GameMode = stats.GameMode;
+        Accuracy = stats.Accuracy;
+        TotalScore = stats.TotalScore;
+        RankedScore = stats.RankedScore;
+        PlayCount = stats.PlayCount;
+        PerformancePoints = stats.PerformancePoints;
+        Rank = globalRank;
+        CountryRank = countryRank;
+        MaxCombo = stats.MaxCombo;
+        PlayTime = stats.PlayTime;
+        TotalHits = stats.TotalHits;
+        BestGlobalRank = stats.BestGlobalRank;
+        BestGlobalRankDate = stats.BestGlobalRankDate;
+        BestCountryRank = stats.BestCountryRank;
+        BestCountryRankDate = stats.BestCountryRankDate;
+    }
+
+    [JsonConstructor]
+    public UserStatsResponse() { }
+
     [JsonPropertyName("user_id")]
-    public int UserId { get; set; } = stats.UserId;
+    public int UserId { get; set; }
 
     [JsonPropertyName("gamemode")]
-    public GameMode GameMode { get; set; } = stats.GameMode;
+    public GameMode GameMode { get; set; }
 
     [JsonPropertyName("accuracy")]
-    public double Accuracy { get; set; } = stats.Accuracy;
+    public double Accuracy { get; set; }
 
     [JsonPropertyName("total_score")]
-    public long TotalScore { get; set; } = stats.TotalScore;
+    public long TotalScore { get; set; }
 
     [JsonPropertyName("ranked_score")]
-    public long RankedScore { get; set; } = stats.RankedScore;
+    public long RankedScore { get; set; }
 
     [JsonPropertyName("play_count")]
-    public int PlayCount { get; set; } = stats.PlayCount;
+    public int PlayCount { get; set; }
 
     [JsonPropertyName("pp")]
-    public double PerformancePoints { get; set; } = stats.PerformancePoints;
+    public double PerformancePoints { get; set; }
 
     [JsonPropertyName("rank")]
-    public int Rank { get; set; } = globalRank;
+    public int Rank { get; set; }
 
     [JsonPropertyName("country_rank")]
-    public int CountryRank { get; set; } = countryRank;
+    public int CountryRank { get; set; }
 
     [JsonPropertyName("max_combo")]
-    public int MaxCombo { get; set; } = stats.MaxCombo;
+    public int MaxCombo { get; set; }
 
     [JsonPropertyName("play_time")]
-    public int PlayTime { get; set; } = stats.PlayTime;
+    public int PlayTime { get; set; }
 
     [JsonPropertyName("total_hits")]
-    public int TotalHits { get; set; } = stats.TotalHits;
+    public int TotalHits { get; set; }
 
     [JsonPropertyName("best_global_rank")]
-    public long? BestGlobalRank { get; set; } = stats.BestGlobalRank;
+    public long? BestGlobalRank { get; set; }
 
     [JsonPropertyName("best_global_rank_date")]
-    public DateTime? BestGlobalRankDate { get; set; } = stats.BestGlobalRankDate;
+    public DateTime? BestGlobalRankDate { get; set; }
 
     [JsonPropertyName("best_country_rank")]
-    public long? BestCountryRank { get; set; } = stats.BestCountryRank;
+    public long? BestCountryRank { get; set; }
 
     [JsonPropertyName("best_country_rank_date")]
-    public DateTime? BestCountryRankDate { get; set; } = stats.BestCountryRankDate;
+    public DateTime? BestCountryRankDate { get; set; }
 }
