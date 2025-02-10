@@ -121,9 +121,9 @@ public class BeatmapController : ControllerBase
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var favourited = await database.UserService.Favourites.IsBeatmapSetFavourited(session.User.Id, id);
 
-        return Ok(new
+        return Ok(new FavouritedResponse
         {
-            favourited
+            Favourited = favourited
         });
     }
 }
