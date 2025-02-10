@@ -298,10 +298,14 @@ public class UserController : ControllerBase
         [FromQuery(Name = "page")] int? page = 0
     )
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var users = await database.UserService.SearchUsers(query);
