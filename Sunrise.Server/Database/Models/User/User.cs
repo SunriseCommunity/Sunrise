@@ -84,8 +84,8 @@ public class User
         return AccountStatus == UserAccountStatus.Restricted;
     }
 
-    public bool IsActive()
+    public bool IsActive(bool ignoreRestriction = true)
     {
-        return AccountStatus == UserAccountStatus.Active;
+        return AccountStatus == UserAccountStatus.Active || IsRestricted() && ignoreRestriction;
     }
 }

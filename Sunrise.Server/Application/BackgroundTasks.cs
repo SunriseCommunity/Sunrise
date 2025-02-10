@@ -31,7 +31,7 @@ public static class BackgroundTasks
             foreach (var stats in usersStats)
             {
                 var user = users.FirstOrDefault(x => x.Id == stats.UserId);
-                if (user == null || !user.IsActive()) continue;
+                if (user == null || !user.IsActive(false)) continue;
 
                 var currentSnapshot = await database.UserService.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
                 var rankSnapshots = currentSnapshot.GetSnapshots();
