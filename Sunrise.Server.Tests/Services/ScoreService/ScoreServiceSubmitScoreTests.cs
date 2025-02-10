@@ -11,7 +11,7 @@ using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Tests.Services.ScoreService;
 
-public class ScoreServiceSubmitScoreTests() : DatabaseTest(true)
+public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 {
     private readonly MockService _mocker = new();
     private readonly ReplayService _replayService = new();
