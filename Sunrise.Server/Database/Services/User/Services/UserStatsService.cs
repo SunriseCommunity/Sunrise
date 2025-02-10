@@ -31,10 +31,13 @@ public class UserStatsService
 
     public UserStatsSnapshotService Snapshots { get; }
 
-    public async Task<UserStats> GetUserStats(int userId, GameMode mode, bool useCache = true)
+    public async Task<UserStats?> GetUserStats(int userId, GameMode mode, bool useCache = true)
     {
         var cachedStats = await _redis.Get<UserStats?>(RedisKey.UserStats(userId, mode));
         if (cachedStats != null && useCache) return cachedStats;
+
+        var user = await _services.UserService.GetUser(userId);
+        if (user == null) return null;
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId).PrependAnd("GameMode",
             OperatorEnum.Equals,
