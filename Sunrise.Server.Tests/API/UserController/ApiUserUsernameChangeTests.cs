@@ -115,8 +115,10 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
+        var (_, expectedError) = newUsername.IsValidUsername();
+
         var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("Invalid username", responseError?.Error);
+        Assert.Equal(expectedError, responseError?.Error);
     }
 
     [Fact]
