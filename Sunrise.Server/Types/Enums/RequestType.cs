@@ -17,7 +17,7 @@ public static class RequestType
     public const string EventBanner = "events/EventBanner.jpg";
 
     // API controller
-    public const string ResetPass = "password/reset";
+    public const string PasswordChange = "password/change";
     public const string UsernameChange = "username/change";
 
     // Bancho controller

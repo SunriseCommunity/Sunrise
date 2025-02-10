@@ -427,8 +427,8 @@ public class UserController : ControllerBase
         return new OkResult();
     }
 
-    [HttpPost(RequestType.ResetPass)]
-    public async Task<IActionResult> ResetPass([FromBody] ResetPassRequest? request)
+    [HttpPost(RequestType.PasswordChange)]
+    public async Task<IActionResult> ChangePassword([FromBody] ResetPassRequest? request)
     {
         var session = await Request.GetSessionFromRequest();
         if (session == null)
