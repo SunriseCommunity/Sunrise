@@ -12,12 +12,18 @@ public static class SessionManager
         if (header.Count == 0)
             return null;
 
+        if (header[0]?.StartsWith("Bearer ") == false)
+            return null;
+
         var token = header[0]?.Split(" ")[1];
         if (string.IsNullOrEmpty(token))
             return null;
 
         var user = await AuthService.GetUserFromToken(token);
         if (user == null)
+            return null;
+
+        if (user.IsRestricted())
             return null;
 
         var session = new BaseSession(user);
