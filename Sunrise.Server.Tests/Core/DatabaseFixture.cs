@@ -2,13 +2,14 @@
 
 namespace Sunrise.Server.Tests.Core;
 
-public class DatabaseFixture : IClassFixture<EnvironmentFixture>, IDisposable
+public class DatabaseFixture : EnvironmentFixture, IDisposable
 {
-    public new void Dispose() 
-    { 
+    public new void Dispose()
+    {
         if (Directory.Exists(Configuration.DataPath))
             Directory.Delete(Path.Combine(Configuration.DataPath), true);
-        
+
+        base.Dispose();
         GC.SuppressFinalize(this);
     }
 }
