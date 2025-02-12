@@ -29,9 +29,6 @@ public static class AuthService
 
         var user = await database.UserService.GetUser(username: loginRequest.Username);
 
-        if (!CharactersFilter.IsValidString(loginRequest.Username, true))
-            return RejectLogin(response, "Invalid characters in username or password.");
-
         if (user == null)
             return RejectLogin(response, "User with this username does not exist.");
 
@@ -165,7 +162,7 @@ public static class AuthService
         if (!isUsernameValid)
             errors["username"].Add(usernameError ?? "Invalid username");
 
-        if (!CharactersFilter.IsValidString(email!) || !email.IsValidEmail())
+        if (!CharactersFilter.IsValidStringCharacters(email!) || !email.IsValidEmailCharacters())
             errors["user_email"].Add("Invalid email. It should be a valid email address.");
 
         var (isPasswordValid, passwordError) = password.IsValidPassword();
