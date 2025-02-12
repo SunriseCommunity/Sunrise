@@ -343,7 +343,7 @@ public class UserController : ControllerBase
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var users = await database.UserService.SearchUsers(query);
 
-        if (users == null) return NotFound(new ErrorResponse("Users not found"));
+        users = users.Where(x => x.IsRestricted() == false).ToList();
 
         var offsetUsers = users.Skip(page * limit ?? 0).Take(limit ?? 50).ToList();
 

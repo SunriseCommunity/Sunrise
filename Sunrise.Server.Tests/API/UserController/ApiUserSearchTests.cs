@@ -6,7 +6,6 @@ using Sunrise.Server.Database;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -153,30 +152,7 @@ public class ApiUserSearchTests : ApiTest
     }
 
     [Fact]
-    public async Task TestGetUserWithStatus()
-    {
-        // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var user = await CreateTestUser();
-        var session = CreateTestSession(user);
-
-        // Act
-        var response = await client.GetAsync($"user/{user.Id}");
-
-        // Assert
-        response.EnsureSuccessStatusCode();
-
-        var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
-        Assert.NotNull(responseUser);
-
-        Assert.Equal(session.Attributes.Status.ToText(), responseUser.UserStatus);
-        Assert.Equal(session.Attributes.LastPingRequest, responseUser.LastOnlineTime);
-    }
-
-    [Fact]
-    public async Task TestGetUserRestrictedNotFound()
+    public async Task TestSearchUserIgnoreRestrictedUsers()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -188,31 +164,14 @@ public class ApiUserSearchTests : ApiTest
         await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
 
         // Act
-        var response = await client.GetAsync($"user/{user.Id}");
+        var response = await client.GetAsync($"user/search?query={user.Username}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        response.EnsureSuccessStatusCode();
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("User is restricted", responseContent?.Error);
-    }
+        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        Assert.NotNull(responseUsers);
 
-
-    [Theory]
-    [InlineData("-1")]
-    [InlineData("test")]
-    public async Task TestGetUserWithUserStatsInvalidModeQuery(string mode)
-    {
-        // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var user = await CreateTestUser();
-
-        // Act
-        var response = await client.GetAsync($"user/{user.Id}?mode={mode}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(responseUsers);
     }
 }

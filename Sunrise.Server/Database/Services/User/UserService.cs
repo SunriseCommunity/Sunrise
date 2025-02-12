@@ -203,12 +203,12 @@ public class UserService
         return users;
     }
 
-    public async Task<List<Models.User.User>?> SearchUsers(string query)
+    public async Task<List<Models.User.User>> SearchUsers(string query)
     {
         var users = await _database.SelectManyAsync<Models.User.User>(
             new Expr("Username", OperatorEnum.Contains, $"%{query}%").PrependOr("Id", OperatorEnum.Equals, query));
 
-        return users;
+        return users ?? [];
     }
 
     public async Task<long> GetTotalUsers()
