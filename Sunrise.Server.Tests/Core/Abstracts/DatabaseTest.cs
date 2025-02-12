@@ -1,4 +1,5 @@
 using DatabaseWrapper.Core;
+using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
@@ -48,6 +49,19 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
 
         orm.Dispose();
         base.Dispose();
+
+        var jobStorage = JobStorage.Current;
+        var monitoringApi = jobStorage.GetMonitoringApi();
+
+        while (true)
+        {
+            var jobs = monitoringApi.ProcessingJobs(0, int.MaxValue);
+
+            if (jobs.Count == 0)
+                break;
+        }
+
+        monitoringApi.DeletedJobs(0, int.MaxValue);
 
         Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
 

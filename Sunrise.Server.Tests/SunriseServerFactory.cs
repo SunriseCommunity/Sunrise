@@ -1,4 +1,3 @@
-using Hangfire;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Sunrise.Server.Tests;
@@ -11,10 +10,6 @@ internal class SunriseServerFactory : WebApplicationFactory<Program>
         {
             await factory.DisposeAsync().ConfigureAwait(false);
         }
-
-        var jobStorage = JobStorage.Current;
-        var monitoringApi = jobStorage.GetMonitoringApi();
-        monitoringApi.DeletedJobs(0, int.MaxValue);
 
         // We don't call base.DisposeAsync() to not dispose hangfire in memory database
         // ! I'm not sure if this is a good idea, but I 'think' it's fine for now
