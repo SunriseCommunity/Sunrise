@@ -37,7 +37,12 @@ public static class UsernameExtensions
             return (false, "Username contains unallowed strings, try to come up with a harmless and original nickname.");
         }
 
-        if (!CharactersFilter.IsValidString(str, true))
+        if (str.StartsWith(" ") || str.EndsWith(" "))
+        {
+            return (false, "Username cannot start or end with a space");
+        }
+
+        if (!CharactersFilter.IsValidUsernameCharacters(str))
         {
             return (false, "Username contains invalid characters");
         }

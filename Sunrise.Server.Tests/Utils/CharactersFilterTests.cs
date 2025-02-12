@@ -1,96 +1,106 @@
 ﻿using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Utils;
 
 namespace Sunrise.Server.Tests.Utils;
 
 public class CharactersFilterTests
 {
+
+    private static readonly string[] InvalidCharacters = [" ", "\ud83d\ude02", "ä", "漢", "/", "ё"];
     private readonly MockService _mocker = new();
-    
-    private static readonly string[] InvalidCharacters = [" ", "\ud83d\ude02", "ä", "漢", "/"];
 
     public static IEnumerable<object[]> GetInvalidCharacters()
     {
-        return InvalidCharacters.Select(c => new object[] { c });
+        return InvalidCharacters.Select(c => new object[]
+        {
+            c
+        });
     }
 
-    [Fact] 
-    public void IsValidString_WithValidString_ReturnsTrue()
+    public static IEnumerable<object[]> GetInvalidUsernameCharacters()
+    {
+        return GetInvalidCharacters().Where(c => (string)c[0] != " ");
+    }
+
+    [Fact]
+    public void IsValidStringCharacters_WithValidString_ReturnsTrue()
     {
         // Arrange
         var str = "test123";
-        
+
         // Act
-        var result = CharactersFilter.IsValidString(str);
-        
+        var result = CharactersFilter.IsValidStringCharacters(str);
+
         // Assert
         Assert.True(result);
     }
 
     [Theory]
     [MemberData(nameof(GetInvalidCharacters))]
-    public void IsValidString_WithInvalidString_ReturnsFalse(string invalidCharacter)
+    public void IsValidStringCharacters_WithInvalidString_ReturnsFalse(string invalidCharacter)
     {
         var str = $"test123{invalidCharacter}";
-        
+
         // Act
-        var result = CharactersFilter.IsValidString(str);
-        
-        // Assert
-        Assert.False(result);
-    }
-    
-    [Fact]
-    public void IsValidString_WithValidRussianString_ReturnsTrue()
-    {
-        // Arrange
-        var str = "тест123";
-        
-        // Act
-        var result = CharactersFilter.IsValidString(str, true);
-        
-        // Assert
-        Assert.True(result);
-    }
-    
-    [Theory]
-    [MemberData(nameof(GetInvalidCharacters))]
-    public void IsValidString_WithInvalidRussianString_ReturnsFalse(string invalidCharacter)
-    {
-        var str = $"тест123{invalidCharacter}";
-        
-        // Act
-        var result = CharactersFilter.IsValidString(str, true);
-        
+        var result = CharactersFilter.IsValidStringCharacters(str);
+
         // Assert
         Assert.False(result);
     }
 
     [Fact]
-    public void IsValidEmail_WithValidEmail_ReturnsTrue()
+    public void IsValidUsernameCharacters_WithValidString_ReturnsTrue()
+    {
+        // Arrange
+        var str = "test123";
+
+        // Act
+        var result = CharactersFilter.IsValidUsernameCharacters(str);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Theory]
+    [MemberData(nameof(GetInvalidUsernameCharacters))]
+    public void IsValidUsernameCharacters_WithInvalidString_ReturnsFalse(string invalidCharacter)
+    {
+        var str = $"test123{invalidCharacter}";
+
+        // Act
+        var result = CharactersFilter.IsValidUsernameCharacters(str);
+
+        // Assert
+
+        if (invalidCharacter == " ")
+            Assert.True(result);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void IsValidEmailCharacters_WithValidEmail_ReturnsTrue()
     {
         // Arrange
         var email = _mocker.User.GetRandomEmail();
 
         // Act
-        var result = email.IsValidEmail();
+        var result = email.IsValidEmailCharacters();
 
         // Assert
         Assert.True(result);
     }
-    
+
     [Fact]
-    public void IsValidEmail_WithInvalidEmail_ReturnsFalse()
+    public void IsValidEmailCharacters_WithInvalidEmail_ReturnsFalse()
     {
         // Arrange
         var email = "test@";
 
         // Act
-        var result = email.IsValidEmail();
+        var result = email.IsValidEmailCharacters();
 
         // Assert
         Assert.False(result);
     }
-
 }

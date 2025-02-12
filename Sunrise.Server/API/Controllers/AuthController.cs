@@ -88,7 +88,7 @@ public class AuthController : ControllerBase
         if (!isUsernameValid)
             return BadRequest(new ErrorResponse(usernameError ?? "Invalid username"));
 
-        if (!CharactersFilter.IsValidString(request.Email!) || !request.Email.IsValidEmail())
+        if (!CharactersFilter.IsValidStringCharacters(request.Email!) || !request.Email.IsValidEmailCharacters())
             return BadRequest(new ErrorResponse("Invalid email address."));
 
         var (isPasswordValid, passwordError) = request.Password.IsValidPassword();

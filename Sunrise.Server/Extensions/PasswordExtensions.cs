@@ -13,7 +13,7 @@ public static class PasswordExtensions
             return (false, "Password length must be between 8 and 32 characters");
         }
 
-        if (!CharactersFilter.IsValidString(str))
+        if (!CharactersFilter.IsValidStringCharacters(str))
         {
             return (false, "Password contains invalid characters");
         }

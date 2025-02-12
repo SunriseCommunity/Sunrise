@@ -92,6 +92,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     [InlineData("peppy")]
     [InlineData("テスト")]
     [InlineData("username ")]
+    [InlineData("user+name")]
     [InlineData("user\nname")]
     [InlineData("username_old1")]
     [InlineData("1234567890123456789012345678901234567890")]

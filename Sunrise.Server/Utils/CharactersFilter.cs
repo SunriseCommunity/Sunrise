@@ -4,14 +4,19 @@ namespace Sunrise.Server.Utils;
 
 public static class CharactersFilter
 {
-    public static bool IsValidString(string str, bool allowRussian = false)
+    public static bool IsValidStringCharacters(string str)
     {
-        var pattern = allowRussian ? @"^[a-zA-Z0-9а-яА-Я!@#$%^&*()._+]+$" : @"^[a-zA-Z0-9!@#$%^&*()._+]+$";
+        var pattern = @"^[a-zA-Z0-9!@#$%^&*()._+]+$";
 
         return Regex.IsMatch(str, pattern);
     }
 
-    public static bool IsValidEmail(this string str)
+    public static bool IsValidUsernameCharacters(string str)
+    {
+        return Regex.IsMatch(str, @"^[1-9 0-\[\]a-zA-Z_-]+$");
+    }
+
+    public static bool IsValidEmailCharacters(this string str)
     {
         return Regex.IsMatch(str, @"^.+@.+\.[a-zA-Z]{2,256}$");
     }
