@@ -31,7 +31,7 @@
     "ClearCacheOnStartup": false
   },
   "Hangfire": {
-      "UseHangfire": true,
+      "UseHangfireServer": true,
       "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
       "MaxDailyBackupCount": 14
   },

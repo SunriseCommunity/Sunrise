@@ -84,7 +84,7 @@ public static class Configuration
 
     // Hangfire section
     public static bool UseHangfireServer =>
-        Config.GetSection("Hangfire").GetValue<bool?>("UseHangfire") ?? false;
+        Config.GetSection("Hangfire").GetValue<bool?>("UseHangfireServer") ?? false;
 
     public static string HangfireConnection =>
         Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
