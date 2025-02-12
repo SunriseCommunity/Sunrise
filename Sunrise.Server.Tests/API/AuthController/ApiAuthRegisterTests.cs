@@ -1,11 +1,11 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Sunrise.Server.API.Serializable.Request;
 using Sunrise.Server.API.Serializable.Response;
 using Sunrise.Server.Application;
 using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Services;
+using Sunrise.Server.Extensions;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
@@ -16,23 +16,23 @@ namespace Sunrise.Server.Tests.API.AuthController;
 public class ApiAuthRegisterTests : ApiTest
 {
     private readonly MockService _mocker = new();
-    
+
     private string BannedIp => Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
-    
+
     [Fact]
     public async Task TestRegisterUser()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        
+
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
         var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -41,10 +41,10 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        
+
         var responseString = await response.Content.ReadAsStringAsync();
         var responseTokens = JsonSerializer.Deserialize<TokenResponse>(responseString);
-        
+
         Assert.NotNull(responseTokens);
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
@@ -52,7 +52,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         Assert.NotNull(user);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserCreatesRegisterEvent()
     {
@@ -63,12 +63,12 @@ public class ApiAuthRegisterTests : ApiTest
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
         var email = _mocker.User.GetRandomEmail();
-        
+
         var ip = _mocker.User.GetRandomIp();
 
         // Act
         var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -77,13 +77,13 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-     
+
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var isEventRegistered = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip);
-        
+
         Assert.True(isEventRegistered);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserGreeceFlag()
     {
@@ -94,18 +94,18 @@ public class ApiAuthRegisterTests : ApiTest
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
         var email = _mocker.User.GetRandomEmail();
-        
+
         const string greeceIp = "102.38.248.255";
 
         // Act
         var response = await client.UseUserIp(greeceIp)
             .PostAsJsonAsync("auth/register",
-            new RegisterRequest()
-            {
-                Username = username,
-                Password = password,
-                Email = email
-            });
+                new RegisterRequest
+                {
+                    Username = username,
+                    Password = password,
+                    Email = email
+                });
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -130,7 +130,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -138,28 +138,36 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
         Assert.Contains("Username length", error?.Error);
     }
-    
-    [Fact]
-    public async Task TestRegisterUserInvalidUsername()
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("1")]
+    [InlineData("peppy")]
+    [InlineData("テスト")]
+    [InlineData("username ")]
+    [InlineData("user+name")]
+    [InlineData("user\nname")]
+    [InlineData("username_old1")]
+    [InlineData("1234567890123456789012345678901234567890")]
+    public async Task TestRegisterUserInvalidUsername(string username)
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
-        const string username = "peppy";
         var email = _mocker.User.GetRandomEmail();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -167,21 +175,23 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("unallowed strings", error?.Error);
+        var (_, expectedError) = username.IsValidUsername();
+
+        Assert.Equal(expectedError, responseError?.Error);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserUsedUsername()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        
+
         var user = await CreateTestUser();
 
         var password = _mocker.User.GetRandomPassword();
@@ -190,7 +200,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -198,21 +208,21 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
         Assert.Contains("Username is already taken", error?.Error);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserUsedEmail()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
         var client = app.CreateClient().UseClient("api");
-        
+
         var user = await CreateTestUser();
 
         var password = _mocker.User.GetRandomPassword();
@@ -221,7 +231,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -229,14 +239,14 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
         Assert.Contains("Email already in use", error?.Error);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserInvalidEmail()
     {
@@ -250,7 +260,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -258,7 +268,7 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
@@ -279,7 +289,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.UseUserIp(BannedIp).PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -287,7 +297,7 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
@@ -314,7 +324,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         // Act
         var response = await client.UseUserIp(ip).PostAsJsonAsync("auth/register",
-            new RegisterRequest()
+            new RegisterRequest
             {
                 Username = username,
                 Password = password,
@@ -322,7 +332,7 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
