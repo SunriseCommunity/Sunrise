@@ -79,7 +79,7 @@ public class MockBeatmapService(MockService service)
         return new Beatmap
         {
             Id = service.GetRandomInteger(),
-            BeatmapsetId = beatmapSet.Offset,
+            BeatmapsetId = beatmapSet.Id,
             DifficultyRating = service.GetRandomInteger(10),
             Mode = Enum.GetValues<GameMode>().GetValue(service.GetRandomInteger(Enum.GetValues<GameMode>().Length))?.ToString()?.ToLower() ?? "osu",
             StatusString = service.GetRandomString(),
