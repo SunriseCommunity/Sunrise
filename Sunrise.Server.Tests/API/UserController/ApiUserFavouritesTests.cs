@@ -160,4 +160,26 @@ public class ApiUserFavouritesTests : ApiTest
 
         Assert.Empty(responseData.Sets);
     }
+
+    [Fact]
+    public async Task TestFavouritesForRestrictedUser()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+
+        // Act
+        var response = await client.GetAsync($"user/{user.Id}/favourites");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Contains("User is restricted", responseError?.Error);
+    }
 }
