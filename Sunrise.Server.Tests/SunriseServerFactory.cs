@@ -1,4 +1,5 @@
 using Hangfire;
+using Hangfire.Storage;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Sunrise.Server.Tests;
@@ -12,9 +13,21 @@ internal class SunriseServerFactory : WebApplicationFactory<Program>
             await factory.DisposeAsync().ConfigureAwait(false);
         }
 
-        var jobStorage = JobStorage.Current;
-        var monitoringApi = jobStorage.GetMonitoringApi();
-        monitoringApi.DeletedJobs(0, int.MaxValue);
+        var monitoringApi = JobStorage.Current.GetMonitoringApi();
+
+        while (true)
+        {
+            var jobs = monitoringApi.ProcessingJobs(0, int.MaxValue);
+            if (jobs.Count == 0)
+                break;
+        }
+
+        using var connection = JobStorage.Current.GetConnection();
+
+        foreach (var recurringJob in connection.GetRecurringJobs())
+        {
+            RecurringJob.RemoveIfExists(recurringJob.Id);
+        }
 
         // We don't call base.DisposeAsync() to not dispose hangfire in memory database
         // ! I'm not sure if this is a good idea, but I 'think' it's fine for now
