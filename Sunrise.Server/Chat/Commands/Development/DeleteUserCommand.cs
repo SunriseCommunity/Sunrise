@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -26,20 +27,20 @@ public class DeleteUserCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        Task.Run(() => DeleteUser(session, userId));
+        BackgroundJob.Enqueue(() => DeleteUser(session.User.Id, userId));
 
         return Task.CompletedTask;
     }
 
-    private async Task DeleteUser(Session session, int userId)
+    public async Task DeleteUser(int userId, int requestedUserId)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.UserService.GetUser(requestedUserId);
 
         if (user == null)
         {
-            CommandRepository.SendMessage(session, $"User {userId} not found.");
+            CommandRepository.TrySendMessage(userId, $"User {requestedUserId} not found.");
             return;
         }
 
@@ -47,10 +48,10 @@ public class DeleteUserCommand : IChatCommand
 
         if (!isDeleted)
         {
-            CommandRepository.SendMessage(session, $"Failed to delete user {user.Username} ({userId}). Please check console for more information.");
+            CommandRepository.TrySendMessage(userId, $"Failed to delete user {user.Username} ({requestedUserId}). Please check console for more information.");
             return;
         }
 
-        CommandRepository.SendMessage(session, $"User {user.Username} ({userId}) has been deleted.");
+        CommandRepository.TrySendMessage(userId, $"User {user.Username} ({requestedUserId}) has been deleted.");
     }
 }

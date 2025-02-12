@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
@@ -22,16 +23,16 @@ public class DisableInactiveUsersCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => DisableInactiveUsers(session));
+        BackgroundJob.Enqueue(() => DisableInactiveUsers(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task DisableInactiveUsers(Session session)
+    public async Task DisableInactiveUsers(int userId)
     {
-        await Task.Run(BackgroundTasks.DisableInactiveUsers);
+        await BackgroundTasks.DisableInactiveUsers();
 
-        CommandRepository.SendMessage(session, "Checking for inactive users has been completed. Server is no longer in maintenance mode.");
+        CommandRepository.TrySendMessage(userId, "Checking for inactive users has been completed. Server is no longer in maintenance mode.");
         Configuration.OnMaintenance = false;
     }
 }

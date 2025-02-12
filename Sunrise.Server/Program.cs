@@ -9,8 +9,8 @@ builder.Services.AddHealthChecks();
 builder.AddSingletons();
 builder.AddMiddlewares();
 
-if (Configuration.UseHangfire) 
-    builder.AddHangfire();
+
+builder.AddHangfire();
 
 builder.Configure();
 
@@ -18,8 +18,9 @@ var app = builder.Build();
 
 app.UseHealthChecks("/health");
 
-if (Configuration.UseHangfire) 
-    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+
+app.UseHangfireDashboard("/hangfire",
+    new DashboardOptions
     {
         Authorization = [new HangfireAuthorizationFilter()]
     });
@@ -31,7 +32,6 @@ app.Configure();
 
 app.WarmUpSingletons();
 
-if (Configuration.UseHangfire)
-    BackgroundTasks.Initialize();
+BackgroundTasks.Initialize();
 
 app.Run();

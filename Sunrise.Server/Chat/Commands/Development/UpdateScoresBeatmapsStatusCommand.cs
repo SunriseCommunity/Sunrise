@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -26,12 +27,12 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => UpdateScoresBeatmapStatus(session));
+        BackgroundJob.Enqueue(() => UpdateScoresBeatmapStatus(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task UpdateScoresBeatmapStatus(Session session)
+    public async Task UpdateScoresBeatmapStatus(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -57,13 +58,18 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
             if (!isNeedsUpdate) continue;
 
+            var user = await database.UserService.GetUser(userId);
+            if (user == null)
+                return;
+
+            var session = new BaseSession(user);
             var beatmap = await BeatmapManager.GetBeatmapSet(session, beatmapId: group.Key);
 
             var status = BeatmapStatus.NotSubmitted;
 
             if (beatmap == null)
             {
-                CommandRepository.SendMessage(session, $"Beatmap {group.Key} not found. Setting status to graveyard.");
+                CommandRepository.TrySendMessage(userId, $"Beatmap {group.Key} not found. Setting status to graveyard.");
             }
             else
             {
@@ -76,18 +82,18 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                 await database.ScoreService.UpdateScore(score);
             }
 
-            CommandRepository.SendMessage(session, $"Updated {group.Count()} scores for beatmap {group.Key} to status {status}");
-            CommandRepository.SendMessage(session, $"Total scores reviewed: {scoresReviewedTotal}");
+            CommandRepository.TrySendMessage(userId, $"Updated {group.Count()} scores for beatmap {group.Key} to status {status}");
+            CommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
 
             // Prevent rate limiting on beatmap mirrors
             await Task.Delay(2000);
         }
 
-        CommandRepository.SendMessage(session,
+        CommandRepository.TrySendMessage(userId,
             $"Updating beatmap status on scores is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Recalculation finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
     }
 }

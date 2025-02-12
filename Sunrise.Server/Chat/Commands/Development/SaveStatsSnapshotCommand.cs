@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
@@ -22,16 +23,16 @@ public class SaveStatsSnapshotCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => StartSaveStatsSnapshot(session));
+        BackgroundJob.Enqueue(() => StartSaveStatsSnapshot(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task StartSaveStatsSnapshot(Session session)
+    public async Task StartSaveStatsSnapshot(int userId)
     {
         await BackgroundTasks.SaveStatsSnapshot();
 
-        CommandRepository.SendMessage(session, "Saving stats snapshot has been completed. Server is no longer in maintenance mode.");
+        CommandRepository.TrySendMessage(userId, "Saving stats snapshot has been completed. Server is no longer in maintenance mode.");
         Configuration.OnMaintenance = false;
     }
 }

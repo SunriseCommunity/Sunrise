@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -26,12 +27,12 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => UpdateScoresSubmittedStatus(session));
+        BackgroundJob.Enqueue(() => UpdateScoresSubmittedStatus(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task UpdateScoresSubmittedStatus(Session session)
+    public async Task UpdateScoresSubmittedStatus(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -75,15 +76,15 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                 }
             }
 
-            CommandRepository.SendMessage(session, $"Updated {group.Count()} submitted statuses for scores {group.Key}");
-            CommandRepository.SendMessage(session, $"Total scores reviewed: {scoresReviewedTotal}");
+            CommandRepository.TrySendMessage(userId, $"Updated {group.Count()} submitted statuses for scores {group.Key}");
+            CommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
         }
 
-        CommandRepository.SendMessage(session,
+        CommandRepository.TrySendMessage(userId,
             $"Updating submitted statuses on scores is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Recalculation finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
     }
 }

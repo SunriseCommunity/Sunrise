@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -27,12 +28,12 @@ public class AppendNewUserStatsCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => AppendMissingUserStats(session));
+        BackgroundJob.Enqueue(() => AppendMissingUserStats(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task AppendMissingUserStats(Session session)
+    public async Task AppendMissingUserStats(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -66,15 +67,15 @@ public class AppendNewUserStatsCommand : IChatCommand
 
                 await database.UserService.Stats.InsertUserStats(newStats);
 
-                CommandRepository.SendMessage(session,
+                CommandRepository.TrySendMessage(userId,
                     $"User {user.Id} stats for mode {mode} has been created.");
             }
 
-            CommandRepository.SendMessage(session, $"Rechecking {mode} mode is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
+            CommandRepository.TrySendMessage(userId, $"Rechecking {mode} mode is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
         }
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Appending new user stats if needed has been finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Appending new user stats if needed has been finished. Server is back online.");
     }
 }

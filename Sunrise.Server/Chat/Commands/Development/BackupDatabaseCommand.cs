@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
@@ -22,16 +23,16 @@ public class BackupDatabaseCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => StartDatabaseBackup(session));
+        BackgroundJob.Enqueue(() => StartDatabaseBackup(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task StartDatabaseBackup(Session session)
+    public void StartDatabaseBackup(int userId)
     {
-        await Task.Run(BackgroundTasks.BackupDatabase);
+        BackgroundTasks.BackupDatabase();
 
-        CommandRepository.SendMessage(session, "Database backup has been completed. Server is no longer in maintenance mode.");
+        CommandRepository.TrySendMessage(userId, "Database backup has been completed. Server is no longer in maintenance mode.");
         Configuration.OnMaintenance = false;
     }
 }

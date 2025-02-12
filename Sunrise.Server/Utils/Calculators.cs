@@ -15,9 +15,9 @@ namespace Sunrise.Server.Utils;
 
 public static class Calculators
 {
-    public static double CalculatePerformancePoints(Session session, Score score)
+    public static async Task<double> CalculatePerformancePoints(BaseSession session, Score score)
     {
-        var beatmapBytes = BeatmapManager.GetBeatmapFile(session, score.BeatmapId).Result;
+        var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, score.BeatmapId);
 
         if (beatmapBytes == null) return 0;
 
@@ -65,7 +65,7 @@ public static class Calculators
         };
     }
 
-    public static async Task<(double, double, double, double)> CalculatePerformancePoints(Session session,
+    public static async Task<(double, double, double, double)> CalculatePerformancePoints(BaseSession session,
         int beatmapId, int mode, Mods mods = Mods.None)
     {
         var beatmapBytes = await BeatmapManager.GetBeatmapFile(session, beatmapId);

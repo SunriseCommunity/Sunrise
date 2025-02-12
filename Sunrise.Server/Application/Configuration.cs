@@ -15,8 +15,6 @@ public static class Configuration
         .AddJsonFile($"appsettings.{Env}.json", false)
         .AddEnvironmentVariables()
         .Build();
-    
-    public static IConfigurationRoot GetConfig() => Config;
 
     // API section
     private static string? _webTokenSecret;
@@ -26,7 +24,7 @@ public static class Configuration
     {
         get { return _webTokenSecret ??= GetApiToken().ToHash(); }
     }
-    
+
     public static TimeSpan WebTokenExpiration =>
         TimeSpan.FromSeconds(Config.GetSection("API").GetValue<int?>("TokenExpiresIn") ?? 3600);
 
@@ -35,13 +33,13 @@ public static class Configuration
 
     public static int ApiWindow =>
         Config.GetSection("API").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
-    
+
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
     public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;
     public static string DatabaseName => Config.GetSection("Files").GetValue<string?>("DatabaseName") ?? "";
     public static string BannedUsernamesName => Config.GetSection("Files").GetValue<string?>("BannedUsernamesName") ?? "";
-    
+
 
     // General section
     public static string WelcomeMessage => Config.GetSection("General").GetValue<string?>("WelcomeMessage") ?? "";
@@ -65,13 +63,13 @@ public static class Configuration
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
 
-    
-    
+
+
     // Moderation section
     public static int BannablePpThreshold => Config.GetSection("Moderation").GetSection("BannablePPThreshold").Get<int?>() ?? 3000;
     public static string[] BannedIps => Config.GetSection("Moderation").GetSection("BannedIps").Get<string[]>() ?? [];
-    
-    
+
+
     // Bot section
     public static string BotUsername => Config.GetSection("Bot").GetValue<string?>("Username") ?? "";
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
@@ -85,9 +83,9 @@ public static class Configuration
         Config.GetSection("Redis").GetValue<bool?>("ClearCacheOnStartup") ?? false;
 
     // Hangfire section
-    public static bool UseHangfire =>
+    public static bool UseHangfireServer =>
         Config.GetSection("Hangfire").GetValue<bool?>("UseHangfire") ?? false;
-    
+
     public static string HangfireConnection =>
         Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
 
@@ -101,6 +99,11 @@ public static class Configuration
         Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
 
     public static List<ExternalApi> ExternalApis { get; } = [];
+
+    public static IConfigurationRoot GetConfig()
+    {
+        return Config;
+    }
 
     public static void Initialize()
     {

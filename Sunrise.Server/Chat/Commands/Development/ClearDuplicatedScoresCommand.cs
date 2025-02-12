@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -25,12 +26,12 @@ public class ClearDuplicatedScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => ClearDuplicatedScores(session));
+        BackgroundJob.Enqueue(() => ClearDuplicatedScores(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task ClearDuplicatedScores(Session session)
+    public async Task ClearDuplicatedScores(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -68,15 +69,15 @@ public class ClearDuplicatedScoresCommand : IChatCommand
             }
 
 
-            CommandRepository.SendMessage(session, $"Scores deleted: {scoresDeletedTotal}");
-            CommandRepository.SendMessage(session, $"Total scores reviewed: {scoresReviewedTotal} / {allScores.Count}");
+            CommandRepository.TrySendMessage(userId, $"Scores deleted: {scoresDeletedTotal}");
+            CommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal} / {allScores.Count}");
         }
 
-        CommandRepository.SendMessage(session,
+        CommandRepository.TrySendMessage(userId,
             $"Duplicated scores cleaning finished. {scoresDeletedTotal} scores deleted. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Server is no longer in maintenance mode.");
+        CommandRepository.TrySendMessage(userId, "Server is no longer in maintenance mode.");
     }
 }

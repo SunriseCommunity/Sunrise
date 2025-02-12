@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -39,12 +40,12 @@ public class RecalculateScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => RecalculateScores(session, mode));
+        BackgroundJob.Enqueue(() => RecalculateScores(session.User.Id, mode));
 
         return Task.CompletedTask;
     }
 
-    private async Task RecalculateScores(Session session, GameMode mode)
+    public async Task RecalculateScores(int userId, GameMode mode)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -63,19 +64,26 @@ public class RecalculateScoresCommand : IChatCommand
         foreach (var score in allScores)
         {
             var oldPerformancePoints = score.PerformancePoints;
-            score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score);
+
+            var user = await database.UserService.GetUser(userId);
+            if (user == null)
+                return;
+
+            var session = new BaseSession(user);
+
+            score.PerformancePoints = await Calculators.CalculatePerformancePoints(session, score);
             await database.ScoreService.UpdateScore(score);
 
             scoresReviewedTotal++;
-            CommandRepository.SendMessage(session, $"Updated score {score.Id} from {oldPerformancePoints} to {score.PerformancePoints}");
-            CommandRepository.SendMessage(session, $"Total scores reviewed: {scoresReviewedTotal}");
+            CommandRepository.TrySendMessage(userId, $"Updated score {score.Id} from {oldPerformancePoints} to {score.PerformancePoints}");
+            CommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
         }
 
-        CommandRepository.SendMessage(session,
+        CommandRepository.TrySendMessage(userId,
             $"Updating scores for mode {mode} is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Recalculation finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
     }
 }

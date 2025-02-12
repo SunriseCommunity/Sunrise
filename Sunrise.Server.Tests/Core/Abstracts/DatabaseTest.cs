@@ -130,7 +130,7 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
     protected async Task<(ReplayFile, int)> GetValidTestReplay()
     {
         var replayPath = _fileService.GetRandomFilePath("osr");
-        var replay = await Task.Run(() => new ReplayFile(replayPath));
+        var replay = new ReplayFile(replayPath);
 
         var beatmapId = await _mocker.Redis.MockLocalBeatmapFile(replay.GetScore().BeatmapHash);
 

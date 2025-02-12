@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Hangfire;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
@@ -13,7 +14,6 @@ namespace Sunrise.Server.Repositories;
 
 public class SessionRepository
 {
-    private const int Second = 1000;
     private readonly ChannelRepository _channels;
     private readonly ConcurrentDictionary<string, Session> _sessions = new();
 
@@ -23,14 +23,7 @@ public class SessionRepository
 
         AddBotToSession();
 
-        Task.Run(async () =>
-        {
-            while (true)
-            {
-                ClearInactiveSessions();
-                await Task.Delay(60 * Second);
-            }
-        });
+        RecurringJob.AddOrUpdate("ClearInactiveSessions", () => ClearInactiveSessions(), "*/1 * * * *");
     }
 
     public void WriteToAllSessions(PacketType type, object data, int ignoreUserId = -1)
@@ -166,7 +159,7 @@ public class SessionRepository
         _sessions.TryAdd(session.Token, session);
     }
 
-    private void ClearInactiveSessions()
+    public void ClearInactiveSessions()
     {
         foreach (var session in _sessions.Values)
         {

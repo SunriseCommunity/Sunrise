@@ -94,6 +94,20 @@ public static class CommandRepository
             });
     }
 
+    public static void TrySendMessage(int userId, string message, string? channel = null)
+    {
+        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var session = sessions.GetSession(userId: userId);
+
+        session?.WritePacket(PacketType.ServerChatMessage,
+            new BanchoChatMessage
+            {
+                Message = message,
+                Sender = Configuration.BotUsername,
+                Channel = channel ?? Configuration.BotUsername
+            });
+    }
+
     private static bool HasPrefixException(Session session, BanchoChatMessage message, ChatCommand handler,
         ChatChannel? channel)
     {
@@ -120,8 +134,13 @@ public static class CommandRepository
     private static (string?, string[]?) ActionToCommand(Session session, string message)
     {
         var action = message.Split(' ', 2).Length >= 2 ? message.Split(' ', 2)[1] : null;
-        
-        var beatmapsAction = new[] {"is listening to", "is watching", "is playing"};
+
+        var beatmapsAction = new[]
+        {
+            "is listening to",
+            "is watching",
+            "is playing"
+        };
 
         if (beatmapsAction.Any(x => action?.StartsWith(x) == true))
         {

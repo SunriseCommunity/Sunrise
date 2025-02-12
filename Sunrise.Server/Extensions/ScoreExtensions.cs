@@ -149,7 +149,7 @@ public static class ScoreExtensions
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
         score.Accuracy = Calculators.CalculateAccuracy(score);
-        score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score);
+        score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score).Result;
         score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
 
         return score;

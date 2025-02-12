@@ -35,7 +35,15 @@ public static class Bootstrap
 
     public static void AddHangfire(this WebApplicationBuilder builder)
     {
-        builder.Services.AddHangfire(config => { config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(Configuration.HangfireConnection)); });
+        if (Configuration.UseHangfireServer)
+        {
+            builder.Services.AddHangfire(config => { config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(Configuration.HangfireConnection)); });
+        }
+        else
+        {
+            builder.Services.AddHangfire(config => config.UseInMemoryStorage());
+        }
+
         builder.Services.AddHangfireServer();
     }
 
@@ -73,7 +81,7 @@ public static class Bootstrap
         builder.Services.AddSingleton<RedisRepository>();
         builder.Services.AddSingleton<DatabaseManager>();
     }
-    
+
     public static void WarmUpSingletons(this WebApplication app)
     {
         app.Services.GetRequiredService<SessionRepository>();

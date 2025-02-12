@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -22,17 +23,21 @@ public class RecalculateCommand : IChatCommand
             return Task.CompletedTask;
         }
 
+        // Note: Currently unstable, because if there is not beatmap files in database, it will spam Observatory with calls.
+        CommandRepository.SendMessage(session, "This command is currently disabled. Please try again later.");
+        return Task.CompletedTask;
+
         CommandRepository.SendMessage(session,
             "Recalculation started. Server will enter maintenance mode until it's done.");
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => RecalculateUserStats(session));
+        BackgroundJob.Enqueue(() => RecalculateUserStats(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task RecalculateUserStats(Session session)
+    public async Task RecalculateUserStats(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -49,7 +54,7 @@ public class RecalculateCommand : IChatCommand
 
             if (stats.Count == 0)
             {
-                CommandRepository.SendMessage(session, $"No stats found for mode {mode}. Skipping.");
+                CommandRepository.TrySendMessage(userId, $"No stats found for mode {mode}. Skipping.");
                 continue;
             }
 
@@ -66,13 +71,13 @@ public class RecalculateCommand : IChatCommand
                 await database.UserService.Stats.UpdateUserStats(stat);
             }
 
-            CommandRepository.SendMessage(session,
+            CommandRepository.TrySendMessage(userId,
                 $"Recalculated stats for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
         }
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Recalculation finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
     }
 }

@@ -1,3 +1,4 @@
+using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Database;
@@ -26,12 +27,12 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        Task.Run(() => UpdateUsersBestCombo(session));
+        BackgroundJob.Enqueue(() => UpdateUsersBestCombo(session.User.Id));
 
         return Task.CompletedTask;
     }
 
-    private async Task UpdateUsersBestCombo(Session session)
+    public async Task UpdateUsersBestCombo(int userId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -57,7 +58,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
                 if (user == null)
                 {
-                    CommandRepository.SendMessage(session, $"User {group.Key} not found. Skipping.");
+                    CommandRepository.TrySendMessage(userId, $"User {group.Key} not found. Skipping.");
                     continue;
                 }
 
@@ -65,7 +66,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
                 if (userStats == null)
                 {
-                    CommandRepository.SendMessage(session, $"User {user.Id} stats not found. Skipping.");
+                    CommandRepository.TrySendMessage(userId, $"User {user.Id} stats not found. Skipping.");
                     continue;
                 }
 
@@ -75,15 +76,15 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
                 await database.UserService.Stats.UpdateUserStats(userStats);
 
-                CommandRepository.SendMessage(session, $"Updated {user.Username} ({user.Id}) best combo to {bestCombo} (previous: {previousBestCombo}) for mode {mode}");
+                CommandRepository.TrySendMessage(userId, $"Updated {user.Username} ({user.Id}) best combo to {bestCombo} (previous: {previousBestCombo}) for mode {mode}");
             }
 
-            CommandRepository.SendMessage(session,
+            CommandRepository.TrySendMessage(userId,
                 $"Updated users best combo for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
         }
 
         Configuration.OnMaintenance = false;
 
-        CommandRepository.SendMessage(session, "Updating users best combo is finished. Server is back online.");
+        CommandRepository.TrySendMessage(userId, "Updating users best combo is finished. Server is back online.");
     }
 }
