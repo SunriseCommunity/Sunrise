@@ -124,6 +124,37 @@ public class ApiUserLeaderboardTests : ApiTest
     }
 
     [Fact]
+    public async Task TestLeaderboardWithoutRestrictedUsers()
+    {
+        // Arrange
+        await using var app = new SunriseServerFactory();
+        var client = app.CreateClient().UseClient("api");
+
+        var usersNumber = _mocker.GetRandomInteger(minInt: 2, maxInt: 5);
+
+        for (var i = 0; i < usersNumber; i++)
+        {
+            await CreateTestUser();
+        }
+
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var restrictedUser = await CreateTestUser();
+
+        await database.UserService.Moderation.RestrictPlayer(restrictedUser.Id, 0, "Test");
+
+        // Act
+        var response = await client.GetAsync("user/leaderboard?mode=0&limit=10");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responseData = await response.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        Assert.NotNull(responseData);
+
+        Assert.DoesNotContain(responseData.Users, x => x.User.Id == restrictedUser.Id);
+    }
+
+    [Fact]
     public async Task TestLeaderboardLimitAndPage()
     {
         // Arrange

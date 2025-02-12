@@ -288,11 +288,13 @@ public class UserController : ControllerBase
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var users = await database.UserService.GetAllUsers();
 
-        if (users == null) return NotFound(new ErrorResponse("Users not found"));
+        if (users.Count <= 0) return NotFound(new ErrorResponse("Users not found"));
+
+        users = users.Where(x => x.IsRestricted() == false).ToList();
 
         var stats = await database.UserService.Stats.GetAllUserStats((GameMode)mode, (LeaderboardSortType)leaderboardType);
 
-        if (stats == null) return NotFound(new ErrorResponse("Users not found"));
+        if (stats.Count <= 0) return NotFound(new ErrorResponse("User stats not found"));
 
         stats = stats.Where(x => users.Any(u => u.Id == x.UserId)).ToList();
 
