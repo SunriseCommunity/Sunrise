@@ -1,4 +1,5 @@
 using Sunrise.Server.Database.Models;
+using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Serializable;
@@ -12,6 +13,11 @@ public static class ScoreExtensions
     {
         score.UserId = session.User.Id;
         score.ScoreHash = score.ComputeOnlineHash(session.User.Username, session.Attributes.UserHash, storyboardHash);
+    }
+
+    public static void EnrichWithUserData(this Score score, User user)
+    {
+        score.UserId = user.Id;
     }
 
     public static void EnrichWithBeatmapData(this Score score, Beatmap beatmap)

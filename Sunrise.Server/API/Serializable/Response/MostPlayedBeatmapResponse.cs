@@ -4,9 +4,18 @@ using Sunrise.Server.Objects.Serializable;
 
 namespace Sunrise.Server.API.Serializable.Response;
 
-public class MostPlayedBeatmapResponse(BaseSession session, Beatmap beatmap, int playCount, BeatmapSet? beatmapSet = null)
-    : BeatmapResponse(session, beatmap, beatmapSet)
+public class MostPlayedBeatmapResponse : BeatmapResponse
 {
+    public MostPlayedBeatmapResponse(BaseSession session, Beatmap beatmap, int playCount, BeatmapSet? beatmapSet = null) : base(session, beatmap, beatmapSet)
+    {
+        PlayCount = playCount;
+    }
+
+    [JsonConstructor]
+    public MostPlayedBeatmapResponse()
+    {
+    }
+
     [JsonPropertyName("play_count")]
-    public int PlayCount { get; set; } = playCount;
+    public int PlayCount { get; set; }
 }

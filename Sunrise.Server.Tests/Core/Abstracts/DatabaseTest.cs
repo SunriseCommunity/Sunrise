@@ -100,10 +100,17 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
         return await CreateTestScore(user, withReplay);
     }
 
-    protected async Task<Score> CreateTestScore(Score score, bool withReplay = true)
+    protected async Task<Score> CreateTestScore(Score score)
     {
-        var user = await CreateTestUser();
-        return await CreateTestScore(user, withReplay);
+        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var scoreUser = await database.UserService.GetUser(id: score.UserId);
+
+        if (scoreUser == null)
+        {
+            await CreateTestUser();
+        }
+
+        return await database.ScoreService.InsertScore(score);
     }
 
     protected async Task<Score> CreateTestScore(User user, bool withReplay = true)
