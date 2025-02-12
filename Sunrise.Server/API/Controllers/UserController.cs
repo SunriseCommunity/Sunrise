@@ -158,11 +158,14 @@ public class UserController : ControllerBase
     [HttpGet]
     [Route("{id:int}/scores")]
     public async Task<IActionResult> GetUserScores(int id,
-        [FromQuery(Name = "mode")] int mode,
-        [FromQuery(Name = "type")] int? scoresType,
+        [FromQuery(Name = "mode")] int? mode = 0,
+        [FromQuery(Name = "type")] int? scoresType = 0,
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 0)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
@@ -170,10 +173,15 @@ public class UserController : ControllerBase
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var user = await database.UserService.GetUser(id);
 
         if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
 
         var scores = await database.ScoreService.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType);
 

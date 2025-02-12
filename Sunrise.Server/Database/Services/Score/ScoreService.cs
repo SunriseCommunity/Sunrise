@@ -168,6 +168,8 @@ public class ScoreService
     public async Task<List<Models.Score>> GetUserScores(int userId, GameMode mode, ScoreTableType type)
     {
         var user = await _services.UserService.GetUser(userId);
+        if (user == null) return [];
+
         if (user.IsRestricted()) return [];
 
         var exp = new Expr("UserId", OperatorEnum.Equals, userId)
