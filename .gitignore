@@ -124,12 +124,6 @@ Data/Backups/*
 
 # Ignore test database files
 *.test
-DataTest/Files/Avatars/*
-DataTest/Files/Banners/*
-DataTest/Files/Replays/*
-DataTest/Files/Screenshot/*
-DataTest/Files/SeasonalBackgrounds/*
-DataTest/Backups/*
 
 # Temporary files
 *.tmp
