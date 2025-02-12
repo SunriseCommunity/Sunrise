@@ -9,12 +9,12 @@ using Sunrise.Server.Tests.Core.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserEditFriendStatusTests : ApiTest
+public class ApiUserGetFriendStatusTests : ApiTest
 {
     private readonly MockService _mocker = new();
 
     [Fact]
-    public async Task TestEditFriendStatusWithoutAuthToken()
+    public async Task TestGetFriendStatusWithoutAuthToken()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -23,7 +23,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status", new StringContent(""));
+        var response = await client.GetAsync($"user/{requestedUser.Id}/friend/status");
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -33,7 +33,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     }
 
     [Fact]
-    public async Task TestEditFriendStatusWithActiveRestriction()
+    public async Task TestGetFriendStatusWithActiveRestriction()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -49,7 +49,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status", new StringContent(""));
+        var response = await client.GetAsync($"user/{requestedUser.Id}/friend/status");
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -61,7 +61,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]
-    public async Task TestEditFriendStatusWithInvalidUserId(string userId)
+    public async Task TestGetFriendStatusWithInvalidUserId(string userId)
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -72,34 +72,10 @@ public class ApiUserEditFriendStatusTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsync($"user/{userId}/friend/status", new StringContent(""));
+        var response = await client.GetAsync($"user/{userId}/friend/status");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task TestEditFriendStatusWithInvalidAction()
-    {
-        // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var user = await CreateTestUser();
-        var tokens = await GetUserAuthTokens(user);
-        client.UseUserAuthToken(tokens);
-
-        var requestedUser = await CreateTestUser();
-        var action = _mocker.GetRandomString();
-
-        // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action={action}", new StringContent(""));
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("action parameter", responseError?.Error);
     }
 
     [Theory]
@@ -107,7 +83,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     [InlineData(false, true)]
     [InlineData(false, false)]
     [InlineData(true, true)]
-    public async Task TestEditFriendStatus(bool isFriendsBefore, bool isFriendsAfter)
+    public async Task TestGetFriendStatus(bool isFollowingYou, bool isFollowedByYou)
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -118,34 +94,36 @@ public class ApiUserEditFriendStatusTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         var requestedUser = await CreateTestUser();
-        var action = isFriendsAfter ? "add" : "remove";
 
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-        if (isFriendsBefore)
+        if (isFollowedByYou)
         {
             user.AddFriend(requestedUser.Id);
-        }
-        else
-        {
-            user.RemoveFriend(requestedUser.Id);
+            await database.UserService.UpdateUser(user);
         }
 
-        await database.UserService.UpdateUser(user);
+        if (isFollowingYou)
+        {
+            requestedUser.AddFriend(user.Id);
+            await database.UserService.UpdateUser(requestedUser);
+        }
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action={action}", new StringContent(""));
+        var response = await client.GetAsync($"user/{requestedUser.Id}/friend/status");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var updatedUser = await database.UserService.GetUser(user.Id);
-        Assert.NotNull(updatedUser);
-        Assert.Equal(isFriendsAfter, updatedUser.FriendsList.Contains(requestedUser.Id));
+        var responseContent = await response.Content.ReadFromJsonAsync<FriendStatusResponse>();
+        Assert.NotNull(responseContent);
+
+        Assert.Equal(isFollowingYou, responseContent.IsFollowingYou);
+        Assert.Equal(isFollowedByYou, responseContent.IsFollowedByYou);
     }
 
     [Fact]
-    public async Task TestEditFriendStatusForRestrictedUser()
+    public async Task TestGetFriendStatusForRestrictedUser()
     {
         // Arrange
         await using var app = new SunriseServerFactory();
@@ -161,7 +139,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         await database.UserService.Moderation.RestrictPlayer(requestedUser.Id, 0, "Test");
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action=add", new StringContent(""));
+        var response = await client.GetAsync($"user/{requestedUser.Id}/friend/status");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);

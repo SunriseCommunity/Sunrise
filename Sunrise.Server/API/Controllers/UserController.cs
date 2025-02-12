@@ -191,10 +191,15 @@ public class UserController : ControllerBase
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 0)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
 
@@ -202,6 +207,9 @@ public class UserController : ControllerBase
         var user = await database.UserService.GetUser(id);
 
         if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
 
         var beatmapsIds = await database.ScoreService.GetUserMostPlayedBeatmapsIds(id, (GameMode)mode);
 
@@ -238,6 +246,9 @@ public class UserController : ControllerBase
         var user = await database.UserService.GetUser(id);
 
         if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
 
         var favourites = await database.UserService.Favourites.GetUserFavouriteBeatmaps(id);
 
@@ -342,6 +353,9 @@ public class UserController : ControllerBase
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
 
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
         if (user.Id == session.User.Id)
             return BadRequest(new ErrorResponse("You can't check your own friend status"));
 
@@ -364,6 +378,9 @@ public class UserController : ControllerBase
 
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
 
         switch (action)
         {
