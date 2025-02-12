@@ -11,7 +11,7 @@ public static class FolderUtil
                 var dest = Path.Combine(entryRoot, Path.GetFileName(file));
                 if (File.Exists(dest) && overwrite)
                     File.Delete(dest);
-                
+
                 File.Copy(file, dest);
             }
         }
@@ -21,8 +21,13 @@ public static class FolderUtil
             var dest = Path.Combine(entryRoot, Path.GetFileName(dir));
             if (!Directory.Exists(dest))
                 Directory.CreateDirectory(dest);
-            
+
             Copy(dir, dest, withFiles);
         }
+    }
+
+    public static bool IsDevelopmentFile(this string path)
+    {
+        return path.Contains(".test", StringComparison.CurrentCultureIgnoreCase);
     }
 }

@@ -17,9 +17,7 @@ namespace Sunrise.Server.Tests.Core.Abstracts;
 [Collection("Database tests collection")]
 public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<DatabaseFixture>
 {
-    private static readonly WatsonORM _orm = new(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
     private readonly FileService _fileService = new();
-
     private readonly MockService _mocker = new();
 
     protected DatabaseTest(bool useRedis = false)
@@ -27,19 +25,28 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
         UpdateRedisVariables(useRedis);
 
         CreateFilesCopy();
-        _orm.InitializeDatabase();
     }
 
     public new virtual void Dispose()
     {
-        var tables = _orm.Database.ListTables();
+        var orm = new WatsonORM(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
+
+        if (!Configuration.DatabaseName.IsDevelopmentFile())
+            throw new InvalidOperationException("Database name is not a development file. Are you trying to delete production data?");
+
+        if (!Configuration.DataPath.IsDevelopmentFile())
+            throw new InvalidOperationException("Data path is not a development directory. Are you trying to delete production data?");
+
+        orm.InitializeDatabase();
+
+        var tables = orm.Database.ListTables();
 
         foreach (var table in tables)
         {
-            _orm.Database.DropTable(table);
+            orm.Database.DropTable(table);
         }
 
-        _orm.Dispose();
+        orm.Dispose();
         base.Dispose();
 
         Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
@@ -146,6 +153,9 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
 
     private void CreateFilesCopy()
     {
+        if (!Configuration.DataPath.IsDevelopmentFile())
+            throw new InvalidOperationException("Data path is not a development directory. Are you trying to modify production data?");
+
         var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), Configuration.DataPath.Replace(".tmp", ""));
         var dataPath = Path.Combine(Directory.GetCurrentDirectory(), $"{Configuration.DataPath}");
 
