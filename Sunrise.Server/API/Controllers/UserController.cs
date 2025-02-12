@@ -221,8 +221,8 @@ public class UserController : ControllerBase
             var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapId: bId);
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
-            return new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
-        }).Select(task => task.Result).ToList();
+            return beatmap == null ? null : new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
+        }).Select(task => task.Result).Where(x => x != null).ToList();
 
         return Ok(new MostPlayedResponse(offsetBeatmaps, beatmapsIds.Count));
     }
@@ -303,13 +303,14 @@ public class UserController : ControllerBase
         var usersWithStats = offsetUserStats.Select(async stats =>
         {
             var user = users.FirstOrDefault(u => u.Id == stats.UserId);
+            if (user == null) return null;
 
             var globalRank = await database.UserService.Stats.GetUserRank(user.Id, (GameMode)mode);
             var countryRank = await database.UserService.Stats.GetUserCountryRank(user.Id, (GameMode)mode);
 
             return new UserWithStats(new UserResponse(user),
                 new UserStatsResponse(stats, (int)globalRank, (int)countryRank));
-        }).Select(task => task.Result).ToList();
+        }).Select(task => task.Result).Where(x => x != null).ToList();
 
         return Ok(new LeaderboardResponse(usersWithStats, users.Count));
     }
