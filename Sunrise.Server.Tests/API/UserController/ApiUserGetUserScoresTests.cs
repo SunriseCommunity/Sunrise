@@ -208,6 +208,7 @@ public class ApiUserGetUserScoresTests : ApiTest
             var score = _mocker.Score.GetBestScoreableRandomScore();
             score.EnrichWithUserData(user);
             score.GameMode = gamemode;
+            score.WhenPlayed = DateTime.MaxValue.AddSeconds(-i);
             score = await database.ScoreService.InsertScore(score);
 
             lastScoreId = score.Id;
