@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RootNamespace>Sunrise.Server</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BouncyCastle.NetCore" Version="1.9.0"/>
+        <PackageReference Include="Hangfire.AspNetCore" Version="1.8.17"/>
+        <PackageReference Include="Hangfire.InMemory" Version="1.0.0"/>
+        <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9"/>
+        <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.9"/>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.7"/>
+        <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
+        <PackageReference Include="Rijndael256" Version="3.2.0"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5"/>
+        <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8"/>
+        <PackageReference Include="StackExchange.Redis" Version="2.8.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2"/>
+        <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0"/>
+        <PackageReference Include="WatsonORM.Sqlite" Version="3.0.8"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Sunrise.Server.Tests"/>
+    </ItemGroup>
+
+    <Target Name="CopyPpDll" AfterTargets="AfterBuild">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
+    </Target>
+
+    <Target Name="CopyPpDllPublish" AfterTargets="Publish">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(PublishDir)"/>
+    </Target>
+
+    <Target Name="CopyPpSo" AfterTargets="AfterBuild">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
+    </Target>
+
+    <Target Name="CopyPpSoPublish" AfterTargets="Publish">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(PublishDir)/runtimes/linux-x64/native"/>
+    </Target>
+</Project>

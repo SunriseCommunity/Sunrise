@@ -111,8 +111,8 @@ azureScripts
 *.key
 
 # Osu files
-*.osu
-*.osr
+Data/**/*.osu
+Data/**/*.osr
 
 # Database files
 Data/Files/Avatars/*
@@ -122,11 +122,14 @@ Data/Files/Screenshot/*
 Data/Files/SeasonalBackgrounds/*
 Data/Backups/*
 
+# Ignore test database files
+*.test
+
 # Temporary files
 *.tmp
 
 # Logs
-logs/*
+*/logs/*
 
 # Grafana 
 grafana

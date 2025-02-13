@@ -1,0 +1,29 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "develop": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://0.0.0.0:443;http://0.0.0.0:5147",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "../sunrise.local.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
+      }
+    },
+    "production": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://0.0.0.0:443;http://0.0.0.0:5147",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "ASPNETCORE_Kestrel__Certificates__Default__Path": "../sunrise.pfx",
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
+      }
+    }
+  }
+}

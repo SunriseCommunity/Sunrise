@@ -1,0 +1,50 @@
+{
+  "Note": "Don't forget to remove .example at the end of this file for it to work!",
+  "General": {
+    "WelcomeMessage": "Welcome to Sunrise!",
+    "WebDomain": "osu-sunrise.top",
+    "MedalMirrorUrl": "https://raw.githubusercontent.com/SunriseCommunity/Server-Assets/main/medals/",
+    "IgnoreBeatmapRanking": false,
+    "IncludeUserTokenInLogs": false,
+    "UseCustomBackgrounds": true,
+    "ObservatoryApiKey": "", 
+    "ObservatoryUrl": "host.docker.internal:3333",
+    "OnMaintenance": false,
+    "RateLimit": {
+      "CallsPerWindow": 100,
+      "Window": 10
+    }
+  },
+  "Moderation": {
+      "BannablePPThreshold": 2500,
+      "BannedIps": []
+  },
+  "Files": {
+    "DataPath": "./Data",
+    "DatabaseName": "sunrise.db",
+    "BannedUsernamesName": "banned-usernames.txt"
+  },
+  "Redis": {
+    "ConnectionString": "redis",
+    "CacheLifeTime": 600,
+    "UseCache": true,
+    "ClearCacheOnStartup": false
+  },
+  "Hangfire": {
+      "UseHangfireServer": true,
+      "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
+      "MaxDailyBackupCount": 14
+  },
+  "Bot": {
+    "Username": "Sunshine Bot",
+    "Prefix": "!"
+  },
+  "API": {
+    "RateLimit": {
+      "CallsPerWindow": 60,
+      "Window": 30
+    },
+    "TokenExpiresIn": 3600,
+    "TokenSecret": "ReplaceMeWithSomething"
+  }
+}

@@ -2,7 +2,7 @@ name: osu-sunrise-dev
 services:
   redis:
     image: redis:latest
-    restart: always
+    restart: unless-stopped
     volumes:
       - redis:/data
     ports:
@@ -12,7 +12,7 @@ services:
   
   prometheus:
     image: prom/prometheus:latest
-    restart: always
+    restart: unless-stopped
     volumes:
       - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -22,7 +22,7 @@ services:
 
   grafana:
     image: grafana/grafana
-    restart: always
+    restart: unless-stopped
     ports:
       - "3030:3000"
     environment:
@@ -36,6 +36,7 @@ services:
   
   postgres:
     image: postgres:latest
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
