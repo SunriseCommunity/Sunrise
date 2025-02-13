@@ -54,18 +54,15 @@ public class ScoreService
 
     public async Task<List<Models.Score>> GetBestScoresByGameMode(GameMode mode)
     {
+        var restrictedUserIds = await _services.UserService.Moderation.GetRestrictedUsersIds();
+
         var exp = new Expr("GameMode", OperatorEnum.Equals, (int)mode)
             .PrependAnd("IsScoreable", OperatorEnum.Equals, true)
             .PrependAnd("IsPassed", OperatorEnum.Equals, true)
+            .PrependAnd("UserId", OperatorEnum.NotIn, restrictedUserIds)
             .PrependAnd("SubmissionStatus", OperatorEnum.Equals, (int)SubmissionStatus.Best);
 
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
-
-        foreach (var score in scores.ToList())
-        {
-            var scoreUser = await _services.UserService.GetUser(score.UserId);
-            if (scoreUser?.IsRestricted() == true) scores.Remove(score);
-        }
 
         return scores.GetScoresGroupedByUsersBest().SortScoresByPerformancePoints();
     }
@@ -141,10 +138,13 @@ public class ScoreService
     public async Task<List<Models.Score>> GetBeatmapScores(string beatmapHash, GameMode gameMode,
         LeaderboardType type = LeaderboardType.Global, Mods? mods = null, Models.User.User? user = null)
     {
+        var restrictedUserIds = await _services.UserService.Moderation.GetRestrictedUsersIds();
+
         var exp = new Expr("BeatmapHash", OperatorEnum.Equals, beatmapHash)
             .PrependAnd("GameMode", OperatorEnum.Equals, (int)gameMode)
             .PrependAnd("IsPassed", OperatorEnum.Equals, true)
             .PrependAnd("IsScoreable", OperatorEnum.Equals, true)
+            .PrependAnd("UserId", OperatorEnum.NotIn, restrictedUserIds)
             .PrependAnd("SubmissionStatus", OperatorEnum.Equals, (int)SubmissionStatus.Best);
 
         if (type is LeaderboardType.GlobalWithMods && mods != null) exp.PrependAnd("Mods", OperatorEnum.Equals, (int)mods);
@@ -153,13 +153,15 @@ public class ScoreService
         var scores = await _database.SelectManyAsync<Models.Score>(exp);
         scores = scores.GetScoresGroupedByUsersBest();
 
-        foreach (var score in scores.ToList())
+        if (type == LeaderboardType.Country)
         {
-            // Should be fine, while we have users in cache.
-            var scoreUser = await _services.UserService.GetUser(score.UserId);
+            foreach (var score in scores.ToList())
+            {
+                // Should be fine, while we have users in cache.
+                var scoreUser = await _services.UserService.GetUser(score.UserId);
 
-            if (type == LeaderboardType.Country && scoreUser?.Country != user?.Country ||
-                scoreUser?.IsRestricted() == true) scores.Remove(score);
+                if (scoreUser?.Country != user?.Country) scores.Remove(score);
+            }
         }
 
         return scores.SortScoresByTheirScoreValue();

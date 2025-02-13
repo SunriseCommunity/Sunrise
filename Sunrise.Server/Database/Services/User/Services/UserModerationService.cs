@@ -47,6 +47,15 @@ public class UserModerationService
         return false;
     }
 
+    public async Task<List<int>> GetRestrictedUsersIds()
+    {
+        var exp = new Expr("Id", OperatorEnum.IsNotNull, null);
+        var restrictions = await _database.SelectManyAsync<Restriction>(exp);
+
+        return restrictions.Select(x => x.UserId).ToList();
+    }
+
+
     public async Task UnrestrictPlayer(int userId, Restriction? restriction = null)
     {
         var exp = new Expr("UserId", OperatorEnum.Equals, userId);
