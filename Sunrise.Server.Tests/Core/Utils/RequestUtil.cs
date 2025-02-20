@@ -1,5 +1,5 @@
 ﻿using System.Net.Http.Headers;
-using Sunrise.Server.API.Serializable.Response;
+using Sunrise.API.Serializable.Response;
 
 namespace Sunrise.Server.Tests.Core.Utils;
 

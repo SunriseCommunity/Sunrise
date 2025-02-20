@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Utils;
 
 namespace Sunrise.Server.Controllers;
 

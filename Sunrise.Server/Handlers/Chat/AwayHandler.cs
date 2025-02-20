@@ -3,6 +3,7 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Interfaces;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Handlers.Chat;
 

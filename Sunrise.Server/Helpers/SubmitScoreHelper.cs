@@ -1,13 +1,15 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Application;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Extensions;
 using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
-using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Types.Enums;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
+using SubmissionStatus = Sunrise.Shared.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Helpers;
 
@@ -15,13 +17,13 @@ public static class SubmitScoreHelper
 {
     private const string MetricsError = "Score {0} by {1} ({2}) rejected with reason: {3}";
 
-    public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
+    public static string GetNewFirstPlaceString(ISession session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
         return
             $"[https://osu.{Configuration.Domain}/user/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
     }
 
-    public static void ReportRejectionToMetrics(Session session, string scoreData, string reason)
+    public static void ReportRejectionToMetrics(ISession session, string scoreData, string reason)
     {
         var message = string.Format(MetricsError, scoreData, session.User.Username, session.User.Id, reason);
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
@@ -44,7 +46,7 @@ public static class SubmitScoreHelper
         score.SubmissionStatus = SubmissionStatus.Submitted;
     }
 
-    public static bool IsScoreValid(Session session, Score score, string clientHash,
+    public static bool IsScoreValid(ISession session, Score score, string clientHash,
         string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
     {
         var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
@@ -96,25 +98,6 @@ public static class SubmitScoreHelper
                mods.HasFlag(Mods.KeyCoop) ||
                mods.HasFlag(Mods.Cinema) ||
                mods.HasFlag(Mods.Autoplay);
-    }
-
-    /// <summary>
-    ///     This method checks if the score has any non-standard mods.
-    ///     If the score has any of the following mods, it will be considered as non-standard:
-    ///     <see cref="Mods.ScoreV2" />, <see cref="Mods.Relax" />, <see cref="Mods.Relax2" />
-    /// </summary>
-    /// <param name="mods"></param>
-    /// <returns></returns>
-    public static Mods TryGetSelectedNotStandardMods(Mods mods)
-    {
-        Mods[] prioritizedMods =
-        [
-            Mods.ScoreV2,
-            Mods.Relax,
-            Mods.Relax2
-        ];
-
-        return prioritizedMods.Where(mod => mods.HasFlag(mod)).Aggregate(Mods.None, (current, mod) => current | mod);
     }
 
     public static int GetTimeElapsed(Score score, int scoreTime, int scoreFailTime)

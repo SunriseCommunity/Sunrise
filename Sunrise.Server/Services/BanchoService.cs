@@ -1,15 +1,17 @@
 ﻿using HOPEless.Bancho;
 using Sunrise.Server.Application;
-using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Types.Enums;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Services;
 
 public static class BanchoService
 {
-    public static async Task ProcessPackets(Session session, MemoryStream buffer, ILogger logger)
+    public static async Task ProcessPackets(ISession session, MemoryStream buffer, ILogger logger)
     {
         try
         {

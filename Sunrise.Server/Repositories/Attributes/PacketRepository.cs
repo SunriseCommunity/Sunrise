@@ -1,9 +1,10 @@
 using System.Reflection;
 using HOPEless.Bancho;
-using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Repositories.Attributes;
 
@@ -18,7 +19,7 @@ public class PacketRepository
         Logger = loggerFactory.CreateLogger<PacketRepository>();
     }
 
-    public static async Task HandlePacket(BanchoPacket packet, Session session)
+    public static async Task HandlePacket(BanchoPacket packet, ISession session)
     {
         if (Handlers.Count == 0) GetHandlers();
 

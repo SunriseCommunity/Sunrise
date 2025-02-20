@@ -1,17 +1,18 @@
 using HOPEless.Bancho.Objects;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Extensions;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Objects;
 
-public class UserAttributes
+public class UserAttributes : IUserAttributes
 {
-    public UserAttributes(User user, Location location, LoginRequest loginRequest, bool usesOsuClient = true)
+    public UserAttributes(User user, Location location, ILoginRequest loginRequest, bool usesOsuClient = true)
     {
         Latitude = location.Latitude;
         Longitude = location.Longitude;
@@ -27,7 +28,6 @@ public class UserAttributes
     }
 
     private User User { get; }
-    public int Timezone { get; }
     private float Longitude { get; }
     private float Latitude { get; }
     private short? Country { get; }
@@ -35,6 +35,7 @@ public class UserAttributes
     public string UserHash { get; }
     public DateTime LastPingRequest { get; private set; } = DateTime.UtcNow;
     public BanchoUserStatus Status { get; set; } = new();
+    public int Timezone { get; }
     public bool ShowUserLocation { get; set; } = true;
     public bool IgnoreNonFriendPm { get; set; }
     public string? AwayMessage { get; set; }

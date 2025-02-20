@@ -4,6 +4,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
 
 namespace Sunrise.Server.Handlers.Spectate;
 

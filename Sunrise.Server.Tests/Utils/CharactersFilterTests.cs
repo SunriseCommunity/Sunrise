@@ -1,5 +1,6 @@
 ﻿using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Utils;
 
 namespace Sunrise.Server.Tests.Utils;
 

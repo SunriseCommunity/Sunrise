@@ -1,4 +1,5 @@
 using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Types.Enums;
 
 namespace Sunrise.Server.Attributes;
 

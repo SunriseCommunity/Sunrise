@@ -3,13 +3,15 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using osu.Shared;
-using Sunrise.Server.Application;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Types.Interfaces;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Objects.Multiplayer;
 
-public class MultiplayerMatch
+public class MultiplayerMatch : IMultiplayerMatch
 {
     private readonly int _roomCreatorId;
 
@@ -26,16 +28,17 @@ public class MultiplayerMatch
         }
     }
 
+    private MatchRepository Matches { get; }
+    private TimerWithAlerts? Timer { get; set; }
+
     // In the locked room players can’t change their team and slot.
     public bool Locked { get; set; } = false;
 
     public BanchoMultiplayerMatch Match { get; private set; }
-    private MatchRepository Matches { get; }
-    public ConcurrentDictionary<int, Session> Players { get; } = new();
-    public ConcurrentDictionary<int, MultiplayerSlot> Slots { get; } = new();
-    private TimerWithAlerts? Timer { get; set; }
+    public ConcurrentDictionary<int, ISession> Players { get; } = new();
+    public ConcurrentDictionary<int, IMultiplayerSlot> Slots { get; } = new();
 
-    public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session session)
+    public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, ISession session)
     {
         if (Match.MatchId != updatedMatch.MatchId || !HasHostPrivileges(session))
             return;
@@ -92,7 +95,7 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void AddPlayer(Session session)
+    public void AddPlayer(ISession session)
     {
         if (session.Match != null || Players.ContainsKey(session.User.Id))
         {
@@ -120,7 +123,7 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void RemovePlayer(Session session, bool forced = false)
+    public void RemovePlayer(ISession session, bool forced = false)
     {
         var slot = GetSlot(userId: session.User.Id);
 
@@ -174,11 +177,6 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public bool HasHostPrivileges(Session session, bool shouldBeOwner = false)
-    {
-        return (!shouldBeOwner && session.User.Id == Match.HostId) || session.User.Id == _roomCreatorId;
-    }
-
     public void EndGame(bool forced = false)
     {
         foreach (var slot in Slots.Values)
@@ -198,15 +196,6 @@ public class MultiplayerMatch
             WriteToAllPlayers(PacketType.ServerNotification, "The match has been forcefully ended by the host.");
 
         ApplyNewChanges();
-    }
-
-    public void StartTimer(int timer, bool timerForStart, Func<MultiplayerMatch, string, Task> alertHandler,
-        Func<MultiplayerMatch, Task> finishHandler)
-    {
-        StopTimer();
-
-        var alertMessage = timerForStart ? "The match will start in {0}." : "Countdown will end in {0}.";
-        Timer = new TimerWithAlerts(timer, alertMessage, this, finishHandler, alertHandler);
     }
 
     public void StopTimer()
@@ -232,7 +221,7 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void ChangeTeam(Session session, SlotTeams? team = null, bool ignoreLock = false)
+    public void ChangeTeam(ISession session, SlotTeams? team = null, bool ignoreLock = false)
     {
         if (Locked && !ignoreLock)
             return;
@@ -248,7 +237,7 @@ public class MultiplayerMatch
         ApplyNewChanges(false);
     }
 
-    public void ChangeMods(Session session, Mods mods)
+    public void ChangeMods(ISession session, Mods mods)
     {
         if (Match.SpecialModes == MultiSpecialModes.None)
         {
@@ -274,7 +263,7 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void MovePlayer(Session session, int slotId, bool ignoreLock = false)
+    public void MovePlayer(ISession session, int slotId, bool ignoreLock = false)
     {
         if (Locked && !ignoreLock)
             return;
@@ -292,7 +281,7 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void UpdatePlayerStatus(Session session, MultiSlotStatus status)
+    public void UpdatePlayerStatus(ISession session, MultiSlotStatus status)
     {
         var slot = GetSlot(userId: session.User.Id);
 
@@ -336,7 +325,7 @@ public class MultiplayerMatch
     }
 
 
-    public void SetPlayerLoaded(Session session)
+    public void SetPlayerLoaded(ISession session)
     {
         var slot = GetSlot(userId: session.User.Id);
 
@@ -349,7 +338,7 @@ public class MultiplayerMatch
             WriteToAllPlayers(PacketType.ServerMultiAllPlayersLoaded, Match);
     }
 
-    public void SetPlayerSkipped(Session session)
+    public void SetPlayerSkipped(ISession session)
     {
         var slot = GetSlot(userId: session.User.Id);
 
@@ -365,7 +354,7 @@ public class MultiplayerMatch
             WriteToAllPlayers(PacketType.ServerMultiSkip, 0);
     }
 
-    public void SetPlayerCompleted(Session session)
+    public void SetPlayerCompleted(ISession session)
     {
         var slot = GetSlot(userId: session.User.Id);
 
@@ -377,16 +366,30 @@ public class MultiplayerMatch
         if (!Slots.Values.Any(s => s is { Status: MultiSlotStatus.Playing })) EndGame();
     }
 
-    public void SendPlayerScoreUpdate(Session session, BanchoScoreFrame score)
+    public void SendPlayerScoreUpdate(ISession session, BanchoScoreFrame score)
     {
         var index = Array.IndexOf(Match.SlotId, session.User.Id);
         SendPlayerScoreUpdate(index, score);
     }
 
-    public void SendPlayerFailed(Session session)
+    public void SendPlayerFailed(ISession session)
     {
         var index = Array.IndexOf(Match.SlotId, session.User.Id);
         SendPlayerFailed(index);
+    }
+
+    public void StartTimer(int timer, bool timerForStart, Func<IMultiplayerMatch, string, Task> alertHandler,
+        Func<IMultiplayerMatch, Task> finishHandler)
+    {
+        StopTimer();
+
+        var alertMessage = timerForStart ? "The match will start in {0}." : "Countdown will end in {0}.";
+        Timer = new TimerWithAlerts(timer, alertMessage, this, finishHandler, alertHandler);
+    }
+
+    public bool HasHostPrivileges(ISession session, bool shouldBeOwner = false)
+    {
+        return !shouldBeOwner && session.User.Id == Match.HostId || session.User.Id == _roomCreatorId;
     }
 
     private void SendPlayerSkipped(int slotId)
@@ -414,7 +417,7 @@ public class MultiplayerMatch
         }
     }
 
-    private MultiplayerSlot? GetSlot(int? id = null, int? userId = null)
+    private IMultiplayerSlot? GetSlot(int? id = null, int? userId = null)
     {
         if (id != null && userId != null)
             throw new ArgumentException("Either id or userId must be provided, not both.");
@@ -426,7 +429,7 @@ public class MultiplayerMatch
         throw new ArgumentException("Either id or userId must be provided.");
     }
 
-    private MultiplayerSlot? GetSlot(MultiSlotStatus status)
+    private IMultiplayerSlot? GetSlot(MultiSlotStatus status)
     {
         return Slots.Values.FirstOrDefault(slot => slot.Status == status);
     }
@@ -439,7 +442,7 @@ public class MultiplayerMatch
         }
     }
 
-    private void SetSlot(MultiplayerSlot slot, int index = -1)
+    private void SetSlot(IMultiplayerSlot slot, int index = -1)
     {
         Match.SlotId[index] = slot.UserId;
         Match.MultiSlotStatus[index] = slot.Status;

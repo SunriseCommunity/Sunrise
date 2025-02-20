@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using Sunrise.Server.Chat;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Types.Enums;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Repositories;
 
@@ -18,7 +18,7 @@ public class ChannelRepository
         ["#AYAYA"] = new ChatChannel("#AYAYA", "Feel free to spam AYAYA here.")
     };
 
-    public void JoinChannel(string name, Session session, bool abstractChannel = false)
+    public void JoinChannel(string name, ISession session, bool abstractChannel = false)
     {
         if (!_channels.TryGetValue(name, out var channel))
         {
@@ -34,7 +34,7 @@ public class ChannelRepository
         channel.AddUser(session.User.Id);
     }
 
-    public void LeaveChannel(string name, Session session, bool abstractChannel = false)
+    public void LeaveChannel(string name, ISession session, bool abstractChannel = false)
     {
         if (!_channels.TryGetValue(name, out var channel))
         {
@@ -68,7 +68,7 @@ public class ChannelRepository
         return channel;
     }
 
-    public ChatChannel? GetChannel(Session session, string name)
+    public ChatChannel? GetChannel(ISession session, string name)
     {
         var channel = name switch
         {
@@ -80,7 +80,7 @@ public class ChannelRepository
         return channel;
     }
 
-    public List<ChatChannel> GetChannels(Session? session = null)
+    public List<ChatChannel> GetChannels(ISession? session = null)
     {
         if (session == null)
         {

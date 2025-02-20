@@ -1,16 +1,20 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using HOPEless.Bancho;
+﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
+using Sunrise.Shared.Utils;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Services;
 
@@ -19,7 +23,7 @@ public static class AuthService
     public static async Task<IActionResult> Login(HttpRequest request, HttpResponse response)
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
-        var loginRequest = Parsers.ParseLogin(sr);
+        var loginRequest = ServerParsers.ParseLogin(sr);
         var ip = RegionHelper.GetUserIpAddress(request);
 
         response.Headers["cho-protocol"] = "19";
@@ -43,7 +47,7 @@ public static class AuthService
         if (user.IsRestricted() && await database.UserService.Moderation.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         var oldSession = sessions.GetSession(userId: user.Id);
 
@@ -95,7 +99,7 @@ public static class AuthService
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    private static async Task<IActionResult> ProceedWithLogin(Session session)
+    private static async Task<IActionResult> ProceedWithLogin(ISession session)
     {
         session.SendLoginResponse(LoginResponses.Success);
         session.SendProtocolVersion();
@@ -114,7 +118,7 @@ public static class AuthService
             session.SendChannelAvailable(channel);
         }
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
@@ -219,18 +223,5 @@ public static class AuthService
         await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
 
         return new OkObjectResult("");
-    }
-
-    public static string GetPassHash(this string password)
-    {
-        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
-        var sb = new StringBuilder();
-
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
-
-        return sb.ToString();
     }
 }

@@ -4,6 +4,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Types.Enums;
 
 namespace Sunrise.Server.Chat.Commands.Multiplayer;
 

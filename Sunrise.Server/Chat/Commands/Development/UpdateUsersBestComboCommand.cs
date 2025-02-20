@@ -1,13 +1,16 @@
 using Hangfire;
 using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Chat.Commands.Development;
 
@@ -34,7 +37,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
     public async Task UpdateUsersBestCombo(int userId)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         foreach (var userSession in sessions.GetSessions())
         {

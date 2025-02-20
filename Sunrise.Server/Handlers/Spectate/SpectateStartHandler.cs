@@ -5,6 +5,9 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Handlers.Spectate;
 
@@ -15,7 +18,7 @@ public class SpectateStartHandler : IHandler
     {
         var target = new BanchoInt(packet.Data);
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         var targetSession = sessions.GetSession(userId: target.Value);
 
         targetSession?.AddSpectator(session);

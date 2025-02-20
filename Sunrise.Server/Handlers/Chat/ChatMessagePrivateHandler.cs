@@ -6,6 +6,10 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Handlers.Chat;
 
@@ -13,7 +17,7 @@ namespace Sunrise.Server.Handlers.Chat;
 public class ChatMessagePrivateHandler : IHandler
 {
     private const string Action = "ACTION";
-    private readonly RateLimiter _rateLimiter = new(10, TimeSpan.FromSeconds(5));
+    private readonly ChatRateLimiter _rateLimiter = new(10, TimeSpan.FromSeconds(5));
 
     public async Task Handle(BanchoPacket packet, Session session)
     {
@@ -32,7 +36,7 @@ public class ChatMessagePrivateHandler : IHandler
                 return;
             }
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         if (!sessions.TryGetSession(out var receiver, message.Channel) || receiver == null) return;
 

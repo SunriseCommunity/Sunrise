@@ -1,5 +1,5 @@
 using osu.Shared;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Tests.Core.Extensions;
 

@@ -1,16 +1,20 @@
 using DatabaseWrapper.Core;
 using Microsoft.AspNetCore.Http;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Tests.Core.Services;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
 using Watson.ORM.Sqlite;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Tests.Core.Abstracts;
 
@@ -54,15 +58,15 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
         GC.SuppressFinalize(this);
     }
 
-    protected async Task<Session> CreateTestSession()
+    protected async Task<ISession> CreateTestSession()
     {
         var user = await CreateTestUser();
         return CreateTestSession(user);
     }
 
-    protected Session CreateTestSession(User user)
+    protected ISession CreateTestSession(User user)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         var location = new Location();
         var loginRequest = new LoginRequest(
             user.Username,

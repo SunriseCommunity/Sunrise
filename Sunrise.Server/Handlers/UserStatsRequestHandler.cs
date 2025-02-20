@@ -5,6 +5,9 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Handlers;
 
@@ -24,7 +27,7 @@ public class UserStatsRequestHandler : IHandler
 
         ids.Remove(session.User.Id);
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         foreach (var player in ids.Select(id => sessions.GetSession(userId: id)))
             if (player != null)

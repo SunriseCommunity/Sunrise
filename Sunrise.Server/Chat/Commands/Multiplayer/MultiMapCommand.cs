@@ -1,8 +1,8 @@
 using osu.Shared;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Managers;
 
 namespace Sunrise.Server.Chat.Commands.Multiplayer;
 

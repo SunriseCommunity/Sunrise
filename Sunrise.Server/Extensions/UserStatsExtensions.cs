@@ -1,8 +1,9 @@
 using osu.Shared;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Utils;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Extensions;
 
@@ -29,7 +30,7 @@ public static class UserStatsExtensions
             // If new score, add it to the ranked score. If a better score, add the difference between the new and the previous score.
             userStats.RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
 
-            userStats.PerformancePoints = 
+            userStats.PerformancePoints =
                 await Calculators.CalculateUserWeightedPerformance(userStats.UserId, score.GameMode, score);
             userStats.Accuracy = await Calculators.CalculateUserWeightedAccuracy(userStats.UserId, score.GameMode, score);
         }

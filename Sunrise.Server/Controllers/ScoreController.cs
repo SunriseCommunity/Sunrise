@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Controllers;
 
@@ -32,11 +33,11 @@ public class ScoreController : ControllerBase
         if (isScoreNotComplete == "1")
             return Ok("error: no");
 
-        var scoreSerialized = Parsers.ParseRijndaelString(osuVersion, iv, scoreEncoded);
-        var clientHash = Parsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
+        var scoreSerialized = ServerParsers.ParseRijndaelString(osuVersion, iv, scoreEncoded);
+        var clientHash = ServerParsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
         var username = scoreSerialized.Split(':')[1].Trim();
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -69,7 +70,7 @@ public class ScoreController : ControllerBase
         if (fromEditor == "1" || leaderboardVersion != "4")
             return Ok("error: pass");
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 

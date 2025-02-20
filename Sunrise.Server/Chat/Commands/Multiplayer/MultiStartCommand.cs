@@ -2,7 +2,8 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Objects.Multiplayer;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
+using Sunrise.Shared.Types.Interfaces;
+using Sunrise.Shared.Utils;
 
 namespace Sunrise.Server.Chat.Commands.Multiplayer;
 
@@ -50,7 +51,7 @@ public class MultiStartCommand : IChatCommand
                 return Task.CompletedTask;
         }
 
-        async Task SendAlertMessage(MultiplayerMatch match, string message)
+        async Task SendAlertMessage(IMultiplayerMatch match, string message)
         {
             foreach (var player in match.Players.Values)
             {
@@ -60,7 +61,7 @@ public class MultiStartCommand : IChatCommand
             await Task.CompletedTask;
         }
 
-        async Task OnFinish(MultiplayerMatch match)
+        async Task OnFinish(IMultiplayerMatch match)
         {
             match.StopTimer();
             match.StartGame();

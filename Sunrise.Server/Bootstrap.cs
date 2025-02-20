@@ -4,10 +4,13 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
+using Sunrise.API.Controllers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server;
 
@@ -15,7 +18,12 @@ public static class Bootstrap
 {
     public static void Configure(this WebApplicationBuilder builder)
     {
-        builder.Services.AddControllers();
+        builder.Services.AddControllers()
+            .AddApplicationPart(typeof(AuthController).Assembly)
+            .AddApplicationPart(typeof(BaseController).Assembly)
+            .AddApplicationPart(typeof(BeatmapController).Assembly)
+            .AddApplicationPart(typeof(ScoreController).Assembly)
+            .AddApplicationPart(typeof(UserController).Assembly);
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -73,7 +81,7 @@ public static class Bootstrap
 
     public static void AddSingletons(this WebApplicationBuilder builder)
     {
-        builder.Services.AddSingleton<SessionRepository>();
+        builder.Services.AddSingleton<ISessionRepository, SessionRepository>();
         builder.Services.AddSingleton<ChannelRepository>();
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
@@ -84,7 +92,7 @@ public static class Bootstrap
 
     public static void WarmUpSingletons(this WebApplication app)
     {
-        app.Services.GetRequiredService<SessionRepository>();
+        app.Services.GetRequiredService<ISessionRepository>();
         app.Services.GetRequiredService<ChannelRepository>();
         app.Services.GetRequiredService<RateLimitRepository>();
         app.Services.GetRequiredService<MatchRepository>();

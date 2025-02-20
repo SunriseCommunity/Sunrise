@@ -1,41 +1,37 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
-using Sunrise.Server.Application;
-using Sunrise.Server.Chat;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Helpers;
-using Sunrise.Server.Objects.Multiplayer;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Objects;
 
-public class Session : BaseSession
+public class Session : BaseSession, ISession
 {
     private readonly PacketHelper _helper;
-    public readonly UserAttributes Attributes;
 
-    public readonly List<Session> Spectators = [];
-
-    public readonly string Token;
-
-    public Session(User user, Location location, LoginRequest loginRequest) : base(user)
+    public Session(User user, Location location, ILoginRequest loginRequest) : base(user)
     {
         _helper = new PacketHelper();
 
         User = user;
-        Token = Guid.NewGuid().ToString();
         Attributes = new UserAttributes(User, location, loginRequest);
     }
 
+    public List<ISession> Spectators { get; } = [];
+    public IMultiplayerMatch? Match { get; set; } = null;
+    public ISession? Spectating { get; set; } = null;
+    public IUserAttributes Attributes { get; }
+
     // Note: Not the best place, but I'm out of ideas.
     public int? LastBeatmapIdUsedWithCommand { get; set; }
-
-    public MultiplayerMatch? Match { get; set; } = null;
-
-    public Session? Spectating { get; set; } = null;
 
     public User User { get; private set; }
 
@@ -67,13 +63,13 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
-    public void SendJoinChannel(ChatChannel channel)
+    public void SendJoinChannel(IChatChannel channel)
     {
         _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel.Name);
         SendChannelAvailable(channel);
     }
 
-    public void SendChannelAvailable(ChatChannel channel)
+    public void SendChannelAvailable(IChatChannel channel)
     {
         _helper.WritePacket(PacketType.ServerChatChannelAvailable,
             new BanchoChatChannel
@@ -118,7 +114,7 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerNotification, text);
     }
 
-    public void SendSpectatorMapless(Session session)
+    public void SendSpectatorMapless(ISession session)
     {
         _helper.WritePacket(PacketType.ServerSpectateNoBeatmap, session.User.Id);
     }
@@ -159,7 +155,7 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerMultiMatchJoinSuccess, match);
     }
 
-    public void SendMultiInvite(BanchoMultiplayerMatch match, Session sender)
+    public void SendMultiInvite(BanchoMultiplayerMatch match, ISession sender)
     {
         var message = new BanchoChatMessage
         {
@@ -192,7 +188,7 @@ public class Session : BaseSession
         User = user;
     }
 
-    public void AddSpectator(Session session)
+    public void AddSpectator(ISession session)
     {
         foreach (var spectator in Spectators)
         {
@@ -204,7 +200,7 @@ public class Session : BaseSession
         Spectators.Add(session);
     }
 
-    public void RemoveSpectator(Session session)
+    public void RemoveSpectator(ISession session)
     {
         foreach (var spectator in Spectators)
         {

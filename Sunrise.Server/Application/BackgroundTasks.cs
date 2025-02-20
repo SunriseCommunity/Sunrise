@@ -1,9 +1,10 @@
 using System.IO.Compression;
 using Hangfire;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Types.Enums;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Types.Enums;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Application;
 

@@ -1,11 +1,11 @@
 using osu.Shared;
-using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
-using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Managers;
+using Sunrise.Shared.Utils;
 
 namespace Sunrise.Server.Chat.Commands;
 

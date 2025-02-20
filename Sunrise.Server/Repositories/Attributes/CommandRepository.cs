@@ -7,7 +7,11 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Chat;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Types.Interfaces;
-using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
+using Sunrise.Shared.Utils;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Repositories.Attributes;
 
@@ -83,7 +87,7 @@ public static class CommandRepository
             .ToArray();
     }
 
-    public static void SendMessage(Session session, string message, string? channel = null)
+    public static void SendMessage(ISession session, string message, string? channel = null)
     {
         session.WritePacket(PacketType.ServerChatMessage,
             new BanchoChatMessage
@@ -96,7 +100,7 @@ public static class CommandRepository
 
     public static void TrySendMessage(int userId, string message, string? channel = null)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         var session = sessions.GetSession(userId: userId);
 
         session?.WritePacket(PacketType.ServerChatMessage,

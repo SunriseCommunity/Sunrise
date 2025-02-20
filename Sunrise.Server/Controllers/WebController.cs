@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
-using Sunrise.Server.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Managers;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Controllers;
 
@@ -19,7 +22,7 @@ public class WebController : ControllerBase
         [FromForm(Name = "p")] string passhash,
         [FromForm(Name = "ss")] IFormFile screenshot)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -39,7 +42,7 @@ public class WebController : ControllerBase
         [FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -62,7 +65,7 @@ public class WebController : ControllerBase
         [FromQuery(Name = "ha")] string passhash,
         [FromQuery(Name = "b")] string query)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -142,7 +145,7 @@ public class WebController : ControllerBase
         [FromQuery(Name = "h")] string passhash,
         [FromQuery(Name = "a")] int beatmapSetId)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -160,7 +163,7 @@ public class WebController : ControllerBase
     public async Task<IActionResult> AddFavourites([FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 

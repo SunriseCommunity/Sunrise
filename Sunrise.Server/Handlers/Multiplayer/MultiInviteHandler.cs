@@ -5,13 +5,16 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Handlers.Multiplayer;
 
 [PacketHandler(PacketType.ClientMultiInvite)]
 public class MultiInviteHandler : IHandler
 {
-    private readonly RateLimiter _rateLimiter = new(6, TimeSpan.FromSeconds(4));
+    private readonly ChatRateLimiter _rateLimiter = new(6, TimeSpan.FromSeconds(4));
 
     public Task Handle(BanchoPacket packet, Session session)
     {
@@ -19,7 +22,7 @@ public class MultiInviteHandler : IHandler
 
         if (!_rateLimiter.CanSend(session)) return Task.CompletedTask;
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         var inviteeSession = sessions.GetSession(userId: invitee.Value);
 
         if (inviteeSession == null)

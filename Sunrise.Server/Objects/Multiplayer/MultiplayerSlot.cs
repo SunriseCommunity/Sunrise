@@ -1,9 +1,10 @@
 using HOPEless.osu;
 using osu.Shared;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Objects.Multiplayer;
 
-public class MultiplayerSlot(bool isLocked = false)
+public class MultiplayerSlot(bool isLocked = false) : IMultiplayerSlot
 {
     public int UserId { get; private set; } = -1;
     public MultiSlotStatus Status { get; private set; } = isLocked ? MultiSlotStatus.Locked : MultiSlotStatus.Open;
@@ -18,7 +19,7 @@ public class MultiplayerSlot(bool isLocked = false)
         Status = status ?? MultiSlotStatus.NotReady;
     }
 
-    public void AddPlayer(MultiplayerSlot slot)
+    public void AddPlayer(IMultiplayerSlot slot)
     {
         UserId = slot.UserId;
         Status = slot.Status;

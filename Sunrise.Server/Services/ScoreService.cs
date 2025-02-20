@@ -1,21 +1,25 @@
 ﻿using osu.Shared;
 using Sunrise.Server.Application;
-using Sunrise.Server.Database;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Helpers;
-using Sunrise.Server.Managers;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
-using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Managers;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Utils;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
+using SubmissionStatus = Sunrise.Shared.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
 
 public static class ScoreService
 {
-    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
+    public static async Task<string> SubmitScore(ISession session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
@@ -41,7 +45,7 @@ public static class ScoreService
             return "error: no";
         }
 
-        var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
+        var notStandardMods = score.Mods.TryGetSelectedNotStandardMods();
 
         var hasNonStandardMods = notStandardMods is not Mods.None;
         var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
@@ -157,7 +161,7 @@ public static class ScoreService
         return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
+    public static async Task<string> GetBeatmapScores(ISession session, int setId, GameMode gameMode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();

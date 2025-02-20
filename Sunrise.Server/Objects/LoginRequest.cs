@@ -1,6 +1,8 @@
+using Sunrise.Shared.Types.Interfaces;
+
 namespace Sunrise.Server.Objects;
 
-public class LoginRequest(string username, string passHash, string version, short utcOffset, bool showCityLocation, string clientHash, bool blockNonFriendPm)
+public class LoginRequest(string username, string passHash, string version, short utcOffset, bool showCityLocation, string clientHash, bool blockNonFriendPm) : ILoginRequest
 {
     public string Username { get; set; } = username;
     public string PassHash { get; set; } = passHash;

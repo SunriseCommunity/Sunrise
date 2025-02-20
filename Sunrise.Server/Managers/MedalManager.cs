@@ -1,11 +1,12 @@
 using System.Linq.Dynamic.Core;
 using osu.Shared;
 using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Types.Enums;
-using Beatmap = Sunrise.Server.Objects.Serializable.Beatmap;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Types.Enums;
+using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 
 namespace Sunrise.Server.Managers;
 

@@ -1,5 +1,5 @@
-﻿using Sunrise.Server.Application;
-using Sunrise.Server.Tests.Core.Utils;
+﻿using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Shared.Application;
 
 namespace Sunrise.Server.Tests.Core;
 

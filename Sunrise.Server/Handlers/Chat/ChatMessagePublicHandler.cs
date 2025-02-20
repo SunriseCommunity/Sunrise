@@ -6,13 +6,15 @@ using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using ISession = Sunrise.Shared.Types.Interfaces.ISession;
 
 namespace Sunrise.Server.Handlers.Chat;
 
 [PacketHandler(PacketType.ClientChatMessagePublic)]
 public class ChatMessagePublicHandler : IHandler
 {
-    private readonly RateLimiter _rateLimiter = new(5, TimeSpan.FromSeconds(4));
+    private readonly ChatRateLimiter _rateLimiter = new(5, TimeSpan.FromSeconds(4));
 
     public async Task Handle(BanchoPacket packet, Session session)
     {

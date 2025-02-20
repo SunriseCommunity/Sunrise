@@ -1,9 +1,9 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Database.Models;
 using Sunrise.Server.Tests.Core.Extensions;
-using Sunrise.Server.Types.Enums;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
-using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Types.Enums;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
+using SubmissionStatus = Sunrise.Shared.Types.Enums.SubmissionStatus;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
 

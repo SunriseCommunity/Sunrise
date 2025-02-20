@@ -1,6 +1,8 @@
-﻿using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Services;
+﻿using Sunrise.Server.Services;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Types.Enums;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
 

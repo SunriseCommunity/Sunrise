@@ -3,8 +3,11 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Chat.Commands.Development;
 
@@ -47,7 +50,7 @@ public class AnnounceCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
 
         foreach (var userSession in sessions.GetSessions())
         {

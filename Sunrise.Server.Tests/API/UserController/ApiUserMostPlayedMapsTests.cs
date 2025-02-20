@@ -1,14 +1,17 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Application;
-using Sunrise.Server.Database;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Extensions;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Types.Enums;
 
 namespace Sunrise.Server.Tests.API.UserController;
 

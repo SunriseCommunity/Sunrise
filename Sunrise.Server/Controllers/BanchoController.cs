@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Controllers;
 
@@ -16,7 +18,7 @@ public class BanchoController(ILogger<BanchoController> logger) : ControllerBase
         if (token == null)
             return await AuthService.Login(Request, Response);
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(out var session, token: token) || session == null)
             return AuthService.Relogin();
 

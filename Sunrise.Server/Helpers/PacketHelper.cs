@@ -5,6 +5,7 @@ using HOPEless.Extensions;
 using osu.Shared;
 using osu.Shared.Serialization;
 using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Types.Enums;
 
 namespace Sunrise.Server.Helpers;
 

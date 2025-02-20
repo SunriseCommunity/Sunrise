@@ -1,15 +1,16 @@
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Extensions;
 using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Types.Interfaces;
+using GameMode = Sunrise.Shared.Types.Enums.GameMode;
 
 namespace Sunrise.Server.Tests.Core.Extensions;
 
 public static class ScoreExtensions
 {
-    public static void EnrichWithSessionData(this Score score, Session session, string? storyboardHash = null)
+    public static void EnrichWithSessionData(this Score score, ISession session, string? storyboardHash = null)
     {
         score.UserId = session.User.Id;
         score.ScoreHash = score.ComputeOnlineHash(session.User.Username, session.Attributes.UserHash, storyboardHash);

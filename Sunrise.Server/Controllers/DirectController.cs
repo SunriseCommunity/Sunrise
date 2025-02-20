@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Types.Enums;
+using Sunrise.Shared.Types.Interfaces;
 
 namespace Sunrise.Server.Controllers;
 
@@ -21,7 +23,7 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "r")] int ranked
     )
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
@@ -42,7 +44,7 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "c")] string? beatmapHash
     )
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = ServicesProviderHolder.GetRequiredService<ISessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 

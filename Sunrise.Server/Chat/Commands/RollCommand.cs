@@ -1,8 +1,8 @@
-using Sunrise.Server.Application;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Objects;
 using Sunrise.Server.Repositories.Attributes;
 using Sunrise.Server.Types.Interfaces;
+using Sunrise.Shared.Application;
 using static System.Int32;
 
 namespace Sunrise.Server.Chat.Commands;
