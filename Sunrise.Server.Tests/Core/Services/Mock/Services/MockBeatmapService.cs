@@ -1,6 +1,6 @@
-﻿using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
-using Beatmap = Sunrise.Server.Objects.Serializable.Beatmap;
+﻿using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Objects.Serializable;
+using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 using GameMode = osu.Shared.GameMode;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;

@@ -2,8 +2,8 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Hangfire.Dashboard;
 using Microsoft.Extensions.Caching.Memory;
-using Sunrise.Server.Application;
-using Sunrise.Server.Helpers;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Helpers.Requests;
 
 namespace Sunrise.Server;
 

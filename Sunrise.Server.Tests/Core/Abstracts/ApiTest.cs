@@ -1,6 +1,6 @@
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Database.Models.User;
-using AuthService = Sunrise.Server.API.Services.AuthService;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models.User;
+using AuthService = Sunrise.API.Services.AuthService;
 
 namespace Sunrise.Server.Tests.Core.Abstracts;
 

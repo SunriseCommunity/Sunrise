@@ -1,9 +1,10 @@
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
 using Sunrise.Server.Extensions;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Objects.Session;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.Core.Extensions;
 

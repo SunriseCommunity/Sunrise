@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
-using Sunrise.Server.Managers;
-using Sunrise.Server.Repositories;
+using Sunrise.Server.Enums;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Controllers;
 
@@ -146,7 +146,7 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapSetId);
+        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapSetId);
         if (beatmapSet == null)
             return Ok("error: beatmap");
 

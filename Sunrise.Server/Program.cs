@@ -1,6 +1,6 @@
 using Hangfire;
 using Sunrise.Server;
-using Sunrise.Server.Application;
+using Sunrise.Shared.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 

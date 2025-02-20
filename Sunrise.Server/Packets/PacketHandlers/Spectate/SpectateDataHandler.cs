@@ -1,0 +1,19 @@
+using HOPEless.Bancho;
+using Sunrise.Server.Attributes;
+using Sunrise.Shared.Objects.Session;
+
+namespace Sunrise.Server.Packets.PacketHandlers.Spectate;
+
+[PacketHandler(PacketType.ClientSpectateData)]
+public class SpectateDataHandler : IPacketHandler
+{
+    public Task Handle(BanchoPacket packet, Session session)
+    {
+        foreach (var spectator in session.Spectators)
+        {
+            spectator.WritePacket(PacketType.ServerSpectateData, packet.Data);
+        }
+
+        return Task.CompletedTask;
+    }
+}

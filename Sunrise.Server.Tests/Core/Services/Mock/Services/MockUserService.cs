@@ -1,6 +1,7 @@
-﻿using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+﻿using Sunrise.Server.Services;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
 
@@ -60,7 +61,7 @@ public class MockUserService(MockService service)
     public short GetRandomCountryCode()
     {
         var random = new Random();
-        var values = Enum.GetValues(typeof(CountryCodes));
+        var values = Enum.GetValues(typeof(CountryCode));
         return (short)values.GetValue(random.Next(values.Length))!;
     }
 

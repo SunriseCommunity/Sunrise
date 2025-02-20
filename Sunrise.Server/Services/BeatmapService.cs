@@ -1,10 +1,12 @@
+using Sunrise.Server.Enums;
 using Sunrise.Server.Extensions;
-using Sunrise.Server.Helpers;
-using Sunrise.Server.Managers;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Enums;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Helpers.Requests;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Services;
 
@@ -13,7 +15,7 @@ public static class BeatmapService
     public static async Task<string> SearchBeatmap(Session session, int? setId, int? beatmapId, string? beatmapHash)
     {
         var beatmapSet =
-            await BeatmapManager.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
+            await BeatmapRepository.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
 
         return beatmapSet != null ? beatmapSet.ToSearchResult(session) : "0";
     }
@@ -25,7 +27,7 @@ public static class BeatmapService
         string mode,
         int ranked)
     {
-        var parsedStatus = Parsers.WebStatusToSearchStatus(ranked);
+        var parsedStatus = BeatmapStatusSearchParser.WebStatusToSearchStatus(ranked);
         var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
 
         var beatmapSets = await SearchBeatmapSet(session, beatmapStatus, mode, page, query);

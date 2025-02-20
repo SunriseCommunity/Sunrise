@@ -1,9 +1,9 @@
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Extensions;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Services.Mock;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Extensions;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.Extensions;
 

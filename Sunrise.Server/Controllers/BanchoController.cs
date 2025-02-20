@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Controllers;
 

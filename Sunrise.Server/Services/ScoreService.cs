@@ -1,15 +1,16 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
 using Sunrise.Server.Extensions;
-using Sunrise.Server.Helpers;
-using Sunrise.Server.Managers;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Repositories;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
-using GameMode = Sunrise.Server.Types.Enums.GameMode;
-using SubmissionStatus = Sunrise.Server.Types.Enums.SubmissionStatus;
+using Sunrise.Server.Services.Helpers.Scores;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Utils.Performance;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
 
@@ -19,7 +20,7 @@ public static class ScoreService
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, beatmapHash: beatmapHash);
+        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapHash: beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
         if (beatmap == null || beatmapSet == null)
             throw new Exception("Invalid request: BeatmapSet not found");
@@ -41,7 +42,7 @@ public static class ScoreService
             return "error: no";
         }
 
-        var notStandardMods = SubmitScoreHelper.TryGetSelectedNotStandardMods(score.Mods);
+        var notStandardMods = score.Mods.TryGetSelectedNotStandardMods();
 
         var hasNonStandardMods = notStandardMods is not Mods.None;
         var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
@@ -149,7 +150,7 @@ public static class ScoreService
 
         if (newPBest?.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
-            var channels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
+            var channels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
             channels.GetChannel(session, "#announce")
                 ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
         }
@@ -167,7 +168,7 @@ public static class ScoreService
         var databaseScores = await database.ScoreService.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, session.User);
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
-        var beatmapSet = await BeatmapManager.GetBeatmapSet(session, setId, beatmapHash);
+        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, setId, beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)

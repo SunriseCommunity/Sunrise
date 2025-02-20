@@ -1,15 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Sunrise.Server.API.Serializable.Request;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Extensions;
+using Sunrise.API.Serializable.Request;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
@@ -114,7 +114,7 @@ public class ApiAuthRegisterTests : ApiTest
         var user = await database.UserService.GetUser(username: username);
 
         Assert.NotNull(user);
-        Assert.Equal((short)CountryCodes.GR, user.Country);
+        Assert.Equal((short)CountryCode.GR, user.Country);
     }
 
     [Fact]

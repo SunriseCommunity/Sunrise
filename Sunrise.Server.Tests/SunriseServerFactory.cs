@@ -29,6 +29,7 @@ internal class SunriseServerFactory : WebApplicationFactory<Program>
             RecurringJob.RemoveIfExists(recurringJob.Id);
         }
 
+        // TODO: Bad practice, should be handled!
         // We don't call base.DisposeAsync() to not dispose hangfire in memory database
         // ! I'm not sure if this is a good idea, but I 'think' it's fine for now
     }

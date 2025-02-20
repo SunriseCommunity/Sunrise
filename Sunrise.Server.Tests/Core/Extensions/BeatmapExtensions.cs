@@ -1,6 +1,5 @@
-using Sunrise.Server.Application;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Objects.Serializable;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.Server.Tests.Core.Extensions;
 

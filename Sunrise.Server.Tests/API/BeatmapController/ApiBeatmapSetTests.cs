@@ -1,9 +1,9 @@
 ﻿using System.Net;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 

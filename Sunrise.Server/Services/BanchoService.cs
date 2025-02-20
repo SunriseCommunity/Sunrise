@@ -1,9 +1,9 @@
 ﻿using HOPEless.Bancho;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Repositories;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Session;
 
 namespace Sunrise.Server.Services;
 
@@ -22,7 +22,7 @@ public static class BanchoService
 
             foreach (var packet in packets)
             {
-                await PacketRepository.HandlePacket(packet, session);
+                await PacketHandlerRepository.HandlePacket(packet, session);
             }
         }
         catch (Exception e)

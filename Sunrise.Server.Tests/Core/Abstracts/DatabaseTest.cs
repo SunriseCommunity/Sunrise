@@ -1,15 +1,16 @@
 using DatabaseWrapper.Core;
 using Microsoft.AspNetCore.Http;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Objects.Serializable;
-using Sunrise.Server.Repositories;
 using Sunrise.Server.Tests.Core.Services;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Repositories;
 using Watson.ORM.Sqlite;
 
 namespace Sunrise.Server.Tests.Core.Abstracts;

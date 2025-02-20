@@ -25,11 +25,11 @@
     </ItemGroup>
 
     <Target Name="CopyPpDllForTests" AfterTargets="Build">
-        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Server\Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
+        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Shared\Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
     </Target>
 
     <Target Name="CopyPpSoForTests" AfterTargets="Build">
-        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Server\Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
+        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Shared\Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
     </Target>
 
 </Project>

@@ -2,15 +2,16 @@
 using System.Text;
 using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Extensions;
-using Sunrise.Server.Helpers;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Repositories;
-using Sunrise.Server.Types.Enums;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Helpers.Requests;
+using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Services;
 
@@ -19,7 +20,7 @@ public static class AuthService
     public static async Task<IActionResult> Login(HttpRequest request, HttpResponse response)
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
-        var loginRequest = Parsers.ParseLogin(sr);
+        var loginRequest = ServerParsers.ParseLogin(sr);
         var ip = RegionHelper.GetUserIpAddress(request);
 
         response.Headers["cho-protocol"] = "19";
@@ -35,10 +36,10 @@ public static class AuthService
         if (user.Passhash != loginRequest.PassHash)
             return RejectLogin(response, "Invalid credentials.");
 
-        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivileges.Admin))
+        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.Admin))
             return RejectLogin(response,
                 "Server is currently in maintenance mode. Please try again later.",
-                LoginResponses.ServerError);
+                LoginResponse.ServerError);
 
         if (user.IsRestricted() && await database.UserService.Moderation.IsRestricted(user.Id))
             return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
@@ -73,7 +74,7 @@ public static class AuthService
     }
 
     private static IActionResult RejectLogin(HttpResponse response, string? reason = null,
-        LoginResponses code = LoginResponses.InvalidCredentials)
+        LoginResponse code = LoginResponse.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
 
@@ -97,17 +98,17 @@ public static class AuthService
 
     private static async Task<IActionResult> ProceedWithLogin(Session session)
     {
-        session.SendLoginResponse(LoginResponses.Success);
+        session.SendLoginResponse(LoginResponse.Success);
         session.SendProtocolVersion();
         session.SendPrivilege();
         session.SendExistingChannels();
 
-        var chatChannels = ServicesProviderHolder.GetRequiredService<ChannelRepository>();
+        var chatChannels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
 
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
 
-        if (session.User.Privilege.HasFlag(UserPrivileges.Admin)) chatChannels.JoinChannel("#staff", session);
+        if (session.User.Privilege.HasFlag(UserPrivilege.Admin)) chatChannels.JoinChannel("#staff", session);
 
         foreach (var channel in chatChannels.GetChannels(session))
         {
@@ -162,7 +163,7 @@ public static class AuthService
         if (!isUsernameValid)
             errors["username"].Add(usernameError ?? "Invalid username");
 
-        if (!CharactersFilter.IsValidStringCharacters(email!) || !email.IsValidEmailCharacters())
+        if (!email.IsValidStringCharacters() || !email.IsValidEmailCharacters())
             errors["user_email"].Add("Invalid email. It should be a valid email address.");
 
         var (isPasswordValid, passwordError) = password.IsValidPassword();
@@ -211,7 +212,7 @@ public static class AuthService
             Email = email!,
             Passhash = passhash,
             Country = RegionHelper.GetCountryCode(location.Country),
-            Privilege = UserPrivileges.User
+            Privilege = UserPrivilege.User
         };
 
         newUser = await database.UserService.InsertUser(newUser);
@@ -219,18 +220,5 @@ public static class AuthService
         await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
 
         return new OkObjectResult("");
-    }
-
-    public static string GetPassHash(this string password)
-    {
-        var data = MD5.HashData(Encoding.UTF8.GetBytes(password));
-        var sb = new StringBuilder();
-
-        foreach (var b in data)
-        {
-            sb.Append(b.ToString("x2"));
-        }
-
-        return sb.ToString();
     }
 }

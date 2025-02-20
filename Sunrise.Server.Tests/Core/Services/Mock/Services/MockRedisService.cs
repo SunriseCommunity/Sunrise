@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Objects.Serializable;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
 
