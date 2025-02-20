@@ -81,24 +81,24 @@ public static class Bootstrap
 
     public static void AddSingletons(this WebApplicationBuilder builder)
     {
+        builder.Services.AddSingleton<RedisRepository>();
+        builder.Services.AddSingleton<DatabaseManager>();
+
         builder.Services.AddSingleton<ISessionRepository, SessionRepository>();
         builder.Services.AddSingleton<ChannelRepository>();
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
-
-        builder.Services.AddSingleton<RedisRepository>();
-        builder.Services.AddSingleton<DatabaseManager>();
     }
 
     public static void WarmUpSingletons(this WebApplication app)
     {
+        app.Services.GetRequiredService<RedisRepository>();
+        app.Services.GetRequiredService<DatabaseManager>();
+
         app.Services.GetRequiredService<ISessionRepository>();
         app.Services.GetRequiredService<ChannelRepository>();
         app.Services.GetRequiredService<RateLimitRepository>();
         app.Services.GetRequiredService<MatchRepository>();
-
-        app.Services.GetRequiredService<RedisRepository>();
-        app.Services.GetRequiredService<DatabaseManager>();
     }
 
     public static void UseStaticBackgrounds(this WebApplication app)
