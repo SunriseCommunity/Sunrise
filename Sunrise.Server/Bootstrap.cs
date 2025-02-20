@@ -26,7 +26,6 @@ public static class Bootstrap
             .AddApplicationPart(typeof(UserController).Assembly);
 
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
 
         builder.Services.AddProblemDetails();
         builder.Services.AddMetrics();
@@ -120,12 +119,6 @@ public static class Bootstrap
 
     public static void Configure(this WebApplication app)
     {
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
-
         app.UseRouting();
         app.UseW3CLogging();
         app.UseMetricServer().UseHttpMetrics();
