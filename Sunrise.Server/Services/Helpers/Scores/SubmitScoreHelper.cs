@@ -1,9 +1,9 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Extensions;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Session;

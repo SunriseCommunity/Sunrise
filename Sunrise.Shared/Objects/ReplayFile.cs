@@ -5,6 +5,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils;

@@ -1,10 +1,11 @@
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils.Performance;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Users;
 
 public static class UserStatsExtensions
 {

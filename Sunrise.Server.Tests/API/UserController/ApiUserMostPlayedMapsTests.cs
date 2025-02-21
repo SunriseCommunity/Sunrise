@@ -8,7 +8,7 @@ using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Server.Tests.API.UserController;
 

@@ -8,7 +8,7 @@ using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 

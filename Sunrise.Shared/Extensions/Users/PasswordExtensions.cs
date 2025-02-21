@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Users;
 
 public static class PasswordExtensions
 {
@@ -21,7 +21,7 @@ public static class PasswordExtensions
 
         return (true, null);
     }
-    
+
     public static string GetPassHash(this string password)
     {
         var data = MD5.HashData(Encoding.UTF8.GetBytes(password));

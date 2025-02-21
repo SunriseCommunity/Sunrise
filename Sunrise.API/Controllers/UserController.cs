@@ -9,7 +9,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Leaderboards;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;

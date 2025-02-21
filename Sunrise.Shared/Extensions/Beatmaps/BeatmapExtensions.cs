@@ -1,7 +1,7 @@
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects.Serializable;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class BeatmapExtensions
 {

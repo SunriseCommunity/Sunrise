@@ -1,4 +1,5 @@
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.Shared.Extensions;

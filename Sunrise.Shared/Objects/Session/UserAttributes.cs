@@ -3,7 +3,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 

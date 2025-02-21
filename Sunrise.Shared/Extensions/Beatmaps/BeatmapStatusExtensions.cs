@@ -1,6 +1,6 @@
 using Sunrise.Shared.Enums.Beatmaps;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class BeatmapStatusExtensions
 {

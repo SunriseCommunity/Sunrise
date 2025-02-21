@@ -1,7 +1,7 @@
-using Sunrise.Server.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.User;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Session;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;

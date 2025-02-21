@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Users;
 
 public static class EmailExtensions
 {

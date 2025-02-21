@@ -5,7 +5,7 @@ using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Commands;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;

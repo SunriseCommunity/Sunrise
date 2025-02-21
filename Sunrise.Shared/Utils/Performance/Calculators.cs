@@ -1,11 +1,11 @@
 using System.Runtime.InteropServices;
 using RosuPP;
-using Sunrise.Server.Extensions;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Leaderboards;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
 using Beatmap = RosuPP.Beatmap;

@@ -4,7 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;

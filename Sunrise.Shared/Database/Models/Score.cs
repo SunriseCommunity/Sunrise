@@ -1,6 +1,6 @@
 using osu.Shared;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Watson.ORM.Core;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;

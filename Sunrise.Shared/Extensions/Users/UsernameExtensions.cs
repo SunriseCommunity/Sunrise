@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Sunrise.Shared.Application;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Users;
 
 public static class UsernameExtensions
 {

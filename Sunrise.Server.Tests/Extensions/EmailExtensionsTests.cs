@@ -1,5 +1,5 @@
 ﻿using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 
 namespace Sunrise.Server.Tests.Extensions;
 

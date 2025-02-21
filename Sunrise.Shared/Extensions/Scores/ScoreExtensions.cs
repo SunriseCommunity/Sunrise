@@ -2,13 +2,13 @@ using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Utils.Performance;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Server.Extensions;
+namespace Sunrise.Shared.Extensions.Scores;
 
 public static class ScoreExtensions
 {
@@ -232,6 +232,6 @@ public static class ScoreExtensions
             score.ClientTime,
             score.OsuVersion,
             clientHash,
-            storyboardHash).CreateMD5();
+            storyboardHash).ToHash();
     }
 }

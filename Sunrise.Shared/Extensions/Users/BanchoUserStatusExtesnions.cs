@@ -1,6 +1,6 @@
 ﻿using HOPEless.Bancho.Objects;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Users;
 
 public static class BanchoUserStatusExtesnions
 {

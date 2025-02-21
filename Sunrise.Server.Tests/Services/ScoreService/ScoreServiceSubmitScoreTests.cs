@@ -1,12 +1,12 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Extensions;
 using Sunrise.Server.Tests.Core.Abstracts;
 using Sunrise.Server.Tests.Core.Extensions;
 using Sunrise.Server.Tests.Core.Services;
 using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 

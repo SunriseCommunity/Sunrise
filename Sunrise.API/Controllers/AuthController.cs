@@ -4,7 +4,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 

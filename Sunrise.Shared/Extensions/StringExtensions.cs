@@ -12,18 +12,9 @@ public static class StringExtensions
 
         return Regex.IsMatch(str, pattern);
     }
-    
+
     public static string ToHash(this string s)
     {
         return Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(s))).ToLower();
-    }
-    
-    // TODO: Is duplicate of ToHash? 
-    public static string CreateMD5(this string input)
-    {
-        var inputBytes = Encoding.ASCII.GetBytes(input);
-        var hash = MD5.HashData(inputBytes);
-
-        return Convert.ToHexString(hash).ToLower();
     }
 }

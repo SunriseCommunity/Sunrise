@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
-using Sunrise.Server.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.User;
-using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Utils.Converters;
 using GameMode = osu.Shared.GameMode;
 

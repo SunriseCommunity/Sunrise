@@ -4,6 +4,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 
 namespace Sunrise.Shared.Services;
 

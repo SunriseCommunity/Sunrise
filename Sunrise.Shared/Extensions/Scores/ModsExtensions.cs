@@ -1,7 +1,7 @@
 ﻿using osu.Shared;
 using Sunrise.Shared.Enums.Beatmaps;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Scores;
 
 public static class ModsExtensions
 {

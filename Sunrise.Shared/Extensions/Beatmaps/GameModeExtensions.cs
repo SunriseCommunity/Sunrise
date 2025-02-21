@@ -1,7 +1,8 @@
 using osu.Shared;
+using Sunrise.Shared.Extensions.Scores;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Shared.Extensions;
+namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class GameModeExtensions
 {
