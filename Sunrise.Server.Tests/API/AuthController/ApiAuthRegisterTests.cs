@@ -213,7 +213,7 @@ public class ApiAuthRegisterTests : ApiTest
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("Username is already taken", error?.Error);
+        Assert.Contains("username already exists", error?.Error);
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class ApiAuthRegisterTests : ApiTest
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("Email already in use", error?.Error);
+        Assert.Contains("email already exists", error?.Error);
     }
 
     [Fact]
@@ -273,7 +273,7 @@ public class ApiAuthRegisterTests : ApiTest
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("Invalid email address", error?.Error);
+        Assert.Contains("Invalid email", error?.Error);
     }
 
     [Fact]

@@ -6,6 +6,7 @@ using Microsoft.Extensions.FileProviders;
 using Prometheus;
 using Sunrise.API.Controllers;
 using Sunrise.Server.Repositories;
+using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
@@ -86,6 +87,8 @@ public static class Bootstrap
 
         builder.Services.AddSingleton<RedisRepository>();
         builder.Services.AddSingleton<DatabaseManager>();
+
+        builder.Services.AddScoped<AuthService>();
     }
 
     public static void WarmUpSingletons(this WebApplication app)

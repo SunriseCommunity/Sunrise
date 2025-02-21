@@ -8,17 +8,17 @@ using Sunrise.Shared.Repositories;
 namespace Sunrise.Server.Controllers;
 
 [Subdomain("c", "c4", "cho")]
-public class BanchoController(ILogger<BanchoController> logger) : ControllerBase
+public class BanchoController(ILogger<BanchoController> logger, AuthService authService) : ControllerBase
 {
     [HttpPost(RequestType.BanchoProcess)]
     public async Task<IActionResult> Process([FromHeader(Name = "osu-token")] string? token)
     {
         if (token == null)
-            return await AuthService.Login(Request, Response);
+            return await authService.Login(Request, Response);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(out var session, token: token) || session == null)
-            return AuthService.Relogin();
+            return authService.Relogin();
 
         await using var buffer = new MemoryStream();
         await Request.Body.CopyToAsync(buffer);

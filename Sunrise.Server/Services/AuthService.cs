@@ -1,23 +1,22 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-using HOPEless.Bancho;
+﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public static class AuthService
+public class AuthService
 {
-    public static async Task<IActionResult> Login(HttpRequest request, HttpResponse response)
+    private readonly UserAuthService _userAuthService = new();
+
+    public async Task<IActionResult> Login(HttpRequest request, HttpResponse response)
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
         var loginRequest = ServerParsers.ParseLogin(sr);
@@ -73,7 +72,7 @@ public static class AuthService
         return await ProceedWithLogin(session);
     }
 
-    private static IActionResult RejectLogin(HttpResponse response, string? reason = null,
+    private IActionResult RejectLogin(HttpResponse response, string? reason = null,
         LoginResponse code = LoginResponse.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
@@ -88,7 +87,7 @@ public static class AuthService
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    public static IActionResult Relogin()
+    public IActionResult Relogin()
     {
         var writer = new PacketHelper();
         writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin
@@ -138,7 +137,7 @@ public static class AuthService
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }
 
-    public static async Task<IActionResult> Register(HttpRequest request)
+    public async Task<IActionResult> Register(HttpRequest request)
     {
         var username = (string)request.Form["user[username]"]!;
         var password = (string)request.Form["user[password]"]!;
@@ -149,42 +148,26 @@ public static class AuthService
         if (string.IsNullOrEmpty(ip.ToString()))
             return new BadRequestObjectResult("Invalid request: Missing IP address");
 
-        var errors = new Dictionary<string, List<string>>
-        {
-            ["username"] = [],
-            ["user_email"] = [],
-            ["password"] = []
-        };
-
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(email))
             return new BadRequestObjectResult("Invalid request: Missing parameters");
 
-        var (isUsernameValid, usernameError) = username.IsValidUsername();
-        if (!isUsernameValid)
-            errors["username"].Add(usernameError ?? "Invalid username");
+        if (request.Form["check"] != "0") return new OkObjectResult("");
 
-        if (!email.IsValidStringCharacters() || !email.IsValidEmailCharacters())
-            errors["user_email"].Add("Invalid email. It should be a valid email address.");
+        var (newUser, errors) = await _userAuthService.RegisterUser(username, password, email, ip);
 
-        var (isPasswordValid, passwordError) = password.IsValidPassword();
-        if (!isPasswordValid)
-            errors["password"].Add(passwordError ?? "Invalid password");
+        var noErrorsFound = errors is { Count: 0 };
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        if (newUser == null && errors == null || noErrorsFound)
+        {
+            errors ??= new Dictionary<string, List<string>>
+            {
+                ["username"] = []
+            };
 
-        var foundUserByEmail = await database.UserService.GetUser(email: email);
+            errors["username"].Add("Unknown error");
+        }
 
-        if (foundUserByEmail != null) errors["user_email"].Add("User with this email already exists.");
-
-        var foundUserByUsername = await database.UserService.GetUser(username: username);
-
-        if (foundUserByUsername != null && foundUserByUsername.IsActive()) errors["username"].Add("User with this username already exists.");
-
-        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip.ToString());
-        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
-            errors["username"].Add("Please don't create multiple accounts. You have been warned.");
-
-        if (errors.Any(x => x.Value.Count > 0))
+        if (errors != null && errors.Any(x => x.Value.Count > 0))
             return new BadRequestObjectResult(new
             {
                 form_error = new
@@ -192,32 +175,6 @@ public static class AuthService
                     user = errors
                 }
             });
-
-        if (request.Form["check"] != "0") return new OkObjectResult("");
-
-        var passhash = password.GetPassHash();
-        var location = await RegionHelper.GetRegion(ip);
-
-        if (foundUserByUsername != null)
-        {
-            await database.UserService.UpdateUserUsername(
-                foundUserByUsername,
-                foundUserByUsername.Username,
-                foundUserByUsername.Username.SetUsernameAsOld());
-        }
-
-        var newUser = new User
-        {
-            Username = username!,
-            Email = email!,
-            Passhash = passhash,
-            Country = RegionHelper.GetCountryCode(location.Country),
-            Privilege = UserPrivilege.User
-        };
-
-        newUser = await database.UserService.InsertUser(newUser);
-
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
 
         return new OkObjectResult("");
     }

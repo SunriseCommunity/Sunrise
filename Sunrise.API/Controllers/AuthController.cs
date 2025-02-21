@@ -4,10 +4,9 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
-using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Helpers.Requests;
+using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 
 namespace Sunrise.API.Controllers;
@@ -16,6 +15,8 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 public class AuthController : ControllerBase
 {
+    private readonly UserAuthService _userAuthService = new();
+
     [HttpPost("token")]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request)
     {
@@ -60,7 +61,7 @@ public class AuthController : ControllerBase
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        if (!ModelState.IsValid || request == null)
+        if (!ModelState.IsValid || request == null || request.RefreshToken == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var newToken = AuthService.RefreshToken(request.RefreshToken);
@@ -73,59 +74,18 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest? request)
     {
-        if (!ModelState.IsValid || request == null)
+        if (!ModelState.IsValid || request?.Username == null || request.Password == null || request.Email == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var ip = RegionHelper.GetUserIpAddress(Request);
 
-        var foundUserByEmail = await database.UserService.GetUser(email: request.Email);
-        if (foundUserByEmail != null)
-            return BadRequest(new ErrorResponse("Email already in use"));
+        var (newUser, errors) = await _userAuthService.RegisterUser(request.Username, request.Password, request.Email, ip);
 
-        var (isUsernameValid, usernameError) = request.Username.IsValidUsername();
-        if (!isUsernameValid)
-            return BadRequest(new ErrorResponse(usernameError ?? "Invalid username"));
-
-        if (!request.Email.IsValidStringCharacters() || !request.Email.IsValidEmailCharacters())
-            return BadRequest(new ErrorResponse("Invalid email address."));
-
-        var (isPasswordValid, passwordError) = request.Password.IsValidPassword();
-        if (!isPasswordValid)
-            return BadRequest(new ErrorResponse(passwordError ?? "Invalid password"));
-
-        var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
-
-        if (Configuration.BannedIps.Contains(location.Ip))
-            return BadRequest(new ErrorResponse("Your IP address is banned. Please contact support."));
-
-        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(location.Ip);
-        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
-            return BadRequest(new ErrorResponse("Please don't create multiple accounts. You have been warned."));
-
-        var foundUserByUsername = await database.UserService.GetUser(username: request.Username);
-        if (foundUserByUsername != null && foundUserByUsername.IsActive())
-            return BadRequest(new ErrorResponse("Username is already taken"));
-
-        if (foundUserByUsername != null)
+        if (newUser == null)
         {
-            await database.UserService.UpdateUserUsername(
-                foundUserByUsername,
-                foundUserByUsername.Username,
-                foundUserByUsername.Username.SetUsernameAsOld());
+            var errorString = errors?.FirstOrDefault(x => x.Value.Count != 0).Value.FirstOrDefault() ?? "Unknown error occured.";
+            return BadRequest(new ErrorResponse(errorString));
         }
-
-        var newUser = new User
-        {
-            Username = request.Username,
-            Passhash = request.Password.GetPassHash(),
-            Country = RegionHelper.GetCountryCode(location.Country),
-            Email = request.Email,
-            Privilege = UserPrivilege.User
-        };
-
-        newUser = await database.UserService.InsertUser(newUser);
-
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, location.Ip, newUser);
 
         var token = AuthService.GenerateTokens(newUser.Id);
 

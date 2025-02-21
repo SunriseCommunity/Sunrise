@@ -13,6 +13,9 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("osu")]
 public class WebController : ControllerBase
 {
+    private readonly AuthService _authService = new();
+
+
     [HttpPost(RequestType.OsuScreenshot)]
     public async Task<IActionResult> OsuScreenshot(
         [FromForm(Name = "u")] string username,
@@ -173,7 +176,7 @@ public class WebController : ControllerBase
     [HttpPost(RequestType.PostRegister)]
     public async Task<IActionResult> Register()
     {
-        var result = await AuthService.Register(Request);
+        var result = await _authService.Register(Request);
         return result is BadRequestObjectResult ? result : Ok(result);
     }
 
