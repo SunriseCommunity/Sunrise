@@ -144,11 +144,11 @@ public static class ScoreService
                 .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
         var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
-        var newPBest = updatedScores.GetPersonalBestOf(score.UserId);
+        var newPBest = updatedScores.GetPersonalBestOf(score.UserId) ?? score;
 
         userStats.LocalProperties.Rank = await database.UserService.Stats.GetUserRank(userStats.UserId, userStats.GameMode);
 
-        if (newPBest?.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
+        if (newPBest.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
             channels.GetChannel(session, "#announce")

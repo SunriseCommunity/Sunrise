@@ -47,9 +47,19 @@ public class BestCommand : IChatCommand
         {
             var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
 
-            if (beatmapSet == null) continue;
+            if (beatmapSet == null)
+            {
+                ChatCommandRepository.SendMessage(session, "BeatmapSet not found.");
+                continue;
+            }
 
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == score.BeatmapId);
+
+            if (beatmap == null)
+            {
+                ChatCommandRepository.SendMessage(session, "Beatmap not found.");
+                continue;
+            }
 
             // Mods can change difficulty rating, important to recalculate it for right medal unlocking
             if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)

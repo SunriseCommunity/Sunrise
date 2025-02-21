@@ -36,6 +36,12 @@ public class RecentScoreCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == lastScore.BeatmapId);
 
+        if (beatmap == null)
+        {
+            ChatCommandRepository.SendMessage(session, "No beatmap found.");
+            return;
+        }
+
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)lastScore.GameMode != beatmap.ModeInt || (int)lastScore.Mods > 0)
             beatmap.DifficultyRating = await Calculators
