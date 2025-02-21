@@ -3,6 +3,7 @@ using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Users;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.Extensions;
