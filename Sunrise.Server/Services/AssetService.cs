@@ -6,12 +6,12 @@ using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Server.Services;
 
-public static class AssetService
+public class AssetService
 {
     private const int Megabyte = 1024 * 1024;
     private static string DataPath => Configuration.DataPath;
 
-    public static async Task<byte[]?> GetOsuReplayBytes(int scoreId)
+    public async Task<byte[]?> GetOsuReplayBytes(int scoreId)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
@@ -24,7 +24,7 @@ public static class AssetService
         return replay;
     }
 
-    public static string[] GetSeasonalBackgrounds()
+    public string[] GetSeasonalBackgrounds()
     {
         var basePath = Path.Combine(DataPath, "Files/SeasonalBackgrounds");
 
@@ -41,7 +41,7 @@ public static class AssetService
         return seasonalBackgrounds;
     }
 
-    public static async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot,
+    public async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot,
         CancellationToken ct)
     {
         using var buffer = new MemoryStream();
@@ -59,7 +59,7 @@ public static class AssetService
         return ($"https://a.{Configuration.Domain}/ss/{screenshotId}.jpg", null);
     }
 
-    public static async Task<(byte[]?, string?)> GetScreenshot(int screenshotId)
+    public async Task<(byte[]?, string?)> GetScreenshot(int screenshotId)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var screenshot = await database.UserService.Files.GetScreenshot(screenshotId);
@@ -67,7 +67,7 @@ public static class AssetService
         return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);
     }
 
-    public static async Task<(byte[]?, string?)> GetAvatar(int userId, bool toFallback = true)
+    public async Task<(byte[]?, string?)> GetAvatar(int userId, bool toFallback = true)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var screenshot = await database.UserService.Files.GetAvatar(userId, toFallback);
@@ -75,7 +75,7 @@ public static class AssetService
         return screenshot == null ? (null, "Avatar not found") : (screenshot, null);
     }
 
-    public static async Task<(byte[]?, string?)> GetBanner(int userId, bool toFallback = true)
+    public async Task<(byte[]?, string?)> GetBanner(int userId, bool toFallback = true)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var screenshot = await database.UserService.Files.GetBanner(userId, toFallback);
@@ -83,12 +83,12 @@ public static class AssetService
         return screenshot == null ? (null, "Banner not found") : (screenshot, null);
     }
 
-    public static async Task<byte[]?> GetEventBanner()
+    public async Task<byte[]?> GetEventBanner()
     {
         return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"));
     }
 
-    public static async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
+    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var medalImage = await database.MedalService.GetMedalImage(medalFileId, isHighRes);
@@ -99,7 +99,7 @@ public static class AssetService
         return medalImage ?? await LocalStorageRepository.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
     }
 
-    public static async Task<byte[]?> GetPeppyImage()
+    public async Task<byte[]?> GetPeppyImage()
     {
         return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/Peppy.jpg"));
     }

@@ -10,9 +10,9 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Services;
 
-public static class BeatmapService
+public class BeatmapService
 {
-    public static async Task<string> SearchBeatmap(Session session, int? setId, int? beatmapId, string? beatmapHash)
+    public async Task<string> SearchBeatmap(Session session, int? setId, int? beatmapId, string? beatmapHash)
     {
         var beatmapSet =
             await BeatmapRepository.GetBeatmapSet(session, setId, beatmapId: beatmapId, beatmapHash: beatmapHash);
@@ -20,7 +20,7 @@ public static class BeatmapService
         return beatmapSet != null ? beatmapSet.ToSearchResult(session) : "0";
     }
 
-    public static async Task<string?> SearchBeatmapSet(
+    public async Task<string?> SearchBeatmapSet(
         Session session,
         int page,
         string query,
@@ -43,7 +43,7 @@ public static class BeatmapService
         return string.Join("\n", result);
     }
 
-    private static async Task<List<BeatmapSet>?> SearchBeatmapSet(Session session, string? rankedStatus, string mode,
+    private async Task<List<BeatmapSet>?> SearchBeatmapSet(Session session, string? rankedStatus, string mode,
         int page, string query)
     {
         var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session,

@@ -6,9 +6,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHealthChecks();
 
-builder.AddSingletons();
+builder.AddServices();
 builder.AddMiddlewares();
-
 
 builder.AddHangfire();
 

@@ -9,7 +9,7 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
-public class DirectController : ControllerBase
+public class DirectController(BeatmapService beatmapService) : ControllerBase
 {
     [HttpGet(RequestType.OsuSearch)]
     public async Task<IActionResult> Search(
@@ -25,7 +25,7 @@ public class DirectController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await BeatmapService.SearchBeatmapSet(session, page + 1, query, mode == "-1" ? "" : mode, ranked);
+        var result = await beatmapService.SearchBeatmapSet(session, page + 1, query, mode == "-1" ? "" : mode, ranked);
 
         if (result == null)
             return BadRequest("no");
@@ -46,7 +46,7 @@ public class DirectController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await BeatmapService.SearchBeatmap(session, setId, beatmapId, beatmapHash);
+        var result = await beatmapService.SearchBeatmap(session, setId, beatmapId, beatmapHash);
 
         return Ok(result);
     }

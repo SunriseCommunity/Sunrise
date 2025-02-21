@@ -13,7 +13,7 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
-public class ScoreController : ControllerBase
+public class ScoreController(ScoreService scoreService, AssetService assetService) : ControllerBase
 {
     [HttpPost(RequestType.OsuSubmitScore)]
     public async Task<IActionResult> Submit(
@@ -41,7 +41,7 @@ public class ScoreController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var result = await ScoreService.SubmitScore(session,
+        var result = await scoreService.SubmitScore(session,
             scoreSerialized,
             beatmapHash,
             scoreTime,
@@ -75,7 +75,7 @@ public class ScoreController : ControllerBase
             return Ok("error: pass");
 
         var result =
-            await ScoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename);
+            await scoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename);
 
         return Ok(result);
     }
@@ -85,7 +85,7 @@ public class ScoreController : ControllerBase
         [FromQuery(Name = "c")] int scoreId
     )
     {
-        var result = await AssetService.GetOsuReplayBytes(scoreId);
+        var result = await assetService.GetOsuReplayBytes(scoreId);
         if (result == null)
             return Ok("error: no-replay");
 

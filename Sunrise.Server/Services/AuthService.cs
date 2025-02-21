@@ -12,11 +12,9 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService
+public class AuthService(UserAuthService userAuthService, UserService userService)
 {
-    private readonly UserAuthService _userAuthService = new();
-
-    public async Task<IActionResult> Login(HttpRequest request, HttpResponse response)
+    public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
         var loginRequest = ServerParsers.ParseLogin(sr);
@@ -25,54 +23,28 @@ public class AuthService
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
+        var (session, error, loginResponseCode) = await userService.GetNewUserSession(loginRequest, ip);
+
+        if (error != null || session == null)
+            return RejectLogin(response, error, loginResponseCode);
+
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var user = await database.UserService.GetUser(username: loginRequest.Username);
-
-        if (user == null)
-            return RejectLogin(response, "User with this username does not exist.");
-
-        if (user.Passhash != loginRequest.PassHash)
-            return RejectLogin(response, "Invalid credentials.");
-
-        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.Admin))
-            return RejectLogin(response,
-                "Server is currently in maintenance mode. Please try again later.",
-                LoginResponse.ServerError);
-
-        if (user.IsRestricted() && await database.UserService.Moderation.IsRestricted(user.Id))
-            return RejectLogin(response, "Your account is restricted. Please contact support for more information.");
-
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
-        var oldSession = sessions.GetSession(userId: user.Id);
-
-        if (oldSession != null)
-        {
-            oldSession.SendNotification("You have been logged in from another location. Please try again later.");
-            sessions.SoftRemoveSession(oldSession);
-        }
-
-        var location = await RegionHelper.GetRegion(ip);
-        location.TimeOffset = loginRequest.UtcOffset;
-
-        await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, ip.ToString(), true, sr);
-
-
-        var session = sessions.CreateSession(user, location, loginRequest);
-
-        if (user.AccountStatus == UserAccountStatus.Disabled)
-        {
-            await database.UserService.Moderation.EnableUser(user.Id);
-            session.SendNotification("Welcome back! Your account has been re-enabled. It may take a few seconds to load your data.");
-        }
+        await database.EventService.UserEvent.CreateNewUserLoginEvent(session.User.Id, ip.ToString(), true, sr);
 
         response.Headers["cho-token"] = session.Token;
 
         return await ProceedWithLogin(session);
     }
 
-    private IActionResult RejectLogin(HttpResponse response, string? reason = null,
+    public FileContentResult Relogin()
+    {
+        var writer = new PacketHelper();
+        writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin
+
+        return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
+    }
+
+    private static FileContentResult RejectLogin(HttpResponse response, string? reason = null,
         LoginResponse code = LoginResponse.InvalidCredentials)
     {
         response.Headers["cho-token"] = "no-token";
@@ -87,15 +59,7 @@ public class AuthService
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    public IActionResult Relogin()
-    {
-        var writer = new PacketHelper();
-        writer.WritePacket(PacketType.ServerRestart, 0); // Forces the client to relogin
-
-        return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
-    }
-
-    private static async Task<IActionResult> ProceedWithLogin(Session session)
+    private static async Task<FileContentResult> ProceedWithLogin(Session session)
     {
         session.SendLoginResponse(LoginResponse.Success);
         session.SendProtocolVersion();
@@ -153,7 +117,7 @@ public class AuthService
 
         if (request.Form["check"] != "0") return new OkObjectResult("");
 
-        var (newUser, errors) = await _userAuthService.RegisterUser(username, password, email, ip);
+        var (newUser, errors) = await userAuthService.RegisterUser(username, password, email, ip);
 
         var noErrorsFound = errors is { Count: 0 };
 

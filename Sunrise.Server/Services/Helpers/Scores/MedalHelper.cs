@@ -18,7 +18,6 @@ public class ConditionContext
 }
 
 public static class MedalHelper
-
 {
     public static async Task<string> GetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
     {

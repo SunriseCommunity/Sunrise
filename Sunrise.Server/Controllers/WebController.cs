@@ -11,11 +11,8 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
-public class WebController : ControllerBase
+public class WebController(AuthService authService, UserService userService, AssetService assetService) : ControllerBase
 {
-    private readonly AuthService _authService = new();
-
-
     [HttpPost(RequestType.OsuScreenshot)]
     public async Task<IActionResult> OsuScreenshot(
         [FromForm(Name = "u")] string username,
@@ -26,7 +23,7 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        if (await AssetService.SaveScreenshot(session,
+        if (await assetService.SaveScreenshot(session,
                 screenshot,
                 HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
         {
@@ -46,7 +43,7 @@ public class WebController : ControllerBase
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var friends = await BanchoService.GetFriends(session.User.Username);
+        var friends = await userService.GetFriends(session.User.Username);
         if (friends == null)
             return BadRequest("error: no");
 
@@ -136,7 +133,7 @@ public class WebController : ControllerBase
         if (!Configuration.UseCustomBackgrounds)
             return Redirect($"https://osu.ppy.sh/web/{RequestType.OsuGetSeasonalBackground}");
 
-        var result = AssetService.GetSeasonalBackgrounds();
+        var result = assetService.GetSeasonalBackgrounds();
         return Ok(result);
     }
 
@@ -176,14 +173,14 @@ public class WebController : ControllerBase
     [HttpPost(RequestType.PostRegister)]
     public async Task<IActionResult> Register()
     {
-        var result = await _authService.Register(Request);
+        var result = await authService.Register(Request);
         return result is BadRequestObjectResult ? result : Ok(result);
     }
 
     [HttpGet("/wiki/en/Do_you_really_want_to_ask_peppy")]
     public async Task<IActionResult> AskPeppy()
     {
-        var image = await AssetService.GetPeppyImage();
+        var image = await assetService.GetPeppyImage();
         if (image == null)
             return NotFound();
 

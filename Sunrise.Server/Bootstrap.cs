@@ -11,6 +11,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server;
 
@@ -78,7 +79,8 @@ public static class Bootstrap
         });
     }
 
-    public static void AddSingletons(this WebApplicationBuilder builder)
+
+    public static void AddServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChatChannelRepository>();
@@ -88,7 +90,13 @@ public static class Bootstrap
         builder.Services.AddSingleton<RedisRepository>();
         builder.Services.AddSingleton<DatabaseManager>();
 
+        builder.Services.AddScoped<AssetService>();
         builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<BanchoService>();
+        builder.Services.AddScoped<BeatmapService>();
+        builder.Services.AddScoped<ScoreService>();
+        builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<UserAuthService>();
     }
 
     public static void WarmUpSingletons(this WebApplication app)

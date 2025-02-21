@@ -14,9 +14,9 @@ using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Server.Services;
 
-public static class ScoreService
+public class ScoreService
 {
-    public static async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
+    public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
@@ -158,7 +158,7 @@ public static class ScoreService
         return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest);
     }
 
-    public static async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
+    public async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();

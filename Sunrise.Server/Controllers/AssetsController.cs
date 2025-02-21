@@ -9,13 +9,13 @@ using Sunrise.Shared.Utils.Tools;
 namespace Sunrise.Server.Controllers;
 
 [Subdomain("a", "assets")]
-public class AssetsController : ControllerBase
+public class AssetsController(BanchoService banchoService, AssetService assetService) : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetAvatar(id, fallToDefault ?? true) is var (avatar, error) &&
+        if (await assetService.GetAvatar(id, fallToDefault ?? true) is var (avatar, error) &&
             (error != null || avatar == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, error);
@@ -28,7 +28,7 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.GetBanner)]
     public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetBanner(id, fallToDefault ?? true) is var (banner, error) &&
+        if (await assetService.GetBanner(id, fallToDefault ?? true) is var (banner, error) &&
             (error != null || banner == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, error);
@@ -42,7 +42,7 @@ public class AssetsController : ControllerBase
     [Route(RequestType.GetScreenshot)]
     public async Task<IActionResult> GetScreenshot(int id)
     {
-        if (await AssetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
+        if (await assetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, error);
             return NotFound();
@@ -67,7 +67,7 @@ public class AssetsController : ControllerBase
             return Redirect(
                 $"{Configuration.MedalMirrorUrl}{medal.FileUrl}{(isHighRes ? "@2x" : string.Empty)}.png");
 
-        var data = await AssetService.GetMedalImage(medal.FileId, isHighRes);
+        var data = await assetService.GetMedalImage(medal.FileId, isHighRes);
         if (data == null)
             return NotFound();
 
@@ -77,13 +77,13 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.MenuContent)]
     public IActionResult GetMenuContent()
     {
-        return Ok(BanchoService.GetCurrentEventJson());
+        return Ok(banchoService.GetCurrentEventJson());
     }
 
     [HttpGet(RequestType.EventBanner)]
     public async Task<IActionResult> GetEventBanner()
     {
-        var data = await AssetService.GetEventBanner();
+        var data = await assetService.GetEventBanner();
         if (data == null)
             return NotFound();
 
