@@ -1,18 +1,30 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Repositories;
 
-namespace Sunrise.Shared.Helpers.Requests;
+namespace Sunrise.Shared.Services;
 
-public static class RegionHelper
+public class RegionService(RedisRepository redisRepository)
 {
     private const string Api = "http://ip-api.com/json/";
 
-    public static async Task<Location> GetRegion(IPAddress ip)
+    public async Task<Location> GetRegion(IPAddress ip)
     {
+        var cachedRegion = await redisRepository.Get<Location>(RedisKey.LocationFromIp(ip.ToString()));
+
+        if (cachedRegion != null)
+        {
+            return cachedRegion;
+        }
+
         var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}") ?? new Location();
         location.Ip = ip.ToString();
+
+        await redisRepository.Set(RedisKey.LocationFromIp(location.Ip), location);
 
         return location;
     }
@@ -33,16 +45,6 @@ public static class RegionHelper
         if (string.IsNullOrEmpty(ipAddress)) ipAddress = request.HttpContext.Connection.RemoteIpAddress?.ToString();
 
         return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
-    }
-
-    public static bool IsFromDocker(this IPAddress ip)
-    {
-        return ip.MapToIPv4().ToString().StartsWith("172.");
-    }
-
-    public static bool IsFromLocalNetwork(this IPAddress ip)
-    {
-        return ip.Equals(IPAddress.Loopback);
     }
 
     public static short GetCountryCode(string cc)

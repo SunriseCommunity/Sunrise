@@ -8,7 +8,7 @@ using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
 
-namespace Sunrise.Shared.Helpers.Requests;
+namespace Sunrise.Shared.Helpers;
 
 public class RequestsHelper
 {

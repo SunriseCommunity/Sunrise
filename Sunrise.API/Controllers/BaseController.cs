@@ -5,8 +5,8 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 using RateLimiter = System.Threading.RateLimiting.RateLimiter;
 
 namespace Sunrise.API.Controllers;
@@ -26,7 +26,7 @@ public class BaseController(IMemoryCache cache) : ControllerBase
     [Route("/limits")]
     public async Task<IActionResult> GetLimits()
     {
-        var key = RegionHelper.GetUserIpAddress(Request);
+        var key = RegionService.GetUserIpAddress(Request);
         var limiter = cache.Get(key) as RateLimiter;
         var statistics = limiter?.GetStatistics();
 

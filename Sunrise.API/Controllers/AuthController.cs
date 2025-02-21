@@ -5,7 +5,6 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 
@@ -13,9 +12,8 @@ namespace Sunrise.API.Controllers;
 
 [Route("/auth")]
 [Subdomain("api")]
-public class AuthController : ControllerBase
+public class AuthController(UserAuthService userAuthService, RegionService regionService) : ControllerBase
 {
-    private readonly UserAuthService _userAuthService = new();
 
     [HttpPost("token")]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request)
@@ -35,7 +33,7 @@ public class AuthController : ControllerBase
             return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
         }
 
-        var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
+        var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
@@ -57,7 +55,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
-        var location = await RegionHelper.GetRegion(RegionHelper.GetUserIpAddress(Request));
+        var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
@@ -77,9 +75,9 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid || request?.Username == null || request.Password == null || request.Email == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var ip = RegionHelper.GetUserIpAddress(Request);
+        var ip = RegionService.GetUserIpAddress(Request);
 
-        var (newUser, errors) = await _userAuthService.RegisterUser(request.Username, request.Password, request.Email, ip);
+        var (newUser, errors) = await userAuthService.RegisterUser(request.Username, request.Password, request.Email, ip);
 
         if (newUser == null)
         {

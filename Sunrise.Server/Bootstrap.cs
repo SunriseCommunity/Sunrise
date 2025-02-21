@@ -96,7 +96,9 @@ public static class Bootstrap
         builder.Services.AddScoped<BeatmapService>();
         builder.Services.AddScoped<ScoreService>();
         builder.Services.AddScoped<UserService>();
+
         builder.Services.AddScoped<UserAuthService>();
+        builder.Services.AddScoped<RegionService>();
     }
 
     public static void WarmUpSingletons(this WebApplication app)

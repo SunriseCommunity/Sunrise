@@ -8,8 +8,8 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Services;
@@ -127,7 +127,7 @@ public static class AuthService
 
     public static BaseSession GenerateIpSession(HttpRequest request)
     {
-        var ip = RegionHelper.GetUserIpAddress(request);
+        var ip = RegionService.GetUserIpAddress(request);
 
         var user = new User
         {

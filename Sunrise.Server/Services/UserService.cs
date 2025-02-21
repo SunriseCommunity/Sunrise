@@ -2,13 +2,13 @@
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class UserService
+public class UserService(RegionService regionService)
 {
     public async Task<(Session?, string?, LoginResponse)> GetNewUserSession(LoginRequest loginRequest, IPAddress ip)
     {
@@ -39,7 +39,7 @@ public class UserService
             sessions.SoftRemoveSession(oldSession);
         }
 
-        var location = await RegionHelper.GetRegion(ip);
+        var location = await regionService.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
 
         var session = sessions.CreateSession(user, location, loginRequest);

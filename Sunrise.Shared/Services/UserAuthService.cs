@@ -4,11 +4,10 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Helpers.Requests;
 
 namespace Sunrise.Shared.Services;
 
-public class UserAuthService
+public class UserAuthService(RegionService regionService)
 {
     public async Task<(User?, Dictionary<string, List<string>>?)> RegisterUser(string username, string password, string email, IPAddress ip)
     {
@@ -51,7 +50,7 @@ public class UserAuthService
             return (null, errors);
 
         var passhash = password.GetPassHash();
-        var location = await RegionHelper.GetRegion(ip);
+        var location = await regionService.GetRegion(ip);
 
         if (foundUserByUsername != null)
         {
@@ -66,7 +65,7 @@ public class UserAuthService
             Username = username,
             Email = email,
             Passhash = passhash,
-            Country = RegionHelper.GetCountryCode(location.Country),
+            Country = RegionService.GetCountryCode(location.Country),
             Privilege = UserPrivilege.User
         };
 

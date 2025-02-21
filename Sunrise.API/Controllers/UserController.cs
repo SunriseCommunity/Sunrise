@@ -10,9 +10,9 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.User;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -509,7 +509,7 @@ public class UserController : ControllerBase
 
         await database.UserService.UpdateUser(session.User);
 
-        var ip = RegionHelper.GetUserIpAddress(Request);
+        var ip = RegionService.GetUserIpAddress(Request);
         await database.EventService.UserEvent.CreateNewUserChangePasswordEvent(session.User.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
 
         return new OkResult();
@@ -553,7 +553,7 @@ public class UserController : ControllerBase
         var oldUsername = session.User.Username;
         session.User.Username = request.NewUsername;
 
-        var ip = RegionHelper.GetUserIpAddress(Request);
+        var ip = RegionService.GetUserIpAddress(Request);
         await database.UserService.UpdateUserUsername(session.User, oldUsername, request.NewUsername, null, ip.ToString());
 
         return new OkResult();

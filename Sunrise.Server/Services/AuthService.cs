@@ -5,7 +5,6 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
-using Sunrise.Shared.Helpers.Requests;
 using Sunrise.Shared.Objects.Session;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -18,7 +17,7 @@ public class AuthService(UserAuthService userAuthService, UserService userServic
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
         var loginRequest = ServerParsers.ParseLogin(sr);
-        var ip = RegionHelper.GetUserIpAddress(request);
+        var ip = RegionService.GetUserIpAddress(request);
 
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
@@ -107,7 +106,7 @@ public class AuthService(UserAuthService userAuthService, UserService userServic
         var password = (string)request.Form["user[password]"]!;
         var email = (string)request.Form["user[user_email]"]!;
 
-        var ip = RegionHelper.GetUserIpAddress(request);
+        var ip = RegionService.GetUserIpAddress(request);
 
         if (string.IsNullOrEmpty(ip.ToString()))
             return new BadRequestObjectResult("Invalid request: Missing IP address");

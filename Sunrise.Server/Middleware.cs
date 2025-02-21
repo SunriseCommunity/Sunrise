@@ -3,7 +3,8 @@ using System.Threading.RateLimiting;
 using Hangfire.Dashboard;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Helpers.Requests;
+using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server;
 
@@ -13,7 +14,7 @@ public sealed class Middleware(
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        var ip = RegionHelper.GetUserIpAddress(context.Request);
+        var ip = RegionService.GetUserIpAddress(context.Request);
 
         var path = context.Request.Path;
 
@@ -80,7 +81,7 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
     {
-        var ip = RegionHelper.GetUserIpAddress(context.GetHttpContext().Request);
+        var ip = RegionService.GetUserIpAddress(context.GetHttpContext().Request);
 
         return ip.IsFromLocalNetwork() ||
                ip.IsFromDocker();
