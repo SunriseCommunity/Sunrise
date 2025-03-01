@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Prometheus;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Objects.Keys;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Application;
 
@@ -14,7 +14,7 @@ public static class SunriseMetrics
         "Counts the total number of handled packets",
         new CounterConfiguration
         {
-            LabelNames = ["packet_type", "username", "user_id"]
+            LabelNames = ["packet_type", "user_id"]
         });
 
     private static readonly Counter ExternalApiRequestsCounter = Metrics.CreateCounter(
@@ -22,7 +22,7 @@ public static class SunriseMetrics
         "Counts the total number of external API requests",
         new CounterConfiguration
         {
-            LabelNames = ["api_type", "api_server", "username", "user_id"]
+            LabelNames = ["api_type", "api_server", "user_id"]
         });
 
     private static readonly Counter RequestReturnedErrorCounter = Metrics.CreateCounter(
@@ -30,15 +30,14 @@ public static class SunriseMetrics
         "Counts the total number of requests that returned an error",
         new CounterConfiguration
         {
-            LabelNames = ["request_type", "username", "user_id", "error_message"]
+            LabelNames = ["request_type", "user_id", "error_message"]
         });
 
     public static void PacketHandlingCounterInc(BanchoPacket packet, Session session)
     {
         PacketHandlingCounter.WithLabels(
             packet.Type.ToString(),
-            session.User.Username,
-            session.User.Id.ToString()
+            session.UserId.ToString()
         ).Inc();
     }
 
@@ -47,8 +46,7 @@ public static class SunriseMetrics
         ExternalApiRequestsCounter.WithLabels(
             type.ToString(),
             server.ToString(),
-            session.User.Username,
-            session.User.Id.ToString()
+            session.UserId.ToString()
         ).Inc();
     }
 
@@ -64,8 +62,7 @@ public static class SunriseMetrics
 
         RequestReturnedErrorCounter.WithLabels(
             requestType,
-            session?.User.Username ?? "Anonymous Request",
-            session?.User.Id.ToString() ?? "-1",
+            session?.UserId.ToString() ?? "-1",
             errorMessage ?? "Not specified"
         ).Inc();
     }
