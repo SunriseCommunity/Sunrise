@@ -1,29 +1,34 @@
 ﻿using osu.Shared;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Server.Services.Helpers.Scores;
 
 public static class SubmitScoreHelper
 {
-    private const string MetricsError = "Score {0} by {1} ({2}) rejected with reason: {3}";
+    private const string MetricsError = "Score {0} by (user id: {1}) rejected with reason: {2}";
 
     public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
+        // TODO: Announce gamemode if not standard for beatmap, also write which mods were used 
+        // TODO: Use string format
+        
         return
-            $"[https://osu.{Configuration.Domain}/user/{score.UserId} {session.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+            $"[https://{Configuration.Domain}/user/{score.UserId} {score.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
     }
 
     public static void ReportRejectionToMetrics(Session session, string scoreData, string reason)
     {
-        var message = string.Format(MetricsError, scoreData, session.User.Username, session.User.Id, reason);
+        var message = string.Format(MetricsError, scoreData, session.UserId, reason);
         SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
     }
 
@@ -35,7 +40,13 @@ public static class SubmitScoreHelper
             return;
         }
 
-        if (prevPBest is null || score.TotalScore > prevPBest.TotalScore)
+        var scores = new List<Score> { score };
+        if (prevPBest != null)
+            scores.Add(prevPBest);
+
+        var bestScore = scores.SortScoresByTheirScoreValue().FirstOrDefault();
+        
+        if (bestScore == score)
         {
             score.SubmissionStatus = SubmissionStatus.Best;
             return;
@@ -47,7 +58,14 @@ public static class SubmitScoreHelper
     public static bool IsScoreValid(Session session, Score score, string clientHash,
         string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
     {
-        var computedOnlineHash = score.ComputeOnlineHash(session.User.Username, clientHash, storyboardHash);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var user = database.Users.GetUser(id: score.UserId).Result;
+        if (user == null)
+            return false;
+        
+        var computedOnlineHash = score.ComputeOnlineHash(user.Username, clientHash, storyboardHash);
 
         var checks = new[]
         {
@@ -68,23 +86,20 @@ public static class SubmitScoreHelper
         return false;
     }
 
-    public static async Task<string> GetScoreSubmitResponse(Beatmap beatmap, UserStats user, UserStats prevUser,
+    public static async Task<string> GetScoreSubmitResponse(Beatmap beatmap, UserStats userStats, UserStats prevUserStats,
         Score newScore,
-        Score? prevScore)
+        Score? prevScore, string? newAchievements = null)
     {
-        var userUrl = $"https://{Configuration.Domain}/user/{user.Id}";
+        var userUrl = $"https://{Configuration.Domain}/user/{userStats.UserId}";
         var dontShowPp = beatmap.Status != BeatmapStatus.Ranked && beatmap.Status != BeatmapStatus.Approved;
 
-        // TODO: Change playcount and passcount to be from out db
         var beatmapInfo =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
         var scoreInfo = string.Join("|", GetChart(prevScore, newScore, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
-                         string.Join("|", GetChart(prevUser, user));
-
-        var newAchievements = await MedalHelper.GetNewMedals(newScore, beatmap, user);
-
+                         string.Join("|", GetChart(prevUserStats, userStats));
+        
         return
             $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
     }
