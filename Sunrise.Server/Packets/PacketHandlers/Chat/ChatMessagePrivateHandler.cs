@@ -3,8 +3,9 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects.Chat;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Chat;
@@ -17,10 +18,17 @@ public class ChatMessagePrivateHandler : IPacketHandler
 
     public async Task Handle(BanchoPacket packet, Session session)
     {
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                
+        var user = await database.Users.GetUser(session.UserId);
+        if (user == null)
+            return;
+        
         var message = new BanchoChatMessage(packet.Data)
         {
-            Sender = session.User.Username,
-            SenderId = session.User.Id
+            Sender = user.Username,
+            SenderId = user.Id
         };
 
         if (!_rateLimiter.CanSend(session)) return;
@@ -34,29 +42,32 @@ public class ChatMessagePrivateHandler : IPacketHandler
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        if (!sessions.TryGetSession(out var receiver, message.Channel) || receiver == null) return;
+        if (!sessions.TryGetSession(username: message.Channel, null, out var receiver) || receiver == null) return;
+        
+        var receiverUser = await database.Users.GetUser(receiver.UserId);
+        if (receiverUser == null)
+            return;
 
-        if (receiver.Attributes.AwayMessage is not null)
+        if (receiver.Attributes.AwayMessage is not null )
         {
             session.WritePacket(PacketType.ServerChatMessage,
                 new BanchoChatMessage
                 {
                     Sender = Configuration.BotUsername,
                     Channel = Configuration.BotUsername,
-                    Message = $"{receiver.User.Username} is away: {receiver.Attributes.AwayMessage}"
+                    Message = $"{receiverUser.Username} is away: {receiver.Attributes.AwayMessage}"
                 });
             return;
         }
 
-        if (receiver is { Attributes.IgnoreNonFriendPm: false } ||
-            receiver?.User.FriendsList.Contains(session.User.Id) == true)
+        if (receiver is { Attributes.IgnoreNonFriendPm: false } || receiverUser.FriendsList.Contains(session.UserId))
             receiver.WritePacket(PacketType.ServerChatMessage, message);
 
-        if (receiver != null && receiver.User.SilencedUntil > DateTime.UtcNow)
+        if (receiverUser.SilencedUntil > DateTime.UtcNow)
             session.WritePacket(PacketType.ServerChatPmTargetSilenced,
                 new BanchoChatMessage
                 {
-                    Channel = receiver.User.Username
+                    Channel = receiverUser.Username
                 });
     }
 }

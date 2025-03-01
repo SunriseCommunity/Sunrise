@@ -2,7 +2,7 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
 using Sunrise.Server.Attributes;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Multiplayer;
 

@@ -1,7 +1,7 @@
 using HOPEless.Bancho;
 using HOPEless.osu;
 using Sunrise.Server.Attributes;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Multiplayer;
 

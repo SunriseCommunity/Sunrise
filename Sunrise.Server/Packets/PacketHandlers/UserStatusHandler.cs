@@ -4,7 +4,7 @@ using HOPEless.osu;
 using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers;

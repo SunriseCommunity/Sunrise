@@ -1,6 +1,6 @@
 using HOPEless.Bancho;
 using Sunrise.Server.Attributes;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Spectate;
 

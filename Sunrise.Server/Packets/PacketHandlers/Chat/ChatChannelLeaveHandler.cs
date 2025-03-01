@@ -2,7 +2,7 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Chat;

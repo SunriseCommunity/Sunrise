@@ -2,7 +2,7 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Spectate;
@@ -21,7 +21,7 @@ public class SpectateStartHandler : IPacketHandler
         session.Spectating = targetSession;
 
         var chatChannels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
-        chatChannels.JoinChannel($"#spectator_{targetSession?.User.Id}", session, true);
+        chatChannels.JoinChannel($"#spectator_{targetSession?.UserId}", session, true);
 
         return Task.CompletedTask;
     }

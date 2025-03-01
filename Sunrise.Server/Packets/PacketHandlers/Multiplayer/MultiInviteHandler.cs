@@ -3,7 +3,7 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects.Chat;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Multiplayer;
@@ -25,7 +25,7 @@ public class MultiInviteHandler : IPacketHandler
         if (inviteeSession == null)
             return Task.CompletedTask;
 
-        if (inviteeSession.User.Username == Configuration.BotUsername)
+        if (inviteeSession.Attributes.IsBot)
             session.SendChannelMessage(Configuration.BotUsername,
                 "Thanks for the invite, but if I join, who will moderate the chat?");
 

@@ -2,7 +2,7 @@ using HOPEless.Bancho;
 using osu.Shared.Serialization;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Packets.PacketHandlers;
@@ -24,7 +24,7 @@ public class UserStatsRequestHandler : IPacketHandler
             ids.Add(reader.ReadInt32());
         }
 
-        ids.Remove(session.User.Id);
+        ids.Remove(session.UserId);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 

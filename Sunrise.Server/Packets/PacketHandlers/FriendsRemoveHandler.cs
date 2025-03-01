@@ -3,7 +3,7 @@ using HOPEless.Bancho.Objects;
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Packets.PacketHandlers;
 
@@ -14,8 +14,15 @@ public class FriendsRemoveHandler : IPacketHandler
     {
         var friendId = new BanchoInt(packet.Data);
 
-        session.User.RemoveFriend(friendId.Value);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                
+        var user = await database.Users.GetUser(session.UserId);
+        if (user == null)
+            return;
 
-        await ServicesProviderHolder.GetRequiredService<DatabaseManager>().UserService.UpdateUser(session.User);
+        user.RemoveFriend(friendId.Value);
+
+        await database.Users.UpdateUser(user);
     }
 }

@@ -1,6 +1,6 @@
 using HOPEless.Bancho;
 using Sunrise.Server.Attributes;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Packets.PacketHandlers.Multiplayer;
 
@@ -11,7 +11,7 @@ public class MultiMatchStartHandler : IPacketHandler
     {
         var match = session.Match;
 
-        if (match == null || match?.Match.HostId != session.User.Id)
+        if (match == null || match?.Match.HostId != session.UserId)
             return Task.CompletedTask;
 
         match.StartGame();
