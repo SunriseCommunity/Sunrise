@@ -1,25 +1,23 @@
-using Watson.ORM.Core;
+using System.ComponentModel.DataAnnotations.Schema;
+using Sunrise.Shared.Database.Models.Users;
 
 namespace Sunrise.Shared.Database.Models;
 
 [Table("restriction")]
 public class Restriction
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [ForeignKey("UserId")]
+    public User User { get; set; }
+
     public int UserId { get; set; }
 
-    [Column(DataTypes.Int, false)]
-    public int ExecutorId { get; set; }
+    [ForeignKey("ExecutorId")]
+    public User? Executor { get; set; }
 
-    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
+    public int? ExecutorId { get; set; }
     public string Reason { get; set; }
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime Date { get; set; } = DateTime.UtcNow;
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime ExpiryDate { get; set; } = DateTime.MaxValue;
 }

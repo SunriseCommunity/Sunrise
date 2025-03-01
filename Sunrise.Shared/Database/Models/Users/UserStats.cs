@@ -1,9 +1,13 @@
-﻿using Watson.ORM.Core;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
-namespace Sunrise.Shared.Database.Models.User;
+namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_stats")]
+[Index(nameof(UserId))]
+[Index(nameof(GameMode))]
 public class UserStats
 {
     public UserStats()
@@ -11,51 +15,38 @@ public class UserStats
         LocalProperties = new LocalProperties();
     }
 
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [ForeignKey("UserId")]
+    public User User { get; set; }
+
     public int UserId { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public GameMode GameMode { get; set; }
-
-    [Column(DataTypes.Double, 3, 2, false)]
     public double Accuracy { get; set; }
 
-    [Column(DataTypes.Long, false)]
+    [Column(TypeName = "BIGINT")]
     public long TotalScore { get; set; }
 
-    [Column(DataTypes.Long, false)]
+    [Column(TypeName = "BIGINT")]
     public long RankedScore { get; set; }
 
-    [Column(DataTypes.Int, false)]
     public int PlayCount { get; set; }
-
-    [Column(DataTypes.Double, int.MaxValue, int.MaxValue, false)]
     public double PerformancePoints { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int MaxCombo { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int PlayTime { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int TotalHits { get; set; }
 
-    [Column(DataTypes.Long)]
+    [Column(TypeName = "BIGINT")]
     public long? BestGlobalRank { get; set; }
 
-    [Column(DataTypes.DateTime)]
     public DateTime? BestGlobalRankDate { get; set; }
 
-    [Column(DataTypes.Long)]
+    [Column(TypeName = "BIGINT")]
     public long? BestCountryRank { get; set; }
 
-    [Column(DataTypes.DateTime)]
     public DateTime? BestCountryRankDate { get; set; }
 
+    [NotMapped]
     public LocalProperties LocalProperties { get; set; }
 
     public UserStats Clone()

@@ -1,49 +1,33 @@
-﻿using osu.Shared;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using osu.Shared;
 using Sunrise.Shared.Enums.Users;
-using Watson.ORM.Core;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
-namespace Sunrise.Shared.Database.Models.User;
+namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user")]
+[Index(nameof(Username), IsUnique = true)]
+[Index(nameof(Email), IsUnique = true)]
+[Index(nameof(AccountStatus))]
 public class User
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Nvarchar, 64, false)]
     public string Username { get; set; }
 
-    [Column(DataTypes.Nvarchar, 1024, false)]
     public string Email { get; set; }
-
-    [Column(DataTypes.Nvarchar, 64, false)]
     public string Passhash { get; set; }
-
-    [Column(DataTypes.Nvarchar, int.MaxValue)]
     public string? Description { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public short Country { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public UserPrivilege Privilege { get; set; } = UserPrivilege.User;
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
-
-    [Column(DataTypes.DateTime, false)]
-    public DateTime LastOnlineTime { get; set; } =
-        DateTime.UtcNow; // Can be fucked up by outdated cache? Need to investigate
-
-    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
+    public DateTime LastOnlineTime { get; set; } = DateTime.UtcNow;
     public string Friends { get; set; } = string.Empty;
-
-    [Column(DataTypes.Int, false)]
     public UserAccountStatus AccountStatus { get; set; } = UserAccountStatus.Active;
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
 
+    [NotMapped]
     public List<int> FriendsList => Friends.Split(',')
         .Where(x => !string.IsNullOrEmpty(x))
         .Select(int.Parse)
@@ -87,5 +71,10 @@ public class User
     public bool IsActive(bool ignoreRestriction = true)
     {
         return AccountStatus == UserAccountStatus.Active || IsRestricted() && ignoreRestriction;
+    }
+
+    public bool IsUserSunriseBot()
+    {
+        return (Privilege & UserPrivilege.ServerBot) != 0;
     }
 }

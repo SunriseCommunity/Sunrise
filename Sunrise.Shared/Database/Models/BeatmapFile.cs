@@ -1,22 +1,17 @@
-﻿using Watson.ORM.Core;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models;
 
 [Table("beatmap_file")]
+[Index(nameof(BeatmapId), IsUnique = true)]
+[Index(nameof(BeatmapSetId))]
 public class BeatmapFile
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int BeatmapId { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public int BeatmapSetId { get; set; }
-
-    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string Path { get; set; }
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

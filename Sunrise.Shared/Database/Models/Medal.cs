@@ -1,33 +1,27 @@
-﻿using Sunrise.Shared.Enums;
-using Watson.ORM.Core;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Enums;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models;
 
 [Table("medal")]
+[Index(nameof(Category))]
+[Index(nameof(GameMode))]
 public class Medal
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Nvarchar, 1024, false)]
-    public string Name { get; set; }
-
-    [Column(DataTypes.Nvarchar, 1024, false)]
-    public string Description { get; set; }
-
-    [Column(DataTypes.Int)]
+    public required string Name { get; set; }
+    public required string Description { get; set; }
     public GameMode? GameMode { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public MedalCategory Category { get; set; }
-
-    [Column(DataTypes.Nvarchar, 1024)]
     public string? FileUrl { get; set; }
 
-    [Column(DataTypes.Int)]
-    public int FileId { get; set; }
+    [ForeignKey("FileId")]
+    public MedalFile? File { get; set; }
 
-    [Column(DataTypes.Nvarchar, 1024, false)]
-    public string Condition { get; set; }
+    public int? FileId { get; set; }
+    public required string Condition { get; set; }
 }

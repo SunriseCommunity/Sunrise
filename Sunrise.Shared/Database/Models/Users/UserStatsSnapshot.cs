@@ -1,22 +1,22 @@
-﻿using System.Text.Json;
-using Watson.ORM.Core;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
-namespace Sunrise.Shared.Database.Models.User;
+namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_stats_snapshot")]
+[Index(nameof(UserId), nameof(GameMode))]
 public class UserStatsSnapshot
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [ForeignKey("UserId")]
+    public User User { get; set; }
+
     public int UserId { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public GameMode GameMode { get; set; }
-
-    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string SnapshotsJson { get; set; } = "[]";
 
     public void SetSnapshots(List<StatsSnapshot> value)

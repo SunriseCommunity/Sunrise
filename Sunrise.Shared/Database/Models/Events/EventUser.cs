@@ -1,28 +1,26 @@
-﻿using System.Text.Json;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
-using Watson.ORM.Core;
+using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
-namespace Sunrise.Shared.Database.Models.Event;
+namespace Sunrise.Shared.Database.Models.Events;
 
 [Table("event_user")]
+[Index(nameof(EventType), nameof(UserId))]
+[Index(nameof(Ip))]
 public class EventUser
 {
-    [Column(true, DataTypes.Int, false)]
     public int Id { get; set; }
 
-    [Column(DataTypes.Int, false)]
+    [ForeignKey("UserId")]
+    public User User { get; set; }
+
     public int UserId { get; set; }
-
-    [Column(DataTypes.Int, false)]
     public UserEventType EventType { get; set; }
-
-    [Column(DataTypes.Nvarchar, 64, false)]
     public string Ip { get; set; }
-
-    [Column(DataTypes.Nvarchar, int.MaxValue, false)]
     public string JsonData { get; set; }
-
-    [Column(DataTypes.DateTime, false)]
     public DateTime Time { get; set; } = DateTime.UtcNow;
 
     public void SetData<T>(T value)
