@@ -5,7 +5,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -27,7 +27,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => UpdateUsersBestCombo(session.User.Id));
+        BackgroundJob.Enqueue(() => UpdateUsersBestCombo(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -43,18 +43,19 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {
-            var allScores = await database.ScoreService.GetBestScoresByGameMode(mode);
+            var allScores = await database.Scores.GetBestScoresByGameMode(mode); // TODO: Optimise
             var groupedScores = allScores.Where(x => x.IsScoreable).GroupBy(x => x.UserId);
 
             foreach (var group in groupedScores)
             {
                 var bestCombo = group.Max(x => x.MaxCombo);
 
-                var user = await database.UserService.GetUser(group.Key);
+                var user = await database.Users.GetUser(group.Key);
 
                 if (user == null)
                 {
@@ -62,7 +63,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
                     continue;
                 }
 
-                var userStats = await database.UserService.Stats.GetUserStats(user.Id, mode);
+                var userStats = await database.Users.Stats.GetUserStats(user.Id, mode);
 
                 if (userStats == null)
                 {
@@ -74,7 +75,7 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
                 userStats.MaxCombo = bestCombo;
 
-                await database.UserService.Stats.UpdateUserStats(userStats);
+                await database.Users.Stats.UpdateUserStats(userStats, user);
 
                 ChatCommandRepository.TrySendMessage(userId, $"Updated {user.Username} ({user.Id}) best combo to {bestCombo} (previous: {previousBestCombo}) for mode {mode}");
             }

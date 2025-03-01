@@ -6,10 +6,9 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
-using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Converters;
-using Sunrise.Shared.Utils.Performance;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -20,32 +19,32 @@ public class BestCommand : IChatCommand
 
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        var userId = session.User.Id;
+        var userId = session.UserId;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        if (args is { Length: >= 1 })
+        var providedUsername = args?.Length > 0 ? string.Join(" ", args[..]) : null;
+        var user = await database.Users.GetUser(username: providedUsername, id: providedUsername != null ? null : userId);
+
+        if (user == null)
         {
-            var user = await database.UserService.GetUser(username: args[0]);
-
-            if (user == null)
-            {
-                ChatCommandRepository.SendMessage(session, "User not found.");
-                return;
-            }
-
-            userId = user.Id;
+            ChatCommandRepository.SendMessage(session, "User not found.");
+            return;
         }
 
-        var scores = await database.ScoreService.GetUserScores(userId, (GameMode)session.Attributes.Status.PlayMode, ScoreTableType.Best);
+        var (scores, _) = await database.Scores.GetUserScores(userId, (GameMode)session.Attributes.Status.PlayMode, ScoreTableType.Best); // TODO: Should be optimised!
 
         var bestScores = scores.OrderByDescending(x => x.PerformancePoints).Take(5).ToList();
 
-        var result = $"[★ {(args?.Length > 0 ? args[0] : session.User.Username)}'s Best Scores]\n";
+        var result = $"[★ {user.Username}'s Best Scores]\n";
+
+        var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
         foreach (var (score, index) in bestScores.Select((value, i) => (value, i)))
         {
-            var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
+            var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
 
             if (beatmapSet == null)
             {
@@ -63,8 +62,8 @@ public class BestCommand : IChatCommand
 
             // Mods can change difficulty rating, important to recalculate it for right medal unlocking
             if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
-                beatmap.DifficultyRating = await Calculators
-                    .RecalcuteBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+                beatmap.DifficultyRating = await calculatorService
+                    .RecalculateBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
             result +=
                 $"[{index + 1}] [{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {score.Mods.GetModsString()}| GameMode: {score.GameMode} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★\n";

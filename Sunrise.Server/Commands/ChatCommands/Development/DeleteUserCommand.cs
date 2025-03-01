@@ -5,7 +5,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -27,16 +27,17 @@ public class DeleteUserCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundJob.Enqueue(() => DeleteUser(session.User.Id, userId));
+        BackgroundJob.Enqueue(() => DeleteUser(session.UserId, userId));
 
         return Task.CompletedTask;
     }
 
     public async Task DeleteUser(int userId, int requestedUserId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(requestedUserId);
+        var user = await database.Users.GetUser(requestedUserId);
 
         if (user == null)
         {
@@ -44,9 +45,9 @@ public class DeleteUserCommand : IChatCommand
             return;
         }
 
-        var isDeleted = await database.UserService.DeleteUser(user.Id);
+        var deletedUserResult = await database.Users.DeleteUser(user.Id);
 
-        if (!isDeleted)
+        if (deletedUserResult.IsFailure)
         {
             ChatCommandRepository.TrySendMessage(userId, $"Failed to delete user {user.Username} ({requestedUserId}). Please check console for more information.");
             return;

@@ -4,7 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Moderation;
 
@@ -25,9 +25,10 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.Users.GetUser(userId);
 
         if (user == null)
         {
@@ -41,7 +42,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        await database.UserService.Moderation.UnrestrictPlayer(user.Id);
+        await database.Users.Moderation.UnrestrictPlayer(user.Id);
 
         ChatCommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been unrestricted.");
     }

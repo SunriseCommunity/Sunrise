@@ -3,10 +3,10 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -28,7 +28,7 @@ public class AppendNewUserStatsCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => AppendMissingUserStats(session.User.Id));
+        BackgroundJob.Enqueue(() => AppendMissingUserStats(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -42,33 +42,17 @@ public class AppendNewUserStatsCommand : IChatCommand
             userSession.SendBanchoMaintenance();
         }
 
-        var startTime = DateTime.UtcNow;
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var users = await database.UserService.GetAllUsers();
+        var users = await database.Users.GetUsers(); // TODO: Optimise
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {
+            var startTime = DateTime.UtcNow;
             foreach (var user in users)
             {
-                var stats = await database.UserService.Stats.GetUserStats(user.Id, mode);
-
-                if (stats != null)
-                {
-                    continue;
-                }
-
-                var newStats = new UserStats
-                {
-                    UserId = user.Id,
-                    GameMode = mode
-                };
-
-                await database.UserService.Stats.InsertUserStats(newStats);
-
-                ChatCommandRepository.TrySendMessage(userId,
-                    $"User {user.Id} stats for mode {mode} has been created.");
+                await database.Users.Stats.GetUserStats(user.Id, mode);
             }
 
             ChatCommandRepository.TrySendMessage(userId, $"Rechecking {mode} mode is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");

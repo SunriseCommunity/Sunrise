@@ -6,9 +6,9 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
-using Sunrise.Shared.Utils.Performance;
+using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
@@ -33,7 +33,7 @@ public class RecalculateCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => RecalculateUserStats(session.User.Id));
+        BackgroundJob.Enqueue(() => RecalculateUserStats(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -47,11 +47,14 @@ public class RecalculateCommand : IChatCommand
             userSession.SendBanchoMaintenance();
         }
 
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        
         foreach (var mode in Enum.GetValues<GameMode>())
         {
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
-            var stats = await database.UserService.Stats.GetAllUserStats(mode, LeaderboardSortType.Pp);
+            var stats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp); // TODO: Optimise
 
             if (stats.Count == 0)
             {
@@ -63,13 +66,17 @@ public class RecalculateCommand : IChatCommand
 
             foreach (var stat in stats)
             {
-                var pp = await Calculators.CalculateUserWeightedPerformance(stat.UserId, mode);
-                var acc = await Calculators.CalculateUserWeightedAccuracy(stat.UserId, mode);
+                var pp = await calculatorService.CalculateUserWeightedPerformance(stat.UserId, mode);
+                var acc = await calculatorService.CalculateUserWeightedAccuracy(stat.UserId, mode);
 
                 stat.PerformancePoints = pp;
                 stat.Accuracy = acc;
 
-                await database.UserService.Stats.UpdateUserStats(stat);
+                await database.DbContext.Entry(stat).Reference(s => s.User).LoadAsync();
+
+                var user = stat.User;
+
+                await database.Users.Stats.UpdateUserStats(stat, user);
             }
 
             ChatCommandRepository.TrySendMessage(userId,

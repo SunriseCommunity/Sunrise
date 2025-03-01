@@ -1,6 +1,6 @@
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Multiplayer;
 

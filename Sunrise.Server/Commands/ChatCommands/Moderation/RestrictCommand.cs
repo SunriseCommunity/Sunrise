@@ -4,7 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Moderation;
 
@@ -33,9 +33,10 @@ public class RestrictCommand : IChatCommand
 
         var reason = string.Join(" ", args[1..]);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.Users.GetUser(userId);
 
         if (user == null)
         {
@@ -49,9 +50,9 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        await database.UserService.Moderation.RestrictPlayer(user.Id, session.User.Id, reason, TimeSpan.FromDays(365 * 10));
+        await database.Users.Moderation.RestrictPlayer(user.Id, session.UserId, reason, TimeSpan.FromDays(365 * 10));
 
-        var isRestricted = await database.UserService.Moderation.IsRestricted(user.Id);
+        var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
 
         ChatCommandRepository.SendMessage(session,
             isRestricted

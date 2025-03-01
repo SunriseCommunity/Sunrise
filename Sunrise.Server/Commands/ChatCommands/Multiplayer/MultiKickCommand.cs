@@ -1,13 +1,16 @@
 using Sunrise.Server.Attributes;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Multiplayer;
 
 [ChatCommand("kick", "mp", isGlobal: true)]
 public class MultiKickCommand : IChatCommand
 {
-    public Task Handle(Session session, ChatChannel? channel, string[]? args)
+    public async Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (channel == null || session.Match == null)
         {
@@ -17,25 +20,32 @@ public class MultiKickCommand : IChatCommand
         if (session.Match.HasHostPrivileges(session) == false)
         {
             session.SendChannelMessage(channel.Name, "This command can only be used by the host of the room.");
-            return Task.CompletedTask;
+            return;
         }
 
         if (args == null || args.Length == 0)
         {
             session.SendChannelMessage(channel.Name, "Usage: !mp kick <username>");
-            return Task.CompletedTask;
+            return;
         }
-
-        var user = session.Match.Players.Values.FirstOrDefault(x => x.User.Username == args[0]);
-
-        if (user == null)
+        
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        
+        var userToKick = await database.Users.GetUser(username: args[0]);
+        if (userToKick == null)
         {
             session.SendChannelMessage(channel.Name, "User not found.");
-            return Task.CompletedTask;
+            return;
+        }
+        
+        var sessionToKick = session.Match.Players.Values.FirstOrDefault(x => x.UserId == userToKick.Id);
+        if (sessionToKick == null)
+        {
+            session.SendChannelMessage(channel.Name, "User not found.");
+            return;
         }
 
-        session.Match.RemovePlayer(user, true);
-
-        return Task.CompletedTask;
+        session.Match.RemovePlayer(sessionToKick, true);
     }
 }

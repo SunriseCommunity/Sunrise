@@ -3,7 +3,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -18,10 +18,11 @@ public class WhoisCommand : IChatCommand
             return;
         }
 
-        var username = args[0];
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var username = string.Join(" ", args[0..]);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(username: username);
+        var user = await database.Users.GetUser(username: username);
 
         if (user == null)
         {

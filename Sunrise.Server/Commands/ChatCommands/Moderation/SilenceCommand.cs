@@ -5,7 +5,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Moderation;
@@ -28,9 +28,10 @@ public class SilenceCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.Users.GetUser(userId);
 
         if (user == null)
         {
@@ -96,7 +97,7 @@ public class SilenceCommand : IChatCommand
 
         sessions.WriteToAllSessions(PacketType.ServerUserSilenced, user.Id);
 
-        await database.UserService.UpdateUser(user);
+        await database.Users.UpdateUser(user);
 
         ChatCommandRepository.SendMessage(session,
             $"User {user.Username} ({user.Id}) has been silenced until {user.SilencedUntil:yyyy-MM-dd HH:mm:ss}. UTC+0 | Reason: {reason}");

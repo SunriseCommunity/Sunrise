@@ -5,7 +5,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Moderation;
 
@@ -25,14 +25,10 @@ public class UsernameCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "Invalid user id.");
             return;
         }
+        
+        var username =  string.Join(" ", args[1..]);
 
-        if (args[1].Length is < 2 or > 32)
-        {
-            ChatCommandRepository.SendMessage(session, "Username must be between 2 and 32 characters.");
-            return;
-        }
-
-        var (isUsernameValid, error) = args[1].IsValidUsername();
+        var (isUsernameValid, error) = username.IsValidUsername();
 
         if (!isUsernameValid && args[1] != "filter")
         {
@@ -40,9 +36,10 @@ public class UsernameCommand : IChatCommand
             return;
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.Users.GetUser(userId);
 
         if (user == null)
         {
@@ -52,40 +49,36 @@ public class UsernameCommand : IChatCommand
 
         if (user.Privilege >= UserPrivilege.Admin)
         {
-            ChatCommandRepository.SendMessage(session, "You cannot filter their nickname due to their privilege level.");
+            ChatCommandRepository.SendMessage(session, "You cannot change their nickname due to their privilege level.");
             return;
         }
 
         if (args[1] == "filter")
         {
-            await database.UserService.UpdateUserUsername(user, user.Username, $"filtered_{user.Id}", session.User.Id);
+            await database.Users.UpdateUserUsername(user, user.Username, $"filtered_{user.Id}", session.UserId);
             ChatCommandRepository.SendMessage(session, "Users nickname has been filtered.");
-
         }
         else
         {
-            var foundUserByUsername = await database.UserService.GetUser(username: args[1]);
-
-            if (foundUserByUsername != null && foundUserByUsername.IsActive())
-            {
-                ChatCommandRepository.SendMessage(session, "Username is already taken.");
-                return;
-            }
+            var foundUserByUsername = await database.Users.GetUser(username: username);
 
             if (foundUserByUsername != null)
             {
-                await database.UserService.UpdateUserUsername(
+                if (foundUserByUsername.IsActive())
+                {
+                    ChatCommandRepository.SendMessage(session, "Username is already taken.");
+                    return;
+                }
+                
+                await database.Users.UpdateUserUsername(
                     foundUserByUsername,
                     foundUserByUsername.Username,
                     foundUserByUsername.Username.SetUsernameAsOld());
             }
 
-
-            await database.UserService.UpdateUserUsername(user, user.Username, args[1], session.User.Id);
+            await database.Users.UpdateUserUsername(user, user.Username, username, session.UserId);
 
             ChatCommandRepository.SendMessage(session, "Users nickname has been updated.");
         }
-
-
     }
 }

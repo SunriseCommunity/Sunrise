@@ -7,7 +7,7 @@ using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
@@ -28,7 +28,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => UpdateScoresSubmittedStatus(session.User.Id));
+        BackgroundJob.Enqueue(() => UpdateScoresSubmittedStatus(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -44,9 +44,10 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var allScores = await database.ScoreService.GetAllScores();
+        var allScores = await database.Scores.GetScores(); // TODO: Should be optimised
         var groupedScores = allScores.GroupBy(x => x.BeatmapId);
 
         var scoresReviewedTotal = 0;
@@ -72,7 +73,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                     foreach (var score in scores)
                     {
                         score.SubmissionStatus = score == bestScore ? SubmissionStatus.Best : score.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
-                        await database.ScoreService.UpdateScore(score);
+                        await database.Scores.UpdateScore(score);
                     }
                 }
             }

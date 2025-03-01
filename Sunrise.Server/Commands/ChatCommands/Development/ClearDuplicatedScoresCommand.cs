@@ -5,7 +5,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
@@ -26,7 +26,7 @@ public class ClearDuplicatedScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => ClearDuplicatedScores(session.User.Id));
+        BackgroundJob.Enqueue(() => ClearDuplicatedScores(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -42,9 +42,10 @@ public class ClearDuplicatedScoresCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var allScores = await database.ScoreService.GetAllScores();
+        var allScores = await database.Scores.GetScores(); // TODO: Optimise
         var groupedScores = allScores.GroupBy(x => x.ScoreHash);
 
         var scoresReviewedTotal = 0;
@@ -64,7 +65,7 @@ public class ClearDuplicatedScoresCommand : IChatCommand
             for (var i = 1; i < scores.Count; i++)
             {
                 var score = scores[i];
-                await database.ScoreService.MarkAsDeleted(score);
+                await database.Scores.MarkScoreAsDeleted(score);
                 scoresDeletedTotal++;
             }
 

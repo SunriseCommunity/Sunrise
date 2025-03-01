@@ -4,7 +4,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -23,7 +23,7 @@ public class SaveStatsSnapshotCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => StartSaveStatsSnapshot(session.User.Id));
+        BackgroundJob.Enqueue(() => StartSaveStatsSnapshot(session.UserId));
 
         return Task.CompletedTask;
     }

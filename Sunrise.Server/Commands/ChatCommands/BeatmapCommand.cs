@@ -4,10 +4,9 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
-using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Converters;
-using Sunrise.Shared.Utils.Performance;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -33,7 +32,11 @@ public class BeatmapCommand : IChatCommand
 
         if (args.Length >= 2) withMods = args[1].StringModsToMods();
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapId: beatmapId);
+
+        using var scope = ServicesProviderHolder.CreateScope();
+        var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
 
         if (beatmapSet == null)
         {
@@ -45,8 +48,10 @@ public class BeatmapCommand : IChatCommand
 
         session.LastBeatmapIdUsedWithCommand = beatmapId;
 
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+
         var (pp100, pp99, pp98, pp95) =
-            await Calculators.CalculatePerformancePoints(session, beatmapId, beatmap?.ModeInt ?? 0, withMods);
+            await calculatorService.CalculatePerformancePoints(session, beatmapId, beatmap?.ModeInt ?? 0, withMods);
 
         ChatCommandRepository.SendMessage(session,
             $"[{beatmap!.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap?.Version}]] {withMods.GetModsString()}| 95%: {pp95:0.00}pp | 98%: {pp98:0.00}pp | 99%: {pp99:0.00}pp | 100%: {pp100:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★");

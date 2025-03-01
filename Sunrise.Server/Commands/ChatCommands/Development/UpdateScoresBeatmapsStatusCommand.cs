@@ -6,8 +6,9 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -27,7 +28,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => UpdateScoresBeatmapStatus(session.User.Id));
+        BackgroundJob.Enqueue(() => UpdateScoresBeatmapStatus(session.UserId));
 
         return Task.CompletedTask;
     }
@@ -43,9 +44,11 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var allScores = await database.ScoreService.GetAllScores();
+
+        var allScores = await database.Scores.GetScores(); // TODO: Optimise
         var groupedScores = allScores.GroupBy(x => x.BeatmapId);
 
         var scoresReviewedTotal = 0;
@@ -58,12 +61,14 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
             if (!isNeedsUpdate) continue;
 
-            var user = await database.UserService.GetUser(userId);
+            var user = await database.Users.GetUser(userId);
             if (user == null)
                 return;
 
+            var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+
             var session = new BaseSession(user);
-            var beatmap = await BeatmapRepository.GetBeatmapSet(session, beatmapId: group.Key);
+            var beatmap = await beatmapService.GetBeatmapSet(session, beatmapId: group.Key);
 
             var status = BeatmapStatus.NotSubmitted;
 
@@ -79,7 +84,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
             foreach (var score in group)
             {
                 score.BeatmapStatus = status;
-                await database.ScoreService.UpdateScore(score);
+                await database.Scores.UpdateScore(score);
             }
 
             ChatCommandRepository.TrySendMessage(userId, $"Updated {group.Count()} scores for beatmap {group.Key} to status {status}");

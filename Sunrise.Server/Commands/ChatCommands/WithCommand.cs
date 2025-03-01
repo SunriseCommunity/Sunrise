@@ -3,10 +3,9 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
-using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Converters;
-using Sunrise.Shared.Utils.Performance;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -31,7 +30,10 @@ public class WithCommand : IChatCommand
 
         var withMods = args[0].StringModsToMods();
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
 
         if (beatmapSet == null)
         {
@@ -41,7 +43,9 @@ public class WithCommand : IChatCommand
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == session.LastBeatmapIdUsedWithCommand);
 
-        var (pp100, pp99, pp98, pp95) = await Calculators.CalculatePerformancePoints(session,
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+
+        var (pp100, pp99, pp98, pp95) = await calculatorService.CalculatePerformancePoints(session,
             session.LastBeatmapIdUsedWithCommand.Value,
             beatmap?.ModeInt ?? 0,
             withMods);

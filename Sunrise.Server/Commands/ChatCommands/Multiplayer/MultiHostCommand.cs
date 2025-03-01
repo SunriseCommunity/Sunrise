@@ -1,7 +1,7 @@
 using Sunrise.Server.Attributes;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Multiplayer;
@@ -35,7 +35,7 @@ public class MultiHostCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        var targetSlot = session.Match.Slots.FirstOrDefault(x => x.Value.UserId == targetSession.User.Id);
+        var targetSlot = session.Match.Slots.FirstOrDefault(x => x.Value.UserId == targetSession.UserId);
 
         if (targetSlot.Value == null)
         {

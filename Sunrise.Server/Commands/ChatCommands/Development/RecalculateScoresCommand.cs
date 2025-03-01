@@ -3,12 +3,13 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
-using Sunrise.Shared.Utils.Performance;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -41,7 +42,7 @@ public class RecalculateScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => RecalculateScores(session.User.Id, mode));
+        BackgroundJob.Enqueue(() => RecalculateScores(session.UserId, mode));
 
         return Task.CompletedTask;
     }
@@ -57,27 +58,36 @@ public class RecalculateScoresCommand : IChatCommand
 
         var startTime = DateTime.UtcNow;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var pageSize = 100;
 
-        var allScores = await database.ScoreService.GetAllScores(mode);
-        var scoresReviewedTotal = 0;
-
-        foreach (var score in allScores)
+        for (var x = 1;; x++)
         {
-            var oldPerformancePoints = score.PerformancePoints;
+            using var scope = ServicesProviderHolder.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+            var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-            var user = await database.UserService.GetUser(userId);
+            var user = await database.Users.GetUser(userId);
             if (user == null)
                 return;
 
             var session = new BaseSession(user);
 
-            score.PerformancePoints = await Calculators.CalculatePerformancePoints(session, score);
-            await database.ScoreService.UpdateScore(score);
+            var allScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)));
+            var scoresReviewedTotal = 0;
 
-            scoresReviewedTotal++;
-            ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} from {oldPerformancePoints} to {score.PerformancePoints}");
-            ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+            foreach (var score in allScores)
+            {
+                var oldPerformancePoints = score.PerformancePoints;
+
+                score.PerformancePoints = await calculatorService.CalculatePerformancePoints(session, score);
+                await database.Scores.UpdateScore(score);
+
+                scoresReviewedTotal++;
+                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} from {oldPerformancePoints} to {score.PerformancePoints}");
+                ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+            }
+
+            if (allScores.Count < pageSize) break;
         }
 
         ChatCommandRepository.TrySendMessage(userId,
