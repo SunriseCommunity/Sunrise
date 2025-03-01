@@ -1,8 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Utils.Performance;
+using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Extensions.Users;
@@ -29,10 +31,13 @@ public static class UserStatsExtensions
         {
             // If new score, add it to the ranked score. If a better score, add the difference between the new and the previous score.
             userStats.RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
-
+            
+            using var scope = ServicesProviderHolder.CreateScope();
+            var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+   
             userStats.PerformancePoints =
-                await Calculators.CalculateUserWeightedPerformance(userStats.UserId, score.GameMode, score);
-            userStats.Accuracy = await Calculators.CalculateUserWeightedAccuracy(userStats.UserId, score.GameMode, score);
+                await calculatorService.CalculateUserWeightedPerformance(userStats.UserId, score.GameMode, score);
+            userStats.Accuracy = await calculatorService.CalculateUserWeightedAccuracy(userStats.UserId, score.GameMode, score);
         }
     }
 

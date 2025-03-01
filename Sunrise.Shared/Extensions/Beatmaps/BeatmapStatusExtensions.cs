@@ -8,4 +8,9 @@ public static class BeatmapStatusExtensions
     {
         return status is BeatmapStatus.Ranked or BeatmapStatus.Approved;
     }
+    
+    public static bool IsScoreable(this BeatmapStatus status)
+    {
+        return status is BeatmapStatus.Ranked or BeatmapStatus.Approved or BeatmapStatus.Loved;
+    }
 }

@@ -10,6 +10,11 @@ public static class GameModeExtensions
     {
         return (osu.Shared.GameMode)((int)mode % 4);
     }
+    
+    public static bool IsVanillaGameMode(this GameMode mode)
+    {
+        return mode is GameMode.Taiko or GameMode.Mania or GameMode.Standard or GameMode.CatchTheBeat;
+    }
 
     public static GameMode EnrichWithMods(this GameMode mode, Mods mods)
     {
@@ -43,5 +48,10 @@ public static class GameModeExtensions
         var isAutopilot = mode == GameMode.AutopilotStandard;
 
         return isRelax || isAutopilot;
+    }
+
+    public static List<GameMode> GetGameModesWithoutScoreMultiplier()
+    {
+        return [GameMode.RelaxStandard, GameMode.RelaxTaiko, GameMode.RelaxCatchTheBeat, GameMode.AutopilotStandard];
     }
 }

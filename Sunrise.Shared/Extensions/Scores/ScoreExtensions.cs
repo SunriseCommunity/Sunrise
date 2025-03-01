@@ -1,11 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
-using Sunrise.Shared.Utils.Performance;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Extensions.Scores;
@@ -29,9 +32,11 @@ public static class ScoreExtensions
 
     public static async Task<int> GetLeaderboardRank(this Score score)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
         // TODO: Should support multiple leaderboard systems
-        var scores = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var (scores, _) = await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, options: new QueryOptions(true)); // TODO: Unoptimized
 
         return scores.GetLeaderboardRankOf(score);
     }
@@ -49,7 +54,8 @@ public static class ScoreExtensions
 
     public static List<T> GetScoresGroupedByBeatmapBest<T>(this List<T> scores) where T : Score
     {
-        return GroupScoresByBeatmapId(scores).Select(x => x.OrderByDescending(y => y.GameMode.IsGameModeWithoutScoreMultiplier() ? y.PerformancePoints : y.TotalScore).First()).ToList();
+        return GroupScoresByBeatmapId(scores)
+            .Select(x => x.OrderByDescending(y => y.GameMode.IsGameModeWithoutScoreMultiplier() ? y.PerformancePoints : y.TotalScore).First()).ToList();
     }
 
     public static IEnumerable<IGrouping<int, T>> GroupScoresByBeatmapId<T>(this List<T> scores) where T : Score
@@ -124,7 +130,7 @@ public static class ScoreExtensions
         var score = new Score
         {
             BeatmapHash = split[0],
-            UserId = session.User.Id,
+            UserId = session.UserId,
             BeatmapId = beatmap.Id,
             ScoreHash = split[2],
             Count300 = int.Parse(split[3]),
@@ -148,10 +154,13 @@ public static class ScoreExtensions
         };
 
         score.LocalProperties = score.LocalProperties.FromScore(score);
-
-        score.Accuracy = Calculators.CalculateAccuracy(score);
-        score.PerformancePoints = Calculators.CalculatePerformancePoints(session, score).Result;
         score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+
+        using var scope = ServicesProviderHolder.CreateScope();
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+
+        score.PerformancePoints = calculatorService.CalculatePerformancePoints(session, score).Result;
 
         return score;
     }
@@ -198,10 +207,11 @@ public static class ScoreExtensions
     /// <returns></returns>
     public static async Task<string> GetString(this Score score)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         var time = (int)score.WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await database.UserService.GetUser(score.UserId))?.Username ?? "Unknown";
+        var username = (await database.Users.GetUser(score.UserId))?.Username ?? "Unknown";
         var hasReplay = score.ReplayFileId != null ? "1" : "0";
 
         // If the game mode is not scoreable, we should return the performance points instead of the total score
