@@ -7,5 +7,6 @@ public enum UserPrivilege
     Supporter = 1 << 0,
     Bat = 1 << 1,
     Admin = 1 << 3,
-    Developer = 1 << 4
+    Developer = 1 << 4,
+    ServerBot = 1 << 5,
 }
