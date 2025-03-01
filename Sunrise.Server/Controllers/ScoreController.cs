@@ -85,10 +85,10 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         [FromQuery(Name = "c")] int scoreId
     )
     {
-        var result = await assetService.GetOsuReplayBytes(scoreId);
-        if (result == null)
+        var getReplayResult = await assetService.GetOsuReplayBytes(scoreId);
+        if (getReplayResult.IsFailure)
             return Ok("error: no-replay");
 
-        return new FileContentResult(result, "application/octet-stream");
+        return new FileContentResult(getReplayResult.Value, "application/octet-stream");
     }
 }

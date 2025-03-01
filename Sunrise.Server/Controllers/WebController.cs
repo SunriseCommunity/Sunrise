@@ -6,12 +6,13 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
-public class WebController(AuthService authService, UserService userService, AssetService assetService) : ControllerBase
+public class WebController(DatabaseService database, SessionRepository sessions, BeatmapService beatmapService, AuthService authService, UserService userService, AssetService assetService) : ControllerBase
 {
     [HttpPost(RequestType.OsuScreenshot)]
     public async Task<IActionResult> OsuScreenshot(
@@ -19,19 +20,20 @@ public class WebController(AuthService authService, UserService userService, Ass
         [FromForm(Name = "p")] string passhash,
         [FromForm(Name = "ss")] IFormFile screenshot)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        if (await assetService.SaveScreenshot(session,
-                screenshot,
-                HttpContext.RequestAborted) is var (resultUrl, error) && (error != null || resultUrl == null))
+        var saveScreenshotResult = await assetService.SaveScreenshot(session,
+            screenshot,
+            HttpContext.RequestAborted);
+
+        if (saveScreenshotResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, error);
-            return BadRequest(error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, saveScreenshotResult.Error);
+            return BadRequest(saveScreenshotResult.Error);
         }
 
-        return Ok(resultUrl);
+        return Ok(saveScreenshotResult.Value);
     }
 
     [HttpGet(RequestType.OsuGetFriends)]
@@ -39,11 +41,10 @@ public class WebController(AuthService authService, UserService userService, Ass
         [FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var friends = await userService.GetFriends(session.User.Username);
+        var friends = await userService.GetFriends(session.UserId);
         if (friends == null)
             return BadRequest("error: no");
 
@@ -62,7 +63,6 @@ public class WebController(AuthService authService, UserService userService, Ass
         [FromQuery(Name = "ha")] string passhash,
         [FromQuery(Name = "b")] string query)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -71,17 +71,15 @@ public class WebController(AuthService authService, UserService userService, Ass
 
         var flags = (LastFmFlags)int.Parse(query[1..]);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         if ((flags & (LastFmFlags.HqAssembly | LastFmFlags.HqFile)) != 0)
         {
-            _ = database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "hq!osu found running");
+            _ = database.Users.Moderation.RestrictPlayer(session.UserId, null, "hq!osu found running");
             return Ok("-3");
         }
 
         if ((flags & LastFmFlags.RegistryEdits) != 0)
         {
-            _ = database.UserService.Moderation.RestrictPlayer(session.User.Id, -1, "Osu multi account registry edits found");
+            _ = database.Users.Moderation.RestrictPlayer(session.UserId, null, "Osu multi account registry edits found");
             return Ok("-3");
         }
 
@@ -142,16 +140,14 @@ public class WebController(AuthService authService, UserService userService, Ass
         [FromQuery(Name = "h")] string passhash,
         [FromQuery(Name = "a")] int beatmapSetId)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapSetId);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapSetId);
         if (beatmapSet == null)
             return Ok("error: beatmap");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Favourites.AddFavouriteBeatmap(session.User.Id, beatmapSetId);
+        await database.Users.Favourites.AddFavouriteBeatmap(session.UserId, beatmapSetId);
 
         return Ok();
     }
@@ -160,12 +156,10 @@ public class WebController(AuthService authService, UserService userService, Ass
     public async Task<IActionResult> AddFavourites([FromQuery(Name = "u")] string username,
         [FromQuery(Name = "h")] string passhash)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var favourites = await database.UserService.Favourites.GetUserFavouriteBeatmaps(session.User.Id);
+        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(session.UserId);
 
         return Ok(string.Join("/n", favourites.Select(x => x)));
     }
