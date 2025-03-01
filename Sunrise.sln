@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sunrise.Shared", "Sunrise.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sunrise.API", "Sunrise.API\Sunrise.API.csproj", "{367B5B56-51E3-4BC7-8C9E-3F8A4C4201D9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sunrise.Tests", "Sunrise.Tests\Sunrise.Tests.csproj", "{CD76BA60-6771-447E-8D24-E3CEEB625FEB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{367B5B56-51E3-4BC7-8C9E-3F8A4C4201D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{367B5B56-51E3-4BC7-8C9E-3F8A4C4201D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{367B5B56-51E3-4BC7-8C9E-3F8A4C4201D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD76BA60-6771-447E-8D24-E3CEEB625FEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD76BA60-6771-447E-8D24-E3CEEB625FEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD76BA60-6771-447E-8D24-E3CEEB625FEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD76BA60-6771-447E-8D24-E3CEEB625FEB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

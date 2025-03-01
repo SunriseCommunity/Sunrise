@@ -11,12 +11,16 @@
         <PackageReference Include="BouncyCastle.NetCore" Version="1.9.0"/>
         <PackageReference Include="Hangfire.InMemory" Version="1.0.0"/>
         <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="Rijndael256" Version="3.2.0"/>
         <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="Sunrise.Server.Tests"/>
+        <InternalsVisibleTo Include="Sunrise.Tests"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -25,5 +29,9 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sunrise.API/Sunrise.API.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Commands\ChatCommands\"/>
     </ItemGroup>
 </Project>

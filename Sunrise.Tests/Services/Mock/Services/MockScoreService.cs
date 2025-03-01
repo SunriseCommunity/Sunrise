@@ -1,11 +1,11 @@
 ﻿using osu.Shared;
-using Sunrise.Server.Tests.Core.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Tests.Extensions;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
-namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
+namespace Sunrise.Tests.Services.Mock.Services;
 
 public class MockScoreService(MockService service)
 {
@@ -42,7 +42,6 @@ public class MockScoreService(MockService service)
             TotalScore = service.GetRandomInteger(length: 6),
             WhenPlayed = service.GetRandomDateTime(),
             ClientTime = service.GetRandomDateTime(),
-            ReplayFileId = service.GetRandomInteger(length: 6),
             OsuVersion = service.GetRandomInteger(length: 6).ToString()
         };
     }

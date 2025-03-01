@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Shared.Objects;
+using Sunrise.Tests.Services.Mock;
 
-namespace Sunrise.Server.Tests.Core.Services;
+namespace Sunrise.Tests.Services;
 
 public class ReplayService
 {

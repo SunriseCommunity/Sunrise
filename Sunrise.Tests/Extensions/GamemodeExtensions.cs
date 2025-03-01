@@ -1,7 +1,7 @@
 using osu.Shared;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Server.Tests.Core.Extensions;
+namespace Sunrise.Tests.Extensions;
 
 public static class GamemodeExtensions
 {
@@ -33,7 +33,4 @@ public static class GamemodeExtensions
                 throw new ArgumentOutOfRangeException(nameof(gamemode), gamemode, null);
         }
     }
-    
-    
-    
 }

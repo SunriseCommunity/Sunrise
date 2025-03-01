@@ -1,9 +1,9 @@
-﻿using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
+﻿using Sunrise.Shared.Application;
+using Sunrise.Tests.Utils;
 
-namespace Sunrise.Server.Tests.Core;
+namespace Sunrise.Tests;
 
-public class DatabaseFixture : EnvironmentFixture, IDisposable
+public class FilesystemFixture : EnvironmentFixture, IDisposable
 {
     public new void Dispose()
     {

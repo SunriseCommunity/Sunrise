@@ -1,6 +1,6 @@
-﻿using Sunrise.Server.Tests.Core.Services.Mock.Services;
+﻿using Sunrise.Tests.Services.Mock.Services;
 
-namespace Sunrise.Server.Tests.Core.Services.Mock;
+namespace Sunrise.Tests.Services.Mock;
 
 public class MockService
 {

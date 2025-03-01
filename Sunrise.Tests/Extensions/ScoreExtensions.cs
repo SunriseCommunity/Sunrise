@@ -1,19 +1,30 @@
+using Microsoft.Extensions.DependencyInjection;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Server.Tests.Core.Extensions;
+namespace Sunrise.Tests.Extensions;
 
 public static class ScoreExtensions
 {
     public static void EnrichWithSessionData(this Score score, Session session, string? storyboardHash = null)
     {
-        score.UserId = session.User.Id;
-        score.ScoreHash = score.ComputeOnlineHash(session.User.Username, session.Attributes.UserHash, storyboardHash);
+        score.UserId = session.UserId;
+
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var user = database.Users.GetUser(id: session.UserId).Result;
+        if (user == null)
+            throw new NullReferenceException("User not found");
+
+        score.ScoreHash = score.ComputeOnlineHash(user.Username, session.Attributes.UserHash, storyboardHash);
     }
 
     public static void EnrichWithUserData(this Score score, User user)

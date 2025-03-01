@@ -1,22 +1,21 @@
-using DatabaseWrapper.Core;
 using Microsoft.AspNetCore.Http;
-using Sunrise.Server.Tests.Core.Services;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
-using Watson.ORM.Sqlite;
+using Sunrise.Tests.Services;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
-namespace Sunrise.Server.Tests.Core.Abstracts;
+namespace Sunrise.Tests.Abstracts;
 
 [Collection("Database tests collection")]
-public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<DatabaseFixture>
+public abstract class DatabaseTest : BaseTest, IDisposable
 {
     private readonly FileService _fileService = new();
     private readonly MockService _mocker = new();
@@ -24,34 +23,28 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
     protected DatabaseTest(bool useRedis = false)
     {
         UpdateRedisVariables(useRedis);
-
         CreateFilesCopy();
+
+        App = new SunriseServerFactory();
     }
+
+    protected SunriseServerFactory App { get; }
+    protected IServiceScope Scope => App.Server.Services.CreateScope();
+    protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
     public new virtual void Dispose()
     {
-        var orm = new WatsonORM(new DatabaseSettings($"{Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}; Pooling=false;"));
-
-        if (!Configuration.DatabaseName.IsDevelopmentFile())
-            throw new InvalidOperationException("Database name is not a development file. Are you trying to delete production data?");
-
         if (!Configuration.DataPath.IsDevelopmentFile())
             throw new InvalidOperationException("Data path is not a development directory. Are you trying to delete production data?");
 
-        orm.InitializeDatabase();
+        Directory.Delete(Path.Combine(Configuration.DataPath), true);
 
-        var tables = orm.Database.ListTables();
+        Scope.Dispose();
+        EnvManager.Dispose();
 
-        foreach (var table in tables)
-        {
-            orm.Database.DropTable(table);
-        }
+        App.Dispose();
 
-        orm.Dispose();
         base.Dispose();
-
-        Directory.Delete(Path.Combine(Configuration.DataPath, "Files"), true);
-
         GC.SuppressFinalize(this);
     }
 
@@ -64,6 +57,7 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
     protected Session CreateTestSession(User user)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+
         var location = new Location();
         var loginRequest = new LoginRequest(
             user.Username,
@@ -79,14 +73,11 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
         return session;
     }
 
-
     protected async Task<User> CreateTestUser()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         var username = _mocker.User.GetRandomUsername();
 
-        while (await database.UserService.GetUser(username: username) != null)
+        while (await Database.Users.GetUser(username: username) != null)
         {
             username = _mocker.User.GetRandomUsername();
         }
@@ -98,8 +89,8 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
 
     protected async Task<User> CreateTestUser(User user)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        return await database.UserService.InsertUser(user);
+        await Database.Users.AddUser(user);
+        return user;
     }
 
     protected async Task<Score> CreateTestScore(bool withReplay = true)
@@ -110,34 +101,33 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
 
     protected async Task<Score> CreateTestScore(Score score)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var scoreUser = await database.UserService.GetUser(id: score.UserId);
+        var scoreUser = await Database.Users.GetUser(id: score.UserId);
 
         if (scoreUser == null)
         {
             await CreateTestUser();
         }
 
-        return await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
+        return score;
     }
 
     protected async Task<Score> CreateTestScore(User user, bool withReplay = true)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var replayRecordId = _mocker.GetRandomInteger(length: 6);
 
         if (withReplay)
         {
             IFormFile formFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", $"{_mocker.GetRandomString(6)}.osr");
-            var replayRecord = await database.ScoreService.Files.UploadReplay(user.Id, formFile);
-            replayRecordId = replayRecord.Id;
+            var replayRecord = await Database.Scores.Files.AddReplayFile(user.Id, formFile);
+            replayRecordId = replayRecord.Value.Id;
         }
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.ReplayFileId = replayRecordId;
 
-        score = await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         return score;
     }
@@ -152,23 +142,23 @@ public abstract class DatabaseTest : BaseTest, IDisposable, IClassFixture<Databa
         return (replay, beatmapId);
     }
 
+    private void UpdateRedisVariables(bool useRedis)
+    {
+        EnvManager.Set("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
+        EnvManager.Set("Redis:UseCache", useRedis ? "true" : "false");
+    }
+
     private void CreateFilesCopy()
     {
-        if (!Configuration.DataPath.IsDevelopmentFile())
-            throw new InvalidOperationException("Data path is not a development directory. Are you trying to modify production data?");
+        var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), Configuration.DataPath);
 
-        var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), Configuration.DataPath.Replace(".tmp", ""));
+        EnvManager.Set("Files:DataPath", Configuration.DataPath + _mocker.GetRandomString(12) + ".tmp");
+
         var dataPath = Path.Combine(Directory.GetCurrentDirectory(), $"{Configuration.DataPath}");
 
         if (!Directory.Exists(dataPath))
             Directory.CreateDirectory(dataPath);
 
         FolderUtil.Copy(sourcePath, dataPath);
-    }
-
-    private void UpdateRedisVariables(bool useRedis)
-    {
-        EnvManager.Set("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
-        EnvManager.Set("Redis:UseCache", useRedis ? "true" : "false");
     }
 }

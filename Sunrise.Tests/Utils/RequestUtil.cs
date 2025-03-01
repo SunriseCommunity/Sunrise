@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using Sunrise.API.Serializable.Response;
 
-namespace Sunrise.Server.Tests.Core.Utils;
+namespace Sunrise.Tests.Utils;
 
 public static class RequestUtil
 {

@@ -3,7 +3,7 @@ using Sunrise.Shared.Objects.Serializable;
 using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 using GameMode = osu.Shared.GameMode;
 
-namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
+namespace Sunrise.Tests.Services.Mock.Services;
 
 public class MockBeatmapService(MockService service)
 {

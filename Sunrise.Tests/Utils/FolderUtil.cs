@@ -1,4 +1,4 @@
-namespace Sunrise.Server.Tests.Core.Utils;
+namespace Sunrise.Tests.Utils;
 
 public static class FolderUtil
 {
@@ -28,6 +28,6 @@ public static class FolderUtil
 
     public static bool IsDevelopmentFile(this string path)
     {
-        return path.Contains(".test", StringComparison.CurrentCultureIgnoreCase);
+        return path.Contains(".tmp", StringComparison.CurrentCultureIgnoreCase);
     }
 }

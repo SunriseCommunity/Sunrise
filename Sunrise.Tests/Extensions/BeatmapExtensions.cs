@@ -1,7 +1,7 @@
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Objects.Serializable;
 
-namespace Sunrise.Server.Tests.Core.Extensions;
+namespace Sunrise.Tests.Extensions;
 
 public static class BeatmapExtensions
 {

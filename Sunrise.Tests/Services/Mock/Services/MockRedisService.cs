@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects.Serializable;
 
-namespace Sunrise.Server.Tests.Core.Services.Mock.Services;
+namespace Sunrise.Tests.Services.Mock.Services;
 
 public class MockRedisService(MockService service)
 {
@@ -25,8 +26,9 @@ public class MockRedisService(MockService service)
     {
         ThrowIfCacheDisabled();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.BeatmapService.SetCachedBeatmapSet(beatmapSet);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
         return beatmapSet;
     }
@@ -35,7 +37,8 @@ public class MockRedisService(MockService service)
     {
         ThrowIfCacheDisabled();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         var beatmapFileName = BeatmapFileNamesByHash?.GetValueOrDefault(beatmapHash);
 
@@ -66,7 +69,7 @@ public class MockRedisService(MockService service)
             throw new InvalidOperationException($"Beatmap ID for beatmap hash {beatmapHash} not found.");
         }
 
-        await database.BeatmapService.Files.SetBeatmapFile(beatmapId.Value, beatmap);
+        await database.Beatmaps.Files.AddBeatmapFile(beatmapId.Value, beatmap);
 
         return beatmapId.Value;
     }
@@ -82,8 +85,9 @@ public class MockRedisService(MockService service)
     {
         ThrowIfCacheDisabled();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.BeatmapService.Files.SetBeatmapFile(beatmapSetId, beatmap);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        await database.Beatmaps.Files.AddBeatmapFile(beatmapSetId, beatmap);
     }
 
     private static void ThrowIfCacheDisabled()
