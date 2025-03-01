@@ -1,23 +1,21 @@
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
-namespace Sunrise.Shared.Repositories;
+namespace Sunrise.Shared.Services;
 
-public static class BeatmapRepository
+public class BeatmapService(DatabaseService database)
 {
-    public static async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
+    public async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
         string? beatmapHash = null, int? beatmapId = null)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null) return null;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var beatmapSet = await database.BeatmapService.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
+        var beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
         if (beatmapSet != null) return beatmapSet;
 
         if (beatmapId != null)
@@ -31,20 +29,18 @@ public static class BeatmapRepository
                 await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId]);
 
         if (beatmapSet == null)
-            // TODO: Save null to cache if it requested map not found.
             return null;
 
         beatmapSet.UpdateBeatmapRanking();
 
-        await database.BeatmapService.SetCachedBeatmapSet(beatmapSet);
+        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
         return beatmapSet;
     }
 
-    public static async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
+    public async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var beatmapFile = await database.BeatmapService.Files.GetBeatmapFile(beatmapId);
+        var beatmapFile = await database.Beatmaps.Files.GetBeatmapFile(beatmapId);
 
         if (beatmapFile != null) return beatmapFile;
 
@@ -52,7 +48,24 @@ public static class BeatmapRepository
 
         if (beatmapFile == null) return null;
 
-        await database.BeatmapService.Files.SetBeatmapFile(beatmapId, beatmapFile);
+        await database.Beatmaps.Files.AddBeatmapFile(beatmapId, beatmapFile);
         return beatmapFile;
+    }
+
+    public async Task<List<BeatmapSet>?> SearchBeatmapSets(Session session, string? rankedStatus, string mode,
+        string query, Pagination pagination)
+    {
+        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session,
+            ApiType.BeatmapSetSearch,
+            [query, pagination.PageSize, pagination.Page*pagination.PageSize, rankedStatus, mode]);
+
+        if (beatmapSets == null) return null;
+
+        foreach (var set in beatmapSets)
+        {
+            set.UpdateBeatmapRanking();
+        }
+
+        return beatmapSets;
     }
 }

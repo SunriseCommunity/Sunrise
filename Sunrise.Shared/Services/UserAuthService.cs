@@ -1,14 +1,14 @@
 ﻿using System.Net;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Users;
 
 namespace Sunrise.Shared.Services;
 
-public class UserAuthService(RegionService regionService)
+public class UserAuthService(RegionService regionService, DatabaseService database)
 {
     public async Task<(User?, Dictionary<string, List<string>>?)> RegisterUser(string username, string password, string email, IPAddress ip)
     {
@@ -33,18 +33,15 @@ public class UserAuthService(RegionService regionService)
         if (!isPasswordValid)
             errors["password"].Add(passwordError ?? "Invalid password");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var foundUserByEmail = await database.UserService.GetUser(email: email);
+        var foundUserByEmail = await database.Users.GetUser(email: email);
 
         if (foundUserByEmail != null) errors["user_email"].Add("User with this email already exists.");
 
-        var foundUserByUsername = await database.UserService.GetUser(username: username);
-
+        var foundUserByUsername = await database.Users.GetUser(username: username);
         if (foundUserByUsername != null && foundUserByUsername.IsActive()) errors["username"].Add("User with this username already exists.");
 
-        var isUserCreatedAccountBefore = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip.ToString());
-        if (isUserCreatedAccountBefore && !Configuration.IsDevelopment)
+        var isIpCreatedAccountBefore = await database.Events.Users.IsIpHasAnyRegisterEvents(ip.ToString());
+        if (isIpCreatedAccountBefore && !Configuration.IsDevelopment)
             errors["username"].Add("Please don't create multiple accounts. You have been warned.");
 
         if (errors.Any(x => x.Value.Count > 0))
@@ -53,12 +50,18 @@ public class UserAuthService(RegionService regionService)
         var passhash = password.GetPassHash();
         var location = await regionService.GetRegion(ip);
 
-        if (foundUserByUsername != null)
+        if (foundUserByUsername != null && foundUserByUsername.IsActive() == false)
         {
-            await database.UserService.UpdateUserUsername(
+            var updateUsernameResult = await database.Users.UpdateUserUsername(
                 foundUserByUsername,
                 foundUserByUsername.Username,
                 foundUserByUsername.Username.SetUsernameAsOld());
+
+            if (updateUsernameResult.IsFailure)
+            {
+                errors["username"].Add(updateUsernameResult.Error);
+                return (null, errors);
+            }
         }
 
         var newUser = new User
@@ -70,9 +73,15 @@ public class UserAuthService(RegionService regionService)
             Privilege = UserPrivilege.User
         };
 
-        newUser = await database.UserService.InsertUser(newUser);
+        var addUserResult = await database.Users.AddUser(newUser);
 
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
+        if (addUserResult.IsFailure)
+        {
+            errors["username"].Add(addUserResult.Error);
+            return (null, errors);
+        }
+
+        await database.Events.Users.AddUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
 
         return (newUser, null);
     }
