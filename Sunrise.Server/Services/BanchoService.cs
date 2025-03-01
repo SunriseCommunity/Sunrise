@@ -2,7 +2,7 @@
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects.Keys;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Services;
 

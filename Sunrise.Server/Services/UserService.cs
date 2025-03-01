@@ -2,18 +2,17 @@
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class UserService(RegionService regionService)
+public class UserService(DatabaseService database, SessionRepository sessions, RegionService regionService)
 {
     public async Task<(Session?, string?, LoginResponse)> GetNewUserSession(LoginRequest loginRequest, IPAddress ip)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: loginRequest.Username);
+        var user = await database.Users.GetUser(username: loginRequest.Username);
 
         if (user == null)
             return (null, "User with this username does not exist.", LoginResponse.InvalidCredentials);
@@ -26,10 +25,8 @@ public class UserService(RegionService regionService)
                 "Server is currently in maintenance mode. Please try again later.",
                 LoginResponse.ServerError);
 
-        if (user.IsRestricted() && await database.UserService.Moderation.IsRestricted(user.Id))
+        if (user.IsRestricted() && await database.Users.Moderation.IsUserRestricted(user.Id))
             return (null, "Your account is restricted. Please contact support for more information.", LoginResponse.InvalidCredentials);
-
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         var oldSession = sessions.GetSession(userId: user.Id);
 
@@ -46,18 +43,16 @@ public class UserService(RegionService regionService)
 
         if (user.AccountStatus == UserAccountStatus.Disabled)
         {
-            await database.UserService.Moderation.EnableUser(user.Id);
+            await database.Users.Moderation.EnableUser(user.Id);
             session.SendNotification("Welcome back! Your account has been re-enabled. It may take a few seconds to load your data.");
         }
 
         return (session, null, LoginResponse.Success);
     }
-
-    public async Task<string?> GetFriends(string username)
+    
+    public async Task<string?> GetFriends(int userId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: username);
-
+        var user = await database.Users.GetUser(userId);
         if (user == null)
             return null;
 

@@ -5,13 +5,13 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(UserAuthService userAuthService, UserService userService)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserService userService)
 {
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
     {
@@ -27,12 +27,13 @@ public class AuthService(UserAuthService userAuthService, UserService userServic
         if (error != null || session == null)
             return RejectLogin(response, error, loginResponseCode);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.EventService.UserEvent.CreateNewUserLoginEvent(session.User.Id, ip.ToString(), true, sr);
+        var addEventResult = await database.Events.Users.AddUserLoginEvent(session.UserId, ip.ToString(), true, sr);
+        if (addEventResult.IsFailure)
+            return RejectLogin(response, addEventResult.Error);
 
         response.Headers["cho-token"] = session.Token;
 
-        return await ProceedWithLogin(session);
+        return await ProceedWithLogin(session, response);
     }
 
     public FileContentResult Relogin()
@@ -58,7 +59,7 @@ public class AuthService(UserAuthService userAuthService, UserService userServic
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    private static async Task<FileContentResult> ProceedWithLogin(Session session)
+    private async Task<FileContentResult> ProceedWithLogin(Session session, HttpResponse response)
     {
         session.SendLoginResponse(LoginResponse.Success);
         session.SendProtocolVersion();
@@ -69,21 +70,23 @@ public class AuthService(UserAuthService userAuthService, UserService userServic
 
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
+        
+        var sessionUser = await database.Users.GetUser(session.UserId);
+        if (sessionUser == null)
+            return RejectLogin(response, "User for this session doesn't exist");
 
-        if (session.User.Privilege.HasFlag(UserPrivilege.Admin)) chatChannels.JoinChannel("#staff", session);
+        if (sessionUser.Privilege.HasFlag(UserPrivilege.Admin)) chatChannels.JoinChannel("#staff", session);
 
         foreach (var channel in chatChannels.GetChannels(session))
         {
             session.SendChannelAvailable(channel);
         }
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
         session.SendFriendsList();
         await sessions.SendCurrentPlayers(session);
 
-        if (session.User.SilencedUntil > DateTime.UtcNow)
-            session.SendSilenceStatus((int)(session.User.SilencedUntil - DateTime.UtcNow).TotalSeconds);
+        if (sessionUser.SilencedUntil > DateTime.UtcNow)
+            session.SendSilenceStatus((int)(sessionUser.SilencedUntil - DateTime.UtcNow).TotalSeconds);
 
         sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence());
         sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
