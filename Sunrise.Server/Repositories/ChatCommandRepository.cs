@@ -5,9 +5,10 @@ using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Commands;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Repositories;
@@ -54,7 +55,17 @@ public static class ChatCommandRepository
                 return;
         }
 
-        if (!session.User.Privilege.HasFlag(handler.RequiredPrivileges))
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        
+        var sessionUser = await database.Users.GetUser(session.UserId);
+        if (sessionUser == null)
+        {
+            SendMessage(session, "User for your session does not exist. Are you even human?");
+            return;
+        }
+        
+        if (!sessionUser.Privilege.HasFlag(handler.RequiredPrivileges))
         {
             SendMessage(session, "You don't have permission to use this command.");
             return;
@@ -76,7 +87,15 @@ public static class ChatCommandRepository
 
     public static string[] GetAvailableCommands(Session session)
     {
-        var privilege = session.User.Privilege;
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var sessionUser = database.Users.GetUser(session.UserId).Result;
+        if (sessionUser == null)
+            return [];
+        
+        
+        var privilege = sessionUser.Privilege;
 
         return Handlers
             .Where(x => privilege.HasFlag(x.Value.RequiredPrivileges))

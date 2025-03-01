@@ -3,7 +3,7 @@ using HOPEless.Bancho;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Packets;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Repositories;
 
@@ -32,7 +32,7 @@ public class PacketHandlerRepository
 
         if (!handler.SuppressLogging)
             Logger.LogInformation(
-                $"{DateTime.Now} | User {session.User.Username} (Id: {session.User.Id}) send {packet.Type}");
+                $"{DateTime.Now} | User (Id: {session.UserId}) send {packet.Type}");
 
         SunriseMetrics.PacketHandlingCounterInc(packet, session);
 
