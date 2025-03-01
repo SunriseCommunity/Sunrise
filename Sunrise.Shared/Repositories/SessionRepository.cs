@@ -3,12 +3,14 @@ using Hangfire;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using HOPEless.osu;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Repositories;
 
@@ -21,8 +23,6 @@ public class SessionRepository
     {
         _channels = channels;
 
-        AddBotToSession();
-
         RecurringJob.AddOrUpdate("ClearInactiveSessions", () => ClearInactiveSessions(), "*/1 * * * *");
     }
 
@@ -30,7 +30,7 @@ public class SessionRepository
     {
         foreach (var session in _sessions.Values)
         {
-            if (session.User.Id == ignoreUserId)
+            if (session.UserId == ignoreUserId)
                 continue;
 
             session.WritePacket(type, data);
@@ -63,16 +63,22 @@ public class SessionRepository
         session.Spectating?.RemoveSpectator(session);
         session.Spectating = null;
 
-        // foreach (var channel in _channels.GetChannels())
-        // {
-        //     channel.RemoveUser(session.User.Id);
-        // }
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        session.User.LastOnlineTime = DateTime.UtcNow;
-        _ = database.UserService.UpdateUser(session.User);
+        foreach (var channel in _channels.GetChannels())
+        {
+            channel.RemoveUser(session.UserId);
+        }
 
         session.WritePacket(PacketType.ServerLoginReply, (int)LoginResponse.InvalidCredentials);
+
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var user = database.Users.GetUser(id: session.UserId).ConfigureAwait(false).GetAwaiter().GetResult();
+        if (user == null)
+            return;
+
+        user.LastOnlineTime = DateTime.UtcNow;
+        _ = database.Users.UpdateUser(user);
     }
 
     public void RemoveSession(Session session)
@@ -83,32 +89,51 @@ public class SessionRepository
     }
 
 
-    public bool TryGetSession(string username, string passhash, out Session? session)
+    public bool TryGetSession(string username, string? passhash, out Session? session)
     {
-        session = _sessions.Values.FirstOrDefault(x => x.User.Username == username && x.User.Passhash == passhash);
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var searchedUser = database.Users.GetUser(username: username, passhash: passhash, options: new QueryOptions(true))
+            .ConfigureAwait(false).GetAwaiter().GetResult();
+
+        if (searchedUser == null)
+        {
+            session = null;
+            return false;
+        }
+
+        session = _sessions.Values.FirstOrDefault(x => x.UserId == searchedUser.Id);
         return session != null;
     }
 
-    public bool TryGetSession(out Session? session, string? username = null, string? token = null, int? userId = null)
+    public bool TryGetSession(out Session? session, string? token = null, long? userId = null)
     {
-        session = _sessions.Values.FirstOrDefault(x =>
-            x.Token == token || x.User.Username == username || x.User.Id == userId);
+        session = _sessions.Values.FirstOrDefault(x => x.Token == token || x.UserId == userId);
         return session != null;
     }
 
-    public Session? GetSession(string? username = null, string? token = null, int? userId = null)
+    public Session? GetSession(string? username = null, string? token = null, long? userId = null)
     {
-        return TryGetSession(out var session, username, token, userId) ? session : null;
+        Session? session = null;
+
+        if (username != null)
+            TryGetSession(username, null, out session);
+
+        if (token != null || userId != null)
+            TryGetSession(out session, token, userId);
+
+        return session;
     }
 
     public bool IsUserOnline(int userId)
     {
-        return _sessions.Values.Any(x => x.User.Id == userId);
+        return _sessions.Values.Any(x => x.UserId == userId);
     }
 
     public async Task SendCurrentPlayers(Session session)
     {
-        var players = _sessions.Values.Where(x => x.User.Id != session.User.Id).ToList();
+        var players = _sessions.Values.Where(x => x.UserId != session.UserId).ToList();
 
         foreach (var player in players)
         {
@@ -122,11 +147,12 @@ public class SessionRepository
         return _sessions.Values.ToList();
     }
 
-    private async void AddBotToSession()
+    public async Task AddBotToSession()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var bot = await database.UserService.GetUser(username: Configuration.BotUsername);
+        var bot = await database.Users.GetUser(username: Configuration.BotUsername);
 
         if (bot == null)
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");
@@ -166,7 +192,7 @@ public class SessionRepository
             if (session.Attributes.LastPingRequest >= DateTime.UtcNow.AddMinutes(-1) || session.Attributes.IsBot)
                 continue;
 
-            WriteToAllSessions(PacketType.ServerUserQuit, session.User.Id);
+            WriteToAllSessions(PacketType.ServerUserQuit, session.UserId);
             RemoveSession(session);
         }
     }

@@ -1,8 +1,12 @@
 using System.Collections.Concurrent;
 using HOPEless.Bancho;
+using Microsoft.Extensions.DependencyInjection;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Repositories;
 
@@ -31,7 +35,7 @@ public class ChatChannelRepository
         }
 
         session.SendJoinChannel(channel);
-        channel.AddUser(session.User.Id);
+        channel.AddUser(session.UserId);
     }
 
     public void LeaveChannel(string name, Session session, bool abstractChannel = false)
@@ -43,7 +47,7 @@ public class ChatChannelRepository
 
         if (abstractChannel) session.WritePacket(PacketType.ServerChatChannelRevoked, channel.Name);
 
-        channel.RemoveUser(session.User.Id);
+        channel.RemoveUser(session.UserId);
     }
 
     public void RemoveAbstractChannel(string name)
@@ -72,7 +76,7 @@ public class ChatChannelRepository
     {
         var channel = name switch
         {
-            not null when name == "#spectator" => GetChannel(session, $"#spectator_{session.Spectating?.User.Id}"),
+            not null when name == "#spectator" => GetChannel(session, $"#spectator_{session.Spectating?.UserId}"),
             not null when name == "#multiplayer" => GetChannel(session, $"#multiplayer_{session.Match?.Match.MatchId}"),
             _ => _channels!.GetValueOrDefault(name)
         };
@@ -86,7 +90,16 @@ public class ChatChannelRepository
         {
             return _channels.Values.Where(x => x.IsPublic).ToList();
         }
+        
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        return _channels.Values.Where(x => x.IsPublic || session.User.Privilege.HasFlag(UserPrivilege.Admin)).ToList();
+        var sessionPrivilege = UserPrivilege.User;
+
+        var user = database.Users.GetUser(id: session.UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+        if (user != null)
+            sessionPrivilege = user.Privilege;
+
+        return _channels.Values.Where(x => x.IsPublic || sessionPrivilege.HasFlag(UserPrivilege.Admin)).ToList();
     }
 }

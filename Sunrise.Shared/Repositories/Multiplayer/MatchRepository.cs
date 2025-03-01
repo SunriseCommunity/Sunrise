@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Sunrise.Shared.Objects.Multiplayer;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Repositories.Multiplayer;
 
@@ -14,7 +14,7 @@ public class MatchRepository
 
     public void JoinLobby(Session session)
     {
-        _sessionsInLobby.TryAdd(session.User.Id, session);
+        _sessionsInLobby.TryAdd(session.UserId, session);
 
         foreach (var match in _matches.Values)
         {
@@ -24,7 +24,7 @@ public class MatchRepository
 
     public void LeaveLobby(Session session)
     {
-        _sessionsInLobby.TryRemove(session.User.Id, out _);
+        _sessionsInLobby.TryRemove(session.UserId, out _);
     }
 
     public void CreateMatch(BanchoMultiplayerMatch match)

@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Repositories;
 
@@ -11,19 +11,19 @@ public class RateLimitRepository
 
     public bool IsRateLimited(BaseSession session)
     {
-        if (_rateLimits.TryGetValue(session.User.Id, out var rateLimiter))
+        if (_rateLimits.TryGetValue(session.UserId, out var rateLimiter))
             return !rateLimiter.CanSend(session);
 
         rateLimiter = new RateLimiter(Configuration.ApiCallsPerWindow,
             TimeSpan.FromSeconds(Configuration.ApiWindow));
-        _rateLimits.TryAdd(session.User.Id, rateLimiter);
+        _rateLimits.TryAdd(session.UserId, rateLimiter);
 
         return !rateLimiter.CanSend(session);
     }
 
     public int GetRemainingCalls(BaseSession session)
     {
-        return _rateLimits.TryGetValue(session.User.Id, out var rateLimiter)
+        return _rateLimits.TryGetValue(session.UserId, out var rateLimiter)
             ? rateLimiter.GetRemainingCalls(session)
             : Configuration.ApiCallsPerWindow;
     }
