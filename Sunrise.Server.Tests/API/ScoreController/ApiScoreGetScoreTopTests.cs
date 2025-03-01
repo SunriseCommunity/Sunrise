@@ -1,12 +1,10 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
 
@@ -20,8 +18,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresInvalidGameMode(string gameMode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"score/top?mode={gameMode}&limit=15");
@@ -37,8 +34,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"score/top?limit={limit}");
@@ -53,8 +49,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"score/top?page={page}");
@@ -67,17 +62,15 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresForEmptyModeUseDefault()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var gamemode = GameMode.Standard;
 
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.GameMode = gamemode;
-        await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         // Act
         var response = await client.GetAsync("score/top");
@@ -94,10 +87,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetMultipleTopScores()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var gamemode = _mocker.Score.GetRandomGameMode();
 
@@ -110,7 +100,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         // Act
@@ -128,10 +118,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetOnlySingleTopScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var gamemode = _mocker.Score.GetRandomGameMode();
 
@@ -144,7 +131,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         // Act
@@ -162,10 +149,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresIgnoreRestrictedUsers()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var gamemode = _mocker.Score.GetRandomGameMode();
 
@@ -178,13 +162,13 @@ public class ApiScoreGetScoreTopTests : ApiTest
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
-        var users = await database.UserService.GetAllUsers();
+        var users = await Database.Users.GetUsers();
         var restrictedUser = users.Last();
 
-        await database.UserService.Moderation.RestrictPlayer(restrictedUser.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(restrictedUser.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"score/top?mode={(int)gamemode}&limit=15");
@@ -201,10 +185,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
     public async Task TestGetTopScoresIgnoreScoreIfItDoesntHasUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var gamemode = _mocker.Score.GetRandomGameMode();
 
@@ -217,13 +198,13 @@ public class ApiScoreGetScoreTopTests : ApiTest
             score.UserId = user.Id;
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         var scoreWithoutUser = _mocker.Score.GetRandomScore();
         scoreWithoutUser.UserId = -1;
         scoreWithoutUser.GameMode = gamemode;
-        await database.ScoreService.InsertScore(scoreWithoutUser);
+        await Database.Scores.AddScore(scoreWithoutUser);
 
         // Act
         var response = await client.GetAsync($"score/top?mode={(int)gamemode}&limit=15");

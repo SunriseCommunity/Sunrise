@@ -2,13 +2,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -28,8 +26,7 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var userId = _mocker.GetRandomInteger();
 
@@ -49,8 +46,7 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserInvalidRoute(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/{userId}");
@@ -63,8 +59,7 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var userData = new UserResponse(user);
@@ -86,8 +81,7 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserWithStatus()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var session = CreateTestSession(user);
@@ -109,13 +103,11 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserRestrictedNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}");
@@ -132,14 +124,12 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserWithUserStats(GameMode mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}?mode={(int)mode}");
@@ -161,8 +151,7 @@ public class ApiUserGetUserTests : ApiTest
     public async Task TestGetUserWithUserStatsInvalidModeQuery(string mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 

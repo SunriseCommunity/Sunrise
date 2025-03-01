@@ -1,14 +1,12 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Extensions;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -30,8 +28,7 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresInvalidUserId(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/{userId}/scores");
@@ -46,8 +43,7 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresInvalidGameMode(string gamemode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -65,8 +61,7 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -83,8 +78,7 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -99,17 +93,15 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresForEmptyModeUseDefault()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var gamemode = GameMode.Standard;
 
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
         score.GameMode = gamemode;
-        await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/scores");
@@ -127,11 +119,7 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresByType(ScoreTableType type)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
+        var client = App.CreateClient().UseClient("api");
         var gamemode = _mocker.Score.GetRandomGameMode();
         var user = await CreateTestUser();
 
@@ -143,7 +131,7 @@ public class ApiUserGetUserScoresTests : ApiTest
             score.EnrichWithUserData(user);
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         var unrankedScoresCount = new Random().Next(1, 3);
@@ -155,7 +143,7 @@ public class ApiUserGetUserScoresTests : ApiTest
             score.BeatmapStatus = BeatmapStatus.Loved;
             score.GameMode = gamemode;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         var failedScoresCount = new Random().Next(1, 3);
@@ -167,7 +155,7 @@ public class ApiUserGetUserScoresTests : ApiTest
             score.GameMode = gamemode;
             score.IsPassed = false;
 
-            await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
         }
 
         // Act
@@ -194,10 +182,8 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresWithLimitAndPage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var gamemode = GameMode.Standard;
 
         var user = await CreateTestUser();
@@ -209,8 +195,8 @@ public class ApiUserGetUserScoresTests : ApiTest
             var score = _mocker.Score.GetBestScoreableRandomScore();
             score.EnrichWithUserData(user);
             score.GameMode = gamemode;
-            score.WhenPlayed = DateTime.MaxValue.AddSeconds(-i);
-            score = await database.ScoreService.InsertScore(score);
+            score.WhenPlayed = DateTime.MinValue.AddSeconds(i);
+            await Database.Scores.AddScore(score);
 
             lastScoreId = score.Id;
         }
@@ -231,13 +217,11 @@ public class ApiUserGetUserScoresTests : ApiTest
     public async Task TestGetUserScoresForRestrictedUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/scores");

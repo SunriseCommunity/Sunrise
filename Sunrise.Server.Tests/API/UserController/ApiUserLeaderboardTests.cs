@@ -1,12 +1,10 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -29,8 +27,7 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboardInvalidLeaderboardType(string leaderboardType)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/leaderboard?type={leaderboardType}");
@@ -49,8 +46,7 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboardInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/leaderboard?limit={limit}");
@@ -68,8 +64,7 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboardUserInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/leaderboard?page={page}");
@@ -86,12 +81,9 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboard(GameMode gamemode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var usersNumber = _mocker.GetRandomInteger(minInt: 2, maxInt: 5);
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var userIdsSortedByPp = new List<int>();
 
@@ -102,13 +94,13 @@ public class ApiUserLeaderboardTests : ApiTest
 
             userIdsSortedByPp.Add(user.Id);
 
-            var stats = await database.UserService.Stats.GetUserStats(user.Id, gamemode);
+            var stats = await Database.Users.Stats.GetUserStats(user.Id, gamemode);
             if (stats == null)
                 throw new Exception("User stats not found");
 
             stats.PerformancePoints = i * 100;
 
-            await database.UserService.Stats.UpdateUserStats(stats);
+            await Database.Users.Stats.UpdateUserStats(stats, user);
         }
 
         // Act
@@ -127,8 +119,7 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboardWithoutRestrictedUsers()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var usersNumber = _mocker.GetRandomInteger(minInt: 2, maxInt: 5);
 
@@ -137,10 +128,9 @@ public class ApiUserLeaderboardTests : ApiTest
             await CreateTestUser();
         }
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var restrictedUser = await CreateTestUser();
 
-        await database.UserService.Moderation.RestrictPlayer(restrictedUser.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(restrictedUser.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync("user/leaderboard?mode=0&limit=10");
@@ -158,12 +148,9 @@ public class ApiUserLeaderboardTests : ApiTest
     public async Task TestLeaderboardLimitAndPage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var usersNumber = _mocker.GetRandomInteger(minInt: 3, maxInt: 5);
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var gamemode = _mocker.Score.GetRandomGameMode();
 
@@ -176,17 +163,17 @@ public class ApiUserLeaderboardTests : ApiTest
 
             userIdsSortedByPp.Add(user.Id);
 
-            var stats = await database.UserService.Stats.GetUserStats(user.Id, gamemode);
+            var stats = await Database.Users.Stats.GetUserStats(user.Id, gamemode);
             if (stats == null)
                 throw new Exception("User stats not found");
 
             stats.PerformancePoints = i * 100;
 
-            await database.UserService.Stats.UpdateUserStats(stats);
+            await Database.Users.Stats.UpdateUserStats(stats, user);
         }
 
         // Act
-        var response = await client.GetAsync($"user/leaderboard?mode={(int)gamemode}&limit=1&page=1");
+        var response = await client.GetAsync($"user/leaderboard?mode={(int)gamemode}&limit=1&page=2");
 
         // Assert
         response.EnsureSuccessStatusCode();

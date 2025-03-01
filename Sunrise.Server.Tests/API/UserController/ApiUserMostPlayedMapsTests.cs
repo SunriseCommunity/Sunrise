@@ -1,14 +1,13 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Extensions;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -20,8 +19,7 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
     public async Task TestMostPlayedMaps()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -59,14 +57,13 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
     public async Task TestMostPlayedMapsLimitAndPage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
         var gameMode = _mocker.Score.GetRandomGameMode();
 
-        var lastAddedBeatmapId = 0;
+        Score? firstAddedScore = null;
 
         for (var i = 0; i < 2; i++)
         {
@@ -79,13 +76,16 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
             score.EnrichWithBeatmapData(beatmap);
             score.EnrichWithUserData(user);
             score.GameMode = gameMode;
+            score.WhenPlayed = DateTime.MinValue.AddSeconds(i);
+
             await CreateTestScore(score);
 
-            lastAddedBeatmapId = beatmap.Id;
+            if (firstAddedScore == null)
+                firstAddedScore = score;
         }
 
         // Act
-        var response = await client.GetAsync($"user/{user.Id}/mostplayed?mode={(int)gameMode}&limit=1&page=1");
+        var response = await client.GetAsync($"user/{user.Id}/mostplayed?mode={(int)gameMode}&limit=1&page=2");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -95,7 +95,8 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
 
         Assert.NotEmpty(responseData.MostPlayed);
         Assert.Single(responseData.MostPlayed);
-        Assert.Contains(responseData.MostPlayed, b => b.Id == lastAddedBeatmapId);
+
+        Assert.Contains(responseData.MostPlayed, b => b.Id == firstAddedScore!.BeatmapId);
 
         Assert.Equal(2, responseData.TotalCount);
     }
@@ -103,16 +104,13 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
 
 public class ApiUserMostPlayedMapsTests : ApiTest
 {
-    private readonly MockService _mocker = new();
-
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]
     public async Task TestMostPlayedMapsInvalidUserId(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/{userId}/mostplayed");
@@ -128,8 +126,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
     public async Task TestMostPlayedMapsInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -149,8 +146,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
     public async Task TestMostPlayedMapsInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -168,8 +164,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
     public async Task TestMostPlayedMapsWithoutBeatmapSet()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var score = await CreateTestScore();
 
@@ -189,13 +184,11 @@ public class ApiUserMostPlayedMapsTests : ApiTest
     public async Task TestMostPlayedMapsForRestrictedUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/mostplayed");

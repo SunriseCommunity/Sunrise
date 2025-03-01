@@ -2,11 +2,9 @@
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -18,8 +16,7 @@ public class ApiUserEditDescriptionTests : ApiTest
     public async Task TestEditDescriptionWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/description",
@@ -39,15 +36,15 @@ public class ApiUserEditDescriptionTests : ApiTest
     public async Task TestEditDescriptionWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        var result = await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
+        if (result.IsFailure)
+            throw new Exception(result.Error);
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/description",
@@ -67,8 +64,7 @@ public class ApiUserEditDescriptionTests : ApiTest
     public async Task TestEditDescriptionWithoutBody()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -88,8 +84,7 @@ public class ApiUserEditDescriptionTests : ApiTest
     public async Task TestEditDescriptionWithInvalidDescriptionLength()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -115,8 +110,7 @@ public class ApiUserEditDescriptionTests : ApiTest
     public async Task TestEditDescription()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -134,8 +128,7 @@ public class ApiUserEditDescriptionTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var updatedUser = await database.UserService.GetUser(user.Id);
+        var updatedUser = await Database.Users.GetUser(user.Id);
         Assert.NotNull(updatedUser);
 
         Assert.Equal(newDescription, updatedUser.Description);

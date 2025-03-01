@@ -3,13 +3,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
@@ -23,8 +22,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
@@ -47,8 +45,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         Assert.NotNull(responseTokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: username);
+        var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
     }
@@ -57,8 +54,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserCreatesRegisterEvent()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
@@ -78,8 +74,7 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var isEventRegistered = await database.EventService.UserEvent.IsIpCreatedAccountBefore(ip);
+        var isEventRegistered = await Database.Events.Users.IsIpHasAnyRegisterEvents(ip);
 
         Assert.True(isEventRegistered);
     }
@@ -88,8 +83,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserGreeceFlag()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
@@ -110,8 +104,7 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: username);
+        var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
         Assert.Equal((short)CountryCode.GR, user.Country);
@@ -121,8 +114,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserInvalidLengthUsername()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername(64);
@@ -159,8 +151,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserInvalidUsername(string username)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var email = _mocker.User.GetRandomEmail();
@@ -189,8 +180,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserUsedUsername()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -220,8 +210,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserUsedEmail()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -251,8 +240,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserInvalidEmail()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
@@ -280,8 +268,7 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserBannedIp()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
@@ -309,14 +296,12 @@ public class ApiAuthRegisterTests : ApiTest
     public async Task TestRegisterUserWarnMultiaccount()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var ip = _mocker.User.GetRandomIp();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.EventService.UserEvent.CreateNewUserRegisterEvent(user.Id, ip, user);
+        await Database.Events.Users.AddUserRegisterEvent(user.Id, ip, user);
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();

@@ -1,13 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Extensions;
-using Sunrise.Server.Tests.Core.Services;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services;
+using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
@@ -25,17 +23,13 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
             mode
         });
     }
-    
-    
 
     [Fact]
     public async Task TestSuccessfulSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
         var session = await CreateTestSession();
 
         var (replay, beatmapId) = await GetValidTestReplay();
@@ -67,22 +61,60 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var databaseScore = await database.ScoreService.GetScore(score.ScoreHash);
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
     }
 
     [Fact]
+    public async Task TestSuccessfulUnlockMedalAfterScoreSubmission()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var (replay, beatmapId) = await GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+        score.Mods |= Mods.DoubleTime;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var userUnlockedMedals = await Database.Users.Medals.GetUserMedals(session.UserId);
+        Assert.NotEmpty(userUnlockedMedals);
+    }
+
+    [Fact]
     public async Task TestSuccessfulUploadReplayUponSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
         var session = await CreateTestSession();
 
         var (replay, beatmapId) = await GetValidTestReplay();
@@ -114,13 +146,11 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        score = await database.ScoreService.GetScore(score.ScoreHash);
+        score = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(score);
         Assert.NotNull(score.ReplayFileId);
 
-        var replayFile = await database.ScoreService.Files.GetReplay(score.ReplayFileId.Value);
+        var replayFile = await Database.Scores.Files.GetReplayFile(score.ReplayFileId.Value);
         Assert.NotNull(replayFile);
     }
 
@@ -128,15 +158,11 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUpdateUserStatsUponSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
         var session = await CreateTestSession();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var userStatsBeforeScore = await database.UserService.Stats.GetUserStats(session.User.Id, GameMode.Standard);
+        var userStatsBeforeScore = await Database.Users.Stats.GetUserStats(session.UserId, GameMode.Standard);
         if (userStatsBeforeScore == null)
             throw new Exception("User stats are null");
 
@@ -169,7 +195,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var userStatsAfterScore = await database.UserService.Stats.GetUserStats(session.User.Id, score.GameMode);
+        var userStatsAfterScore = await Database.Users.Stats.GetUserStats(session.UserId, score.GameMode);
         if (userStatsAfterScore == null)
             throw new Exception("User stats are null");
 
@@ -180,13 +206,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUserRestrictByPpThresholdUponSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.ToVanillaScore();
@@ -218,28 +240,25 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.Contains("error", resultString);
 
-        var isRestricted = await database.UserService.Moderation.IsRestricted(session.User.Id);
+        var isRestricted = await Database.Users.Moderation.IsUserRestricted(session.UserId);
         Assert.True(isRestricted);
 
-        var restrictionReason = await database.UserService.Moderation.GetRestrictionReason(session.User.Id);
+        var restrictionReason = await Database.Users.Moderation.GetActiveRestrictionReason(session.UserId);
         Assert.Contains("submitting impossible score", restrictionReason);
     }
 
-    [Fact]
-    public async Task TestUserIgnoreRestrictionByPpThresholdIfNotVanillaGamemodeUponSubmitScore()
+    [Theory]
+    [MemberData(nameof(GetGameModes))]
+    public async Task TestUserIgnoreRestrictionByPpThresholdIfNotVanillaGamemodeUponSubmitScore(GameMode gameMode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
         var session = await CreateTestSession();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.GameMode = GameMode.RelaxStandard;
-        score.Mods = Mods.Relax;
+        score.GameMode = gameMode;
+        score.Mods = gameMode.GetGamemodeMods();
 
         score.EnrichWithSessionData(session);
 
@@ -266,10 +285,18 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         );
 
         // Assert
-        Assert.DoesNotContain("error", resultString);
+        var isRestricted = await Database.Users.Moderation.IsUserRestricted(session.UserId);
 
-        var isRestricted = await database.UserService.Moderation.IsRestricted(session.User.Id);
-        Assert.False(isRestricted);
+        if (gameMode.IsVanillaGameMode())
+        {
+            Assert.Contains("error", resultString);
+            Assert.True(isRestricted);
+        }
+        else
+        {
+            Assert.DoesNotContain("error", resultString);
+            Assert.False(isRestricted);
+        }
     }
 
     [Theory]
@@ -281,13 +308,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestIgnoreSubmitScoreWithInvalidMod(Mods mods)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.ToVanillaScore();
@@ -318,7 +341,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.Contains("error", resultString);
 
-        var dbScore = await database.ScoreService.GetScore(score.ScoreHash);
+        var dbScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.Null(dbScore);
     }
 
@@ -326,13 +349,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestIgnoreSubmitScoreWithNonStandardMods()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.Mods = Mods.ScoreV2 | Mods.Relax;
@@ -363,7 +382,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.Contains("error", resultString);
 
-        var dbScore = await database.ScoreService.GetScore(score.ScoreHash);
+        var dbScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.Null(dbScore);
     }
 
@@ -371,13 +390,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestIgnoreSubmitScoreIfHashAlreadyIncludedInDatabase()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -389,7 +404,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
-        await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -412,13 +427,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestIgnoreSubmitScoreIfInvalidReplay()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -451,10 +462,8 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUpdateUserStatsForNonScoreableScoreUponSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
         var session = await CreateTestSession();
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
@@ -489,9 +498,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.Contains("error", resultString); // Doesn't render chart for non-scoreable scores
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var userStats = await database.UserService.Stats.GetUserStats(session.User.Id, score.GameMode);
+        var userStats = await Database.Users.Stats.GetUserStats(session.UserId, score.GameMode);
         if (userStats == null)
             throw new Exception("User stats are null");
 
@@ -512,13 +519,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUserRestrictInvalidChecksumUponSubmitScore()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -547,10 +550,10 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.Contains("error", resultString);
 
-        var isRestricted = await database.UserService.Moderation.IsRestricted(session.User.Id);
+        var isRestricted = await Database.Users.Moderation.IsUserRestricted(session.UserId);
         Assert.True(isRestricted);
 
-        var restrictionReason = await database.UserService.Moderation.GetRestrictionReason(session.User.Id);
+        var restrictionReason = await Database.Users.Moderation.GetActiveRestrictionReason(session.UserId);
         Assert.Contains("Invalid checksums on score submission", restrictionReason);
     }
 
@@ -558,16 +561,13 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUponSubmittingBetterScoreThanPreviousOneUpdateSubmissionStatus()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.SubmissionStatus = SubmissionStatus.Best;
+        oldScore.PerformancePoints = -1;
 
         oldScore.EnrichWithSessionData(session);
 
@@ -588,7 +588,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
-        await database.ScoreService.InsertScore(oldScore);
+        await Database.Scores.AddScore(oldScore);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -606,11 +606,11 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var dbOldScore = await database.ScoreService.GetScore(oldScore.ScoreHash);
+        var dbOldScore = await Database.Scores.GetScore(oldScore.ScoreHash);
         Assert.NotNull(dbOldScore);
         Assert.Equal(SubmissionStatus.Submitted, dbOldScore.SubmissionStatus);
 
-        var bestBeatmapScore = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
     }
 
@@ -618,13 +618,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUponSubmittingEqualScoreThanPreviousOneUpdateSubmissionStatus()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.SubmissionStatus = SubmissionStatus.Best;
@@ -648,7 +644,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
-        await database.ScoreService.InsertScore(oldScore);
+        await Database.Scores.AddScore(oldScore);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -666,11 +662,11 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var dbOldScore = await database.ScoreService.GetScore(oldScore.ScoreHash);
+        var dbOldScore = await Database.Scores.GetScore(oldScore.ScoreHash);
         Assert.NotNull(dbOldScore);
         Assert.Equal(SubmissionStatus.Best, dbOldScore.SubmissionStatus);
 
-        var bestBeatmapScore = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == oldScore.ScoreHash);
     }
 
@@ -679,13 +675,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     public async Task TestUponSubmittingModdedAndUnmoddedScoreBothAreBestInTheirRespectiveLeaderboards(GameMode gameMode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var scope = app.Services.CreateScope();
-        var scoreService = scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var session = await CreateTestSession();
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await CreateTestSession();
 
         var (scoreData, beatmapId) = await GetValidTestReplay();
         var beatmapHash = scoreData.GetScore().BeatmapHash;
@@ -718,7 +710,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
-        await database.ScoreService.InsertScore(moddedScore);
+        await Database.Scores.AddScore(moddedScore);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -736,16 +728,16 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var dbModdedScore = await database.ScoreService.GetScore(moddedScore.ScoreHash);
+        var dbModdedScore = await Database.Scores.GetScore(moddedScore.ScoreHash);
         Assert.NotNull(dbModdedScore);
         Assert.Equal(SubmissionStatus.Best, dbModdedScore.SubmissionStatus);
 
-        var dbScore = await database.ScoreService.GetScore(score.ScoreHash);
+        var dbScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(dbScore);
         Assert.Equal(SubmissionStatus.Best, dbScore.SubmissionStatus);
 
         // Best beatmap score should belong to non-modded score due to the fact that it has higher total score
-        var bestBeatmapScore = await database.ScoreService.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
     }
 }

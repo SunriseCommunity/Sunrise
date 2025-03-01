@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Shared.Application;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BaseController;
 
@@ -16,8 +16,7 @@ public class ApiBaseLimitsTests : ApiTest
     public async Task TestLimitsReturnsValidInfo()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
         var ip = _mocker.User.GetRandomIp();
 
         // Act
@@ -38,8 +37,7 @@ public class ApiBaseLimitsTests : ApiTest
     public async Task TestLimitsReturnsValidInfoAfterTwoRequests()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
         var ip = _mocker.User.GetRandomIp();
 
         // Act
@@ -61,8 +59,7 @@ public class ApiBaseLimitsTests : ApiTest
     public async Task TestLimitsReturnsTooManyRequestsAfterGettingOverLimit()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
         var ip = _mocker.User.GetRandomIp();
 
         // Act

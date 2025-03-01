@@ -1,9 +1,7 @@
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.Extensions;
@@ -16,17 +14,13 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
     public async Task TestUpdateWithScoreWithRankedScore()
     {
         // Arrange
-        using var app = new SunriseServerFactory().CreateClient();
-
         var user = await CreateTestUser();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.LocalProperties.IsRanked = true;
         score.PerformancePoints = 100;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var userStats = await database.UserService.Stats.GetUserStats(user.Id, score.GameMode);
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
         var prevStats = userStats.Clone();
 
         // Act
@@ -52,8 +46,6 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
     public async Task TestUpdateWithScoreWithBetterRankedScore()
     {
         // Arrange
-        using var app = new SunriseServerFactory().CreateClient();
-
         var user = await CreateTestUser();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -63,9 +55,7 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.TotalScore = score.TotalScore - 1;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var userStats = await database.UserService.Stats.GetUserStats(user.Id, score.GameMode);
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
         var prevStats = userStats.Clone();
 
         // Act
@@ -91,8 +81,6 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
     public async Task TestUpdateWithScoreWithWorseRankedScore()
     {
         // Arrange
-        using var app = new SunriseServerFactory().CreateClient();
-
         var user = await CreateTestUser();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
@@ -102,9 +90,7 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         score.TotalScore = oldScore.TotalScore - 1;
         score.PerformancePoints = 100;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var userStats = await database.UserService.Stats.GetUserStats(user.Id, score.GameMode);
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
         var prevStats = userStats.Clone();
 
         // Act

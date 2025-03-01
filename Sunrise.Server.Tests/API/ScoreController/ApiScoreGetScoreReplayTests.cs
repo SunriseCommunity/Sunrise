@@ -1,8 +1,6 @@
 ﻿using System.Net;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
 
@@ -12,8 +10,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetScoreReplay()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var score = await CreateTestScore();
 
@@ -32,8 +29,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetNotExistingScoreReplay(object id)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"score/{id}/replay");
@@ -46,8 +42,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetInvalidScoreReplay()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync("score/invalid/replay");
@@ -60,8 +55,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetScoreReplayUnauthorized()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var score = await CreateTestScore();
 
@@ -76,8 +70,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetScoreReplayNotExistingReplay()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var score = await CreateTestScore(false);
 
@@ -92,14 +85,12 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     public async Task TestGetScoreReplayOfRestrictedPlayer()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var user = await CreateTestUser();
         var score = await CreateTestScore(user);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"score/{score.Id}/replay");

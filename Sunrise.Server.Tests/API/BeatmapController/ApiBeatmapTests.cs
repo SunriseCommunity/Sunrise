@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -13,8 +13,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
     public async Task TestGetBeatmap()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
@@ -38,8 +37,7 @@ public class ApiBeatmapTests : ApiTest
     public async Task TestGetBeatmapInvalidBeatmapId(string beatmapId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmap/{beatmapId}");
@@ -52,8 +50,7 @@ public class ApiBeatmapTests : ApiTest
     public async Task TestGetBeatmapNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("beatmap/1");

@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -17,15 +15,13 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
     public async Task TestFavourites()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var beatmapSet = await _mocker.Beatmap.MockRandomBeatmapSet();
 
-        await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
+        await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/favourites");
@@ -44,21 +40,18 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
     public async Task TestFavouritesLimitAndPage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         var beatmapSet = await _mocker.Beatmap.MockRandomBeatmapSet();
-        await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
+        await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
 
         var beatmapSet2 = await _mocker.Beatmap.MockRandomBeatmapSet();
-        await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet2.Id);
+        await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet2.Id);
 
         // Act
-        var response = await client.GetAsync($"user/{user.Id}/favourites?limit=1&page=1");
+        var response = await client.GetAsync($"user/{user.Id}/favourites?limit=1&page=2");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -84,8 +77,7 @@ public class ApiUserFavouritesTests : ApiTest
     public async Task TestFavouritesInvalidUserId(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/{userId}/favourites");
@@ -101,8 +93,7 @@ public class ApiUserFavouritesTests : ApiTest
     public async Task TestFavouritesInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -122,8 +113,7 @@ public class ApiUserFavouritesTests : ApiTest
     public async Task TestFavouritesUserInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -141,13 +131,11 @@ public class ApiUserFavouritesTests : ApiTest
     public async Task TestFavouritesWithoutBeatmapSet()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, _mocker.GetRandomInteger());
+        await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, _mocker.GetRandomInteger());
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/favourites");
@@ -165,13 +153,11 @@ public class ApiUserFavouritesTests : ApiTest
     public async Task TestFavouritesForRestrictedUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/favourites");

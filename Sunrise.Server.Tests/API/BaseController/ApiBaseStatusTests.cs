@@ -1,10 +1,9 @@
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BaseController;
 
@@ -14,8 +13,7 @@ public class ApiBaseStatusTests : ApiTest
     public async Task TestStatusReturnsValidInfo()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("/status");
@@ -28,11 +26,10 @@ public class ApiBaseStatusTests : ApiTest
 
         Assert.NotNull(status);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = Scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
         var usersOnline = sessions.GetSessions().Count;
-        var totalUsers = await database.UserService.GetTotalUsers();
+        var totalUsers = await Database.Users.CountUsers();
 
         Assert.Equal(usersOnline, status.UsersOnline);
         Assert.Equal(totalUsers, status.TotalUsers);
@@ -42,8 +39,7 @@ public class ApiBaseStatusTests : ApiTest
     public async Task TestStatusDetailedReturnsValidInfo()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("/status?detailed=true");
@@ -56,12 +52,11 @@ public class ApiBaseStatusTests : ApiTest
 
         Assert.NotNull(status);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+        var sessions = Scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
         var usersOnline = sessions.GetSessions().Count;
-        var totalUsers = await database.UserService.GetTotalUsers();
-        var totalScores = await database.ScoreService.GetTotalScores();
+        var totalUsers = await Database.Users.CountUsers();
+        var totalScores = await Database.Scores.CountScores();
 
         Assert.Equal(usersOnline, status.UsersOnline);
         Assert.Equal(totalUsers, status.TotalUsers);

@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -17,8 +15,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserEmptyQuery()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("user/search");
@@ -37,8 +34,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var usernameQuery = _mocker.User.GetRandomUsername();
 
@@ -58,8 +54,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserInvalidPage(string page)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var usernameQuery = _mocker.User.GetRandomUsername();
 
@@ -77,8 +72,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var userData = new UserResponse(user);
@@ -101,8 +95,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserPageAttribute()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         for (var i = 0; i < 51; i++)
         {
@@ -113,7 +106,7 @@ public class ApiUserSearchTests : ApiTest
         }
 
         // Act
-        var response = await client.GetAsync("user/search?query=username&page=1");
+        var response = await client.GetAsync("user/search?query=username&page=2");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -128,8 +121,7 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserLimitAttribute()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         for (var i = 0; i < 2; i++)
         {
@@ -155,13 +147,11 @@ public class ApiUserSearchTests : ApiTest
     public async Task TestSearchUserIgnoreRestrictedUsers()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/search?query={user.Username}");

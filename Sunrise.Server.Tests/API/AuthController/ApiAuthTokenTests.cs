@@ -2,13 +2,12 @@ using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
@@ -22,8 +21,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetUserAuthTokens()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User
@@ -58,8 +56,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetUserAuthTokensMissingBody()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsJsonAsync("auth/token",
@@ -78,8 +75,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetInvalidUserAuthTokens()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsJsonAsync("auth/token",
@@ -100,8 +96,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetUserAuthTokensInvalidPassword()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 
@@ -124,8 +119,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetRestrictedUserInvalidAuthTokens()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User
@@ -136,8 +130,7 @@ public class ApiAuthTokenTests : ApiTest
             Country = _mocker.User.GetRandomCountryCode()
         });
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.PostAsJsonAsync("auth/token",
@@ -159,8 +152,7 @@ public class ApiAuthTokenTests : ApiTest
     public async Task TestGetBannedIpUserAuthTokens()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.User.GetRandomPassword();
         var user = await CreateTestUser(new User

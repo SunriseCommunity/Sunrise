@@ -1,5 +1,5 @@
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.Controllers;
 
@@ -9,12 +9,11 @@ public class AssetsControllerTests : DatabaseTest
     public async Task Get_Bot_Avatar()
     {
         // Arrange
-        var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("a");
-    
+        var client = App.CreateClient().UseClient("a");
+
         // Act
-        var response = await client.GetAsync($"/avatar/1");
-    
+        var response = await client.GetAsync("/avatar/1");
+
         // Assert
         response.EnsureSuccessStatusCode();
         Assert.Equal("image/png", response.Content.Headers.ContentType?.MediaType);

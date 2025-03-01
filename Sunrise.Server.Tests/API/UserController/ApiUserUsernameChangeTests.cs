@@ -2,13 +2,11 @@
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -20,8 +18,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChangeWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsJsonAsync("user/username/change",
@@ -41,15 +38,13 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChangeWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.PostAsJsonAsync("user/username/change",
@@ -69,8 +64,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChangeWithoutBody()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -99,8 +93,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChangeWithInvalidUsername(string newUsername)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -126,8 +119,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChange()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -145,8 +137,7 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var updatedUser = await database.UserService.GetUser(user.Id);
+        var updatedUser = await Database.Users.GetUser(user.Id);
         Assert.NotNull(updatedUser);
 
         Assert.Equal(updatedUser.Username, newUsername);
@@ -159,8 +150,7 @@ public class ApiUserUsernameChangeTests : ApiTest
     public async Task TestUsernameChangeWithOtherUsersUsername(UserAccountStatus status)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var otherUser = _mocker.User.GetRandomUser();
         otherUser.AccountStatus = status;
@@ -185,8 +175,7 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         if (isUsernameChangeExpected)
         {
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-            var updatedOtherUser = await database.UserService.GetUser(otherUser.Id);
+            var updatedOtherUser = await Database.Users.GetUser(otherUser.Id);
             Assert.NotNull(updatedOtherUser);
 
             Assert.Equal(updatedOtherUser.Username, otherUser.Username.SetUsernameAsOld());

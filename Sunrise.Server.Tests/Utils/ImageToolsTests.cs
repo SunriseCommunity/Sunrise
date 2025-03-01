@@ -1,8 +1,8 @@
 ﻿using SixLabors.ImageSharp;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services;
-using Sunrise.Server.Tests.Core.Services.Mock;
 using Sunrise.Shared.Utils.Tools;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services;
+using Sunrise.Tests.Services.Mock;
 
 namespace Sunrise.Server.Tests.Utils;
 
