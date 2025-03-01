@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects;
@@ -12,7 +11,7 @@ public static class Configuration
 
     private static readonly IConfigurationRoot Config = new ConfigurationBuilder().SetBasePath(AppContext.BaseDirectory)
         .AddJsonFile("appsettings.json", false)
-        .AddJsonFile($"appsettings.{Env}.json", false)
+        .AddJsonFile($"appsettings.{Env}.json", true)
         .AddEnvironmentVariables()
         .Build();
 
@@ -78,6 +77,7 @@ public static class Configuration
     public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
     public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? false;
+    public static bool UseRedisAsSecondCachingForDatabase => Config.GetSection("Redis").GetValue<bool?>("UseRedisAsSecondCachingForDatabase") ?? true;
 
     public static bool ClearCacheOnStartup =>
         Config.GetSection("Redis").GetValue<bool?>("ClearCacheOnStartup") ?? false;
@@ -107,7 +107,6 @@ public static class Configuration
 
     public static void Initialize()
     {
-        EnsureBotExists();
         AddObservatoryUrls();
     }
 
@@ -126,12 +125,6 @@ public static class Configuration
                 0,
                 3)
         ]);
-    }
-
-    private static void EnsureBotExists()
-    {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        database.InitializeBotInDatabase().Wait();
     }
 
     private static string GetApiToken()
