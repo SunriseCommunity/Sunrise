@@ -1,34 +1,37 @@
-﻿using Sunrise.Shared.Application;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.API.Services;
 
-public static class AssetService
+public class AssetService(DatabaseService database)
 {
-    public static async Task<(bool, string?)> SetBanner(int userId, MemoryStream buffer)
+    public async Task<(bool, string?)> SetBanner(int userId, MemoryStream buffer)
     {
         var (isValid, err) = ImageTools.IsHasValidImageAttributes(buffer);
         if (!isValid || err != null)
             return (false, err);
+        
+        var addOrUpdateBannerResult = await database.Users.Files.AddOrUpdateBanner(userId, buffer.ToArray());
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        if (addOrUpdateBannerResult.IsFailure)
+            return (false, "Failed to save banner. Please try again later.");
 
-        var isSuccessful = await database.UserService.Files.SetBanner(userId, buffer.ToArray());
-        return isSuccessful ? (true, null) : (false, "Failed to save banner. Please try again later.");
+        return (true, null);
     }
 
-
-    public static async Task<(bool, string?)> SetAvatar(int userId, MemoryStream buffer)
+    public async Task<(bool, string?)> SetAvatar(int userId, MemoryStream buffer)
     {
         var (isValid, err) = ImageTools.IsHasValidImageAttributes(buffer);
         if (!isValid || err != null)
             return (false, err);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var addOrUpdateAvatarResult = await database.Users.Files.AddOrUpdateAvatar(userId, buffer.ToArray());
 
-        var isSuccessful = await database.UserService.Files.SetAvatar(userId, buffer.ToArray());
+        if (addOrUpdateAvatarResult.IsFailure)
+            return (false, "Failed to save avatar. Please try again later.");
 
-        return isSuccessful ? (true, null) : (false, "Failed to save avatar. Please try again later.");
+        return (true, null);
     }
 }

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.API.Services;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Utils.Converters;
 

@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Serializable.Response;

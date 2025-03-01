@@ -2,12 +2,11 @@ using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
-using Sunrise.Shared.Extensions.Scores;
-using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -15,7 +14,7 @@ namespace Sunrise.API.Controllers;
 
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
-public class BeatmapController : ControllerBase
+public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
@@ -27,9 +26,9 @@ public class BeatmapController : ControllerBase
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
@@ -54,9 +53,7 @@ public class BeatmapController : ControllerBase
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
         var modeEnum = GameMode.Standard;
         if (mode != null && Enum.TryParse(mode, out modeEnum) == false)
@@ -68,18 +65,27 @@ public class BeatmapController : ControllerBase
         if (mods != null && Enum.TryParse(mods, out modsEnum) == false)
             return BadRequest(new ErrorResponse("Invalid mods parameter"));
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
-        if (beatmap?.IsScoreable == false)
+        if (beatmap == null || beatmap.IsScoreable == false)
             return Ok(new ScoresResponse([], 0));
 
-        var scores = await database.ScoreService.GetBeatmapScores(beatmap.Checksum, modeEnum, modsEnum == Mods.None && mods == null ? LeaderboardType.Global : LeaderboardType.GlobalWithMods, modsEnum);
+        var (scores, totalScores) = await database.Scores.GetBeatmapScores(beatmap.Checksum,
+            modeEnum,
+            modsEnum == Mods.None && mods == null ? LeaderboardType.Global : LeaderboardType.GlobalWithMods,
+            modsEnum,
+            options: new QueryOptions(new Pagination(1, limit)));
 
-        var limitedScores = scores.SortScoresByTheirScoreValue().Take(limit).Select(score => new ScoreResponse(score, database.UserService.GetUser(score.UserId).Result)).ToList();
-        return Ok(new ScoresResponse(limitedScores, scores.Count));
+        foreach (var score in scores)
+        {
+            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
+        }
+
+        var parsedScores = scores.Select(score => new ScoreResponse(score)).ToList();
+        return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 
     [HttpGet("beatmapset/{id:int}")]
@@ -88,22 +94,21 @@ public class BeatmapController : ControllerBase
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await Request.GetSessionFromRequest() ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await BeatmapRepository.GetBeatmapSet(session, id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, id);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
         if (favourite.HasValue)
         {
-            if (session.User.Username == "Guest")
+            if (session.IsGuest)
                 return Unauthorized(new ErrorResponse("Unauthorized"));
 
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
             if (favourite.Value)
-                await database.UserService.Favourites.AddFavouriteBeatmap(session.User.Id, id);
+                await database.Users.Favourites.AddFavouriteBeatmap(session.UserId, id);
             else
-                await database.UserService.Favourites.RemoveFavouriteBeatmap(session.User.Id, id);
+                await database.Users.Favourites.RemoveFavouriteBeatmap(session.UserId, id);
 
             return new OkResult();
         }
@@ -117,12 +122,11 @@ public class BeatmapController : ControllerBase
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await Request.GetSessionFromRequest();
+        var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Unauthorized"));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var favourited = await database.UserService.Favourites.IsBeatmapSetFavourited(session.User.Id, id);
+        var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(session.UserId, id);
 
         return Ok(new FavouritedResponse
         {

@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.API.Serializable.Response;
 

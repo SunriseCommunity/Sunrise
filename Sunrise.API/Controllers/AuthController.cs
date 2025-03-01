@@ -12,7 +12,11 @@ namespace Sunrise.API.Controllers;
 
 [Route("/auth")]
 [Subdomain("api")]
-public class AuthController(UserAuthService userAuthService, RegionService regionService) : ControllerBase
+public class AuthController(
+    UserAuthService userAuthService,
+    RegionService regionService,
+    AuthService authService,
+    DatabaseService database) : ControllerBase
 {
 
     [HttpPost("token")]
@@ -21,15 +25,14 @@ public class AuthController(UserAuthService userAuthService, RegionService regio
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: request.Username, passhash: request.Password.GetPassHash());
+        var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash());
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
 
         if (user.IsRestricted())
         {
-            var restriction = await database.UserService.Moderation.GetRestrictionReason(user.Id);
+            var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id);
             return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
         }
 
@@ -37,7 +40,7 @@ public class AuthController(UserAuthService userAuthService, RegionService regio
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        var token = AuthService.GenerateTokens(user.Id);
+        var token = authService.GenerateTokens(user.Id);
 
         var loginData = new
         {
@@ -47,7 +50,7 @@ public class AuthController(UserAuthService userAuthService, RegionService regio
             RequestTime = DateTime.UtcNow
         };
 
-        await database.EventService.UserEvent.CreateNewUserLoginEvent(user.Id, location.Ip, false, loginData);
+        await database.Events.Users.AddUserLoginEvent(user.Id, location.Ip, false, loginData);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }
@@ -62,7 +65,7 @@ public class AuthController(UserAuthService userAuthService, RegionService regio
         if (!ModelState.IsValid || request == null || request.RefreshToken == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var newToken = AuthService.RefreshToken(request.RefreshToken);
+        var newToken = authService.RefreshToken(request.RefreshToken);
         if (newToken.Item1 == null)
             return BadRequest(new ErrorResponse("Invalid refresh_token provided or user is restricted."));
 
@@ -85,7 +88,7 @@ public class AuthController(UserAuthService userAuthService, RegionService regio
             return BadRequest(new ErrorResponse(errorString));
         }
 
-        var token = AuthService.GenerateTokens(newUser.Id);
+        var token = authService.GenerateTokens(newUser.Id);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }

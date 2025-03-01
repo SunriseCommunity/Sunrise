@@ -5,21 +5,21 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Services;
 
-public static class AuthService
+public class AuthService(DatabaseService database)
 {
     private static string TokenSecret => Configuration.WebTokenSecret;
     private static TimeSpan TokenExpires => Configuration.WebTokenExpiration;
 
-    public static (string, string, int) GenerateTokens(int userId)
+    public (string, string, int) GenerateTokens(int userId)
     {
         var token = GenerateJwtToken(userId, TokenExpires);
         var refreshToken = GenerateJwtToken(userId, TimeSpan.FromDays(30));
@@ -27,33 +27,30 @@ public static class AuthService
         return (token, refreshToken, TokenExpires.ToSeconds());
     }
 
-    public static async Task<User?> GetUserFromToken(string token)
+    public async Task<User?> GetUserFromToken(string token)
     {
         ValidateJwtToken(token, out var userId);
         if (userId == null)
             return null;
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(userId);
+        var user = await database.Users.GetValidUser(userId);
 
         return user;
     }
 
-    public static (string?, int) RefreshToken(string token)
+    public (string?, int) RefreshToken(string token)
     {
         var newToken = ValidateJwtToken(token, out var userId) ? GenerateJwtToken(userId!.Value, TokenExpires) : null;
 
         if (userId == null)
             return (null, 0);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var isUserRestricted = database.UserService.Moderation.IsRestricted(userId.Value).Result;
+        var isUserRestricted = database.Users.Moderation.IsUserRestricted(userId.Value).Result;
 
         return isUserRestricted ? (null, 0) : (newToken, TokenExpires.ToSeconds());
     }
 
-    private static bool ValidateJwtToken(string token, out int? userId)
+    private bool ValidateJwtToken(string token, out int? userId)
     {
         userId = null;
 
@@ -80,8 +77,7 @@ public static class AuthService
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var id))
                 return false;
 
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-            var user = database.UserService.GetUser(id).Result;
+            var user = database.Users.GetUser(id).Result;
 
             var hashClaim = identity.FindFirst(ClaimTypes.Hash);
             if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
@@ -89,7 +85,7 @@ public static class AuthService
 
             if (user.AccountStatus == UserAccountStatus.Disabled)
             {
-                database.UserService.Moderation.EnableUser(user.Id).Wait();
+                database.Users.Moderation.EnableUser(user.Id).Wait();
                 // TODO: Send message from bot about account being enabled
             }
 
@@ -102,10 +98,9 @@ public static class AuthService
         }
     }
 
-    private static string GenerateJwtToken(int userId, TimeSpan expires)
+    private string GenerateJwtToken(int userId, TimeSpan expires)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = database.UserService.GetUser(userId).Result;
+        var user = database.Users.GetUser(userId).Result;
 
         if (user == null)
             throw new Exception("User not found while generating token");
@@ -135,6 +130,6 @@ public static class AuthService
             Username = "Guest"
         };
 
-        return new BaseSession(user);
+        return new BaseSession(user, isGuest: true);
     }
 }

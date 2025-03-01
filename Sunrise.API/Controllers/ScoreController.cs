@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -13,55 +13,39 @@ namespace Sunrise.API.Controllers;
 [Route("score/{id:int}")]
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
-public class ScoreController : ControllerBase
+public class ScoreController(DatabaseService database, SessionManager sessionManager) : ControllerBase
 {
     [HttpGet("")]
     public async Task<IActionResult> GetScore(int id)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var score = await database.ScoreService.GetScore(id);
+        var score = await database.Scores.GetScore(id, new QueryOptions(true));
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
 
-        var user = await database.UserService.GetUser(score.UserId);
-        if (user == null)
-            return NotFound(new ErrorResponse("User not found"));
+        await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
 
-        if (user.IsRestricted())
-            return NotFound(new ErrorResponse("Score not found"));
-
-        return Ok(new ScoreResponse(score, user));
+        return Ok(new ScoreResponse(score));
     }
 
     [HttpGet("replay")]
     public async Task<IActionResult> GetScoreReplay(int id)
     {
-        var session = await Request.GetSessionFromRequest();
+        var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var score = await database.ScoreService.GetScore(id);
+        var score = await database.Scores.GetScore(id, new QueryOptions(true));
         if (score?.ReplayFileId == null)
             return NotFound(new ErrorResponse("Score or replay not found"));
 
-        var user = await database.UserService.GetUser(score.UserId);
-        if (user == null)
-            return NotFound(new ErrorResponse("User not found"));
-
-        if (user.IsRestricted())
-            return NotFound(new ErrorResponse("Score not found"));
-
-        var replay = await database.ScoreService.Files.GetReplay(score.ReplayFileId.Value);
+        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value);
         if (replay == null)
             return NotFound(new ErrorResponse("Replay not found"));
 
         var replayFile = new ReplayFile(score, replay);
         var replayStream = await replayFile.ReadReplay();
         var replayFileName = await replayFile.GetFileName(session);
-        
+
         Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
         return File(replayStream.ToArray(), "application/octet-stream", replayFileName);
     }
@@ -69,10 +53,8 @@ public class ScoreController : ControllerBase
     [HttpGet("/score/top")]
     public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] int mode,
         [FromQuery(Name = "limit")] int? limit = 15,
-        [FromQuery(Name = "page")] int? page = 0)
+        [FromQuery(Name = "page")] int? page = 1)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
@@ -80,16 +62,17 @@ public class ScoreController : ControllerBase
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-        if (page is < 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var scores = await database.ScoreService.GetBestScoresByGameMode((GameMode)mode);
+        var scores = await database.Scores.GetBestScoresByGameMode((GameMode)mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        var offsetScores = scores.Skip(page * limit ?? 0).Take(limit ?? 50).Select(score =>
+        foreach (var score in scores)
         {
-            var result = database.UserService.GetUser(score.UserId).Result;
-            return result != null ? new ScoreResponse(score, result) : null;
-        }).ToList();
+            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
+        }
 
-        return Ok(new ScoresResponse(offsetScores, scores.Count));
+        var parsedScores = scores.Select(score => new ScoreResponse(score)).ToList();
+
+        return Ok(new ScoresResponse(parsedScores, scores.Count));
     }
 }

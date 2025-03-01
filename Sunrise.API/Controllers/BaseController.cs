@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
@@ -13,7 +12,7 @@ namespace Sunrise.API.Controllers;
 
 [ApiController]
 [Subdomain("api")]
-public class BaseController(IMemoryCache cache) : ControllerBase
+public class BaseController(IMemoryCache cache, SessionManager sessionManager, DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet]
     [Route("/ping")]
@@ -30,7 +29,7 @@ public class BaseController(IMemoryCache cache) : ControllerBase
         var limiter = cache.Get(key) as RateLimiter;
         var statistics = limiter?.GetStatistics();
 
-        var session = await Request.GetSessionFromRequest();
+        var session = await sessionManager.GetSessionFromRequest(Request);
 
         return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session?.GetRemainingCalls()));
     }
@@ -40,16 +39,12 @@ public class BaseController(IMemoryCache cache) : ControllerBase
     [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
     public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
         var usersOnline = sessions.GetSessions().Count;
-        var totalUsers = await database.UserService.GetTotalUsers();
+        var totalUsers = await database.Users.CountUsers();
 
         if (detailed)
         {
-            var totalScores = await database.ScoreService.GetTotalScores();
+            var totalScores = await database.Scores.CountScores();
             return Ok(new StatusResponse(usersOnline, totalUsers, totalScores));
         }
 

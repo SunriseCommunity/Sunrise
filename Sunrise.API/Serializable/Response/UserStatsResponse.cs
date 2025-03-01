@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Utils.Converters;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -7,7 +7,7 @@ namespace Sunrise.API.Serializable.Response;
 
 public class UserStatsResponse
 {
-    public UserStatsResponse(UserStats stats, int globalRank, int countryRank)
+    public UserStatsResponse(UserStats stats, long globalRank, long countryRank)
     {
         UserId = stats.UserId;
         GameMode = stats.GameMode;
@@ -52,10 +52,10 @@ public class UserStatsResponse
     public double PerformancePoints { get; set; }
 
     [JsonPropertyName("rank")]
-    public int Rank { get; set; }
+    public long Rank { get; set; }
 
     [JsonPropertyName("country_rank")]
-    public int CountryRank { get; set; }
+    public long CountryRank { get; set; }
 
     [JsonPropertyName("max_combo")]
     public int MaxCombo { get; set; }

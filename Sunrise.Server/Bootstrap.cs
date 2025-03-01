@@ -119,6 +119,7 @@ public static class Bootstrap
             .AddApplicationPart(typeof(UserController).Assembly);
         
         builder.Services.AddScoped<API.Services.AuthService>();
+        builder.Services.AddScoped<API.Services.AssetService>();
     }
 
     public static void AddServices(this WebApplicationBuilder builder)
