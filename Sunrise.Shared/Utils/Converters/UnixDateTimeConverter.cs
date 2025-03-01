@@ -8,16 +8,17 @@ public class DateTimeUnixConverter : JsonConverter<DateTime>
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         long unixTime = -1;
+
         if (reader.TokenType == JsonTokenType.Number || long.TryParse(reader.GetString(), out unixTime))
         {
             if (unixTime == -1)
             {
                 unixTime = reader.GetInt64();
             }
-            
+
             var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(unixTime).DateTime;
 
-            // 🚪🚶‍♂️ note: redis also uses unix time, but it's in seconds
+            // note: redis also uses unix time, but it's in seconds, so this handles it
             if (dateTime.Year <= 1970)
             {
                 return DateTimeOffset.FromUnixTimeSeconds(unixTime).DateTime;
