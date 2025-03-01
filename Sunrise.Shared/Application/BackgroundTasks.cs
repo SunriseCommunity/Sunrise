@@ -1,7 +1,9 @@
 using System.IO.Compression;
 using Hangfire;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -20,49 +22,66 @@ public static class BackgroundTasks
 
     public static async Task SaveStatsSnapshot()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var pageSize = 10;
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
-            var usersStats = await database.UserService.Stats.GetAllUserStats(i, LeaderboardSortType.Pp);
-
-            var users = await database.UserService.GetAllUsers();
-
-            foreach (var stats in usersStats)
+            for (var x = 1;; x++)
             {
-                var user = users.FirstOrDefault(x => x.Id == stats.UserId);
-                if (user == null || !user.IsActive(false)) continue;
+                var usersStats = await database.Users.Stats.GetUsersStats(i, LeaderboardSortType.Pp, options: new QueryOptions(true, new Pagination(x, pageSize)));
 
-                var currentSnapshot = await database.UserService.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
-                var rankSnapshots = currentSnapshot.GetSnapshots();
+                var users = await database.Users.GetUsers(usersStats.Select(us => us.UserId).ToList());
 
-                rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
-
-                if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
-
-                rankSnapshots.Add(new StatsSnapshot
+                foreach (var stats in usersStats)
                 {
-                    Rank = await database.UserService.Stats.GetUserRank(stats.UserId, stats.GameMode),
-                    CountryRank = await database.UserService.Stats.GetUserCountryRank(stats.UserId, stats.GameMode),
-                    PerformancePoints = stats.PerformancePoints
-                });
+                    var user = users.FirstOrDefault(x => x.Id == stats.UserId);
+                    if (user == null || !user.IsActive(false)) continue;
 
-                currentSnapshot.SetSnapshots(rankSnapshots);
-                await database.UserService.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
+                    var currentSnapshot = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
+                    var rankSnapshots = currentSnapshot.GetSnapshots();
+
+                    rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
+
+                    if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
+                    
+                    var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, stats.GameMode);
+
+                    rankSnapshots.Add(new StatsSnapshot
+                    {
+                        Rank = globalRank,
+                        CountryRank = countryRank,
+                        PerformancePoints = stats.PerformancePoints
+                    });
+
+                    currentSnapshot.SetSnapshots(rankSnapshots);
+                    await database.Users.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
+                }
+
+                if (usersStats.Count < pageSize) break;
             }
         }
     }
 
     public static async Task DisableInactiveUsers()
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var users = await database.UserService.GetAllUsers();
-        if (users == null) return;
+        var pageSize = 10;
 
-        foreach (var user in users.Where(user => user.LastOnlineTime.AddDays(90) < DateTime.UtcNow))
+        for (var i = 1;; i++)
         {
-            await database.UserService.Moderation.DisableUser(user.Id);
+            var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)));
+
+            foreach (var user in users.Where(user => user.LastOnlineTime.AddDays(90) < DateTime.UtcNow))
+            {
+                await database.Users.Moderation.DisableUser(user.Id);
+            }
+
+            if (users.Count < pageSize) break;
         }
     }
 
