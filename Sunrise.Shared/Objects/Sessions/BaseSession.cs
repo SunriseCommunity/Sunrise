@@ -1,12 +1,13 @@
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Repositories;
 
-namespace Sunrise.Shared.Objects.Session;
+namespace Sunrise.Shared.Objects.Sessions;
 
-public class BaseSession(User user)
+public class BaseSession(User user, bool isGuest = false)
 {
-    public User User { get; private set; } = user;
+    public int UserId { get; } = user.Id;
+    public bool IsGuest { get; } = isGuest;
 
     public bool IsRateLimited()
     {

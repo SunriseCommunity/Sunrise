@@ -1,4 +1,4 @@
-namespace Sunrise.Shared.Objects.Session;
+namespace Sunrise.Shared.Objects.Sessions;
 
 public class LoginRequest(string username, string passHash, string version, short utcOffset, bool showCityLocation, string clientHash, bool blockNonFriendPm)
 {

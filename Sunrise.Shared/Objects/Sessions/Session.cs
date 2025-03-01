@@ -1,15 +1,17 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Multiplayer;
 using Sunrise.Shared.Objects.Serializable;
 
-namespace Sunrise.Shared.Objects.Session;
+namespace Sunrise.Shared.Objects.Sessions;
 
 public class Session : BaseSession
 {
@@ -23,10 +25,9 @@ public class Session : BaseSession
     public Session(User user, Location location, LoginRequest loginRequest) : base(user)
     {
         _helper = new PacketHelper();
-
-        User = user;
+        
         Token = Guid.NewGuid().ToString();
-        Attributes = new UserAttributes(User, location, loginRequest);
+        Attributes = new UserAttributes(user, location, loginRequest);
     }
 
     // Note: Not the best place, but I'm out of ideas.
@@ -36,20 +37,22 @@ public class Session : BaseSession
 
     public Session? Spectating { get; set; } = null;
 
-    public User User { get; private set; }
-
     public void SendLoginResponse(LoginResponse response)
     {
         if (response != LoginResponse.Success) _helper.WritePacket(PacketType.ServerLoginReply, response);
 
-        _helper.WritePacket(PacketType.ServerLoginReply, User.Id);
+        _helper.WritePacket(PacketType.ServerLoginReply, UserId);
     }
 
     public void SendBanchoMaintenance()
     {
         var message = "Server going down for maintenance.";
 
-        if (User.Privilege.HasFlag(UserPrivilege.Admin)) return;
+        var user = GetSessionUser();
+        if (user == null)
+            return;
+
+        if (user.Privilege.HasFlag(UserPrivilege.Admin)) return;
 
         message += " You will be disconnected shortly.";
 
@@ -90,7 +93,11 @@ public class Session : BaseSession
 
     public void SendPrivilege()
     {
-        _helper.WritePacket(PacketType.ServerUserPermissions, User.GetPrivilegeRank() | PlayerRank.Supporter);
+        var user = GetSessionUser();
+        if (user == null)
+            return;
+        
+        _helper.WritePacket(PacketType.ServerUserPermissions, user.GetPrivilegeRank() | PlayerRank.Supporter);
     }
 
     public void SendSilenceStatus(int time = 0, string? reason = null)
@@ -119,16 +126,16 @@ public class Session : BaseSession
 
     public void SendSpectatorMapless(Session session)
     {
-        _helper.WritePacket(PacketType.ServerSpectateNoBeatmap, session.User.Id);
+        _helper.WritePacket(PacketType.ServerSpectateNoBeatmap, UserId);
     }
 
-    public void SendChannelMessage(string channel, string message, string? sender = null)
+    public void SendChannelMessage(string channel, string message, User? senderUser = null)
     {
         _helper.WritePacket(PacketType.ServerChatMessage,
             new BanchoChatMessage
             {
                 Message = message,
-                Sender = sender ?? Configuration.BotUsername,
+                Sender = senderUser?.Username ?? Configuration.BotUsername,
                 Channel = channel
             });
     }
@@ -143,9 +150,13 @@ public class Session : BaseSession
         _helper.WritePacket(type, data);
     }
 
-    public async void SendFriendsList()
+    public void SendFriendsList()
     {
-        _helper.WritePacket(PacketType.ServerFriendsList, User.FriendsList);
+        var user = GetSessionUser();
+        if (user == null)
+            return;
+        
+        _helper.WritePacket(PacketType.ServerFriendsList, user.FriendsList);
     }
 
     public void SendMultiMatchJoinFail()
@@ -160,45 +171,34 @@ public class Session : BaseSession
 
     public void SendMultiInvite(BanchoMultiplayerMatch match, Session sender)
     {
+        var user = GetSessionUser();
+        if (user == null)
+            return;
+        
         var message = new BanchoChatMessage
         {
-            Sender = sender.User.Username,
-            SenderId = sender.User.Id,
-            Channel = sender.User.Username,
+            Sender = user.Username,
+            SenderId = user.Id,
+            Channel = user.Username,
             Message = $"Come join my multiplayer match! [osump://{match.MatchId}/{match.GamePassword} {match.GameName}]"
         };
 
         _helper.WritePacket(PacketType.ServerMultiInvite, message);
     }
 
-
     public byte[] GetContent()
     {
         return _helper.GetBytesToSend();
     }
-
-    // NOTE: Don't use this method directly, it will be called by database if user is updated.
-    public async Task UpdateUser(User? user = null)
-    {
-        if (user == null)
-        {
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-            user = await database.UserService.GetUser(User.Id);
-        }
-
-        if (User.Id != user?.Id) throw new InvalidOperationException("Cannot update user with different ID.");
-
-        User = user;
-    }
-
+    
     public void AddSpectator(Session session)
     {
         foreach (var spectator in Spectators)
         {
-            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.User.Id);
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, UserId);
         }
 
-        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.User.Id);
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, UserId);
 
         Spectators.Add(session);
     }
@@ -207,11 +207,24 @@ public class Session : BaseSession
     {
         foreach (var spectator in Spectators)
         {
-            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.User.Id);
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, UserId);
         }
 
-        _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.User.Id);
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, UserId);
 
         Spectators.Remove(session);
+    }
+    
+    private User? GetSessionUser()
+    {
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        
+        var user = database.Users.GetUser(id: UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+        
+        if (user == null)
+            throw new ApplicationException($"User with id {UserId} not found");
+
+        return user;
     }
 }
