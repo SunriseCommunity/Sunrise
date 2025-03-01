@@ -1,7 +1,7 @@
 using Sunrise.Server.Enums;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Extensions;
 

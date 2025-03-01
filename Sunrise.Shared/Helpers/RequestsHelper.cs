@@ -1,11 +1,12 @@
 using System.Net;
 using System.Text.Json;
 using System.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Objects.Keys;
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Helpers;
@@ -28,7 +29,7 @@ public class RequestsHelper
     {
         if (session.IsRateLimited())
         {
-            Logger.LogWarning($"User {session.User.Id} got rate limited. Ignoring request.");
+            Logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
             return default;
         }
 
@@ -97,7 +98,8 @@ public class RequestsHelper
 
     private static async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri)
     {
-        var redis = ServicesProviderHolder.GetRequiredService<RedisRepository>();
+        using var scope = ServicesProviderHolder.CreateScope();
+        var redis = scope.ServiceProvider.GetRequiredService<RedisRepository>();
         var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)

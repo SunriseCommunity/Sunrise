@@ -28,6 +28,7 @@
     "ConnectionString": "redis",
     "CacheLifeTime": 600,
     "UseCache": true,
+    "UseRedisAsSecondCachingForDatabase": true,
     "ClearCacheOnStartup": false
   },
   "Hangfire": {
