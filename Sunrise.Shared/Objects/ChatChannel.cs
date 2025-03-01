@@ -1,4 +1,5 @@
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Objects;
@@ -9,14 +10,14 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
     public string Description { get; } = description;
     public bool IsPublic { get; } = isPublic;
     public bool IsAbstract { get; } = isAbstract;
-    private List<int> UserIds { get; } = [];
+    private List<long> UserIds { get; } = [];
 
-    public void AddUser(int userId)
+    public void AddUser(long userId)
     {
         UserIds.Add(userId);
     }
 
-    public void RemoveUser(int userId)
+    public void RemoveUser(long userId)
     {
         UserIds.Remove(userId);
 
@@ -24,16 +25,16 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
             ServicesProviderHolder.GetRequiredService<ChatChannelRepository>().RemoveAbstractChannel(Name);
     }
 
-    public void SendToChannel(string message, string? sender = null)
+    public void SendToChannel(string message,  User? senderUser = null)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
         foreach (var session in UserIds.Select(userId => sessions.GetSession(userId: userId)))
         {
-            if (session?.User.Username == sender)
+            if (session?.UserId == senderUser?.Id)
                 continue;
 
-            session?.SendChannelMessage(IsAbstract ? Name.Split('_')[0] : Name, message, sender);
+            session?.SendChannelMessage(IsAbstract ? Name.Split('_')[0] : Name, message, senderUser);
         }
     }
 

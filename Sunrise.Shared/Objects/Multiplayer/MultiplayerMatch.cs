@@ -4,6 +4,7 @@ using HOPEless.Bancho.Objects;
 using HOPEless.osu;
 using osu.Shared;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 
@@ -31,11 +32,11 @@ public class MultiplayerMatch
 
     public BanchoMultiplayerMatch Match { get; private set; }
     private MatchRepository Matches { get; }
-    public ConcurrentDictionary<int, Session.Session> Players { get; } = new();
+    public ConcurrentDictionary<int, Session> Players { get; } = new();
     public ConcurrentDictionary<int, MultiplayerSlot> Slots { get; } = new();
     private MultiplayerTimer? Timer { get; set; }
 
-    public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session.Session session)
+    public void UpdateMatchSettings(BanchoMultiplayerMatch updatedMatch, Session session)
     {
         if (Match.MatchId != updatedMatch.MatchId || !HasHostPrivileges(session))
             return;
@@ -92,9 +93,9 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void AddPlayer(Session.Session session)
+    public void AddPlayer(Session session)
     {
-        if (session.Match != null || Players.ContainsKey(session.User.Id))
+        if (session.Match != null || Players.ContainsKey(session.UserId))
         {
             session.SendMultiMatchJoinFail();
             return;
@@ -108,9 +109,9 @@ public class MultiplayerMatch
             return;
         }
 
-        Players.TryAdd(session.User.Id, session);
+        Players.TryAdd(session.UserId, session);
 
-        openSlot.AddPlayer(session.User.Id);
+        openSlot.AddPlayer(session.UserId);
 
         session.SendMultiMatchJoinSuccess(Match);
 
@@ -120,17 +121,17 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void RemovePlayer(Session.Session session, bool forced = false)
+    public void RemovePlayer(Session session, bool forced = false)
     {
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
 
         if (slot.UserId == Match.HostId)
         {
-            var newHost = Players.Values.FirstOrDefault(player => player.User.Id != Match.HostId);
-            Match.HostId = newHost?.User.Id ?? -1;
+            var newHost = Players.Values.FirstOrDefault(player => player.UserId != Match.HostId);
+            Match.HostId = newHost?.UserId ?? -1;
         }
 
         slot.RemovePlayer();
@@ -174,9 +175,9 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public bool HasHostPrivileges(Session.Session session, bool shouldBeOwner = false)
+    public bool HasHostPrivileges(Session session, bool shouldBeOwner = false)
     {
-        return !shouldBeOwner && session.User.Id == Match.HostId || session.User.Id == _roomCreatorId;
+        return !shouldBeOwner && session.UserId == Match.HostId || session.UserId == _roomCreatorId;
     }
 
     public void EndGame(bool forced = false)
@@ -232,12 +233,12 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void ChangeTeam(Session.Session session, SlotTeams? team = null, bool ignoreLock = false)
+    public void ChangeTeam(Session session, SlotTeams? team = null, bool ignoreLock = false)
     {
         if (Locked && !ignoreLock)
             return;
 
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
         var matchInTeamMode = Match.MultiTeamType is MultiTeamTypes.TeamVs or MultiTeamTypes.TagTeamVs;
 
         if (slot == null || Match.InProgress || !matchInTeamMode)
@@ -248,11 +249,11 @@ public class MultiplayerMatch
         ApplyNewChanges(false);
     }
 
-    public void ChangeMods(Session.Session session, Mods mods)
+    public void ChangeMods(Session session, Mods mods)
     {
         if (Match.SpecialModes == MultiSpecialModes.None)
         {
-            if (session.User.Id != Match.HostId)
+            if (session.UserId != Match.HostId)
                 return;
 
             Match.ActiveMods = mods;
@@ -261,10 +262,10 @@ public class MultiplayerMatch
             return;
         }
 
-        if (session.User.Id == Match.HostId)
+        if (session.UserId == Match.HostId)
             Match.ActiveMods = mods & (Mods.DoubleTime | Mods.Nightcore | Mods.HalfTime);
 
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
@@ -274,12 +275,12 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void MovePlayer(Session.Session session, int slotId, bool ignoreLock = false)
+    public void MovePlayer(Session session, int slotId, bool ignoreLock = false)
     {
         if (Locked && !ignoreLock)
             return;
 
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
         var newSlot = GetSlot(slotId);
 
         if (slot == null || newSlot is not { UserId: -1 } || Match.InProgress)
@@ -292,9 +293,9 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void UpdatePlayerStatus(Session.Session session, MultiSlotStatus status)
+    public void UpdatePlayerStatus(Session session, MultiSlotStatus status)
     {
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
@@ -336,9 +337,9 @@ public class MultiplayerMatch
     }
 
 
-    public void SetPlayerLoaded(Session.Session session)
+    public void SetPlayerLoaded(Session session)
     {
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
@@ -349,25 +350,25 @@ public class MultiplayerMatch
             WriteToAllPlayers(PacketType.ServerMultiAllPlayersLoaded, Match);
     }
 
-    public void SetPlayerSkipped(Session.Session session)
+    public void SetPlayerSkipped(Session session)
     {
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
 
         slot.UpdateIsSkipped(true);
 
-        var index = Array.IndexOf(Match.SlotId, session.User.Id);
+        var index = Array.IndexOf(Match.SlotId, session.UserId);
         SendPlayerSkipped(index);
 
         if (!Slots.Values.Any(s => s is { Status: MultiSlotStatus.Playing, IsSkipped: false }))
             WriteToAllPlayers(PacketType.ServerMultiSkip, 0);
     }
 
-    public void SetPlayerCompleted(Session.Session session)
+    public void SetPlayerCompleted(Session session)
     {
-        var slot = GetSlot(userId: session.User.Id);
+        var slot = GetSlot(userId: session.UserId);
 
         if (slot == null)
             return;
@@ -377,15 +378,15 @@ public class MultiplayerMatch
         if (!Slots.Values.Any(s => s is { Status: MultiSlotStatus.Playing })) EndGame();
     }
 
-    public void SendPlayerScoreUpdate(Session.Session session, BanchoScoreFrame score)
+    public void SendPlayerScoreUpdate(Session session, BanchoScoreFrame score)
     {
-        var index = Array.IndexOf(Match.SlotId, session.User.Id);
+        var index = Array.IndexOf(Match.SlotId, session.UserId);
         SendPlayerScoreUpdate(index, score);
     }
 
-    public void SendPlayerFailed(Session.Session session)
+    public void SendPlayerFailed(Session session)
     {
-        var index = Array.IndexOf(Match.SlotId, session.User.Id);
+        var index = Array.IndexOf(Match.SlotId, session.UserId);
         SendPlayerFailed(index);
     }
 
@@ -451,7 +452,7 @@ public class MultiplayerMatch
     {
         foreach (var player in Players.Values)
         {
-            if (exclude != null && exclude.Contains(player.User.Id))
+            if (exclude != null && exclude.Contains(player.UserId))
                 continue;
 
             player.WritePacket(type, data);

@@ -1,4 +1,4 @@
-using Sunrise.Shared.Objects.Session;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Objects;
 
@@ -8,7 +8,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow)
 
     public bool CanSend(BaseSession session)
     {
-        var userId = session.User.Id;
+        var userId = session.UserId;
         var now = DateTime.UtcNow;
 
         if (!_requestTimestamps.ContainsKey(userId)) _requestTimestamps[userId] = [];
@@ -27,7 +27,7 @@ public class RateLimiter(int messagesLimit, TimeSpan timeWindow)
 
     public int GetRemainingCalls(BaseSession session)
     {
-        var userId = session.User.Id;
+        var userId = session.UserId;
         var now = DateTime.UtcNow;
 
         if (!_requestTimestamps.ContainsKey(userId)) _requestTimestamps[userId] = [];

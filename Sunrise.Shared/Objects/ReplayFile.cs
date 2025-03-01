@@ -1,13 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using osu.Shared.Serialization;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.User;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Objects.Session;
-using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -23,8 +24,9 @@ public class ReplayFile
 
         if (user == null)
         {
-            var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-            User = database.UserService.GetUser(score.UserId).Result;
+            using var scope = ServicesProviderHolder.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+            User = database.Users.GetUser(score.UserId).Result;
         }
 
         if (User == null)
@@ -110,8 +112,11 @@ public class ReplayFile
 
     public async Task<string> GetFileName(BaseSession? session)
     {
+        using var scope = ServicesProviderHolder.CreateScope();
+        var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+
         var beatmapSet = session != null
-            ? await BeatmapRepository.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash)
+            ? await beatmapService.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash)
             : null;
 
         return
