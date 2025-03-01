@@ -26,4 +26,11 @@ public static class ServicesProviderHolder
 
         return _serviceProvider.GetRequiredService<T>();
     }
+
+    public static IServiceScope CreateScope()
+    {
+        if (_serviceProvider == null) throw new InvalidOperationException("ServiceProvider has not been set.");
+
+        return _serviceProvider.CreateScope();
+    }
 }
