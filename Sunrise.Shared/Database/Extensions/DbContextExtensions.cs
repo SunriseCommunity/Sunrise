@@ -2,7 +2,6 @@
 
 public static class DbContextExtensions
 {
-    // TODO: T should be extends from Entity
     public static void UpdateEntity<T>(this SunriseDbContext dbContext, T entity) where T : class
     {
         var entityType = dbContext.Model.FindEntityType(typeof(T));

@@ -13,7 +13,7 @@ public static class QueryableExtensions
             .Take(pagination.PageSize);
     }
     
-    // TODO: Extend from entity, and add default sorting if none is provided in query
+    // NOTE: Maybe we should enforce ordering by id for pagination if any other kind of ordering is missing?
     public static IQueryable<TEntity> UseQueryOptions<TEntity>(this IQueryable<TEntity> query, QueryOptions? options) where TEntity : class
     {
         if (options == null) return query;
