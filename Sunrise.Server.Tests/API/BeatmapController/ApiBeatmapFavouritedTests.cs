@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -19,8 +17,7 @@ public class ApiBeatmapFavouritedTests : ApiTest
     public async Task TestBeatmapSetFavouritedBeatmapId(string beatmapSetId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"beatmapset/{beatmapSetId}/favourited");
@@ -35,18 +32,16 @@ public class ApiBeatmapFavouritedTests : ApiTest
     public async Task TestGetBeatmapSetFavourited(bool favouriteBeatmapSetBeforeAct)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
         var beatmapSetId = _mocker.GetRandomInteger();
 
         if (favouriteBeatmapSetBeforeAct)
-            await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, beatmapSetId);
+            await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSetId);
 
         // Act
         var response = await client.GetAsync($"beatmapset/{beatmapSetId}/favourited");

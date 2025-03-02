@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -17,8 +15,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatusWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var requestedUser = await CreateTestUser();
 
@@ -36,15 +33,13 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatusWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         var requestedUser = await CreateTestUser();
 
@@ -64,8 +59,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatusWithInvalidUserId(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -82,8 +76,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatusWithInvalidAction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -110,8 +103,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatus(bool isFriendsBefore, bool isFriendsAfter)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -119,8 +111,6 @@ public class ApiUserEditFriendStatusTests : ApiTest
 
         var requestedUser = await CreateTestUser();
         var action = isFriendsAfter ? "add" : "remove";
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         if (isFriendsBefore)
         {
@@ -131,7 +121,10 @@ public class ApiUserEditFriendStatusTests : ApiTest
             user.RemoveFriend(requestedUser.Id);
         }
 
-        await database.UserService.UpdateUser(user);
+        var result = await Database.Users.UpdateUser(user);
+        if (result.IsFailure)
+            throw new Exception(result.Error);
+
 
         // Act
         var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action={action}", new StringContent(""));
@@ -139,7 +132,9 @@ public class ApiUserEditFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var updatedUser = await database.UserService.GetUser(user.Id);
+        var updatedUser = await Database.Users.GetUser(user.Id);
+        await Database.DbContext.Entry(updatedUser!).ReloadAsync();
+
         Assert.NotNull(updatedUser);
         Assert.Equal(isFriendsAfter, updatedUser.FriendsList.Contains(requestedUser.Id));
     }
@@ -148,8 +143,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
     public async Task TestEditFriendStatusForRestrictedUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -157,8 +151,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
 
         var requestedUser = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(requestedUser.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(requestedUser.Id, null, "Test");
 
         // Act
         var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action=add", new StringContent(""));
@@ -167,6 +160,6 @@ public class ApiUserEditFriendStatusTests : ApiTest
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("User is restricted", responseError?.Error);
+        Assert.Contains("User not found", responseError?.Error);
     }
 }

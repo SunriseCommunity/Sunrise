@@ -1,14 +1,12 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using osu.Shared;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Extensions;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -20,10 +18,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
     public async Task TestGetBeatmapLeaderboard()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
@@ -35,7 +30,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
         score.EnrichWithBeatmapData(beatmap);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        score = await database.ScoreService.InsertScore(score);
+        await Database.Scores.AddScore(score);
 
         // Act
         var response = await client.GetAsync($"beatmap/{beatmap.Id}/leaderboard?mode={score.GameMode}");
@@ -56,10 +51,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
     public async Task TestGetBeatmapLeaderboardWithMultipleScores(Mods? mods = null)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
@@ -77,7 +69,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
 
             score.Mods = i % 2 == 0 ? Mods.Hidden : Mods.None;
 
-            score = await database.ScoreService.InsertScore(score);
+            await Database.Scores.AddScore(score);
             scores.Add(score);
         }
 
@@ -103,8 +95,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
     public async Task TestGetBeatmapLeaderboardInvalidBeatmapId(string beatmapId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmap/{beatmapId}/leaderboard");
@@ -119,8 +110,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
     public async Task TestGetBeatmapLeaderboardInvalidMode(string mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmap/1/leaderboard?mode={mode}");
@@ -136,8 +126,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
     public async Task TestGetBeatmapLeaderboardInvalidLimit(string limit)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmap/1/leaderboard?limit={limit}");
@@ -152,8 +141,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
     public async Task TestGetBeatmapLeaderboardInvalidMods(string mods)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmap/1/leaderboard?mods={mods}");
@@ -166,8 +154,7 @@ public class ApiBeatmapLeaderboardTests : ApiTest
     public async Task TestGetBeatmapLeaderboardNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("beatmap/1/leaderboard?mode=0");

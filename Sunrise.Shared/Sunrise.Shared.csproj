@@ -1,0 +1,51 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.5.1"/>
+        <PackageReference Include="EFCoreSecondLevelCacheInterceptor.StackExchange.Redis" Version="5.1.1"/>
+        <PackageReference Include="Hangfire.AspNetCore" Version="1.8.18"/>
+        <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.13"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.2"/>
+        <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6"/>
+        <PackageReference Include="StackExchange.Redis" Version="2.8.24"/>
+        <PackageReference Include="System.Data.SQLite" Version="1.0.119"/>
+        <PackageReference Include="WatsonORM.Sqlite" Version="3.0.14"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Update="appsettings.json">
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </Content>
+    </ItemGroup>
+
+    <Target Name="CopyPpDll" AfterTargets="AfterBuild">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
+    </Target>
+
+    <Target Name="CopyPpDllPublish" AfterTargets="Publish">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(PublishDir)"/>
+    </Target>
+
+    <Target Name="CopyPpSo" AfterTargets="AfterBuild">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
+    </Target>
+
+    <Target Name="CopyPpSoPublish" AfterTargets="Publish">
+        <Copy SourceFiles="$(ProjectDir)Dependencies\rosu_pp_ffi.so" DestinationFolder="$(PublishDir)/runtimes/linux-x64/native"/>
+    </Target>
+
+</Project>

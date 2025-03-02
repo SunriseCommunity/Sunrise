@@ -1,13 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -25,8 +23,7 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelfWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("user/self");
@@ -39,15 +36,13 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelfWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync("user/self");
@@ -60,8 +55,7 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelf()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -86,8 +80,7 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelfWithStatus()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -113,8 +106,7 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelfWithUserStats(GameMode mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -140,8 +132,7 @@ public class ApiUserGetSelfTests : ApiTest
     public async Task TestGetSelfWithUserStatsInvalidModeQuery(string mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
         var response = await client.GetAsync($"user/self?mode={mode}");

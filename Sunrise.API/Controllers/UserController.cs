@@ -1,0 +1,555 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Managers;
+using Sunrise.API.Serializable.Request;
+using Sunrise.API.Serializable.Response;
+using Sunrise.API.Services;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Services;
+using AuthService = Sunrise.API.Services.AuthService;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+
+namespace Sunrise.API.Controllers;
+
+[Route("/user")]
+[Subdomain("api")]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
+public class UserController(SessionManager sessionManager, BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
+{
+    [HttpGet]
+    [Route("{id:int}")]
+    public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] int? mode)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+        
+        var user = await database.Users.GetUser(id: id);
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+        
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+        
+        var userStatus = "Offline";
+
+        var userSession = sessions.GetSession(userId: id);
+        if (userSession != null)
+        {
+            user.LastOnlineTime = userSession.Attributes.LastPingRequest;
+            userStatus = userSession.Attributes.Status.ToText();
+        }
+        
+        if (mode == null) return Ok(new UserResponse(user, userStatus));
+
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var stats = await database.Users.Stats.GetUserStats(id, (GameMode)mode);
+
+        if (stats == null)
+            return NotFound(new ErrorResponse("User stats not found"));
+
+        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
+
+        var data = JsonSerializer.SerializeToElement(new
+        {
+            user = new UserResponse(user, userStatus),
+            stats = new UserStatsResponse(stats, (int)globalRank, (int)countryRank)
+        });
+
+        return Ok(data);
+    }
+
+    [HttpGet]
+    [Route("self")]
+    public async Task<IActionResult> GetSelfUser([FromQuery(Name = "mode")] int? mode)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        return await GetUser(session.UserId, mode);
+    }
+
+    [HttpPost]
+    [Route("edit/description")]
+    public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest? request)
+    {
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("Description is required"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+        
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (request.Description!.Length > 2000)
+            return BadRequest(new ErrorResponse("Description is too long. Max 2000 characters"));
+
+        user.Description = request.Description;
+
+        await database.Users.UpdateUser(user);
+
+        return new OkResult();
+    }
+
+    [HttpGet]
+    [Route("{userId:int}/graph")]
+    public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] int? mode = null)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (mode == null)
+            return BadRequest(new ErrorResponse("Mode parameter is required"));
+
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var user = await database.Users.GetUser(userId);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        var userStats = await database.Users.Stats.GetUserStats(userId, (GameMode)mode);
+
+        if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
+
+        var snapshots = (await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, (GameMode)mode)).GetSnapshots();
+        
+        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
+
+        snapshots.Add(new StatsSnapshot
+        {
+            Rank = globalRank,
+            CountryRank = countryRank,
+            PerformancePoints = userStats.PerformancePoints
+        });
+
+        snapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
+
+        snapshots = snapshots.TakeLast(60).ToList();
+
+        return Ok(new StatsSnapshotsResponse(snapshots));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/scores")]
+    public async Task<IActionResult> GetUserScores(int id,
+        [FromQuery(Name = "mode")] int? mode = 0,
+        [FromQuery(Name = "type")] int? scoresType = 0,
+        [FromQuery(Name = "limit")] int? limit = 15,
+        [FromQuery(Name = "page")] int? page = 1)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
+
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var user = await database.Users.GetUser(id);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        var (scores, totalScores) = await database.Scores.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        foreach (var score in scores)
+        {
+            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
+        }
+
+        var parsedScores = scores.Select(score => new ScoreResponse(score))
+            .ToList();
+
+        return Ok(new ScoresResponse(parsedScores, totalScores));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/mostplayed")]
+    public async Task<IActionResult> GetUserMostPlayedMaps(int id,
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "limit")] int? limit = 15,
+        [FromQuery(Name = "page")] int? page = 1)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+
+        var user = await database.Users.GetUser(id);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, (GameMode)mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        var parsedBeatmaps = beatmapsIds.Select(async pair =>
+        {
+            var bId = pair.Key;
+            var count = pair.Value;
+
+            var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: bId);
+            var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
+
+            return beatmap == null ? null : new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
+        }).Select(task => task.Result).Where(x => x != null).ToList();
+
+        return Ok(new MostPlayedResponse(parsedBeatmaps, totalIdsCount));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/favourites")]
+    public async Task<IActionResult> GetUserFavourites(int id,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 1)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var user = await database.Users.GetUser(id);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        var favouritesCount = await database.Users.Favourites.GetUserFavouriteBeatmapIdsCount(id);
+        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        var parsedFavourites = favourites.Select(async setId =>
+        {
+            var beatmapSet = await beatmapService.GetBeatmapSet(session, setId);
+            return beatmapSet == null ? null : new BeatmapSetResponse(session, beatmapSet);
+        }).Select(task => task.Result).Where(x => x != null).ToList();
+
+        return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
+    }
+
+    [HttpGet]
+    [Route("leaderboard")]
+    public async Task<IActionResult> GetLeaderboard(
+        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "type")] int? leaderboardType = 0,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 1)
+    {
+
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (Enum.IsDefined(typeof(LeaderboardSortType), leaderboardType) != true)
+            return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
+
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var countUsers = await database.Users.CountValidUsers();
+
+        var stats = await database.Users.Stats.GetUsersStats((GameMode)mode, (LeaderboardSortType)leaderboardType, options: new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        if (stats.Count <= 0) return NotFound(new ErrorResponse("User stats not found"));
+
+        foreach (var userStats in stats)
+        {
+            await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
+        }
+        
+        var usersWithStats = stats.Select(async userStats =>
+        {
+            var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, (GameMode)mode);
+
+            return new UserWithStats(new UserResponse(userStats.User),
+                new UserStatsResponse(userStats, globalRank, countryRank));
+        }).Select(task => task.Result).ToList();
+
+        return Ok(new LeaderboardResponse(usersWithStats, countUsers));
+    }
+
+    [HttpGet]
+    [Route("search")]
+    public async Task<IActionResult> SeachUsers(
+        [FromQuery(Name = "query")] string query,
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 1
+    )
+    {
+        if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
+
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        return Ok(users.Select(x => new UserResponse(x)));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> GetFriendStatus(int id)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+        
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        var requestedUser = await database.Users.GetValidUser(id);
+        if (requestedUser == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        if (requestedUser.Id == session.UserId)
+            return BadRequest(new ErrorResponse("You can't check your own friend status"));
+
+        var isFollowing = requestedUser.FriendsList.Contains(session.UserId);
+        var isFollowed = user.FriendsList.Contains(requestedUser.Id);
+
+        return Ok(new FriendStatusResponse(isFollowing, isFollowed));
+    }
+
+    [HttpPost]
+    [Route("{id:int}/friend/status")]
+    public async Task<IActionResult> EditFriendStatus(int id, [FromQuery(Name = "action")] string action)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+        
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        var requestedUser = await database.Users.GetValidUser(id);
+
+        if (requestedUser == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        switch (action)
+        {
+            case "add":
+                user.AddFriend(requestedUser.Id);
+                break;
+            case "remove":
+                user.RemoveFriend(requestedUser.Id);
+                break;
+            default:
+                return BadRequest(new ErrorResponse("Invalid action parameter"));
+        }
+
+        var result = await database.Users.UpdateUser(user);
+        if (result.IsFailure)
+            return BadRequest(result.Error);
+        
+        return new OkResult();
+    }
+
+    [HttpGet]
+    [Route("{id:int}/medals")]
+    public async Task<IActionResult> GetUserMedals(int id,
+        [FromQuery(Name = "mode")] int mode)
+    {
+        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
+        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+
+        var userMedals = await database.Users.Medals.GetUserMedals(id, (GameMode)mode);
+        var modeMedals = await database.Medals.GetMedals((GameMode)mode);
+
+        return Ok(new MedalsResponse(userMedals, modeMedals));
+    }
+
+    [HttpPost(RequestType.AvatarUpload)]
+    public async Task<IActionResult> SetAvatar()
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (Request.HasFormContentType == false)
+            return BadRequest(new ErrorResponse("Invalid content type"));
+
+        if (Request.Form.Files.Count == 0)
+            return BadRequest(new ErrorResponse("No files were uploaded"));
+
+        var file = Request.Form.Files[0];
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, Request.HttpContext.RequestAborted);
+
+        var (isSet, error) = await assetService.SetAvatar(session.UserId, buffer);
+
+        if (!isSet || error != null)
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
+            return BadRequest(new ErrorResponse(error ?? "Failed to set avatar"));
+        }
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.BannerUpload)]
+    public async Task<IActionResult> SetBanner()
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        if (Request.HasFormContentType == false)
+            return BadRequest(new ErrorResponse("Invalid content type"));
+
+        if (Request.Form.Files.Count == 0)
+            return BadRequest(new ErrorResponse("No files were uploaded"));
+
+        var file = Request.Form.Files[0];
+        using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer, Request.HttpContext.RequestAborted);
+
+        var (isSet, error) = await assetService.SetBanner(session.UserId, buffer);
+
+        if (!isSet || error != null)
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
+            return BadRequest(new ErrorResponse(error ?? "Failed to set banner"));
+        }
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.PasswordChange)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest? request)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+        
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        if (request.CurrentPassword == null || request.NewPassword == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        var userByCurrentPassword = await database.Users.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: user.Username);
+
+        if (userByCurrentPassword == null)
+            return BadRequest(new ErrorResponse("Current password is incorrect"));
+
+        var (isPasswordValid, error) = request.NewPassword.IsValidPassword();
+
+        if (!isPasswordValid)
+            return BadRequest(new ErrorResponse(error ?? "Invalid password"));
+
+        user.Passhash = request.NewPassword.GetPassHash();
+
+        await database.Users.UpdateUser(user);
+
+        var ip = RegionService.GetUserIpAddress(Request);
+        await database.Events.Users.AddUserChangePasswordEvent(user.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
+
+        return new OkResult();
+    }
+
+    [HttpPost(RequestType.UsernameChange)]
+    public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest? request)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+        
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (!ModelState.IsValid || request == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        if (request.NewUsername == null)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
+        var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
+        if (!isUsernameValid)
+            return BadRequest(new ErrorResponse(error ?? "Invalid username"));
+
+        var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(session.UserId);
+        if (lastUsernameChange != null && lastUsernameChange.Time.AddHours(1) > DateTime.UtcNow)
+            return BadRequest(new ErrorResponse("You can change your username only once per hour. Please try again later."));
+
+        var foundUserByUsername = await database.Users.GetUser(username: request.NewUsername);
+        if (foundUserByUsername != null && foundUserByUsername.IsActive())
+            return BadRequest(new ErrorResponse("Username is already taken"));
+
+        var transactionResult = await database.CommitAsTransactionAsync(async () =>
+        {
+            if (foundUserByUsername != null)
+            {
+                var updateFoundUserUsernameResult = await database.Users.UpdateUserUsername(
+                    foundUserByUsername,
+                    foundUserByUsername.Username,
+                    foundUserByUsername.Username.SetUsernameAsOld());
+
+                if (updateFoundUserUsernameResult.IsFailure)
+                    throw new ApplicationException("Unexpected error occured while trying to prepare for changing your username.");
+            }
+
+            var oldUsername = user.Username;
+            user.Username = request.NewUsername;
+
+            var ip = RegionService.GetUserIpAddress(Request);
+            var updateUserUsernameResult = await database.Users.UpdateUserUsername(user, oldUsername, request.NewUsername, null, ip.ToString());
+            if (updateUserUsernameResult.IsFailure)
+                throw new ApplicationException("Unexpected error occured while trying to change your username. Sorry!");
+        });
+
+        if (transactionResult.IsFailure)
+            return BadRequest(new ErrorResponse(transactionResult.Error));
+
+        return new OkResult();
+    }
+}

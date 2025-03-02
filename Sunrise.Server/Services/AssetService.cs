@@ -1,42 +1,34 @@
-﻿using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Storages;
-using Sunrise.Server.Utils;
+﻿using CSharpFunctionalExtensions;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Server.Services;
 
-public static class AssetService
+public class AssetService(DatabaseService database)
 {
-    private static string DataPath => Configuration.DataPath;
     private const int Megabyte = 1024 * 1024;
+    private static string DataPath => Configuration.DataPath;
 
-    public static async Task<byte[]?> GetOsuReplayBytes(int scoreId)
+    public async Task<Result<byte[]>> GetOsuReplayBytes(int scoreId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
+        var score = await database.Scores.GetScore(scoreId);
+        if (score is null)
+            return Result.Failure<byte[]>($"Score with ID {scoreId} not found");
 
-        var score = await database.ScoreService.GetScore(scoreId);
-        if (score?.ReplayFileId == null)
-            return null;
+        if (score.ReplayFileId == null)
+            return Result.Failure<byte[]>($"Replay file for score with ID {scoreId} not found");
 
-        var replay = await database.ScoreService.Files.GetReplay(score.ReplayFileId.Value);
+        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value);
+        if (replay is null)
+            return Result.Failure<byte[]>($"Replay file with ID {score.ReplayFileId.Value} not found");
 
         return replay;
     }
 
-    public static async Task<(bool, string?)> SetBanner(int userId, MemoryStream buffer)
-    {
-        var (isValid, err) = ImageTools.IsHasValidImageAttributes(buffer);
-        if (!isValid || err != null)
-            return (false, err);
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var isSuccessful = await database.UserService.Files.SetBanner(userId, buffer.ToArray());
-        return isSuccessful ? (true, null) : (false, "Failed to save banner. Please try again later.");
-    }
-
-    public static string[] GetSeasonalBackgrounds()
+    public string[] GetSeasonalBackgrounds()
     {
         var basePath = Path.Combine(DataPath, "Files/SeasonalBackgrounds");
 
@@ -53,79 +45,69 @@ public static class AssetService
         return seasonalBackgrounds;
     }
 
-    public static async Task<(bool, string?)> SetAvatar(int userId, MemoryStream buffer)
-    {
-        var (isValid, err) = ImageTools.IsHasValidImageAttributes(buffer);
-        if (!isValid || err != null)
-            return (false, err);
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
-        var isSuccessful = await database.UserService.Files.SetAvatar(userId, buffer.ToArray());
-
-        return isSuccessful ? (true, null) : (false, "Failed to save avatar. Please try again later.");
-    }
-
-    public static async Task<(string?, string?)> SaveScreenshot(Session session, IFormFile screenshot,
+    public async Task<Result<string>> SaveScreenshot(Session session, IFormFile screenshot,
         CancellationToken ct)
     {
         using var buffer = new MemoryStream();
         await screenshot.CopyToAsync(buffer, ct);
 
         if (buffer.Length > 5 * Megabyte)
-            return (null, $"Screenshot is too large ({buffer.Length / Megabyte}MB)");
+            return Result.Failure<string>($"Screenshot is too large ({buffer.Length / Megabyte}MB)");
 
         if (!ImageTools.IsValidImage(buffer))
-            return (null, "Invalid image format");
+            return Result.Failure<string>("Invalid image format");
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var screenshotId = await database.UserService.Files.SetScreenshot(session.User.Id, buffer.ToArray());
+        var addScreenshotResult = await database.Users.Files.AddScreenshot(session.UserId, buffer.ToArray());
+        if (addScreenshotResult.IsFailure)
+            return Result.Failure<string>(addScreenshotResult.Error);
 
-        return ($"https://a.{Configuration.Domain}/ss/{screenshotId}.jpg", null);
+        return Result.Success($"https://a.{Configuration.Domain}/ss/{addScreenshotResult.Value}.jpg");
     }
 
-    public static async Task<(byte[]?, string?)> GetScreenshot(int screenshotId)
+    public async Task<Result<byte[]>> GetScreenshot(int screenshotId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var screenshot = await database.UserService.Files.GetScreenshot(screenshotId);
+        var screenshot = await database.Users.Files.GetScreenshot(screenshotId);
+        if (screenshot == null)
+            return Result.Failure<byte[]>("Screenshot not found");
 
-        return screenshot == null ? (null, "Screenshot not found") : (screenshot, null);
+        return Result.Success(screenshot);
     }
 
-    public static async Task<(byte[]?, string?)> GetAvatar(int userId, bool toFallback = true)
+    public async Task<Result<byte[]>> GetAvatar(int userId, bool toFallback = true)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var screenshot = await database.UserService.Files.GetAvatar(userId, toFallback);
+        var avatar = await database.Users.Files.GetAvatar(userId, toFallback);
+        if (avatar == null)
+            return Result.Failure<byte[]>("Avatar not found");
 
-        return screenshot == null ? (null, "Avatar not found") : (screenshot, null);
+        return Result.Success(avatar);
     }
 
-    public static async Task<(byte[]?, string?)> GetBanner(int userId, bool toFallback = true)
+    public async Task<Result<byte[]>> GetBanner(int userId, bool toFallback = true)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var screenshot = await database.UserService.Files.GetBanner(userId, toFallback);
+        var banner = await database.Users.Files.GetBanner(userId, toFallback);
+        if (banner == null)
+            return Result.Failure<byte[]>("Banner not found");
 
-        return screenshot == null ? (null, "Banner not found") : (screenshot, null);
+        return Result.Success(banner);
     }
 
-    public static async Task<byte[]?> GetEventBanner()
+    public async Task<byte[]?> GetEventBanner()
     {
-        return await LocalStorage.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"));
+        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"));
     }
 
-    public static async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
+    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var medalImage = await database.MedalService.GetMedalImage(medalFileId, isHighRes);
+        var medalImage = await database.Medals.GetMedalImage(medalFileId, isHighRes);
 
         const string defaultImagePath = "Files/Medals/default.png";
         var defaultImage = isHighRes ? defaultImagePath.Replace(".png", "@2x.png") : defaultImagePath;
 
-        return medalImage ?? await LocalStorage.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
+        return medalImage ?? await LocalStorageRepository.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
     }
 
-    public static async Task<byte[]?> GetPeppyImage()
+    public async Task<byte[]?> GetPeppyImage()
     {
-        return await LocalStorage.ReadFileAsync(Path.Combine(DataPath,"Files/Assets/Peppy.jpg"));
+        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/Peppy.jpg"));
     }
 }

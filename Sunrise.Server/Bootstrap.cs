@@ -1,13 +1,20 @@
+using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
+using Sunrise.API.Controllers;
+using Sunrise.API.Managers;
 using Sunrise.Server.Repositories;
-using Sunrise.Server.Repositories.Attributes;
+using Sunrise.Server.Services;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Repositories.Multiplayer;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server;
 
@@ -15,8 +22,6 @@ public static class Bootstrap
 {
     public static void Configure(this WebApplicationBuilder builder)
     {
-        builder.Services.AddControllers();
-
         builder.Services.AddEndpointsApiExplorer();
 
         builder.Services.AddProblemDetails();
@@ -70,28 +75,97 @@ public static class Bootstrap
         });
     }
 
+    public static void AddSunriseDbContextPool(this WebApplicationBuilder builder)
+    {
+        var isUseSecondLevelCache = Configuration.UseRedisAsSecondCachingForDatabase;
+
+        if (isUseSecondLevelCache)
+            builder.Services.AddEFSecondLevelCache(options =>
+            {
+                options.UseStackExchangeRedisCacheProvider(Configuration.RedisConnection, TimeSpan.FromSeconds(10))
+                    .UseCacheKeyPrefix("EF_").ConfigureLogging(true);
+
+                options.CacheAllQueries(CacheExpirationMode.Sliding, TimeSpan.FromMinutes(5));
+                options.UseDbCallsIfCachingProviderIsDown(TimeSpan.FromMinutes(1));
+            });
+
+        builder.Services.AddDbContextPool<SunriseDbContext>((serviceProvider, optionsBuilder) =>
+        {
+            if (isUseSecondLevelCache)
+                optionsBuilder.AddInterceptors(serviceProvider.GetRequiredService<SecondLevelCacheInterceptor>());
+
+            optionsBuilder
+                .UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}");
+
+            optionsBuilder.UseSeeding((ctx, _) => { DatabaseSeeder.UseAsyncSeeding(ctx).Wait(); });
+        });
+    }
+
     public static void AddSingletons(this WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<SessionRepository>();
-        builder.Services.AddSingleton<ChannelRepository>();
+        builder.Services.AddSingleton<ChatChannelRepository>();
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
+    }
+    
+    public static void AddApiEndpoints(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddControllers()
+            .AddApplicationPart(typeof(AuthController).Assembly)
+            .AddApplicationPart(typeof(BaseController).Assembly)
+            .AddApplicationPart(typeof(BeatmapController).Assembly)
+            .AddApplicationPart(typeof(ScoreController).Assembly)
+            .AddApplicationPart(typeof(UserController).Assembly);
+        
+        builder.Services.AddScoped<API.Services.AuthService>();
+        builder.Services.AddScoped<API.Services.AssetService>();
+    }
 
-        builder.Services.AddSingleton<RedisRepository>();
-        builder.Services.AddSingleton<DatabaseManager>();
+    public static void AddServices(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddScoped<RedisRepository>();
+        builder.Services.AddScoped<DatabaseService>();
+        builder.Services.AddScoped<DirectService>();
+        builder.Services.AddScoped<MedalService>();
+        builder.Services.AddScoped<AssetService>();
+        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<BanchoService>();
+        
+        builder.Services.AddScoped<ScoreService>();
+        builder.Services.AddScoped<UserService>();
+
+        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<SessionManager>();
+
+        builder.Services.AddScoped<UserAuthService>();
+        builder.Services.AddScoped<RegionService>();
+      
+
+        builder.Services.AddTransient<CalculatorService>();
+        builder.Services.AddTransient<BeatmapService>();
+        builder.Services.AddTransient(
+            typeof(Lazy<>),
+            typeof(LazilyResolved<>));
     }
 
     public static void WarmUpSingletons(this WebApplication app)
     {
         app.Services.GetRequiredService<SessionRepository>();
-        app.Services.GetRequiredService<ChannelRepository>();
+        app.Services.GetRequiredService<ChatChannelRepository>();
         app.Services.GetRequiredService<RateLimitRepository>();
         app.Services.GetRequiredService<MatchRepository>();
-
-        app.Services.GetRequiredService<RedisRepository>();
-        app.Services.GetRequiredService<DatabaseManager>();
     }
 
+    public static void ApplyDatabaseMigrations(this WebApplication app)
+    {
+        using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        database.CheckAndApplyOldTypeOfMigrations();
+        database.DbContext.Database.Migrate();
+    }
+    
     public static void UseStaticBackgrounds(this WebApplication app)
     {
         app.UseStaticFiles(new StaticFileOptions
@@ -126,10 +200,18 @@ public static class Bootstrap
 
     public static void Setup(this WebApplication app)
     {
-        CommandRepository.GetHandlers();
-        PacketRepository.GetHandlers();
+        ChatCommandRepository.GetHandlers();
+        PacketHandlerRepository.GetHandlers();
 
         ServicesProviderHolder.ServiceProvider = app.Services;
         Configuration.Initialize();
+    }
+
+    private class LazilyResolved<T> : Lazy<T>
+    {
+        public LazilyResolved(IServiceProvider serviceProvider)
+            : base(serviceProvider.GetRequiredService<T>)
+        {
+        }
     }
 }

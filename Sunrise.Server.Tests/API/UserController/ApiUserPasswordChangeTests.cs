@@ -1,14 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Request;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Extensions;
-using Sunrise.Server.Services;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.API.Serializable.Request;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Extensions.Users;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -20,8 +17,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsJsonAsync("user/password/change",
@@ -42,15 +38,13 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.PostAsJsonAsync("user/password/change",
@@ -71,8 +65,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithoutBody()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -94,8 +87,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithoutOneOfPassword(string currentPassword, string newPassword)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -126,8 +118,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithInvalidPassword(string newPassword)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.GetRandomString();
         var user = _mocker.User.GetRandomUser();
@@ -158,8 +149,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChangeWithInvalidCurrentPassword()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var tokens = await GetUserAuthTokens();
         client.UseUserAuthToken(tokens);
@@ -183,8 +173,7 @@ public class ApiUserPasswordChangeTests : ApiTest
     public async Task TestPasswordChange()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var password = _mocker.GetRandomString();
         var user = _mocker.User.GetRandomUser();
@@ -207,8 +196,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var newUser = await database.UserService.GetUser(user.Id);
+        var newUser = await Database.Users.GetUser(user.Id);
 
         Assert.Equal(newPassword.GetPassHash(), newUser.Passhash);
     }

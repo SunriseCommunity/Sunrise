@@ -1,15 +1,14 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
-public class DirectController : ControllerBase
+public class DirectController(DirectService directService, SessionRepository sessions) : ControllerBase
 {
     [HttpGet(RequestType.OsuSearch)]
     public async Task<IActionResult> Search(
@@ -21,11 +20,10 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "r")] int ranked
     )
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await BeatmapService.SearchBeatmapSet(session, page + 1, query, mode == "-1" ? "" : mode, ranked);
+        var result = await directService.SearchBeatmapSets(session, page + 1, query, mode == "-1" ? "" : mode, ranked);
 
         if (result == null)
             return BadRequest("no");
@@ -42,11 +40,10 @@ public class DirectController : ControllerBase
         [FromQuery(Name = "c")] string? beatmapHash
     )
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await BeatmapService.SearchBeatmap(session, setId, beatmapId, beatmapHash);
+        var result = await directService.SearchBeatmap(session, setId, beatmapId, beatmapHash);
 
         return Ok(result);
     }

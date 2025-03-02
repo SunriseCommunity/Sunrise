@@ -1,5 +1,5 @@
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.Controllers;
 
@@ -9,12 +9,11 @@ public class BanchoControllerTests : DatabaseTest
     public async Task Get_ReturnsImage()
     {
         // Arrange
-        var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("c");
-    
+        var client = App.CreateClient().UseClient("c");
+
         // Act
         var response = await client.GetAsync("/");
-    
+
         // Assert
         response.EnsureSuccessStatusCode();
         Assert.Equal("image/jpeg", response.Content.Headers.ContentType?.MediaType);

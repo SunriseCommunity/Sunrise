@@ -1,9 +1,7 @@
 ﻿using System.Net;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -15,8 +13,7 @@ public class ApiBeatmapSetRedisTests() : ApiTest(true)
     public async Task TestGetBeatmapSet()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
@@ -39,8 +36,7 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
     public async Task TestGetBeatmapSetUpdateFavouriteInvalidSession()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
 
@@ -61,8 +57,7 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
     public async Task TestGetBeatmapSetUpdateFavourite(bool favouriteBeatmapSetBeforeAct, bool favouriteBeatmapSetAfterAct)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -71,10 +66,8 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         if (favouriteBeatmapSetBeforeAct)
-            await database.UserService.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
+            await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
 
         // Act
         var response = await client.GetAsync($"beatmapset/{beatmapSet.Id}?favourite={favouriteBeatmapSetAfterAct}");
@@ -82,7 +75,7 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var isBeatmapSetFavourited = await database.UserService.Favourites.IsBeatmapSetFavourited(user.Id, beatmapSet.Id);
+        var isBeatmapSetFavourited = await Database.Users.Favourites.IsBeatmapSetFavourited(user.Id, beatmapSet.Id);
         Assert.Equal(favouriteBeatmapSetAfterAct, isBeatmapSetFavourited);
     }
 }
@@ -95,8 +88,7 @@ public class ApiBeatmapSetTests : ApiTest
     public async Task TestGetBeatmapSetInvalidBeatmapSetId(string beatmapSetId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"beatmapset/{beatmapSetId}");
@@ -109,8 +101,7 @@ public class ApiBeatmapSetTests : ApiTest
     public async Task TestGetBeatmapSetNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync("beatmapset/1");

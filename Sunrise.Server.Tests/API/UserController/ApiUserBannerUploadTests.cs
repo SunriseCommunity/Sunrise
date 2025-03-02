@@ -1,13 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Utils.Tools;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -21,8 +19,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.PostAsync("user/upload/banner", new StringContent(""));
@@ -38,15 +35,13 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.PostAsync("user/upload/banner", new StringContent(""));
@@ -62,8 +57,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithoutImage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -87,8 +81,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithInvalidFile()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -109,8 +102,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithTooLargeImage()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -142,8 +134,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUpload()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -168,8 +159,7 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var newBanner = await database.UserService.Files.GetBanner(user.Id);
+        var newBanner = await Database.Users.Files.GetBanner(user.Id);
 
         var resizedUploadedImage = ImageTools.ResizeImage(imageBytes, 1280, 320);
 
@@ -182,8 +172,7 @@ public class ApiUserBannerUploadTests : ApiTest
     public async Task TestBannerUploadWithNotImageFile()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);

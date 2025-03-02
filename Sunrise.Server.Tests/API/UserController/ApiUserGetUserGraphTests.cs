@@ -1,13 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Database.Models.User;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
-using Sunrise.Server.Types.Enums;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -27,8 +25,7 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraphUserNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var userId = _mocker.GetRandomInteger();
         var gamemode = _mocker.Score.GetRandomGameMode();
@@ -49,8 +46,7 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraphInvalidRoute(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         // Act
         var response = await client.GetAsync($"user/{userId}/graph");
@@ -64,14 +60,12 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraphUserRestrictedGraphNotFound()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var gamemode = _mocker.Score.GetRandomGameMode();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/graph?mode={(int)gamemode}");
@@ -87,8 +81,7 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraph()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var gamemode = _mocker.Score.GetRandomGameMode();
@@ -102,8 +95,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         var responseSnapshots = await response.Content.ReadFromJsonAsync<StatsSnapshotsResponse>();
         Assert.NotNull(responseSnapshots);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var userRank = await database.UserService.Stats.GetUserRank(user.Id, gamemode);
+        var (userRank, _) = await Database.Users.Stats.Ranks.GetUserRanks(user, gamemode);
 
         Assert.Equal(userRank, responseSnapshots.Snapshots.FirstOrDefault()?.Rank);
     }
@@ -112,13 +104,10 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraphCheckSorting()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var gamemode = _mocker.Score.GetRandomGameMode();
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var snapshots = new List<StatsSnapshot>();
 
@@ -136,7 +125,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         };
 
         userStatsSnapshot.SetSnapshots(snapshots);
-        await database.UserService.Stats.Snapshots.InsertUserStatsSnapshot(userStatsSnapshot);
+        await Database.Users.Stats.Snapshots.AddUserStatsSnapshot(userStatsSnapshot);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/graph?mode={(int)gamemode}");
@@ -162,13 +151,10 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGraphCheckLimit()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var gamemode = _mocker.Score.GetRandomGameMode();
-
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
 
         var snapshots = new List<StatsSnapshot>();
 
@@ -186,7 +172,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         };
 
         userStatsSnapshot.SetSnapshots(snapshots);
-        await database.UserService.Stats.Snapshots.InsertUserStatsSnapshot(userStatsSnapshot);
+        await Database.Users.Stats.Snapshots.AddUserStatsSnapshot(userStatsSnapshot);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}/graph?mode={(int)gamemode}");
@@ -211,8 +197,7 @@ public class ApiUserGetUserGraphTests : ApiTest
     public async Task TestGetUserGrapthWithInvalidModeQuery(string mode)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
 

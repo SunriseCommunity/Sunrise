@@ -1,15 +1,14 @@
 ﻿using HOPEless.Bancho;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Objects;
-using Sunrise.Server.Repositories.Attributes;
-using Sunrise.Server.Types.Enums;
+using Sunrise.Server.Repositories;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Services;
 
-public static class BanchoService
+public class BanchoService
 {
-    public static async Task ProcessPackets(Session session, MemoryStream buffer, ILogger logger)
+    public async Task ProcessPackets(Session session, MemoryStream buffer, ILogger logger)
     {
         try
         {
@@ -22,7 +21,7 @@ public static class BanchoService
 
             foreach (var packet in packets)
             {
-                await PacketRepository.HandlePacket(packet, session);
+                await PacketHandlerRepository.HandlePacket(packet, session);
             }
         }
         catch (Exception e)
@@ -33,20 +32,7 @@ public static class BanchoService
         }
     }
 
-    public static async Task<string?> GetFriends(string username)
-    {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var user = await database.UserService.GetUser(username: username);
-
-        if (user == null)
-            return null;
-
-        var friends = user.FriendsList;
-
-        return string.Join("\n", friends);
-    }
-
-    public static string GetCurrentEventJson()
+    public string GetCurrentEventJson()
     {
         var eventImageUri = $"https://assets.{Configuration.Domain}/events/EventBanner.jpg";
 

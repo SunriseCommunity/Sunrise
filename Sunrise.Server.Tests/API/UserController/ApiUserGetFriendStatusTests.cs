@@ -1,11 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using Sunrise.Server.API.Serializable.Response;
-using Sunrise.Server.Application;
-using Sunrise.Server.Database;
-using Sunrise.Server.Tests.Core.Abstracts;
-using Sunrise.Server.Tests.Core.Services.Mock;
-using Sunrise.Server.Tests.Core.Utils;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -17,8 +15,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
     public async Task TestGetFriendStatusWithoutAuthToken()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var requestedUser = await CreateTestUser();
 
@@ -36,15 +33,13 @@ public class ApiUserGetFriendStatusTests : ApiTest
     public async Task TestGetFriendStatusWithActiveRestriction()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(user.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
 
         var requestedUser = await CreateTestUser();
 
@@ -64,8 +59,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
     public async Task TestGetFriendStatusWithInvalidUserId(string userId)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -86,8 +80,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
     public async Task TestGetFriendStatus(bool isFollowingYou, bool isFollowedByYou)
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -95,18 +88,16 @@ public class ApiUserGetFriendStatusTests : ApiTest
 
         var requestedUser = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-
         if (isFollowedByYou)
         {
             user.AddFriend(requestedUser.Id);
-            await database.UserService.UpdateUser(user);
+            await Database.Users.UpdateUser(user);
         }
 
         if (isFollowingYou)
         {
             requestedUser.AddFriend(user.Id);
-            await database.UserService.UpdateUser(requestedUser);
+            await Database.Users.UpdateUser(requestedUser);
         }
 
         // Act
@@ -126,8 +117,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
     public async Task TestGetFriendStatusForRestrictedUser()
     {
         // Arrange
-        await using var app = new SunriseServerFactory();
-        var client = app.CreateClient().UseClient("api");
+        var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
@@ -135,8 +125,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
 
         var requestedUser = await CreateTestUser();
 
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        await database.UserService.Moderation.RestrictPlayer(requestedUser.Id, 0, "Test");
+        await Database.Users.Moderation.RestrictPlayer(requestedUser.Id, null, "Test");
 
         // Act
         var response = await client.GetAsync($"user/{requestedUser.Id}/friend/status");
@@ -145,6 +134,6 @@ public class ApiUserGetFriendStatusTests : ApiTest
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("User is restricted", responseError?.Error);
+        Assert.Contains("User not found", responseError?.Error);
     }
 }

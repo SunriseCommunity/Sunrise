@@ -1,62 +1,71 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.Server.Application;
-using Sunrise.Server.Attributes;
-using Sunrise.Server.Database;
 using Sunrise.Server.Services;
-using Sunrise.Server.Types.Enums;
-using Sunrise.Server.Utils;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Server.Controllers;
 
 [Subdomain("a", "assets")]
-public class AssetsController : ControllerBase
+[ResponseCache(Duration = 300)]
+public class AssetsController(BanchoService banchoService, AssetService assetService, DatabaseService database) : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetAvatar(id, fallToDefault ?? true) is var (avatar, error) &&
-            (error != null || avatar == null))
+
+        var getAvatarResult = await assetService.GetAvatar(id, fallToDefault ?? true);
+
+        if (getAvatarResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, error);
+            if (fallToDefault is true)
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, getAvatarResult.Error);
+
             return NotFound();
         }
 
-        return new FileContentResult(avatar, $"image/{ImageTools.GetImageType(avatar) ?? "png"}");
+        return new FileContentResult(getAvatarResult.Value, $"image/{ImageTools.GetImageType(getAvatarResult.Value) ?? "png"}");
     }
 
     [HttpGet(RequestType.GetBanner)]
     public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-        if (await AssetService.GetBanner(id, fallToDefault ?? true) is var (banner, error) &&
-            (error != null || banner == null))
+        var getBannerResult = await assetService.GetBanner(id, fallToDefault ?? true);
+
+        if (getBannerResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, error);
+            if (fallToDefault is true)
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, getBannerResult.Error);
+
             return NotFound();
         }
 
-        return new FileContentResult(banner, $"image/{ImageTools.GetImageType(banner) ?? "png"}");
+        return new FileContentResult(getBannerResult.Value, $"image/{ImageTools.GetImageType(getBannerResult.Value) ?? "png"}");
     }
 
     [HttpGet]
     [Route(RequestType.GetScreenshot)]
     public async Task<IActionResult> GetScreenshot(int id)
     {
-        if (await AssetService.GetScreenshot(id) is var (screenshot, error) && (error != null || screenshot == null))
+        var getScreenshotResult = await assetService.GetScreenshot(id);
+
+        if (getScreenshotResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, getScreenshotResult.Error);
             return NotFound();
         }
 
-        return new FileContentResult(screenshot, "image/jpeg");
+        return new FileContentResult(getScreenshotResult.Value, "image/jpeg");
     }
 
     [HttpGet(RequestType.GetMedalHighImage)]
     [HttpGet(RequestType.GetMedalImage)]
     public async Task<IActionResult> GetMedalImage(int medalId)
     {
-        var database = ServicesProviderHolder.GetRequiredService<DatabaseManager>();
-        var medal = await database.MedalService.GetMedal(medalId);
+        var medal = await database.Medals.GetMedal(medalId);
 
         if (medal == null)
             return NotFound();
@@ -67,7 +76,10 @@ public class AssetsController : ControllerBase
             return Redirect(
                 $"{Configuration.MedalMirrorUrl}{medal.FileUrl}{(isHighRes ? "@2x" : string.Empty)}.png");
 
-        var data = await AssetService.GetMedalImage(medal.FileId, isHighRes);
+        if (!medal.FileId.HasValue)
+            return NotFound();
+
+        var data = await assetService.GetMedalImage(medal.FileId.Value, isHighRes);
         if (data == null)
             return NotFound();
 
@@ -77,13 +89,13 @@ public class AssetsController : ControllerBase
     [HttpGet(RequestType.MenuContent)]
     public IActionResult GetMenuContent()
     {
-        return Ok(BanchoService.GetCurrentEventJson());
+        return Ok(banchoService.GetCurrentEventJson());
     }
 
     [HttpGet(RequestType.EventBanner)]
     public async Task<IActionResult> GetEventBanner()
     {
-        var data = await AssetService.GetEventBanner();
+        var data = await assetService.GetEventBanner();
         if (data == null)
             return NotFound();
 
