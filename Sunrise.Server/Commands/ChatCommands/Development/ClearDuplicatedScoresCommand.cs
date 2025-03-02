@@ -45,7 +45,7 @@ public class ClearDuplicatedScoresCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var allScores = await database.Scores.GetScores(); // TODO: Optimise
+        var allScores = await database.Scores.GetScores();
         var groupedScores = allScores.GroupBy(x => x.ScoreHash);
 
         var scoresReviewedTotal = 0;

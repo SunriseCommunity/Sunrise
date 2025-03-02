@@ -45,7 +45,7 @@ public class AppendNewUserStatsCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var users = await database.Users.GetUsers(); // TODO: Optimise
+        var users = await database.Users.GetUsers();
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {

@@ -3,6 +3,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Scores;
@@ -47,7 +48,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var allScores = await database.Scores.GetScores(); // TODO: Should be optimised
+        var allScores = await database.Scores.GetScores();
         var groupedScores = allScores.GroupBy(x => x.BeatmapId);
 
         var scoresReviewedTotal = 0;

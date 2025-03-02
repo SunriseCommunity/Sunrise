@@ -54,7 +54,7 @@ public class RecalculateCommand : IChatCommand
         foreach (var mode in Enum.GetValues<GameMode>())
         {
 
-            var stats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp); // TODO: Optimise
+            var stats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp);
 
             if (stats.Count == 0)
             {

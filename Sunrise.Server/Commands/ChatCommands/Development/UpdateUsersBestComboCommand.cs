@@ -3,6 +3,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -48,40 +49,48 @@ public class UpdateUsersBestComboCommand : IChatCommand
 
         foreach (var mode in Enum.GetValues<GameMode>())
         {
-            var allScores = await database.Scores.GetBestScoresByGameMode(mode); // TODO: Optimise
-            var groupedScores = allScores.Where(x => x.IsScoreable).GroupBy(x => x.UserId);
 
-            foreach (var group in groupedScores)
+            var pageSize = 50;
+
+            for (var page = 1;; page++)
             {
-                var bestCombo = group.Max(x => x.MaxCombo);
+                var scores = await database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(new Pagination(page, pageSize)));
+                var groupedScores = scores.Where(x => x.IsScoreable).GroupBy(x => x.UserId);
 
-                var user = await database.Users.GetUser(group.Key);
-
-                if (user == null)
+                foreach (var group in groupedScores)
                 {
-                    ChatCommandRepository.TrySendMessage(userId, $"User {group.Key} not found. Skipping.");
-                    continue;
+                    var bestCombo = group.Max(x => x.MaxCombo);
+
+                    var user = await database.Users.GetUser(group.Key);
+
+                    if (user == null)
+                    {
+                        ChatCommandRepository.TrySendMessage(userId, $"User {group.Key} not found. Skipping.");
+                        continue;
+                    }
+
+                    var userStats = await database.Users.Stats.GetUserStats(user.Id, mode);
+
+                    if (userStats == null)
+                    {
+                        ChatCommandRepository.TrySendMessage(userId, $"User {user.Id} stats not found. Skipping.");
+                        continue;
+                    }
+
+                    var previousBestCombo = userStats.MaxCombo;
+
+                    userStats.MaxCombo = bestCombo;
+
+                    await database.Users.Stats.UpdateUserStats(userStats, user);
+
+                    ChatCommandRepository.TrySendMessage(userId, $"Updated {user.Username} ({user.Id}) best combo to {bestCombo} (previous: {previousBestCombo}) for mode {mode}");
                 }
 
-                var userStats = await database.Users.Stats.GetUserStats(user.Id, mode);
+                ChatCommandRepository.TrySendMessage(userId,
+                    $"Updated users best combo for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
 
-                if (userStats == null)
-                {
-                    ChatCommandRepository.TrySendMessage(userId, $"User {user.Id} stats not found. Skipping.");
-                    continue;
-                }
-
-                var previousBestCombo = userStats.MaxCombo;
-
-                userStats.MaxCombo = bestCombo;
-
-                await database.Users.Stats.UpdateUserStats(userStats, user);
-
-                ChatCommandRepository.TrySendMessage(userId, $"Updated {user.Username} ({user.Id}) best combo to {bestCombo} (previous: {previousBestCombo}) for mode {mode}");
+                if (scores.Count < pageSize) break;
             }
-
-            ChatCommandRepository.TrySendMessage(userId,
-                $"Updated users best combo for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
         }
 
         Configuration.OnMaintenance = false;

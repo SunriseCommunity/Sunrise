@@ -71,7 +71,6 @@ public class UserStatsRanksService
         {
             for (var i = 1;; i++)
             {
-                // TODO: Should get all user! (make valid and non valid option)
                 var usersStats = await _databaseService.Users.Stats.GetUsersStats(mode,
                     LeaderboardSortType.Pp,
                     options: new QueryOptions(new Pagination(i, branchSize)));
@@ -79,7 +78,6 @@ public class UserStatsRanksService
                 foreach (var stats in usersStats)
                 {
                     await _dbContext.Entry(stats).Reference(s => s.User).LoadAsync();
-
 
                     await SortedSetAddOrUpdateUserStats(stats, stats.User);
                     await UpdateUserStatsBestRanks(stats, stats.User);

@@ -36,10 +36,22 @@ public static class ScoreExtensions
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        // TODO: Should support multiple leaderboard systems
-        var (scores, _) = await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, options: new QueryOptions(true)); // TODO: Unoptimized
+        // TODO: Should support multiple leaderboard 
 
-        return scores.GetLeaderboardRankOf(score);
+        var pageSize = 1;
+
+        for (var page = 1;; page++)
+        {
+            var (scores, _) = await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, options: new QueryOptions(true, new Pagination(page, pageSize)));
+
+            var leaderboardRank = scores.GetLeaderboardRankOf(score);
+
+            if (leaderboardRank > 0) return leaderboardRank;
+
+            if (scores.Count < pageSize) break;
+        }
+
+        return 0;
     }
 
     public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores) where T : Score
@@ -245,21 +257,21 @@ public static class ScoreExtensions
             clientHash,
             storyboardHash).ToHash();
     }
-    
+
     public static async Task<string> GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, Session session)
     {
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == score.BeatmapId);
         if (beatmap == null)
             return "Beatmap not found while trying to get information string for score";
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
-        
+
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
             beatmap.DifficultyRating = await calculatorService
                 .RecalculateBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
-        
+
         return $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {score.Mods.GetModsString()}| GameMode: {score.GameMode.ToVanillaGameMode()} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★";
     }
 }
