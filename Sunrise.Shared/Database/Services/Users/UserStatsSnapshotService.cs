@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -36,7 +37,11 @@ public class UserStatsSnapshotService
 
     public async Task<Result> UpdateUserStatsSnapshot(UserStatsSnapshot snapshot)
     {
-        return await ResultUtil.TryExecuteAsync(async () => { await _dbContext.SaveChangesAsync(); });
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            _dbContext.UpdateEntity(snapshot);
+            await _dbContext.SaveChangesAsync();
+        });
     }
 
     public async Task<Result> AddUserStatsSnapshot(UserStatsSnapshot snapshot)
