@@ -94,7 +94,7 @@ public class UserFileService
 
     public async Task<byte[]?> GetScreenshot(int screenshotId)
     {
-        var record = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId);
+        var record = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot);
 
         if (record == null)
             return null;
