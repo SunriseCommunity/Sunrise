@@ -11,6 +11,14 @@ namespace Sunrise.Server.Tests.API.ScoreController;
 public class ApiScoreGetScoreTopTests : ApiTest
 {
     private readonly MockService _mocker = new();
+    
+    public static IEnumerable<object[]> GetBeatmapStatuses()
+    {
+        return Enum.GetValues(typeof(BeatmapStatus)).Cast<BeatmapStatus>().Select(status => new object[]
+        {
+            status
+        });
+    }
 
     [Theory]
     [InlineData("-1")]
@@ -143,6 +151,43 @@ public class ApiScoreGetScoreTopTests : ApiTest
         Assert.NotNull(scores);
 
         Assert.Single(scores.Scores);
+    }
+    
+    [Theory]
+    [MemberData(nameof(GetBeatmapStatuses))]
+    public async Task TestGetIgnoreNonRankedTopScore(BeatmapStatus status)
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+
+        var gamemode = _mocker.Score.GetRandomGameMode();
+
+        var user = await CreateTestUser();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.UserId = user.Id;
+        score.GameMode = gamemode;
+        score.BeatmapStatus = status;
+            
+        await Database.Scores.AddScore(score);
+
+        // Act
+        var response = await client.GetAsync($"score/top?mode={(int)gamemode}&limit=1");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        Assert.NotNull(scores);
+
+        var isBeatmapStatusRanked = status is BeatmapStatus.Ranked or BeatmapStatus.Approved;
+
+        if (isBeatmapStatusRanked)
+        {
+            Assert.Single(scores.Scores);
+        }
+        else
+        {
+            Assert.Empty(scores.Scores);
+        }
     }
 
     [Fact]

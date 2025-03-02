@@ -59,8 +59,6 @@ public class ScoreRepository
 
     public async Task<List<Score>> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
     {
-        var restrictedUserIds = await _dbContext.Users.Where(y => y.AccountStatus == UserAccountStatus.Restricted).Select(y => y.Id).ToListAsync();
-
         var isModeWithoutScoreMultiplier = mode.IsGameModeWithoutScoreMultiplier();
 
         var groupedBestScores = _dbContext.Scores
@@ -73,7 +71,8 @@ public class ScoreRepository
             .FromSqlRaw(groupedBestScores.ToQueryString())
             .OrderByDescending(x => x.PerformancePoints)
             .ThenByDescending(x => x.WhenPlayed)
-            .Where(x => restrictedUserIds.Contains(x.UserId) == false)
+            .FilterValidScores()
+            .FilterPassedRankedScores()
             .Where(x => x.GameMode == mode && x.IsScoreable && x.IsPassed && x.SubmissionStatus == SubmissionStatus.Best)
             .UseQueryOptions(options);
 
