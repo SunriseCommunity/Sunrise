@@ -59,13 +59,7 @@ public class ScoreRepository
 
     public async Task<List<Score>> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
     {
-        var isModeWithoutScoreMultiplier = mode.IsGameModeWithoutScoreMultiplier();
-
-        var groupedBestScores = _dbContext.Scores
-            .GroupBy(x => x.BeatmapId)
-            .Select(g =>
-                g.OrderByDescending(x => isModeWithoutScoreMultiplier ? x.PerformancePoints : x.TotalScore
-                ).First());
+        var groupedBestScores = _dbContext.Scores.SelectBeatmapsBestScores();
 
         var queryScore = _dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
@@ -73,7 +67,7 @@ public class ScoreRepository
             .ThenByDescending(x => x.WhenPlayed)
             .FilterValidScores()
             .FilterPassedRankedScores()
-            .Where(x => x.GameMode == mode && x.IsScoreable && x.IsPassed && x.SubmissionStatus == SubmissionStatus.Best)
+            .Where(x => x.GameMode == mode)
             .UseQueryOptions(options);
 
         var queryResult = await queryScore.ToListAsync();
@@ -133,12 +127,11 @@ public class ScoreRepository
     {
         var scoresGrouped = _dbContext.Scores
             .FilterValidScores()
+            .FilterPassedScoreableScores()
             .Where(
                 s =>
                     s.BeatmapHash == EF.Constant(beatmapHash) &&
-                    s.GameMode == EF.Constant(gameMode) &&
-                    s.IsPassed &&
-                    s.IsScoreable);
+                    s.GameMode == EF.Constant(gameMode));
         
         if (type is LeaderboardType.GlobalWithMods && mods != null) scoresGrouped = scoresGrouped.Where(s => s.Mods == EF.Constant(mods));
         if (type is LeaderboardType.Friends && user != null) scoresGrouped = scoresGrouped.Where(s => EF.Constant(user.FriendsList).Contains(s.UserId));
@@ -168,19 +161,14 @@ public class ScoreRepository
             case ScoreTableType.Best:
                 scoresQuery = scoresQuery
                     .FilterPassedRankedScores()
-                    .Where(s => s.SubmissionStatus == SubmissionStatus.Best)
                     .SelectUsersPersonalBestScores();
-
                 break;
             case ScoreTableType.Top:
                 scoresQuery = scoresQuery
                     .FilterPassedScoreableScores()
-                    .Where(s => s.SubmissionStatus == SubmissionStatus.Best)
                     .SelectBeatmapsBestScores();
                 break;
             case ScoreTableType.Recent:
-                scoresQuery = scoresQuery
-                    .OrderByDescending(s => s.WhenPlayed);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
@@ -198,12 +186,14 @@ public class ScoreRepository
                     .OrderByDescending(s => s.WhenPlayed);
                 break;
             case ScoreTableType.Recent:
+                scoresQuery = scoresQuery
+                    .OrderByDescending(s => s.WhenPlayed);
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
-        scoresQuery = scoresQuery.Where(s => s.UserId == userId);
+        scoresQuery = scoresQuery.Where(s => s.UserId == userId); // Add where user id query only after forming sqlRaw query, to get proper beatmaps top plays
 
         var totalCount = await scoresQuery.CountAsync();
 

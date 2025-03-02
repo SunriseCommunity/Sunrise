@@ -15,13 +15,13 @@ namespace Sunrise.Shared.Database;
 public sealed class DatabaseService
 {
     private readonly ILogger<DatabaseService> _logger;
-
-    public readonly BeatmapRepository Beatmaps;
-
+    
+    public readonly RedisRepository Redis;
     public readonly SunriseDbContext DbContext;
+    
+    public readonly BeatmapRepository Beatmaps;
     public readonly EventRepository Events;
     public readonly MedalRepository Medals;
-    public readonly RedisRepository Redis;
     public readonly ScoreRepository Scores;
     public readonly UserRepository Users;
 

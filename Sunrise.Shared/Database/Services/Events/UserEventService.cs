@@ -7,7 +7,7 @@ using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Utils;
 
-namespace Sunrise.Shared.Database.Services;
+namespace Sunrise.Shared.Database.Services.Events;
 
 public class UserEventService
 {

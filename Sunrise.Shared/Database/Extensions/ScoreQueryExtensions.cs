@@ -41,10 +41,8 @@ public static class ScoreQueryableExtensions
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
 
         return queryable
-            .GroupBy(x => new
-            {
-                x.BeatmapId
-            })
+            .Where(x => x.SubmissionStatus == SubmissionStatus.Best)
+            .GroupBy(x => x.BeatmapId)
             .Select(g =>
                 g.OrderByDescending(x =>
                     EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore
@@ -56,6 +54,7 @@ public static class ScoreQueryableExtensions
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
 
         return queryable
+            .Where(x => x.SubmissionStatus == SubmissionStatus.Best)
             .GroupBy(x => new
             {
                 x.UserId,
