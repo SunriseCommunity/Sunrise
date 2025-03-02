@@ -194,7 +194,7 @@ public class UserRepository
             var isUserHasAnyLoginEvents = await _databaseService.Events.Users.IsUserHasAnyLoginEvents(user.Id);
             var isUserHasAnyScore = await _databaseService.Scores.GetUserLastScore(userId) != null;
 
-            if (isUserHasAnyLoginEvents || isUserHasAnyScore || user.Username == Configuration.BotUsername) // TODO: Remove hardcode check for bot
+            if (isUserHasAnyLoginEvents || isUserHasAnyScore || user.IsUserSunriseBot())
             {
                 _logger.LogWarning($"User {user.Username} has login events or some active score. Deleting user with any of these conditions is not allowed.");
                 throw new ApplicationException(QueryResultError.CANT_REMOVE_REQUESTED_RECORD);

@@ -29,7 +29,10 @@ public class AuthController(
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
-
+        
+        if (user.IsUserSunriseBot())
+            return BadRequest(new ErrorResponse("You can't login as sunrise bot"));
+        
         if (user.IsRestricted())
         {
             var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id);

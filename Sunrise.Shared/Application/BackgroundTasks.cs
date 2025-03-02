@@ -110,7 +110,6 @@ public static class BackgroundTasks
         var sourceFile = new FileInfo(databasePath);
         sourceFile.CopyTo(backupDbPath, true);
 
-
         using var zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
         zip.CreateEntryFromFile(backupDbPath, Configuration.DatabaseName);
 

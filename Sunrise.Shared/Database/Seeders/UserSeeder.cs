@@ -26,8 +26,7 @@ public static class UserSeeder
             Country = (short)CountryCode.AQ,
             Privilege = UserPrivilege.ServerBot,
             Passhash = "12345678",
-            Email = "bot@mail.com",
-            AccountStatus = UserAccountStatus.Restricted // TODO: Find a better way to handle this
+            Email = "bot@mail.com"
         };
 
         var sunriseBotEntry = await context.Set<User>().Where(x => x.Privilege.HasFlag(UserPrivilege.ServerBot)).FirstOrDefaultAsync(ct);

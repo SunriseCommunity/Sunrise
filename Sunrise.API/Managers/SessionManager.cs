@@ -21,7 +21,7 @@ public class SessionManager(AuthService authService)
             return null;
 
         var user = await authService.GetUserFromToken(token);
-        if (user == null)
+        if (user == null || user.IsUserSunriseBot())
             return null;
 
         var session = new BaseSession(user);

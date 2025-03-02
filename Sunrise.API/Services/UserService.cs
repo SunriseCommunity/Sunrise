@@ -19,7 +19,7 @@ public static class UserService
         if (user.Privilege.HasFlag(UserPrivilege.Bat))
             badges.Add("bat");
 
-        if (user.Username == Configuration.BotUsername)
+        if (user.IsUserSunriseBot())
             badges.Add("bot");
 
         if (user.Privilege.HasFlag(UserPrivilege.Supporter))

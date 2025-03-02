@@ -24,6 +24,9 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
             return (null,
                 "Server is currently in maintenance mode. Please try again later.",
                 LoginResponse.ServerError);
+        
+        if (user.IsUserSunriseBot())
+            return (null, "You can't login as Sunrise Bot", LoginResponse.InvalidCredentials);
 
         if (user.IsRestricted() && await database.Users.Moderation.IsUserRestricted(user.Id))
             return (null, "Your account is restricted. Please contact support for more information.", LoginResponse.InvalidCredentials);
