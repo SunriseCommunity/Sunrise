@@ -42,23 +42,17 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
     protected override void Dispose(bool disposing)
     {
-        var manager = new RecurringJobManager();
-        foreach (var job in JobStorage.Current.GetConnection().GetRecurringJobs())
+        if (disposing == false)
         {
-            manager.RemoveIfExists(job.Id);
-        }
-
-        using var connection = JobStorage.Current.GetConnection();
-
-        foreach (var job in connection.GetAllItemsFromSet("processing-jobs"))
-        {
-            BackgroundJob.Delete(job);
+            base.Dispose(disposing);
+            return;
         }
         
-        foreach (var job in connection.GetAllItemsFromSet("scheduled-jobs"))
-        {
-            BackgroundJob.Delete(job);
-        }
-
+        var mon = JobStorage.Current.GetMonitoringApi();
+        var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);
+        var jobs = scheduledJobs.ToList();
+        jobs.ForEach(x => BackgroundJob.Delete(x.Key));
+        
+        base.Dispose(disposing);
     }
 }
