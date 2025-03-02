@@ -85,7 +85,9 @@ public static class PerformanceCalculator
                 {
                     using var performance = Performance.New();
                     performance.Accuracy((uint)accuracy);
-                    performance.IMods((uint)mods);
+                    
+                    var ignoreNotScoredMods = mods & ~Mods.Relax;
+                    performance.IMods((uint)ignoreNotScoredMods);
                     var result = performance.Calculate(beatmap.Context);
                     ppList.Add(result.mode switch
                     {
