@@ -25,7 +25,7 @@ public static class BackgroundTasks
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var pageSize = 10;
+        var pageSize = 100;
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
