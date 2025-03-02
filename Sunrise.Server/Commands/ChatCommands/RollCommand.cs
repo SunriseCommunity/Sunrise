@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using static System.Int32;
@@ -27,7 +28,7 @@ public class RollCommand : IChatCommand
             return;
 
         var message =
-            $"[https://{Configuration.Domain}/user/{session.UserId} {user.Username}] rolls {new Random().Next(0, maxNumber)} point(s)";
+            $"{user.GetUserInGameChatString()} rolls {new Random().Next(0, maxNumber)} point(s)";
 
         if (channel != null)
             channel.SendToChannel(message);

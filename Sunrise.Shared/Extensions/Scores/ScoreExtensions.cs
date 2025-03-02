@@ -9,6 +9,7 @@ using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Calculators;
+using Sunrise.Shared.Utils.Converters;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Extensions.Scores;
@@ -243,5 +244,22 @@ public static class ScoreExtensions
             score.OsuVersion,
             clientHash,
             storyboardHash).ToHash();
+    }
+    
+    public static async Task<string> GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, Session session)
+    {
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == score.BeatmapId);
+        if (beatmap == null)
+            return "Beatmap not found while trying to get information string for score";
+        
+        using var scope = ServicesProviderHolder.CreateScope();
+        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        
+        // Mods can change difficulty rating, important to recalculate it for right medal unlocking
+        if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
+            beatmap.DifficultyRating = await calculatorService
+                .RecalculateBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+        
+        return $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {score.Mods.GetModsString()}| GameMode: {score.GameMode.ToVanillaGameMode()} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★";
     }
 }

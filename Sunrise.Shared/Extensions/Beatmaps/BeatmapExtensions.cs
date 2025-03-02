@@ -13,4 +13,11 @@ public static class BeatmapExtensions
         beatmap.IsScoreable = true;
         beatmap.Ranked = 1;
     }
+    
+    public static string GetBeatmapInGameChatString(this Beatmap beatmap, BeatmapSet beatmapSet)
+    {
+        return  $"[{beatmap.Url.Replace("osu.ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]]";
+    }
+    
+   
 }

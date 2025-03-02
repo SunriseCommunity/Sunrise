@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -16,14 +17,15 @@ namespace Sunrise.Server.Services.Helpers.Scores;
 public static class SubmitScoreHelper
 {
     private const string MetricsError = "Score {0} by (user id: {1}) rejected with reason: {2}";
+    private const string AnnounceNewFirstPlaceString =  "{0} achieved #1 on {1}";
+
 
     public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
-        // TODO: Announce gamemode if not standard for beatmap, also write which mods were used 
-        // TODO: Use string format
+        var scoreMessage = score.GetBeatmapInGameChatString(beatmapSet, session).Result;
+        var message = string.Format(AnnounceNewFirstPlaceString, score.User.GetUserInGameChatString(), scoreMessage);
         
-        return
-            $"[https://{Configuration.Domain}/user/{score.UserId} {score.User.Username}] achieved #1 on [{beatmap.Url.Replace("ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]] with {score.Accuracy:0.00}% accuracy for {score.PerformancePoints:0.00}pp!";
+        return message;
     }
 
     public static void ReportRejectionToMetrics(Session session, string scoreData, string reason)

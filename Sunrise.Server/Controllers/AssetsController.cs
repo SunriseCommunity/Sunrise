@@ -9,6 +9,7 @@ using Sunrise.Shared.Utils.Tools;
 namespace Sunrise.Server.Controllers;
 
 [Subdomain("a", "assets")]
+[ResponseCache(Duration = 300)]
 public class AssetsController(BanchoService banchoService, AssetService assetService, DatabaseService database) : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
