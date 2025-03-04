@@ -78,34 +78,6 @@ public class HttpClientService
         return default;
     }
 
-    [Obsolete("Use only only if we can't get user session.")]
-    public async Task<T?> SendRequest<T>(string requestUri, int requestTry = 0)
-    {
-        var response = await _client.GetAsync(requestUri);
-
-        // TODO: Can be refactored to has multiple urls to try and also cache the response.
-
-        if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
-        {
-            _logger.LogWarning($"Request to {requestUri} failed with status code {response.StatusCode}");
-
-            if (requestTry >= 3)
-                return default;
-
-            await Task.Delay(2000);
-            _logger.LogInformation($"Retrying request to {requestUri} (try {requestTry + 1})");
-            return await SendRequest<T>(requestUri, requestTry + 1);
-        }
-
-        if (!response.IsSuccessStatusCode) return default;
-
-        if (typeof(T) == typeof(byte[])) return (T)(object)await response.Content.ReadAsByteArrayAsync();
-
-        var content = await response.Content.ReadAsStringAsync();
-
-        return JsonSerializer.Deserialize<T>(content);
-    }
-
     private async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null)
     {
         var isServerRateLimited = await _redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));

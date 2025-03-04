@@ -1,3 +1,4 @@
+using System.Net;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Repositories;
@@ -19,5 +20,16 @@ public class BaseSession(User user, bool isGuest = false)
     {
         var rateLimits = ServicesProviderHolder.GetRequiredService<RateLimitRepository>();
         return rateLimits.GetRemainingCalls(this);
+    }
+
+    public static BaseSession GenerateGuestSession(IPAddress ip)
+    {
+        var user = new User
+        {
+            Id = ip.GetHashCode(),
+            Username = "Guest"
+        };
+
+        return new BaseSession(user, true);
     }
 }

@@ -65,7 +65,7 @@ public class AuthService(DatabaseService database)
         var newTokenResult = await GenerateJwtToken(userId, TokenExpires);
         if (newTokenResult.IsFailure)
             return Result.Failure<(string, int)>("Error occured while refreshing token.");
-        
+
         var newToken = newTokenResult.Value;
 
         return (newToken, TokenExpires.ToSeconds());
@@ -146,12 +146,6 @@ public class AuthService(DatabaseService database)
     {
         var ip = RegionService.GetUserIpAddress(request);
 
-        var user = new User
-        {
-            Id = ip.GetHashCode(),
-            Username = "Guest"
-        };
-
-        return new BaseSession(user, true);
+        return BaseSession.GenerateGuestSession(ip);
     }
 }

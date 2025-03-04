@@ -101,7 +101,10 @@ public static class Configuration
     private static string ObservatoryUrl =>
         Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
 
-    public static List<ExternalApi> ExternalApis { get; } = [];
+    public static List<ExternalApi> ExternalApis { get; } =
+    [
+        new(ApiType.GetIPLocation, ApiServer.IpApi, "http://ip-api.com/json/{0}", 0, 1)
+    ];
 
     public static IConfigurationRoot GetConfig()
     {
