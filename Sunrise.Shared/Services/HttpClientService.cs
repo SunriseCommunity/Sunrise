@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Web;
 using Microsoft.Extensions.Logging;
@@ -22,8 +23,8 @@ public class HttpClientService
         _logger = loggerFactory.CreateLogger<HttpClientService>();
         _redis = redis;
 
-        _client.DefaultRequestHeaders.Add("Accept", "application/json");
-        _client.DefaultRequestHeaders.Add("User-Agent", "Sunrise");
+        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
     public async Task<T?> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null)
