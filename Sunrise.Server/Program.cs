@@ -33,6 +33,7 @@ app.UseHealthChecks("/health");
 app.ApplyDatabaseMigrations();
 app.UseStaticBackgrounds();
 app.UseMiddlewares();
+app.UseWebSockets();
 app.Configure();
 
 app.WarmUpSingletons();
