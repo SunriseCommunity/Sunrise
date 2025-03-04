@@ -8,7 +8,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Services;
 
-public class RegionService(RedisRepository redisRepository)
+public class RegionService(RedisRepository redisRepository, HttpClientService client)
 {
     private const string Api = "http://ip-api.com/json/";
 
@@ -21,7 +21,7 @@ public class RegionService(RedisRepository redisRepository)
             return cachedRegion;
         }
 
-        var location = await RequestsHelper.SendRequest<Location>($"{Api}{ip}") ?? new Location();
+        var location = await client.SendRequest<Location>($"{Api}{ip}") ?? new Location();
         location.Ip = ip.ToString();
 
         await redisRepository.Set(RedisKey.LocationFromIp(location.Ip), location);

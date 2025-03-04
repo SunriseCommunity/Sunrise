@@ -8,7 +8,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Services;
 
-public class BeatmapService(DatabaseService database)
+public class BeatmapService(DatabaseService database, HttpClientService client)
 {
     public async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
         string? beatmapHash = null, int? beatmapId = null)
@@ -20,13 +20,13 @@ public class BeatmapService(DatabaseService database)
 
         if (beatmapId != null)
             beatmapSet =
-                await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId]);
+                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId]);
         if (beatmapHash != null && beatmapSet == null)
             beatmapSet =
-                await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash]);
+                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash]);
         if (beatmapSetId != null && beatmapSet == null)
             beatmapSet =
-                await RequestsHelper.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId]);
+                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId]);
 
         if (beatmapSet == null)
             return null;
@@ -44,7 +44,7 @@ public class BeatmapService(DatabaseService database)
 
         if (beatmapFile != null) return beatmapFile;
 
-        beatmapFile = await RequestsHelper.SendRequest<byte[]>(session, ApiType.BeatmapDownload, [beatmapId]);
+        beatmapFile = await client.SendRequest<byte[]>(session, ApiType.BeatmapDownload, [beatmapId]);
 
         if (beatmapFile == null) return null;
 
@@ -55,9 +55,9 @@ public class BeatmapService(DatabaseService database)
     public async Task<List<BeatmapSet>?> SearchBeatmapSets(Session session, string? rankedStatus, string mode,
         string query, Pagination pagination)
     {
-        var beatmapSets = await RequestsHelper.SendRequest<List<BeatmapSet>?>(session,
+        var beatmapSets = await client.SendRequest<List<BeatmapSet>?>(session,
             ApiType.BeatmapSetSearch,
-            [query, pagination.PageSize, pagination.Page*pagination.PageSize, rankedStatus, mode]);
+            [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode]);
 
         if (beatmapSets == null) return null;
 

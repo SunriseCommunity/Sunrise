@@ -43,7 +43,11 @@ public class AuthController(
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        var token = authService.GenerateTokens(user.Id);
+        var tokenResult = await authService.GenerateTokens(user.Id);
+        if (tokenResult.IsFailure) 
+            return BadRequest(new ErrorResponse(tokenResult.Error));
+        
+        var token = tokenResult.Value;
 
         var loginData = new
         {
@@ -68,9 +72,11 @@ public class AuthController(
         if (!ModelState.IsValid || request == null || request.RefreshToken == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var newToken = authService.RefreshToken(request.RefreshToken);
-        if (newToken.Item1 == null)
-            return BadRequest(new ErrorResponse("Invalid refresh_token provided or user is restricted."));
+        var newTokenResult = await authService.RefreshToken(request.RefreshToken);
+        if (newTokenResult.IsFailure)
+            return BadRequest(new ErrorResponse(newTokenResult.Error));
+        
+        var newToken = newTokenResult.Value;
 
         return Ok(new RefreshTokenResponse(newToken.Item1, newToken.Item2));
     }
@@ -91,7 +97,11 @@ public class AuthController(
             return BadRequest(new ErrorResponse(errorString));
         }
 
-        var token = authService.GenerateTokens(newUser.Id);
+        var tokenResult = await authService.GenerateTokens(newUser.Id);
+        if (tokenResult.IsFailure)
+            return BadRequest(new ErrorResponse(tokenResult.Error));
+        
+        var token = tokenResult.Value;
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }

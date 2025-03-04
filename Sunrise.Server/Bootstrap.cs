@@ -12,6 +12,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Shared.Services;
@@ -136,6 +137,7 @@ public static class Bootstrap
         builder.Services.AddScoped<Services.AssetService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
+        builder.Services.AddScoped<HttpClientService>();
 
         builder.Services.AddScoped<ScoreService>();
         builder.Services.AddScoped<UserService>();
@@ -145,7 +147,6 @@ public static class Bootstrap
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();
-
 
         builder.Services.AddTransient<CalculatorService>();
         builder.Services.AddTransient<BeatmapService>();
