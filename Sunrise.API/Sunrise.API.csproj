@@ -11,7 +11,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Scalar.AspNetCore" Version="2.0.22"/>
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="7.3.1"/>
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.5.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Middlewares\"/>
     </ItemGroup>
 
 </Project>

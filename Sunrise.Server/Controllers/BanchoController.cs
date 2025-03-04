@@ -8,6 +8,7 @@ using Sunrise.Shared.Repositories;
 namespace Sunrise.Server.Controllers;
 
 [Subdomain("c", "c4", "cho")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class BanchoController(ILogger<BanchoController> logger, AuthService authService, BanchoService banchoService, AssetService assetService) : ControllerBase
 {
 
@@ -18,7 +19,7 @@ public class BanchoController(ILogger<BanchoController> logger, AuthService auth
             return await authService.Login(Request, Response);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-        if (!sessions.TryGetSession(out var session, token: token) || session == null)
+        if (!sessions.TryGetSession(out var session, token) || session == null)
             return authService.Relogin();
 
         await using var buffer = new MemoryStream();

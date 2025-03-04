@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
@@ -12,10 +13,14 @@ namespace Sunrise.API.Controllers;
 
 [ApiController]
 [Subdomain("api")]
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class BaseController(IMemoryCache cache, SessionManager sessionManager, DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet]
     [Route("/ping")]
+    [EndpointDescription("Basic ping endpoint")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public IActionResult Index()
     {
         return Ok("Sunrise API");
@@ -23,6 +28,8 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
 
     [HttpGet]
     [Route("/limits")]
+    [EndpointDescription("Check current API limits")]
+    [ProducesResponseType(typeof(LimitsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLimits()
     {
         var key = RegionService.GetUserIpAddress(Request);
@@ -37,6 +44,8 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
     [HttpGet]
     [Route("/status")]
     [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
+    [EndpointDescription("Check server status")]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)
     {
         var usersOnline = sessions.GetSessions().Count;

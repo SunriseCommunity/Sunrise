@@ -18,7 +18,15 @@ public sealed class Middleware(
 
         var path = context.Request.Path;
 
-        if (Configuration.BannedIps.Contains(ip.ToString()) && !context.Request.Host.Host.StartsWith("api."))
+        var isApiRequest = context.Request.Host.Host.StartsWith("api.");
+
+        if (Configuration.BannedIps.Contains(ip.ToString()) && !isApiRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        if (path.StartsWithSegments(Configuration.ApiDocumentationPath) && !isApiRequest)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             return;
@@ -57,7 +65,6 @@ public sealed class Middleware(
 
         await next(context);
     }
-
 
     private TokenBucketRateLimiter GetRateLimiter(IPAddress key)
     {

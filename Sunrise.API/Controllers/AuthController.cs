@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
@@ -12,14 +13,17 @@ namespace Sunrise.API.Controllers;
 
 [Route("/auth")]
 [Subdomain("api")]
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class AuthController(
     UserAuthService userAuthService,
     RegionService regionService,
     AuthService authService,
     DatabaseService database) : ControllerBase
 {
-
     [HttpPost("token")]
+    [EndpointDescription("Generate user auth tokens")]
+    [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request)
     {
         if (!ModelState.IsValid || request == null)
@@ -29,10 +33,10 @@ public class AuthController(
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
-        
+
         if (user.IsUserSunriseBot())
             return BadRequest(new ErrorResponse("You can't login as sunrise bot"));
-        
+
         if (user.IsRestricted())
         {
             var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id);
@@ -44,9 +48,9 @@ public class AuthController(
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
         var tokenResult = await authService.GenerateTokens(user.Id);
-        if (tokenResult.IsFailure) 
+        if (tokenResult.IsFailure)
             return BadRequest(new ErrorResponse(tokenResult.Error));
-        
+
         var token = tokenResult.Value;
 
         var loginData = new
@@ -63,6 +67,8 @@ public class AuthController(
     }
 
     [HttpPost("refresh")]
+    [EndpointDescription("Refresh user auth token")]
+    [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
         var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
@@ -75,13 +81,15 @@ public class AuthController(
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);
         if (newTokenResult.IsFailure)
             return BadRequest(new ErrorResponse(newTokenResult.Error));
-        
+
         var newToken = newTokenResult.Value;
 
         return Ok(new RefreshTokenResponse(newToken.Item1, newToken.Item2));
     }
 
     [HttpPost("register")]
+    [EndpointDescription("Register new user")]
+    [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest? request)
     {
         if (!ModelState.IsValid || request?.Username == null || request.Password == null || request.Email == null)
@@ -100,7 +108,7 @@ public class AuthController(
         var tokenResult = await authService.GenerateTokens(newUser.Id);
         if (tokenResult.IsFailure)
             return BadRequest(new ErrorResponse(tokenResult.Error));
-        
+
         var token = tokenResult.Value;
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));

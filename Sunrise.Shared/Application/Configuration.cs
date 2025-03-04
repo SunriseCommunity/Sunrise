@@ -33,6 +33,9 @@ public static class Configuration
     public static int ApiWindow =>
         Config.GetSection("API").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
 
+    public static string ApiDocumentationPath =>
+        Config.GetSection("API").GetValue<string?>("DocumentationPath") ?? "/docs";
+
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
     public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;

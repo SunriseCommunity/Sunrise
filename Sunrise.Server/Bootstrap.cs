@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
+using Scalar.AspNetCore;
 using Sunrise.API.Controllers;
 using Sunrise.API.Managers;
 using Sunrise.Server.Repositories;
@@ -40,6 +41,14 @@ public static class Bootstrap
             if (Configuration.IncludeUserTokenInLogs) logging.AdditionalRequestHeaders.Add("osu-token");
         });
     }
+
+    public static void AddApiDocs(this WebApplicationBuilder builder)
+    {
+
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+    }
+
 
     public static void AddHangfire(this WebApplicationBuilder builder)
     {
@@ -161,6 +170,18 @@ public static class Bootstrap
         app.Services.GetRequiredService<ChatChannelRepository>();
         app.Services.GetRequiredService<RateLimitRepository>();
         app.Services.GetRequiredService<MatchRepository>();
+    }
+
+    public static void UseScalarApiReference(this WebApplication app)
+    {
+        app.UseSwagger(options => { options.RouteTemplate = "/openapi/{documentName}.json"; });
+
+        app.MapScalarApiReference("docs",
+            options =>
+            {
+                options.Title = "Sunrise API Documentation";
+                options.Theme = ScalarTheme.Mars;
+            });
     }
 
     public static void ApplyDatabaseMigrations(this WebApplication app)

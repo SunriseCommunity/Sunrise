@@ -7,6 +7,7 @@ namespace Sunrise.API.Controllers;
 
 [Route("/ws")]
 [Subdomain("api")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class WebSocketController(WebSocketManager webSocketManager) : ControllerBase
 {
     public async Task Get(CancellationToken cancellationToken)

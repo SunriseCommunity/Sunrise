@@ -13,6 +13,7 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class ScoreController(ScoreService scoreService, AssetService assetService) : ControllerBase
 {
     [HttpPost(RequestType.OsuSubmitScore)]

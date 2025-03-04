@@ -54,7 +54,7 @@ public class AuthService(DatabaseService database)
     {
         var userIdResult = await ValidateJwtToken(token);
         if (!userIdResult.IsSuccess)
-            return Result.Failure<(string, int)>(userIdResult.Error);
+            return Result.Failure<(string, int)>("Invalid refresh_token");
 
         var userId = userIdResult.Value;
 

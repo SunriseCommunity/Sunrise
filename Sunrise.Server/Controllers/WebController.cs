@@ -12,6 +12,7 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class WebController(DatabaseService database, SessionRepository sessions, BeatmapService beatmapService, AuthService authService, UserService userService, AssetService assetService) : ControllerBase
 {
     [HttpPost(RequestType.OsuScreenshot)]
