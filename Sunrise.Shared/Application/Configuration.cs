@@ -33,6 +33,9 @@ public static class Configuration
     public static int ApiWindow =>
         Config.GetSection("API").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
 
+    public static string ApiDocumentationPath =>
+        Config.GetSection("API").GetValue<string?>("DocumentationPath") ?? "/docs";
+
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
     public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;
@@ -98,7 +101,10 @@ public static class Configuration
     private static string ObservatoryUrl =>
         Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
 
-    public static List<ExternalApi> ExternalApis { get; } = [];
+    public static List<ExternalApi> ExternalApis { get; } =
+    [
+        new(ApiType.GetIPLocation, ApiServer.IpApi, "http://ip-api.com/json/{0}", 0, 1)
+    ];
 
     public static IConfigurationRoot GetConfig()
     {

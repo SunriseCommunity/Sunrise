@@ -10,13 +10,13 @@ namespace Sunrise.Server.Controllers;
 
 [Subdomain("a", "assets")]
 [ResponseCache(Duration = 300)]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class AssetsController(BanchoService banchoService, AssetService assetService, DatabaseService database) : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault)
     {
-
         var getAvatarResult = await assetService.GetAvatar(id, fallToDefault ?? true);
 
         if (getAvatarResult.IsFailure)

@@ -13,9 +13,14 @@ namespace Sunrise.API.Controllers;
 [Route("score/{id:int}")]
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class ScoreController(DatabaseService database, SessionManager sessionManager) : ControllerBase
 {
     [HttpGet("")]
+    [EndpointDescription("Get score")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScore(int id)
     {
         var score = await database.Scores.GetScore(id, new QueryOptions(true));
@@ -28,6 +33,10 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("replay")]
+    [EndpointDescription("Get score replay file")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScoreReplay(int id)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
@@ -51,15 +60,14 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("/score/top")]
-    public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] int mode,
+    [EndpointDescription("Get best scores on the server")]
+    [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 1)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));

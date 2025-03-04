@@ -6,15 +6,20 @@ using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
+using Scalar.AspNetCore;
 using Sunrise.API.Controllers;
 using Sunrise.API.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Shared.Services;
+using AssetService = Sunrise.API.Services.AssetService;
+using AuthService = Sunrise.API.Services.AuthService;
+using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server;
 
@@ -36,6 +41,14 @@ public static class Bootstrap
             if (Configuration.IncludeUserTokenInLogs) logging.AdditionalRequestHeaders.Add("osu-token");
         });
     }
+
+    public static void AddApiDocs(this WebApplicationBuilder builder)
+    {
+
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+    }
+
 
     public static void AddHangfire(this WebApplicationBuilder builder)
     {
@@ -108,7 +121,7 @@ public static class Bootstrap
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
     }
-    
+
     public static void AddApiEndpoints(this WebApplicationBuilder builder)
     {
         builder.Services.AddControllers()
@@ -117,9 +130,11 @@ public static class Bootstrap
             .AddApplicationPart(typeof(BeatmapController).Assembly)
             .AddApplicationPart(typeof(ScoreController).Assembly)
             .AddApplicationPart(typeof(UserController).Assembly);
-        
-        builder.Services.AddScoped<API.Services.AuthService>();
-        builder.Services.AddScoped<API.Services.AssetService>();
+
+        builder.Services.AddSingleton<WebSocketManager>();
+
+        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<AssetService>();
     }
 
     public static void AddServices(this WebApplicationBuilder builder)
@@ -128,19 +143,19 @@ public static class Bootstrap
         builder.Services.AddScoped<DatabaseService>();
         builder.Services.AddScoped<DirectService>();
         builder.Services.AddScoped<MedalService>();
-        builder.Services.AddScoped<AssetService>();
-        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<Services.AssetService>();
+        builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
-        
+        builder.Services.AddScoped<HttpClientService>();
+
         builder.Services.AddScoped<ScoreService>();
         builder.Services.AddScoped<UserService>();
 
-        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<SessionManager>();
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();
-      
 
         builder.Services.AddTransient<CalculatorService>();
         builder.Services.AddTransient<BeatmapService>();
@@ -157,6 +172,18 @@ public static class Bootstrap
         app.Services.GetRequiredService<MatchRepository>();
     }
 
+    public static void UseScalarApiReference(this WebApplication app)
+    {
+        app.UseSwagger(options => { options.RouteTemplate = "/openapi/{documentName}.json"; });
+
+        app.MapScalarApiReference("docs",
+            options =>
+            {
+                options.Title = "Sunrise API Documentation";
+                options.Theme = ScalarTheme.Mars;
+            });
+    }
+
     public static void ApplyDatabaseMigrations(this WebApplication app)
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
@@ -165,7 +192,7 @@ public static class Bootstrap
         database.CheckAndApplyOldTypeOfMigrations();
         database.DbContext.Database.Migrate();
     }
-    
+
     public static void UseStaticBackgrounds(this WebApplication app)
     {
         app.UseStaticFiles(new StaticFileOptions

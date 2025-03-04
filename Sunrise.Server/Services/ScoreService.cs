@@ -1,4 +1,7 @@
 ﻿using osu.Shared;
+using Sunrise.API.Enums;
+using Sunrise.API.Objects;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -13,10 +16,11 @@ using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
+using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService)
+public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager)
 {
     public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
@@ -157,6 +161,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (isCurrentScoreFailed || !score.IsScoreable)
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
+        
+        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(score)));
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)

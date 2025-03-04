@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Utils.Converters;
-using GameMode = osu.Shared.GameMode;
 
 namespace Sunrise.API.Serializable.Response;
 
@@ -24,7 +24,7 @@ public class ScoreResponse
         CountGeki = score.CountGeki;
         CountKatu = score.CountKatu;
         CountMiss = score.CountMiss;
-        GameMode = score.GameMode.ToVanillaGameMode();
+        GameMode = (GameMode)score.GameMode.ToVanillaGameMode();
         Grade = score.Grade;
         Id = score.Id;
         IsPassed = score.IsPassed;

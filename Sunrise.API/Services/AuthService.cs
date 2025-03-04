@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using CSharpFunctionalExtensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Application;
@@ -19,41 +20,59 @@ public class AuthService(DatabaseService database)
     private static string TokenSecret => Configuration.WebTokenSecret;
     private static TimeSpan TokenExpires => Configuration.WebTokenExpiration;
 
-    public (string, string, int) GenerateTokens(int userId)
+    public async Task<Result<(string, string, int)>> GenerateTokens(int userId)
     {
-        var token = GenerateJwtToken(userId, TokenExpires);
-        var refreshToken = GenerateJwtToken(userId, TimeSpan.FromDays(30));
+        var tokenResult = await GenerateJwtToken(userId, TokenExpires);
+        if (tokenResult.IsFailure)
+            return Result.Failure<(string, string, int)>(tokenResult.Error);
+
+        var token = tokenResult.Value;
+
+        var refreshTokenResult = await GenerateJwtToken(userId, TimeSpan.FromDays(30));
+        if (refreshTokenResult.IsFailure)
+            return Result.Failure<(string, string, int)>(refreshTokenResult.Error);
+
+        var refreshToken = refreshTokenResult.Value;
 
         return (token, refreshToken, TokenExpires.ToSeconds());
     }
 
     public async Task<User?> GetUserFromToken(string token)
     {
-        ValidateJwtToken(token, out var userId);
-        if (userId == null)
+        var userIdResult = await ValidateJwtToken(token);
+        if (userIdResult.IsFailure)
             return null;
+
+        var userId = userIdResult.Value;
 
         var user = await database.Users.GetValidUser(userId);
 
         return user;
     }
 
-    public (string?, int) RefreshToken(string token)
+    public async Task<Result<(string, int)>> RefreshToken(string token)
     {
-        var newToken = ValidateJwtToken(token, out var userId) ? GenerateJwtToken(userId!.Value, TokenExpires) : null;
+        var userIdResult = await ValidateJwtToken(token);
+        if (!userIdResult.IsSuccess)
+            return Result.Failure<(string, int)>("Invalid refresh_token");
 
-        if (userId == null)
-            return (null, 0);
+        var userId = userIdResult.Value;
 
-        var isUserRestricted = database.Users.Moderation.IsUserRestricted(userId.Value).Result;
+        var isUserRestricted = await database.Users.Moderation.IsUserRestricted(userId);
+        if (isUserRestricted)
+            return Result.Failure<(string, int)>("User is restricted.");
 
-        return isUserRestricted ? (null, 0) : (newToken, TokenExpires.ToSeconds());
+        var newTokenResult = await GenerateJwtToken(userId, TokenExpires);
+        if (newTokenResult.IsFailure)
+            return Result.Failure<(string, int)>("Error occured while refreshing token.");
+
+        var newToken = newTokenResult.Value;
+
+        return (newToken, TokenExpires.ToSeconds());
     }
 
-    private bool ValidateJwtToken(string token, out int? userId)
+    private async Task<Result<int>> ValidateJwtToken(string token)
     {
-        userId = null;
-
         try
         {
             var handler = new JwtSecurityTokenHandler();
@@ -71,17 +90,19 @@ public class AuthService(DatabaseService database)
                 out _);
 
             if (result.Identity is not ClaimsIdentity identity)
-                return false;
+                return Result.Failure<int>("Invalid token");
 
             var userIdClaim = identity.FindFirst(ClaimTypes.NameIdentifier) ?? identity.FindFirst("sub");
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var id))
-                return false;
+                return Result.Failure<int>("Invalid token");
 
-            var user = database.Users.GetUser(id).Result;
+            var user = await database.Users.GetUser(id);
+            if (user == null)
+                return Result.Failure<int>("User not found");
 
             var hashClaim = identity.FindFirst(ClaimTypes.Hash);
             if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
-                return false;
+                return Result.Failure<int>("Invalid user password");
 
             if (user.AccountStatus == UserAccountStatus.Disabled)
             {
@@ -89,21 +110,22 @@ public class AuthService(DatabaseService database)
                 // TODO: Send message from bot about account being enabled
             }
 
-            userId = id;
-            return true;
+            return id;
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return Result.Failure<int>(ex.Message);
         }
     }
 
-    private string GenerateJwtToken(int userId, TimeSpan expires)
+    private async Task<Result<string>> GenerateJwtToken(int userId, TimeSpan expires)
     {
-        var user = database.Users.GetUser(userId).Result;
+        var user = await database.Users.GetUser(userId);
 
         if (user == null)
-            throw new Exception("User not found while generating token");
+        {
+            return Result.Failure<string>("User not found");
+        }
 
         var token = new JwtSecurityToken(
             "Sunrise",
@@ -124,12 +146,6 @@ public class AuthService(DatabaseService database)
     {
         var ip = RegionService.GetUserIpAddress(request);
 
-        var user = new User
-        {
-            Id = ip.GetHashCode(),
-            Username = "Guest"
-        };
-
-        return new BaseSession(user, isGuest: true);
+        return BaseSession.GenerateGuestSession(ip);
     }
 }

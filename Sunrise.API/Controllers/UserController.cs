@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Request;
@@ -22,25 +23,31 @@ namespace Sunrise.API.Controllers;
 [Route("/user")]
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class UserController(SessionManager sessionManager, BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
 {
     [HttpGet]
     [Route("{id:int}")]
-    public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] int? mode)
+    [EndpointDescription("Get user profile. Include mode query to also get user stats")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] GameMode? mode)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-        
+
         var user = await database.Users.GetUser(id: id);
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
-        
+
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
-        
+
         var userStatus = "Offline";
 
         var userSession = sessions.GetSession(userId: id);
+
         if (userSession != null)
         {
             user.LastOnlineTime = userSession.Attributes.LastPingRequest;
@@ -59,18 +66,17 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
-        var data = JsonSerializer.SerializeToElement(new
-        {
-            user = new UserResponse(user, userStatus),
-            stats = new UserStatsResponse(stats, (int)globalRank, (int)countryRank)
-        });
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
 
     [HttpGet]
     [Route("self")]
-    public async Task<IActionResult> GetSelfUser([FromQuery(Name = "mode")] int? mode)
+    [EndpointDescription("Same as /user/{id}, but automatically gets id of current user")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSelfUser([FromQuery(Name = "mode")] GameMode? mode)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
@@ -81,6 +87,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpPost]
     [Route("edit/description")]
+    [EndpointDescription("Update current user's description")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest? request)
     {
         if (!ModelState.IsValid || request == null)
@@ -89,7 +97,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -106,19 +114,15 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{userId:int}/graph")]
-    public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] int? mode = null)
+    [EndpointDescription("Get user stats graph data")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] GameMode mode)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
-        if (mode == null)
-            return BadRequest(new ErrorResponse("Mode parameter is required"));
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
-
         var user = await database.Users.GetUser(userId);
-
         if (user == null) return NotFound(new ErrorResponse("User not found"));
 
         if (user.IsRestricted())
@@ -129,7 +133,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
 
         var snapshots = (await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, (GameMode)mode)).GetSnapshots();
-        
+
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
         snapshots.Add(new StatsSnapshot
@@ -148,19 +152,17 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{id:int}/scores")]
+    [EndpointDescription("Get user scores")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserScores(int id,
-        [FromQuery(Name = "mode")] int? mode = 0,
-        [FromQuery(Name = "type")] int? scoresType = 0,
+        [FromQuery(Name = "mode")] GameMode mode = 0,
+        [FromQuery(Name = "type")] ScoreTableType scoresType = 0,
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 1)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (scoresType is < 0 or > 2 or null) return BadRequest(new ErrorResponse("Invalid scores type parameter"));
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -173,7 +175,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var (scores, totalScores) = await database.Scores.GetUserScores(id, (GameMode)mode, (ScoreTableType)scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (scores, totalScores) = await database.Scores.GetUserScores(id, mode, scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
         foreach (var score in scores)
         {
@@ -188,16 +190,16 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{id:int}/mostplayed")]
+    [EndpointDescription("Get user most played beatmaps")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMostPlayedMaps(int id,
-        [FromQuery(Name = "mode")] int mode,
+        [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "limit")] int? limit = 15,
         [FromQuery(Name = "page")] int? page = 1)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -230,6 +232,9 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{id:int}/favourites")]
+    [EndpointDescription("Get user favourited beatmapsets")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFavourites(int id,
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 1)
@@ -265,20 +270,14 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpGet]
     [Route("leaderboard")]
     public async Task<IActionResult> GetLeaderboard(
-        [FromQuery(Name = "mode")] int mode,
-        [FromQuery(Name = "type")] int? leaderboardType = 0,
+        [FromQuery(Name = "mode")] GameMode mode,
+        [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
         [FromQuery(Name = "limit")] int? limit = 50,
         [FromQuery(Name = "page")] int? page = 1)
     {
 
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (Enum.IsDefined(typeof(LeaderboardSortType), leaderboardType) != true)
-            return BadRequest(new ErrorResponse("Invalid leaderboard type parameter"));
-
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -294,7 +293,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         {
             await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
         }
-        
+
         var usersWithStats = stats.Select(async userStats =>
         {
             var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, (GameMode)mode);
@@ -308,6 +307,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("search")]
+    [EndpointDescription("Search user by query")]
+    [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeachUsers(
         [FromQuery(Name = "query")] string query,
         [FromQuery(Name = "limit")] int? limit = 50,
@@ -330,12 +331,16 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{id:int}/friend/status")]
+    [EndpointDescription("Get user friendship status")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FriendStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriendStatus(int id)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -355,12 +360,15 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpPost]
     [Route("{id:int}/friend/status")]
+    [EndpointDescription("Change friendship status with user")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditFriendStatus(int id, [FromQuery(Name = "action")] string action)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -379,24 +387,23 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
                 user.RemoveFriend(requestedUser.Id);
                 break;
             default:
-                return BadRequest(new ErrorResponse("Invalid action parameter"));
+                return BadRequest(new ErrorResponse("Invalid action parameter. Use 'add' or 'remove'"));
         }
 
         var result = await database.Users.UpdateUser(user);
         if (result.IsFailure)
             return BadRequest(result.Error);
-        
+
         return new OkResult();
     }
 
     [HttpGet]
     [Route("{id:int}/medals")]
+    [EndpointDescription("Get user medals")]
+    [ProducesResponseType(typeof(MedalsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMedals(int id,
-        [FromQuery(Name = "mode")] int mode)
+        [FromQuery(Name = "mode")] GameMode mode)
     {
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
-
         var userMedals = await database.Users.Medals.GetUserMedals(id, (GameMode)mode);
         var modeMedals = await database.Medals.GetMedals((GameMode)mode);
 
@@ -404,6 +411,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     }
 
     [HttpPost(RequestType.AvatarUpload)]
+    [EndpointDescription("Upload new avatar")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetAvatar()
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
@@ -432,6 +441,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     }
 
     [HttpPost(RequestType.BannerUpload)]
+    [EndpointDescription("Upload new banner")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetBanner()
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
@@ -460,12 +471,14 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     }
 
     [HttpPost(RequestType.PasswordChange)]
+    [EndpointDescription("Change current password")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest? request)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -497,12 +510,14 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     }
 
     [HttpPost(RequestType.UsernameChange)]
+    [EndpointDescription("Change current username")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest? request)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
-        
+
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));

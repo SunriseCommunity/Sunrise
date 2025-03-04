@@ -109,7 +109,7 @@ public class ApiAuthRefreshTests : ApiTest
         var responseString = await response.Content.ReadAsStringAsync();
         var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
 
-        Assert.Contains("Invalid refresh_token", error?.Error);
+        Assert.Contains("is restricted", error?.Error);
     }
 
     [Fact]

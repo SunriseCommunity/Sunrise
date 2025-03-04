@@ -8,6 +8,7 @@ namespace Sunrise.Server.Controllers;
 
 [Route("/web")]
 [Subdomain("osu")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class DirectController(DirectService directService, SessionRepository sessions) : ControllerBase
 {
     [HttpGet(RequestType.OsuSearch)]
@@ -57,6 +58,7 @@ public class DirectController(DirectService directService, SessionRepository ses
 
 [ApiController]
 [Subdomain("b")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class BeatmapAssetsController : ControllerBase
 {
     [HttpGet("{type}/{path}")]

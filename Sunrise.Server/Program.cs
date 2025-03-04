@@ -1,4 +1,5 @@
 using Hangfire;
+using Scalar.AspNetCore;
 using Sunrise.Server;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -13,6 +14,7 @@ builder.AddSingletons();
 
 builder.AddMiddlewares();
 builder.AddApiEndpoints();
+builder.AddApiDocs();
 
 builder.AddSunriseDbContextPool();
 
@@ -29,10 +31,12 @@ app.UseHangfireDashboard("/hangfire",
 
 app.Setup();
 app.UseHealthChecks("/health");
+app.UseScalarApiReference();
 
 app.ApplyDatabaseMigrations();
 app.UseStaticBackgrounds();
 app.UseMiddlewares();
+app.UseWebSockets();
 app.Configure();
 
 app.WarmUpSingletons();
