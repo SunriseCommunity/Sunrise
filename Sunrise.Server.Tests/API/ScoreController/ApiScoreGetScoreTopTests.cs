@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -151,6 +152,50 @@ public class ApiScoreGetScoreTopTests : ApiTest
         Assert.NotNull(scores);
 
         Assert.Single(scores.Scores);
+    }
+    
+    [Fact]
+    public async Task TestIgnoreTopScoresInOtherModeCategoriesForRelaxTopScore()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+
+        var gamemode = GameMode.RelaxStandard;
+        
+        var user = await CreateTestUser();
+        var beatmapId = _mocker.GetRandomInteger();
+        
+        var vanillaScore = _mocker.Score.GetBestScoreableRandomScore();
+        vanillaScore.UserId = user.Id;
+        vanillaScore.GameMode = (GameMode)gamemode.ToVanillaGameMode();
+        vanillaScore.BeatmapId = beatmapId;
+        vanillaScore.TotalScore = 1_000_000;
+        vanillaScore.PerformancePoints = 0;
+        
+        var addVanillaScoreResult = await Database.Scores.AddScore(vanillaScore);
+        if (addVanillaScoreResult.IsFailure)
+            throw new Exception(addVanillaScoreResult.Error);
+        
+        var relaxScore = _mocker.Score.GetBestScoreableRandomScore();
+        relaxScore.UserId = user.Id;
+        relaxScore.GameMode = gamemode;
+        relaxScore.BeatmapId = beatmapId;
+        relaxScore.TotalScore = 0;
+        relaxScore.PerformancePoints = 1_000;
+        
+        var addRelaxScoreResult = await Database.Scores.AddScore(relaxScore);
+        if (addRelaxScoreResult.IsFailure)
+            throw new Exception(addRelaxScoreResult.Error);
+        
+        // Act
+        var response = await client.GetAsync($"score/top?mode={(int)gamemode}&limit=1");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        Assert.NotNull(scores);
+
+        Assert.Equal(relaxScore.Id, scores.Scores.First().Id);
     }
     
     [Theory]
