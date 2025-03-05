@@ -63,7 +63,7 @@ public class ScoreRepository
             .FilterValidScores()
             .FilterPassedRankedScores()
             .Where(x => x.GameMode == EF.Constant(mode))
-            .SelectBeatmapsBestScores();
+            .SelectUsersPersonalBestScores();
 
         var queryScore = _dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
