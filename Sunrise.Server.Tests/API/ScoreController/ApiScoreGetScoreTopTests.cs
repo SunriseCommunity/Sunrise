@@ -198,6 +198,39 @@ public class ApiScoreGetScoreTopTests : ApiTest
         Assert.Equal(relaxScore.Id, scores.Scores.First().Id);
     }
     
+    [Fact]
+    public async Task TestIncludeScoresOnTheSameBeatmapByDifferentPeopleTopScore()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
+
+        var gamemode = _mocker.Score.GetRandomGameMode();
+        var beatmapId = _mocker.GetRandomInteger();
+
+        var scoresCount = new Random().Next(1, 5);
+
+        for (var i = 0; i < scoresCount; i++)
+        {
+            var user = await CreateTestUser();
+            var score = _mocker.Score.GetBestScoreableRandomScore();
+            score.UserId = user.Id;
+            score.GameMode = gamemode;
+            score.BeatmapId = beatmapId;
+
+            await Database.Scores.AddScore(score);
+        }
+
+        // Act
+        var response = await client.GetAsync($"score/top?mode={(int)gamemode}");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        Assert.NotNull(scores);
+
+        Assert.Equal(scores.TotalCount, scoresCount);
+    }
+    
     [Theory]
     [MemberData(nameof(GetBeatmapStatuses))]
     public async Task TestGetIgnoreNonRankedTopScore(BeatmapStatus status)
