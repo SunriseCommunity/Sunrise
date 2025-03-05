@@ -195,10 +195,10 @@ public class Session : BaseSession
     {
         foreach (var spectator in Spectators)
         {
-            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, UserId);
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.UserId);
         }
 
-        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, UserId);
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.UserId);
 
         Spectators.Add(session);
     }
@@ -207,10 +207,10 @@ public class Session : BaseSession
     {
         foreach (var spectator in Spectators)
         {
-            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, UserId);
+            spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.UserId);
         }
 
-        _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, UserId);
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.UserId);
 
         Spectators.Remove(session);
     }
