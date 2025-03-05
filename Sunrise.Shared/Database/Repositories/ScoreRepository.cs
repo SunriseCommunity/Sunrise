@@ -59,15 +59,16 @@ public class ScoreRepository
 
     public async Task<List<Score>> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
     {
-        var groupedBestScores = _dbContext.Scores.SelectBeatmapsBestScores();
+        var groupedBestScores = _dbContext.Scores
+            .FilterValidScores()
+            .FilterPassedRankedScores()
+            .Where(x => x.GameMode == EF.Constant(mode))
+            .SelectUsersPersonalBestScores();
 
         var queryScore = _dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
             .OrderByDescending(x => x.PerformancePoints)
             .ThenByDescending(x => x.WhenPlayed)
-            .FilterValidScores()
-            .FilterPassedRankedScores()
-            .Where(x => x.GameMode == mode)
             .UseQueryOptions(options);
 
         var queryResult = await queryScore.ToListAsync();
