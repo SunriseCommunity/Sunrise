@@ -10,26 +10,17 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Services.Users;
 
-public class UserStatsService
+public class UserStatsService(
+    ILogger<UserStatsService> logger,
+    Lazy<DatabaseService> databaseService,
+    SunriseDbContext dbContext,
+    UserStatsSnapshotService userStatsSnapshotService,
+    UserStatsRanksService userStatsRanksService)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-    private readonly ILogger _logger;
+    private readonly ILogger _logger = logger;
 
-    public UserStatsService(DatabaseService databaseService)
-    {
-        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        _logger = loggerFactory.CreateLogger<UserStatsService>();
-
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-
-        Snapshots = new UserStatsSnapshotService(_databaseService);
-        Ranks = new UserStatsRanksService(_databaseService);
-    }
-
-    public UserStatsSnapshotService Snapshots { get; }
-    public UserStatsRanksService Ranks { get; }
+    public UserStatsSnapshotService Snapshots { get; } = userStatsSnapshotService;
+    public UserStatsRanksService Ranks { get; } = userStatsRanksService;
 
     public async Task<Result> AddUserStats(UserStats stats, User user)
     {
@@ -39,8 +30,8 @@ public class UserStatsService
             if (addOrUpdateUserRanksResult.IsFailure)
                 throw new ApplicationException(addOrUpdateUserRanksResult.Error);
 
-            _dbContext.UserStats.Add(stats);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserStats.Add(stats);
+            await dbContext.SaveChangesAsync();
         });
     }
 
@@ -52,18 +43,18 @@ public class UserStatsService
             if (addOrUpdateUserRanksResult.IsFailure)
                 throw new ApplicationException(addOrUpdateUserRanksResult.Error);
 
-            _dbContext.UpdateEntity(stats);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UpdateEntity(stats);
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode)
     {
-        var stats = await _dbContext.UserStats.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync();
+        var stats = await dbContext.UserStats.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync();
 
         if (stats == null)
         {
-            var user = await _databaseService.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId);
             if (user == null) return null;
 
             _logger.LogCritical($"User stats not found for user (id: {userId}) in mode {mode}. Creating new stats.");
@@ -82,7 +73,7 @@ public class UserStatsService
 
     public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true)
     {
-        var statsQuery = _dbContext.UserStats.Where(e => e.GameMode == mode);
+        var statsQuery = dbContext.UserStats.Where(e => e.GameMode == mode);
 
         statsQuery = leaderboardSortType switch
         {
@@ -102,13 +93,13 @@ public class UserStatsService
 
         if (isSomeStatsMissing && addMissingUserStats)
         {
-            var users = await _databaseService.Users.GetValidUsers(ids: userIds);
+            var users = await databaseService.Value.Users.GetValidUsers(ids: userIds);
             if (users.Count == stats.Count)
                 return stats; // We return only valid users stats, so if we can't find user by user id in valid users, user stats can't exist
 
             var usersWithoutStats = users.Where(u => !stats.Select(us => us.UserId).Contains(u.Id));
 
-            var transactionResult = await _databaseService.CommitAsTransactionAsync(async () =>
+            var transactionResult = await databaseService.Value.CommitAsTransactionAsync(async () =>
             {
                 foreach (var user in usersWithoutStats)
                 {

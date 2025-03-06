@@ -7,17 +7,8 @@ using Sunrise.Shared.Utils;
 
 namespace Sunrise.Shared.Database.Services.Users;
 
-public class UserFavouritesService
+public class UserFavouritesService(SunriseDbContext dbContext)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-
-    public UserFavouritesService(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-    }
-
     public async Task<Result> AddFavouriteBeatmap(int userId, int beatmapSetId)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
@@ -28,12 +19,12 @@ public class UserFavouritesService
                 BeatmapSetId = beatmapSetId
             };
 
-            var favouriteExists = await _dbContext.UserFavouriteBeatmaps.AnyAsync(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
+            var favouriteExists = await dbContext.UserFavouriteBeatmaps.AnyAsync(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
             if (favouriteExists)
                 throw new ApplicationException(QueryResultError.RECORD_WITH_SAME_KEY_ALREADY_EXIST);
 
-            _dbContext.UserFavouriteBeatmaps.Add(favourite);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserFavouriteBeatmaps.Add(favourite);
+            await dbContext.SaveChangesAsync();
         });
     }
 
@@ -41,23 +32,23 @@ public class UserFavouritesService
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var favourite = _dbContext.UserFavouriteBeatmaps.FirstOrDefault(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
+            var favourite = dbContext.UserFavouriteBeatmaps.FirstOrDefault(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
             if (favourite == null)
                 throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-            _dbContext.UserFavouriteBeatmaps.Remove(favourite);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserFavouriteBeatmaps.Remove(favourite);
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<bool> IsBeatmapSetFavourited(int userId, int beatmapSetId)
     {
-        return await _dbContext.UserFavouriteBeatmaps.AsNoTracking().AnyAsync(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
+        return await dbContext.UserFavouriteBeatmaps.AsNoTracking().AnyAsync(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId);
     }
 
     public async Task<List<int>> GetUserFavouriteBeatmapIds(int userId, QueryOptions? options = null)
     {
-        return await _dbContext.UserFavouriteBeatmaps
+        return await dbContext.UserFavouriteBeatmaps
             .Where(ufb => ufb.UserId == userId)
             .AsNoTracking()
             .UseQueryOptions(options)
@@ -67,7 +58,7 @@ public class UserFavouritesService
 
     public async Task<int> GetUserFavouriteBeatmapIdsCount(int userId)
     {
-        return await _dbContext.UserFavouriteBeatmaps
+        return await dbContext.UserFavouriteBeatmaps
             .Where(ufb => ufb.UserId == userId)
             .AsNoTracking()
             .Select(ufb => ufb.BeatmapSetId)

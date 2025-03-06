@@ -7,20 +7,11 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Services.Users;
 
-public class UserStatsSnapshotService
+public class UserStatsSnapshotService(SunriseDbContext dbContext)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-    
-    public UserStatsSnapshotService(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-    }
-
     public async Task<UserStatsSnapshot> GetUserStatsSnapshot(int userId, GameMode mode)
     {
-        var snapshot = await _dbContext.UserStatsSnapshot.Where(uss => uss.UserId == userId && uss.GameMode == mode).FirstOrDefaultAsync();
+        var snapshot = await dbContext.UserStatsSnapshot.Where(uss => uss.UserId == userId && uss.GameMode == mode).FirstOrDefaultAsync();
 
         if (snapshot == null)
         {
@@ -39,8 +30,8 @@ public class UserStatsSnapshotService
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            _dbContext.UpdateEntity(snapshot);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UpdateEntity(snapshot);
+            await dbContext.SaveChangesAsync();
         });
     }
 
@@ -48,8 +39,8 @@ public class UserStatsSnapshotService
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            _dbContext.UserStatsSnapshot.Add(snapshot);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserStatsSnapshot.Add(snapshot);
+            await dbContext.SaveChangesAsync();
         });
     }
 }

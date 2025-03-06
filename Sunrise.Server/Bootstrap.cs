@@ -7,13 +7,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Prometheus;
 using Scalar.AspNetCore;
+using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Managers;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Database.Repositories;
+using Sunrise.Shared.Database.Services;
+using Sunrise.Shared.Database.Services.Events;
+using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Shared.Services;
@@ -120,6 +124,9 @@ public static class Bootstrap
         builder.Services.AddSingleton<ChatChannelRepository>();
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
+
+        builder.Services.AddSingleton(ConnectionMultiplexer.Connect($"{Configuration.RedisConnection},allowAdmin=true"));
+
     }
 
     public static void AddApiEndpoints(this WebApplicationBuilder builder)
@@ -137,10 +144,38 @@ public static class Bootstrap
         builder.Services.AddScoped<AssetService>();
     }
 
-    public static void AddServices(this WebApplicationBuilder builder)
+    public static void AddDatabaseServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddScoped<RedisRepository>();
+
         builder.Services.AddScoped<DatabaseService>();
+
+        builder.Services.AddScoped<BeatmapRepository>();
+        builder.Services.AddScoped<BeatmapFileService>();
+
+        builder.Services.AddScoped<MedalRepository>();
+
+        builder.Services.AddScoped<UserRepository>();
+
+        builder.Services.AddScoped<UserStatsService>();
+        builder.Services.AddScoped<UserStatsSnapshotService>();
+        builder.Services.AddScoped<UserStatsRanksService>();
+
+        builder.Services.AddScoped<UserModerationService>();
+        builder.Services.AddScoped<UserMedalsService>();
+        builder.Services.AddScoped<UserFavouritesService>();
+        builder.Services.AddScoped<UserFileService>();
+
+        builder.Services.AddScoped<EventRepository>();
+        builder.Services.AddScoped<UserEventService>();
+
+        builder.Services.AddScoped<ScoreRepository>();
+        builder.Services.AddScoped<ScoreFileService>();
+    }
+
+
+    public static void AddServices(this WebApplicationBuilder builder)
+    {
         builder.Services.AddScoped<DirectService>();
         builder.Services.AddScoped<MedalService>();
         builder.Services.AddScoped<Services.AssetService>();

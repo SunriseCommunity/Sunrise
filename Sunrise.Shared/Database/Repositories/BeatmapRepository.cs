@@ -6,24 +6,11 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class BeatmapRepository
+public class BeatmapRepository(RedisRepository redis, BeatmapFileService beatmapFileService)
 {
-    private readonly SunriseDbContext _dbContext;
-    private readonly RedisRepository _redis;
-    private readonly DatabaseService _databaseService;
-    
     private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
 
-    public BeatmapRepository(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-        _redis = databaseService.Redis;
-
-        Files = new BeatmapFileService(_databaseService);
-    }
-
-    public BeatmapFileService Files { get; }
+    public BeatmapFileService Files { get; } = beatmapFileService;
 
     public async Task<BeatmapSet?> GetCachedBeatmapSet(int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
     {
@@ -41,11 +28,11 @@ public class BeatmapRepository
 
     public async Task SetCachedBeatmapSet(BeatmapSet beatmapSet)
     {
-        await _redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet,  _cacheTtl);
+        await redis.Set(RedisKey.BeatmapSetBySetId(beatmapSet.Id), beatmapSet, _cacheTtl);
 
         foreach (var b in beatmapSet.Beatmaps)
         {
-            await _redis.Set([RedisKey.BeatmapSetIdByHash(b.Checksum), RedisKey.BeatmapSetIdByBeatmapId(b.Id)],
+            await redis.Set([RedisKey.BeatmapSetIdByHash(b.Checksum), RedisKey.BeatmapSetIdByBeatmapId(b.Id)],
                 beatmapSet.Id,
                 _cacheTtl);
         }
@@ -53,7 +40,7 @@ public class BeatmapRepository
 
     private async Task<BeatmapSet?> GetCachedBeatmapSetByBeatmapId(int beatmapId)
     {
-        var beatmapSetId = await _redis.Get<int?>(RedisKey.BeatmapSetIdByBeatmapId(beatmapId));
+        var beatmapSetId = await redis.Get<int?>(RedisKey.BeatmapSetIdByBeatmapId(beatmapId));
 
         if (!beatmapSetId.HasValue) return null;
 
@@ -62,7 +49,7 @@ public class BeatmapRepository
 
     private async Task<BeatmapSet?> GetCachedBeatmapSetByBeatmapHash(string beatmapHash)
     {
-        var beatmapSetId = await _redis.Get<int?>(RedisKey.BeatmapSetIdByHash(beatmapHash));
+        var beatmapSetId = await redis.Get<int?>(RedisKey.BeatmapSetIdByHash(beatmapHash));
 
         if (!beatmapSetId.HasValue) return null;
 
@@ -71,7 +58,7 @@ public class BeatmapRepository
 
     private async Task<BeatmapSet?> GetCachedBeatmapSetBySetId(int beatmapSetId)
     {
-        var beatmapSet = await _redis.Get<BeatmapSet?>(RedisKey.BeatmapSetBySetId(beatmapSetId));
+        var beatmapSet = await redis.Get<BeatmapSet?>(RedisKey.BeatmapSetBySetId(beatmapSetId));
 
         if (beatmapSet == null) return null;
 
