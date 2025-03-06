@@ -20,11 +20,11 @@ public class ChatMessagePrivateHandler : IPacketHandler
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-                
+
         var user = await database.Users.GetUser(session.UserId);
         if (user == null)
             return;
-        
+
         var message = new BanchoChatMessage(packet.Data)
         {
             Sender = user.Username,
@@ -42,13 +42,13 @@ public class ChatMessagePrivateHandler : IPacketHandler
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        if (!sessions.TryGetSession(username: message.Channel, null, out var receiver) || receiver == null) return;
-        
-        var receiverUser = await database.Users.GetUser(receiver.UserId);
+        var receiverUser = await database.Users.GetUser(username: message.Channel);
         if (receiverUser == null)
             return;
 
-        if (receiver.Attributes.AwayMessage is not null )
+        if (!sessions.TryGetSession(out var receiver, userId: receiverUser.Id) || receiver == null) return;
+
+        if (receiver.Attributes.AwayMessage is not null)
         {
             session.WritePacket(PacketType.ServerChatMessage,
                 new BanchoChatMessage

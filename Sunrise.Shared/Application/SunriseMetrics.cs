@@ -54,7 +54,7 @@ public static class SunriseMetrics
     {
         if (!requestType.IsValidRequestType())
         {
-            var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
+            using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
             var logger = loggerFactory.CreateLogger(string.Empty);
             logger.LogCritical($"Invalid request type: {requestType} in Metrics.RequestReturnedErrorCounterInc");
             return;
