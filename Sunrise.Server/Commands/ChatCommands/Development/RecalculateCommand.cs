@@ -3,6 +3,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -24,9 +25,6 @@ public class RecalculateCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        // Note: Currently unstable, because if there is not beatmap files in database, it will spam Observatory with calls.
-        ChatCommandRepository.SendMessage(session, "This command is currently disabled. Please try again later.");
-        return Task.CompletedTask;
 
         ChatCommandRepository.SendMessage(session,
             "Recalculation started. Server will enter maintenance mode until it's done.");
@@ -47,41 +45,55 @@ public class RecalculateCommand : IChatCommand
             userSession.SendBanchoMaintenance();
         }
 
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
-        
+
         foreach (var mode in Enum.GetValues<GameMode>())
         {
-
-            var stats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp);
-
-            if (stats.Count == 0)
-            {
-                ChatCommandRepository.TrySendMessage(userId, $"No stats found for mode {mode}. Skipping.");
-                continue;
-            }
-
             var startTime = DateTime.UtcNow;
 
-            foreach (var stat in stats)
+            var pageSize = 50;
+
+            for (var x = 1;; x++)
             {
-                var pp = await calculatorService.CalculateUserWeightedPerformance(stat.UserId, mode);
-                var acc = await calculatorService.CalculateUserWeightedAccuracy(stat.UserId, mode);
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-                stat.PerformancePoints = pp;
-                stat.Accuracy = acc;
+                var stats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp, options: new QueryOptions(new Pagination(x, pageSize)));
 
-                await database.DbContext.Entry(stat).Reference(s => s.User).LoadAsync();
+                if (stats.Count == 0)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"No stats found for mode {mode}. Skipping.");
+                    continue;
+                }
 
-                var user = stat.User;
+                foreach (var stat in stats)
+                {
+                    var pp = await calculatorService.CalculateUserWeightedPerformance(stat.UserId, mode);
+                    var acc = await calculatorService.CalculateUserWeightedAccuracy(stat.UserId, mode);
 
-                await database.Users.Stats.UpdateUserStats(stat, user);
+                    const float tolerance = 0.0001f;
+
+                    if (Math.Abs(stat.PerformancePoints - pp) > tolerance)
+                        ChatCommandRepository.TrySendMessage(userId, $"Updated user id {stat.UserId} in gamemode {mode} pp value from {stat.PerformancePoints} -> {pp}");
+
+                    if (Math.Abs(stat.Accuracy - acc) > tolerance)
+                        ChatCommandRepository.TrySendMessage(userId, $"Updated user id {stat.UserId} in gamemode {mode} acc value from {stat.Accuracy} -> {acc}");
+
+                    stat.PerformancePoints = pp;
+                    stat.Accuracy = acc;
+
+                    await database.DbContext.Entry(stat).Reference(s => s.User).LoadAsync();
+
+                    var user = stat.User;
+
+                    await database.Users.Stats.UpdateUserStats(stat, user);
+                }
+
+                if (stats.Count < pageSize) break;
             }
 
             ChatCommandRepository.TrySendMessage(userId,
                 $"Recalculated stats for mode {mode}. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
-
         }
 
         Configuration.OnMaintenance = false;

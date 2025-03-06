@@ -37,6 +37,10 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
+        // Note: Currently unstable, because if there is not beatmap files in database, it will spam Observatory with calls.
+        ChatCommandRepository.SendMessage(session, "This command is currently disabled. Please try again later.");
+        return Task.CompletedTask;
+
         ChatCommandRepository.SendMessage(session,
             "Recalculation started. Server will enter maintenance mode until it's done.");
 
