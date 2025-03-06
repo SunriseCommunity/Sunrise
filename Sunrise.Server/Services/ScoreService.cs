@@ -96,7 +96,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var prevUserStats = userStats.Clone();
         var prevPBest = globalScores.GetPersonalBestOf(score.UserId);
-                
+
         var user = await database.Users.GetUser(session.UserId);
         if (user == null)
             return "error: no";
@@ -161,7 +161,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (isCurrentScoreFailed || !score.IsScoreable)
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
-        
+
         webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(score)));
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
@@ -170,7 +170,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
         var newPBest = updatedScores.GetPersonalBestOf(score.UserId) ?? score;
-        
+
         var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode);
         userStats.LocalProperties.Rank = newUserRank;
 
@@ -180,7 +180,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             channels.GetChannel(session, "#announce")
                 ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
         }
-        
+
         var newAchievements = await medalService.UnlockAndGetNewMedals(newPBest, beatmap, userStats);
 
         return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest, newAchievements);
@@ -190,12 +190,12 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         LeaderboardType leaderboardType, string beatmapHash, string filename)
     {
         gameMode = gameMode.EnrichWithMods(mods);
-        
+
         var user = await database.Users.GetUser(session.UserId);
         if (user == null)
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
 
-        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true, new Pagination(1, 50)));
+        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true));
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
         var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, beatmapHash);
