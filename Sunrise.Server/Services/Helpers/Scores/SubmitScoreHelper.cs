@@ -4,7 +4,6 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Keys;
@@ -17,14 +16,14 @@ namespace Sunrise.Server.Services.Helpers.Scores;
 public static class SubmitScoreHelper
 {
     private const string MetricsError = "Score {0} by (user id: {1}) rejected with reason: {2}";
-    private const string AnnounceNewFirstPlaceString =  "{0} achieved #1 on {1}";
+    private const string AnnounceNewFirstPlaceString = "{0} achieved #1 on {1}";
 
 
     public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
         var scoreMessage = score.GetBeatmapInGameChatString(beatmapSet, session).Result;
         var message = string.Format(AnnounceNewFirstPlaceString, score.User.GetUserInGameChatString(), scoreMessage);
-        
+
         return message;
     }
 
@@ -42,12 +41,15 @@ public static class SubmitScoreHelper
             return;
         }
 
-        var scores = new List<Score> { score };
+        var scores = new List<Score>
+        {
+            score
+        };
         if (prevPBest != null)
             scores.Add(prevPBest);
 
         var bestScore = scores.SortScoresByTheirScoreValue().FirstOrDefault();
-        
+
         if (bestScore == score)
         {
             score.SubmissionStatus = SubmissionStatus.Best;
@@ -66,7 +68,7 @@ public static class SubmitScoreHelper
         var user = database.Users.GetUser(id: score.UserId).Result;
         if (user == null)
             return false;
-        
+
         var computedOnlineHash = score.ComputeOnlineHash(user.Username, clientHash, storyboardHash);
 
         var checks = new[]
@@ -84,7 +86,7 @@ public static class SubmitScoreHelper
             return true;
         }
 
-        ReportRejectionToMetrics(session, $"{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}", "Invalid checksums on score submission");
+        ReportRejectionToMetrics(session, $"{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}.storyboard.{storyboardHash}", "Invalid checksums on score submission");
         return false;
     }
 
@@ -101,7 +103,7 @@ public static class SubmitScoreHelper
         var scoreInfo = string.Join("|", GetChart(prevScore, newScore, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
                          string.Join("|", GetChart(prevUserStats, userStats));
-        
+
         return
             $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
     }

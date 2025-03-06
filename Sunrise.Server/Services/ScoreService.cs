@@ -5,6 +5,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -28,8 +29,12 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     {
         var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
+
         if (beatmap == null || beatmapSet == null)
-            throw new Exception("Invalid request: BeatmapSet not found");
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid request: BeatmapSet not found");
+            return "error: no";
+        }
 
         var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap);
         var dbScore = await database.Scores.GetScore(score.ScoreHash);
@@ -40,8 +45,32 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
+        if (replay is { Length: >= 24 })
+        {
+            var replayFileResult = await database.Scores.Files.AddReplayFile(session.UserId, replay);
+
+            if (replayFileResult.IsFailure)
+            {
+                await SaveRejectedScore(score);
+                SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"Couldn't add replay file for score, reason: {replayFileResult.Error}");
+                return "error: no";
+            }
+
+            score.ReplayFileId = replayFileResult.Value.Id;
+        }
+
+        var isCurrentScoreFailed = SubmitScoreHelper.IsScoreFailed(score);
+
+        if (!isCurrentScoreFailed && score.ReplayFileId == null)
+        {
+            await SaveRejectedScore(score);
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Replay file not found for passed score");
+            return "error: no";
+        }
+
         if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid mods");
             return "error: no";
         }
@@ -55,6 +84,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
         if (isHasMoreThanOneNotStandardMod || isNonSupportedNonStandardMod)
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
             return "error: no";
         }
@@ -62,6 +92,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         // Auto-restrict players who submit scores with too many performance points on standard game modes
         if (score.PerformancePoints >= Configuration.BannablePpThreshold && !hasNonStandardMods && score.LocalProperties.IsRanked)
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
             await database.Users.Moderation.RestrictPlayer(session.UserId, null, "Auto-restricted for submitting impossible score");
             return "error: no";
@@ -76,6 +107,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (!isScoreValid)
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid checksums");
             await database.Users.Moderation.RestrictPlayer(session.UserId, null, "Invalid checksums on score submission");
             return "error: no";
@@ -90,6 +122,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (userStats == null)
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "User stats not found");
             return "error: no";
         }
@@ -98,8 +131,13 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         var prevPBest = globalScores.GetPersonalBestOf(score.UserId);
 
         var user = await database.Users.GetUser(session.UserId);
+
         if (user == null)
+        {
+            await SaveRejectedScore(score);
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user while submitting score");
             return "error: no";
+        }
 
         var (prevUserGlobalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode);
         prevUserStats.LocalProperties.Rank = prevUserGlobalRank;
@@ -108,31 +146,11 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
 
-        if (replay is { Length: >= 24 })
-        {
-            var replayFileResult = await database.Scores.Files.AddReplayFile(userStats.UserId, replay);
-
-            if (replayFileResult.IsFailure)
-            {
-                SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"Couldn't add replay file for score, reason: {replayFileResult.Error}");
-                return "error: no";
-            }
-
-            score.ReplayFileId = replayFileResult.Value.Id;
-        }
-
-        var isCurrentScoreFailed = SubmitScoreHelper.IsScoreFailed(score);
-
-        if (!isCurrentScoreFailed && score.ReplayFileId == null)
-        {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Replay file not found for passed score");
-            return "error: no";
-        }
-
         var scoreWithSameHash = globalScores.FirstOrDefault(x => x.ScoreHash == score.ScoreHash);
 
         if (scoreWithSameHash != null)
         {
+            await SaveRejectedScore(score);
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
             return "error: no";
         }
@@ -160,7 +178,10 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         if (isCurrentScoreFailed || !score.IsScoreable)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Will not submit failed score");
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
+        }
 
         webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(score)));
 
@@ -227,5 +248,11 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         return string.Join("\n", responses);
+    }
+
+    private async Task SaveRejectedScore(Score score)
+    {
+        score.SubmissionStatus = SubmissionStatus.Deleted;
+        await database.Scores.AddScore(score);
     }
 }
