@@ -19,7 +19,7 @@ public class HttpClientService
 
     public HttpClientService(RedisRepository redis)
     {
-        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
+        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
         _logger = loggerFactory.CreateLogger<HttpClientService>();
         _redis = redis;
 

@@ -8,28 +8,19 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class MedalRepository
+public class MedalRepository(SunriseDbContext dbContext)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-
-    public MedalRepository(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-    }
-
     public async Task<List<Medal>> GetMedals(GameMode mode, QueryOptions? options = null)
     {
-        return await _dbContext.Medals
+        return await dbContext.Medals
             .Where(m => m.GameMode == mode || m.GameMode == null)
             .UseQueryOptions(options)
             .ToListAsync();
     }
-    
+
     public async Task<Medal?> GetMedal(int medalId, QueryOptions? options = null)
     {
-        return await _dbContext.Medals
+        return await dbContext.Medals
             .Where(m => m.Id == medalId)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync();
@@ -37,7 +28,7 @@ public class MedalRepository
 
     public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false, QueryOptions? options = null)
     {
-        var record = await _dbContext.MedalFiles
+        var record = await dbContext.MedalFiles
             .Where(r => r.Id == medalFileId)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync();

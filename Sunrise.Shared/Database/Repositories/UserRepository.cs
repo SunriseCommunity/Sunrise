@@ -1,52 +1,39 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services.Users;
-using Sunrise.Shared.Repositories;
-using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class UserRepository
+public class UserRepository(
+    ILogger<UserRepository> logger,
+    Lazy<DatabaseService> databaseService,
+    SunriseDbContext dbContext,
+    UserStatsService userStatsService,
+    UserModerationService userModerationService,
+    UserMedalsService userMedalsService,
+    UserFavouritesService userFavouritesService,
+    UserFileService userFileService)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
+    private readonly ILogger _logger = logger;
 
-    private readonly ILogger _logger;
-
-    public UserRepository(DatabaseService databaseService, SessionRepository sessions, CalculatorService calculatorService)
-    {
-        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        _logger = loggerFactory.CreateLogger<UserRepository>();
-
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-
-        Stats = new UserStatsService(_databaseService);
-        Moderation = new UserModerationService(_databaseService, sessions, calculatorService);
-        Medals = new UserMedalsService(_databaseService);
-        Favourites = new UserFavouritesService(_databaseService);
-        Files = new UserFileService(_databaseService);
-    }
-
-    public UserStatsService Stats { get; }
-    public UserFavouritesService Favourites { get; }
-    public UserMedalsService Medals { get; }
-    public UserModerationService Moderation { get; }
-    public UserFileService Files { get; }
+    public UserStatsService Stats { get; } = userStatsService;
+    public UserFavouritesService Favourites { get; } = userFavouritesService;
+    public UserMedalsService Medals { get; } = userMedalsService;
+    public UserModerationService Moderation { get; } = userModerationService;
+    public UserFileService Files { get; } = userFileService;
 
     public async Task<Result> AddUser(User user)
     {
-        return await _databaseService.CommitAsTransactionAsync(async () =>
+        return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
-            _dbContext.Users.Add(user);
-            await _dbContext.SaveChangesAsync();
+            dbContext.Users.Add(user);
+            await dbContext.SaveChangesAsync();
 
             var modes = Enum.GetValues<GameMode>();
 
@@ -61,7 +48,7 @@ public class UserRepository
                 await Stats.AddUserStats(stats, user);
             }
 
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
         });
     }
 
@@ -76,7 +63,7 @@ public class UserRepository
         if (passhash != null && id == null && username == null && email == null)
             throw new ArgumentException("Passhash provided without any other parameters");
 
-        var userQuery = _dbContext.Users.AsQueryable();
+        var userQuery = dbContext.Users.AsQueryable();
 
         if (id != null) userQuery = userQuery.Where(u => u.Id == id);
         if (username != null) userQuery = userQuery.Where(u => u.Username == username);
@@ -102,7 +89,7 @@ public class UserRepository
         if (passhash != null && id == null && username == null && email == null)
             throw new ArgumentException("Passhash provided without any other parameters");
 
-        var userQuery = _dbContext.Users.AsQueryable();
+        var userQuery = dbContext.Users.AsQueryable();
 
         if (id != null) userQuery = userQuery.Where(u => u.Id == id);
         if (username != null) userQuery = userQuery.Where(u => u.Username == username);
@@ -119,7 +106,7 @@ public class UserRepository
 
     public async Task<List<User>> GetUsers(List<int>? ids = null, QueryOptions? options = null)
     {
-        var userQuery = _dbContext.Users.AsQueryable();
+        var userQuery = dbContext.Users.AsQueryable();
 
         if (ids != null) userQuery = userQuery.Where(u => ids.Contains(u.Id));
 
@@ -132,7 +119,7 @@ public class UserRepository
 
     public async Task<List<User>> GetValidUsers(List<int>? ids = null, QueryOptions? options = null)
     {
-        var baseQuery = _dbContext.Users.AsQueryable();
+        var baseQuery = dbContext.Users.AsQueryable();
 
         if (ids != null) baseQuery = baseQuery.Where(u => ids.Contains(u.Id));
 
@@ -147,20 +134,20 @@ public class UserRepository
 
     public async Task<int> CountUsers()
     {
-        return await _dbContext.Users
+        return await dbContext.Users
             .CountAsync();
     }
 
     public async Task<int> CountValidUsers()
     {
-        return await _dbContext.Users
+        return await dbContext.Users
             .FilterValidUsers()
             .CountAsync();
     }
 
     public async Task<Result> UpdateUserUsername(User user, string oldUsername, string newUsername, int? updatedById = null, string? userIp = null)
     {
-        return await _databaseService.CommitAsTransactionAsync(async () =>
+        return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
             user.Username = newUsername;
 
@@ -168,7 +155,7 @@ public class UserRepository
             if (updateUserResult.IsFailure)
                 throw new Exception(updateUserResult.Error);
 
-            var result = await _databaseService.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
+            var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
             if (result.IsFailure)
                 throw new Exception(result.Error);
         });
@@ -178,21 +165,21 @@ public class UserRepository
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            _dbContext.UpdateEntity(user);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UpdateEntity(user);
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<Result> DeleteUser(int userId)
     {
-        return await _databaseService.CommitAsTransactionAsync(async () =>
+        return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
             var user = await GetUser(id: userId);
             if (user == null)
                 throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-            var isUserHasAnyLoginEvents = await _databaseService.Events.Users.IsUserHasAnyLoginEvents(user.Id);
-            var isUserHasAnyScore = await _databaseService.Scores.GetUserLastScore(userId) != null;
+            var isUserHasAnyLoginEvents = await databaseService.Value.Events.Users.IsUserHasAnyLoginEvents(user.Id);
+            var isUserHasAnyScore = await databaseService.Value.Scores.GetUserLastScore(userId) != null;
 
             if (isUserHasAnyLoginEvents || isUserHasAnyScore || user.IsUserSunriseBot())
             {
@@ -200,14 +187,14 @@ public class UserRepository
                 throw new ApplicationException(QueryResultError.CANT_REMOVE_REQUESTED_RECORD);
             }
 
-            _dbContext.Users.Remove(user);
-            await _dbContext.SaveChangesAsync();
+            dbContext.Users.Remove(user);
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<List<User>> GetValidUsersByQueryLike(string queryLike, QueryOptions? options = null)
     {
-        return await _dbContext.Users
+        return await dbContext.Users
             .FilterValidUsers()
             .Where(q => q.Username.Contains(queryLike))
             .UseQueryOptions(options)

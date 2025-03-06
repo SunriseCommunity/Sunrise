@@ -14,7 +14,7 @@ public class PacketHandlerRepository
 
     static PacketHandlerRepository()
     {
-        var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
+        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
         Logger = loggerFactory.CreateLogger<PacketHandlerRepository>();
     }
 

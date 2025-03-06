@@ -1,5 +1,4 @@
 using Hangfire;
-using Scalar.AspNetCore;
 using Sunrise.Server;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -10,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHealthChecks();
 
 builder.AddServices();
+builder.AddDatabaseServices();
+
 builder.AddSingletons();
 
 builder.AddMiddlewares();

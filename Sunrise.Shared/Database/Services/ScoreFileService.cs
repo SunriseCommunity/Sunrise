@@ -8,17 +8,8 @@ using Sunrise.Shared.Utils;
 
 namespace Sunrise.Shared.Database.Services;
 
-public class ScoreFileService
+public class ScoreFileService(SunriseDbContext dbContext)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-
-    public ScoreFileService(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-    }
-
     private static string DataPath => Configuration.DataPath;
 
     public async Task<Result<UserFile>> AddReplayFile(int userId, IFormFile replay)
@@ -41,8 +32,8 @@ public class ScoreFileService
                 Type = FileType.Replay
             };
 
-            _dbContext.UserFiles.Add(record);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserFiles.Add(record);
+            await dbContext.SaveChangesAsync();
 
             return record;
         });
@@ -50,7 +41,7 @@ public class ScoreFileService
 
     public async Task<byte[]?> GetReplayFile(int replayId)
     {
-        var record = _dbContext.UserFiles.FirstOrDefault(record => record.Id == replayId);
+        var record = dbContext.UserFiles.FirstOrDefault(record => record.Id == replayId);
 
         if (record == null)
             return null;

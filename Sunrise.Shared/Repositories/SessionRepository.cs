@@ -149,7 +149,7 @@ public class SessionRepository
 
     public async Task AddBotToSession()
     {
-        var scope = ServicesProviderHolder.CreateScope();
+        using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         var bot = await database.Users.GetUser(username: Configuration.BotUsername);

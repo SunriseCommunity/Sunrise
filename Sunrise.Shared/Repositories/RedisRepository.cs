@@ -6,18 +6,15 @@ using Sunrise.Shared.Utils;
 
 namespace Sunrise.Shared.Repositories;
 
-public class RedisRepository
+public class RedisRepository(ConnectionMultiplexer redisConnection)
 {
-    private static readonly ConnectionMultiplexer RedisConnection =
-        ConnectionMultiplexer.Connect($"{Configuration.RedisConnection},allowAdmin=true");
-
     private static readonly JsonSerializerOptions JsonSerializerOptions = new()
     {
         IncludeFields = true
     };
 
-    private readonly IDatabase _generalDatabase = RedisConnection.GetDatabase(0);
-    private readonly IDatabase _sortedSetsDatabase = RedisConnection.GetDatabase(1);
+    private readonly IDatabase _generalDatabase = redisConnection.GetDatabase(0);
+    private readonly IDatabase _sortedSetsDatabase = redisConnection.GetDatabase(1);
 
     private static bool UseCache => Configuration.UseCache;
 
@@ -136,7 +133,7 @@ public class RedisRepository
 
     public async Task Flush(bool flushOnlyGeneralDatabase = true)
     {
-        var server = RedisConnection.GetServer(RedisConnection.GetEndPoints().FirstOrDefault());
+        var server = redisConnection.GetServer(redisConnection.GetEndPoints().FirstOrDefault());
 
         if (flushOnlyGeneralDatabase)
             await server.FlushDatabaseAsync(0);

@@ -10,17 +10,8 @@ using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Shared.Database.Services.Users;
 
-public class UserFileService
+public class UserFileService(SunriseDbContext dbContext)
 {
-    private readonly DatabaseService _databaseService;
-    private readonly SunriseDbContext _dbContext;
-
-    public UserFileService(DatabaseService databaseService)
-    {
-        _databaseService = databaseService;
-        _dbContext = databaseService.DbContext;
-    }
-
     private static string DataPath => Configuration.DataPath;
 
     public async Task<Result> AddOrUpdateAvatar(int userId, byte[] avatar)
@@ -29,7 +20,7 @@ public class UserFileService
         {
             var imagePath = $"Files/Avatars/{userId}.png";
             var filePath = Path.Combine(DataPath, imagePath);
-            
+
             if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256)))
                 throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
 
@@ -40,25 +31,25 @@ public class UserFileService
                 Type = FileType.Avatar
             };
 
-            var prevRecord = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar);
+            var prevRecord = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar);
 
             if (prevRecord == null)
             {
-               _dbContext.UserFiles.Add(record);
-               await _dbContext.SaveChangesAsync();
-               return;
+                dbContext.UserFiles.Add(record);
+                await dbContext.SaveChangesAsync();
+                return;
             }
-            
+
             prevRecord.UpdatedAt = DateTime.Now;
             prevRecord.Path = imagePath;
 
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true)
     {
-        var record = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar);
 
         if (record == null && !fallToDefault) return null;
 
@@ -67,17 +58,17 @@ public class UserFileService
 
         return file;
     }
-    
+
     public async Task<Result<int>> AddScreenshot(int userId, byte[] screenshot)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
             var imagePath = $"Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.jpg";
             var filePath = Path.Combine(DataPath, imagePath);
-            
+
             if (!await LocalStorageRepository.WriteFileAsync(filePath, screenshot))
                 throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
-            
+
             var record = new UserFile
             {
                 OwnerId = userId,
@@ -85,8 +76,8 @@ public class UserFileService
                 Type = FileType.Screenshot
             };
 
-            _dbContext.UserFiles.Add(record);
-            await _dbContext.SaveChangesAsync();
+            dbContext.UserFiles.Add(record);
+            await dbContext.SaveChangesAsync();
 
             return record.Id;
         });
@@ -94,7 +85,7 @@ public class UserFileService
 
     public async Task<byte[]?> GetScreenshot(int screenshotId)
     {
-        var record = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot);
 
         if (record == null)
             return null;
@@ -122,25 +113,25 @@ public class UserFileService
                 Type = FileType.Banner
             };
 
-            var prevRecord = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner);
+            var prevRecord = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner);
 
             if (prevRecord == null)
             {
-                _dbContext.UserFiles.Add(record);
-                await _dbContext.SaveChangesAsync();
+                dbContext.UserFiles.Add(record);
+                await dbContext.SaveChangesAsync();
                 return;
             }
-            
+
             prevRecord.UpdatedAt = DateTime.Now;
             prevRecord.Path = imagePath;
 
-            await _dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
         });
     }
 
     public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true)
     {
-        var record = await _dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner);
 
         if (record == null && !fallToDefault) return null;
 
