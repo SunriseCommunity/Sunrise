@@ -196,7 +196,7 @@ public class UserRepository(
     {
         return await dbContext.Users
             .FilterValidUsers()
-            .Where(q => q.Username.Contains(queryLike))
+            .Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%"))
             .UseQueryOptions(options)
             .ToListAsync();
     }
