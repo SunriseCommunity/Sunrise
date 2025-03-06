@@ -85,7 +85,7 @@ public static class PerformanceCalculator
                 {
                     using var performance = Performance.New();
                     performance.Accuracy((uint)accuracy);
-                    
+
                     var ignoreNotScoredMods = mods & ~Mods.Relax;
                     performance.IMods((uint)ignoreNotScoredMods);
                     var result = performance.Calculate(beatmap.Context);
@@ -120,7 +120,7 @@ public static class PerformanceCalculator
         var weightedAccuracy = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.Accuracy)
             .Sum();
-        var bonusAccuracy = 100 / (20 * (1 - Math.Pow(0.95, userBestScores.Count)));
+        var bonusAccuracy = 100 / (20 * (1 - Math.Pow(0.95, top100Scores.Count)));
 
         return weightedAccuracy * bonusAccuracy / 100;
     }
@@ -142,7 +142,7 @@ public static class PerformanceCalculator
         var weightedPp = top100Scores
             .Select((s, i) => Math.Pow(0.95, i) * s.PerformancePoints)
             .Sum();
-        var bonusPp = bonusNumber * (1 - Math.Pow(0.9994, userBestScores.Count));
+        var bonusPp = bonusNumber * (1 - Math.Pow(0.9994, top100Scores.Count));
 
         return weightedPp + bonusPp;
     }
