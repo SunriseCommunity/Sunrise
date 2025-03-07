@@ -8,7 +8,7 @@ Sunrise is a private server for osu! written in C#. This repository has both end
 website. The server is currently in development and is not yet ready for public use.
 
 > [!NOTE]
-> Why C#? :shipit: Well, because owner of this project has allergies to non-typed languages. Sad, I know.
+> Want to help? Have a question? :shipit: Feel free then to join our [Discord server](https://discord.gg/BjV7c9VRfn), there you can ask any question to maintainers of this project!
 
 ## Features 🌟
 
