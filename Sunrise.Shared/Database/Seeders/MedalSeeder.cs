@@ -250,6 +250,10 @@ public static class MedalSeeder
             {    
                 new Medal { Id = 100, Name = "Man this DJ is fire", Description = "Just don't listen to the original. It's not as good.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(1357624) },
                 "Files/Medals/all-secret-thisdjisfire.png"
+            },
+             {    
+                new Medal { Id = 101, Name = "Heat abnormal", Description = "Is it just me, or does my head get dizzy from all the heat?", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2058976) },
+                "Files/Medals/all-secret-heat-abnormal.png"
             }
      };
     // @formatter:on
