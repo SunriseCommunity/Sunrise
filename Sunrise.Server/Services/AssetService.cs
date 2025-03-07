@@ -100,7 +100,7 @@ public class AssetService(DatabaseService database)
     {
         var medalImage = await database.Medals.GetMedalImage(medalFileId, isHighRes);
 
-        const string defaultImagePath = "Files/Medals/default.png";
+        var defaultImagePath = Path.Combine(Configuration.DataPath, "Files/Medals/default.png");
         var defaultImage = isHighRes ? defaultImagePath.Replace(".png", "@2x.png") : defaultImagePath;
 
         return medalImage ?? await LocalStorageRepository.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
