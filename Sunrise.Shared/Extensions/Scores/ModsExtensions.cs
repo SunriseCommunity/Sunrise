@@ -11,6 +11,7 @@ public static class ModsExtensions
             Enum.GetValues<ModsShorted>()
                 .Where(x => mods.HasFlag((Mods)x) && x != ModsShorted.None)
                 .Where(x => !(mods.HasFlag(Mods.Nightcore) && x == (ModsShorted)Mods.DoubleTime))
+                .Where(x => !(mods.HasFlag(Mods.Perfect) && x == (ModsShorted)Mods.SuddenDeath))
                 .Select(x => x.ToString()));
 
         return string.IsNullOrEmpty(shortedMods) ? string.Empty : $"+{shortedMods} ";
