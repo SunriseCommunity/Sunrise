@@ -15,7 +15,7 @@ public class FlushCacheCommand : IChatCommand
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         var isSoftFlush = true;
-        
+
         if (args is { Length: > 0 })
         {
             switch (args[0])
@@ -31,7 +31,7 @@ public class FlushCacheCommand : IChatCommand
                     isSoftFlush = false;
                     break;
                 default:
-                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache false - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
+                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache yes - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
                     return Task.CompletedTask;
             }
         }
@@ -43,14 +43,14 @@ public class FlushCacheCommand : IChatCommand
     public async Task FlushAndUpdateRedisCache(int userId, bool isSoftFlush)
     {
         ChatCommandRepository.TrySendMessage(userId, "Starting to flush cache.");
-        
+
         var startTime = DateTime.UtcNow;
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-  
+
         await database.FlushAndUpdateRedisCache(isSoftFlush);
-        
+
         ChatCommandRepository.TrySendMessage(userId,
             $"Done flushing cache (wasSoft: {isSoftFlush})! Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
     }
