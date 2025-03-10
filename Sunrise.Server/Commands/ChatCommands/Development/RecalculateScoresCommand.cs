@@ -10,6 +10,7 @@ using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -37,10 +38,6 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        // Note: Currently unstable, because if there is not beatmap files in database, it will spam Observatory with calls.
-        ChatCommandRepository.SendMessage(session, "This command is currently disabled. Please try again later.");
-        return Task.CompletedTask;
-
         ChatCommandRepository.SendMessage(session,
             "Recalculation started. Server will enter maintenance mode until it's done.");
 
@@ -63,6 +60,7 @@ public class RecalculateScoresCommand : IChatCommand
         var startTime = DateTime.UtcNow;
 
         var pageSize = 100;
+        var scoresReviewedTotal = 0;
 
         for (var x = 1;; x++)
         {
@@ -77,18 +75,23 @@ public class RecalculateScoresCommand : IChatCommand
             var session = new BaseSession(user);
 
             var allScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)));
-            var scoresReviewedTotal = 0;
 
             foreach (var score in allScores)
             {
                 var oldPerformancePoints = score.PerformancePoints;
+                var oldAccuracy = score.Accuracy;
 
+                score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
                 score.PerformancePoints = await calculatorService.CalculatePerformancePoints(session, score);
                 await database.Scores.UpdateScore(score);
 
                 scoresReviewedTotal++;
-                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} from {oldPerformancePoints} to {score.PerformancePoints}");
+
+                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} acc from {oldAccuracy} to {score.Accuracy}");
+                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} pp from {oldPerformancePoints} to {score.PerformancePoints}");
                 ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+
+                Thread.Sleep(2000); // TODO: Current solution to not bash Observatory with requests, should be refactored later
             }
 
             if (allScores.Count < pageSize) break;

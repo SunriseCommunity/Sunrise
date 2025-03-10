@@ -149,21 +149,29 @@ public static class PerformanceCalculator
 
     public static float CalculateAccuracy(Score score)
     {
-        var totalHits = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
-
         var scoreVanillaGameMode = (GameMode)score.GameMode.ToVanillaGameMode();
-        if (scoreVanillaGameMode == GameMode.Mania) totalHits += score.CountGeki + score.CountKatu;
+
+        var totalHits = scoreVanillaGameMode switch
+        {
+            GameMode.Standard => score.Count300 + score.Count100 + score.Count50 + score.CountMiss,
+            GameMode.Taiko => score.Count300 + score.Count100 + score.CountMiss,
+            GameMode.CatchTheBeat => score.Count300 + score.Count100 + score.Count50 + score.CountKatu + score.CountMiss,
+            GameMode.Mania => score.Count300 + score.Count100 + score.Count50 + score.CountGeki + score.CountKatu + score.CountMiss,
+            _ => 0
+        };
 
         if (totalHits == 0) return 0;
 
         return scoreVanillaGameMode switch
         {
-            GameMode.Standard => (float)(score.Count300 * 300 + score.Count100 * 100 + score.Count50 * 50) /
-                (totalHits * 300) * 100,
-            GameMode.Taiko => (float)(score.Count300 * 300 + score.Count100 * 150) / (totalHits * 300) * 100,
-            GameMode.CatchTheBeat => (float)(score.Count300 + score.Count100 + score.Count50) / totalHits * 100,
-            GameMode.Mania => (float)((score.Count300 + score.CountGeki) * 300 + score.CountKatu * 200 +
-                                      score.Count100 * 100 + score.Count50 * 50) / (totalHits * 300) * 100,
+            GameMode.Standard => 100f * (score.Count300 * 300f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 300f),
+            GameMode.Taiko => 100f * (score.Count300 + score.Count100 * 0.5f) / totalHits,
+            GameMode.CatchTheBeat => 100f * (score.Count300 + score.Count100 + score.Count50) / totalHits,
+            GameMode.Mania => score.Mods.HasFlag(Mods.ScoreV2) switch
+            {
+                true => 100f * (score.CountGeki * 305f + score.Count300 * 300f + score.CountKatu * 200f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 305f),
+                false => 100f * ((score.Count300 + score.CountGeki) * 300f + score.CountKatu * 200f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 300f)
+            },
             _ => 0
         };
     }
