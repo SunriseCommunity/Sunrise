@@ -7,6 +7,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -17,7 +18,7 @@ namespace Sunrise.API.Controllers;
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService) : ControllerBase
+public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
@@ -46,6 +47,32 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         return Ok(new BeatmapResponse(session, beatmap, beatmapSet));
     }
 
+    [HttpGet("beatmap/{id:int}/pp")]
+    [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/pp")]
+    [EndpointDescription("Get beatmap performance")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(PerformanceAttributes), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBeatmapPerformance(int id, [FromQuery(Name = "mods")] Mods? mods = null, [FromQuery(Name = "mode")] int? gameMode = null, [FromQuery(Name = "combo")] int? combo = null, [FromQuery(Name = "misses")] int? misses = null)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
+        if (gameMode is < 0 or > 3)
+            return BadRequest(new ErrorResponse("Invalid game mode"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+
+        var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? (int)osu.Shared.GameMode.Standard, mods ?? Mods.None, combo, misses);
+
+        if (performance.IsFailure)
+            return BadRequest(new ErrorResponse(performance.Error));
+
+        return Ok(performance.Value);
+    }
+
     [HttpGet("beatmap/{id:int}/leaderboard")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
     [EndpointDescription("Get beatmap leaderboard")]
@@ -63,7 +90,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
         var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
-        
+
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);

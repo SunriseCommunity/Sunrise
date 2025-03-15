@@ -270,7 +270,7 @@ public static class ScoreExtensions
 
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
         {
-            var recalculateBeatmapResult = await calculatorService.RecalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
             if (recalculateBeatmapResult.IsFailure)
             {

@@ -1,4 +1,6 @@
-﻿namespace Sunrise.Shared.Objects.Serializable.Performances;
+﻿using System.Text.Json.Serialization;
+
+namespace Sunrise.Shared.Objects.Serializable.Performances;
 
 public class ScoreState
 {
@@ -11,6 +13,8 @@ public class ScoreState
      * 
      * Irrelevant for osu!mania.
      */
+    [JsonPropertyName("maxCombo")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? MaxCombo { get; set; }
 
     /**
@@ -23,6 +27,8 @@ public class ScoreState
      * - if set on osu!lazer *with* `CL`, this field is the amount of hit
      * slider heads, ticks, and repeats
      */
+    [JsonPropertyName("osuLargeTickHits")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OsuLargeTickHits { get; set; }
 
     /**
@@ -33,6 +39,8 @@ public class ScoreState
      * 
      * Only relevant for osu!lazer.
      */
+    [JsonPropertyName("osuSmallTickHits")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? OsuSmallTickHits { get; set; }
 
     /**
@@ -40,36 +48,50 @@ public class ScoreState
      * 
      * Only relevant for osu!standard in lazer.
      */
+    [JsonPropertyName("sliderEndHits")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SliderEndHits { get; set; }
 
     /**
     * Amount of current gekis (n320 for osu!mania).
     */
+    [JsonPropertyName("nGeki")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NGeki { get; set; }
 
     /**
      * Amount of current katus (tiny droplet misses for osu!catch / n200 for
      * osu!mania).
      */
+    [JsonPropertyName("nKatu")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NKatu { get; set; }
 
     /**
     * Amount of current 300s (fruits for osu!catch).
     */
+    [JsonPropertyName("n300")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? N300 { get; set; }
 
     /**
     * Amount of current 100s (droplets for osu!catch).
     */
+    [JsonPropertyName("n100")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? N100 { get; set; }
 
     /**
     * Amount of current 50s (tiny droplets for osu!catch).
     */
+    [JsonPropertyName("n50")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? N50 { get; set; }
 
     /**
     * Amount of current misses (fruits + droplets for osu!catch).
     */
+    [JsonPropertyName("misses")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Misses { get; set; }
 }

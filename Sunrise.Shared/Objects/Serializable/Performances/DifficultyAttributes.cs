@@ -1,5 +1,5 @@
 ﻿using System.Text.Json.Serialization;
-using osu.Shared;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Shared.Objects.Serializable.Performances;
 
@@ -11,6 +11,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("aim")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? Aim { get; set; }
 
     /**
@@ -19,6 +20,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("aimDifficultStrainCount")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? AimDifficultStrainCount { get; set; }
 
     /**
@@ -27,6 +29,7 @@ public class DifficultyAttributes
      * Only available for osu! and osu!catch.
      */
     [JsonPropertyName("ar")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? AR { get; set; }
 
     /**
@@ -35,6 +38,7 @@ public class DifficultyAttributes
      * Only available for osu!taiko.
      */
     [JsonPropertyName("color")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? Color { get; set; }
 
     /**
@@ -43,6 +47,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("flashlight")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? Flashlight { get; set; }
 
     /**
@@ -51,6 +56,7 @@ public class DifficultyAttributes
      * Only available for osu!taiko and osu!mania.
      */
     [JsonPropertyName("greatHitWindow")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? GreatHitWindow { get; set; }
 
     /**
@@ -59,6 +65,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("hp")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? HP { get; set; }
 
     /**
@@ -85,6 +92,7 @@ public class DifficultyAttributes
      * Only available for osu!taiko.
      */
     [JsonPropertyName("monoStaminaFactor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? MonoStaminaFactor { get; set; }
 
     /**
@@ -93,6 +101,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("nCircles")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NCircles { get; set; }
 
     /**
@@ -101,6 +110,7 @@ public class DifficultyAttributes
      * Only available for osu!catch.
      */
     [JsonPropertyName("nDroplets")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NDroplets { get; set; }
 
     /**
@@ -109,6 +119,7 @@ public class DifficultyAttributes
      * Only available for osu!catch.
      */
     [JsonPropertyName("nFruits")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NFruits { get; set; }
 
     /**
@@ -117,6 +128,7 @@ public class DifficultyAttributes
      * Only available for osu!mania.
      */
     [JsonPropertyName("nHoldNotes")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NHoldNotes { get; set; }
 
     /**
@@ -130,6 +142,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("nLargeTicks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NLargeTicks { get; set; }
 
     /**
@@ -138,6 +151,7 @@ public class DifficultyAttributes
      * Only available for osu!mania.
      */
     [JsonPropertyName("nObjects")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NObjects { get; set; }
 
     /**
@@ -146,6 +160,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("nSliders")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NSliders { get; set; }
 
     /**
@@ -154,6 +169,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("nSpinners")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NSpinners { get; set; }
 
     /**
@@ -162,6 +178,7 @@ public class DifficultyAttributes
      * Only available for osu!catch.
      */
     [JsonPropertyName("nTinyDroplets")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? NTinyDroplets { get; set; }
 
     /**
@@ -170,6 +187,7 @@ public class DifficultyAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("od")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? OD { get; set; }
 
     /**
@@ -178,6 +196,7 @@ public class DifficultyAttributes
      * Only available for osu!taiko.
      */
     [JsonPropertyName("okHitWindow")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? OkHitWindow { get; set; }
 
     /**
@@ -186,6 +205,7 @@ public class DifficultyAttributes
      * Only available for osu!taiko.
      */
     [JsonPropertyName("peak")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? Peak { get; set; }
 
     /**

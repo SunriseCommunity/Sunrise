@@ -12,7 +12,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Services;
 
-public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<DatabaseService> database, HttpClientService client)
+public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
     public async Task<double> CalculatePerformancePoints(BaseSession session, Score score)
     {
@@ -31,8 +31,8 @@ public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<Databas
         return performance.PerformancePoints;
     }
 
-    public async Task<Result<PerformanceAttributes>> RecalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
-        Mods mods = Mods.None)
+    public async Task<Result<PerformanceAttributes>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
+        Mods mods = Mods.None, int? combo = null, int? misses = null)
     {
         // TODO: Replace with proper calculation
         // Ignore Relax mod for more enhanced calculation for Relax
@@ -41,9 +41,9 @@ public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<Databas
 
         var performance = await client.SendRequest<List<PerformanceAttributes>?>(session,
             ApiType.CalculateBeatmapPerformance,
-            [beatmapId, null, mode, (int)mods, null, null]);
+            [beatmapId, null, mode, (int)mods, combo, misses]);
 
-        if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while recalculating beatmap performance");
+        if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while Calculating beatmap performance");
 
         return performance.First();
     }

@@ -16,6 +16,7 @@ public class PerformanceAttributes
      * Only available for osu! and osu!taiko.
      */
     [JsonPropertyName("effectiveMissCount")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? EffectiveMissCount { get; set; }
 
     /**
@@ -24,11 +25,12 @@ public class PerformanceAttributes
      * Only *optionally* available for osu!taiko.
      */
     [JsonPropertyName("estimatedUnstableRate")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? EstimatedUnstableRate { get; set; }
 
     /**
- * The final performance points.
- */
+    * The final performance points.
+    */
     [JsonPropertyName("pp")]
     public double PerformancePoints { get; set; }
 
@@ -38,6 +40,7 @@ public class PerformanceAttributes
      * Only available for osu! and osu!taiko.
      */
     [JsonPropertyName("ppAccuracy")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? PerformancePointsAccuracy { get; set; }
 
     /**
@@ -46,6 +49,7 @@ public class PerformanceAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("ppAim")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? PerformancePointsAim { get; set; }
 
     /**
@@ -54,6 +58,7 @@ public class PerformanceAttributes
      * Only available for osu!taiko and osu!mania.
      */
     [JsonPropertyName("ppDifficulty")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? PerformancePointsDifficulty { get; set; }
 
     /**
@@ -62,6 +67,7 @@ public class PerformanceAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("ppFlashlight")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? PerformancePointsFlashlight { get; set; }
 
     /**
@@ -70,6 +76,7 @@ public class PerformanceAttributes
      * Only available for osu!.
      */
     [JsonPropertyName("ppSpeed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public double? PerformancePointsSpeed { get; set; }
 
     /**
