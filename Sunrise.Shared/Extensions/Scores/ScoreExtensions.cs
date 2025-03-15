@@ -179,10 +179,10 @@ public static class ScoreExtensions
         if (scorePerformanceResult.IsFailure)
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error);
-            throw new Exception(scorePerformanceResult.Error);
+            score.PerformancePoints = 0;
+        } else {
+            score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
         }
-
-        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
 
         return score;
     }
