@@ -14,9 +14,8 @@ namespace Sunrise.Shared.Services;
 
 public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
-    public async Task<double> CalculatePerformancePoints(BaseSession session, Score score)
+    public async Task<Result<PerformanceAttributes>> CalculateScorePerformance(BaseSession session, Score score)
     {
-
         var serializedScore = new CalculateScoreRequest(score);
 
         // TODO: Replace with proper calculation
@@ -26,9 +25,9 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         var performance = await client.SendRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
 
-        if (performance == null) return 0;
+        if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while calculating score performance");
 
-        return performance.PerformancePoints;
+        return performance;
     }
 
     public async Task<Result<PerformanceAttributes>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,

@@ -174,7 +174,15 @@ public static class ScoreExtensions
         using var scope = ServicesProviderHolder.CreateScope();
         var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-        score.PerformancePoints = calculatorService.CalculatePerformancePoints(session, score).Result;
+        var scorePerformanceResult = calculatorService.CalculateScorePerformance(session, score).Result;
+
+        if (scorePerformanceResult.IsFailure)
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error);
+            throw new Exception(scorePerformanceResult.Error);
+        }
+
+        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
 
         return score;
     }

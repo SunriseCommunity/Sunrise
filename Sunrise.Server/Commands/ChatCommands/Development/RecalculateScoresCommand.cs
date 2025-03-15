@@ -82,7 +82,17 @@ public class RecalculateScoresCommand : IChatCommand
                 var oldAccuracy = score.Accuracy;
 
                 score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
-                score.PerformancePoints = await calculatorService.CalculatePerformancePoints(session, score);
+
+                var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
+
+                if (scorePerformanceResult.IsFailure)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Got exception while trying to update {score.Id}: {scorePerformanceResult.Error}");
+                    throw new Exception(scorePerformanceResult.Error);
+                }
+
+                score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+
                 await database.Scores.UpdateScore(score);
 
                 scoresReviewedTotal++;
