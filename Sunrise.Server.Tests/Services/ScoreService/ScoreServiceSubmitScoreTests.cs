@@ -32,7 +32,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var session = await CreateTestSession();
 
-        var (replay, beatmapId) = await GetValidTestReplay();
+        var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
         score.BeatmapId = beatmapId;
@@ -75,7 +75,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var session = await CreateTestSession();
 
-        var (replay, beatmapId) = await GetValidTestReplay();
+        var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
         score.BeatmapId = beatmapId;
@@ -117,7 +117,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var session = await CreateTestSession();
 
-        var (replay, beatmapId) = await GetValidTestReplay();
+        var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
         score.BeatmapId = beatmapId;
@@ -166,7 +166,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         if (userStatsBeforeScore == null)
             throw new Exception("User stats are null");
 
-        var (replay, beatmapId) = await GetValidTestReplay();
+        var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
         score.BeatmapId = beatmapId;
@@ -220,7 +220,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         EnvManager.Set("Moderation:BannablePpThreshold", "0");
 
@@ -267,7 +266,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         EnvManager.Set("Moderation:BannablePpThreshold", "0");
 
@@ -323,7 +321,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -364,7 +361,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -402,7 +398,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         await Database.Scores.AddScore(score);
 
@@ -439,7 +434,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -478,7 +472,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         var timeElapsed = _mocker.GetRandomInteger();
 
@@ -532,7 +525,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -586,7 +578,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         await Database.Scores.AddScore(oldScore);
 
@@ -642,7 +633,6 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        await _mocker.Redis.MockBeatmapFile(beatmap.Id);
 
         await Database.Scores.AddScore(oldScore);
 
@@ -679,7 +669,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var session = await CreateTestSession();
 
-        var (scoreData, beatmapId) = await GetValidTestReplay();
+        var (scoreData, beatmapId) = GetValidTestReplay();
         var beatmapHash = scoreData.GetScore().BeatmapHash;
 
         var moddedScore = _mocker.Score.GetBestScoreableRandomScore();
@@ -688,7 +678,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         moddedScore.GameMode = gameMode;
         moddedScore.Mods = Mods.DoubleTime | moddedScore.GameMode.GetGamemodeMods();
         moddedScore.SubmissionStatus = SubmissionStatus.Best;
-        moddedScore.PerformancePoints = 0;
+        moddedScore.PerformancePoints = -1;
 
         moddedScore.EnrichWithSessionData(session);
 

@@ -132,12 +132,12 @@ public abstract class DatabaseTest : BaseTest, IDisposable
         return score;
     }
 
-    protected async Task<(ReplayFile, int)> GetValidTestReplay()
+    protected (ReplayFile, int) GetValidTestReplay()
     {
         var replayPath = _fileService.GetRandomFilePath("osr");
         var replay = new ReplayFile(replayPath);
 
-        var beatmapId = await _mocker.Redis.MockLocalBeatmapFile(replay.GetScore().BeatmapHash);
+        var beatmapId = _mocker.Redis.GetBeatmapIdFromHash(replay.GetScore().BeatmapHash);
 
         return (replay, beatmapId);
     }
