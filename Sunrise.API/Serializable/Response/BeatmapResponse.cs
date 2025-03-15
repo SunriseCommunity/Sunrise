@@ -99,10 +99,10 @@ public class BeatmapResponse
     public int MaxCombo { get; set; }
 
     [JsonPropertyName("accuracy")]
-    public double Accuracy { get; set; }
+    public double? Accuracy { get; set; }
 
     [JsonPropertyName("ar")]
-    public double AR { get; set; }
+    public double? AR { get; set; }
 
     [JsonPropertyName("bpm")]
     public double BPM { get; set; }
@@ -128,7 +128,7 @@ public class BeatmapResponse
     public DateTime? DeletedAt { get; set; }
 
     [JsonPropertyName("drain")]
-    public double Drain { get; set; }
+    public double? Drain { get; set; }
 
     [JsonPropertyName("hit_length")]
     public int HitLength { get; set; }

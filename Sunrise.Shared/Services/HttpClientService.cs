@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Web;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,47 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
+    public async Task<T?> SendRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
+    {
+        if (session.IsRateLimited())
+        {
+            _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
+            return default;
+        }
+
+        headers ??= new Dictionary<string, string>();
+
+        var apis = Configuration.ExternalApis.Where(x => x.Type == type && x.ShouldHaveBody).OrderBy(x => x.Priority).ToList();
+
+        if (apis is { Count: 0 } or null)
+        {
+            _logger.LogWarning($"No API servers found for {type}.");
+            return default;
+        }
+
+        foreach (var api in apis)
+        {
+            SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
+
+            if (api.Server == ApiServer.Observatory)
+            {
+                if (!string.IsNullOrEmpty(Configuration.ObservatoryApiKey))
+                    headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
+            }
+
+            var (response, isServerRateLimited) = await SendApiRequest<T>(api.Server, api.Url, headers, body);
+
+            if (isServerRateLimited) continue;
+
+            if (response is not null) return response;
+        }
+
+        _logger.LogWarning(
+            $"Failed to get response from any API server for {type}.");
+
+        return default;
+    }
+
     public async Task<T?> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null)
     {
         if (session.IsRateLimited())
@@ -37,7 +79,7 @@ public class HttpClientService
 
         headers ??= new Dictionary<string, string>();
 
-        var apis = Configuration.ExternalApis.Where(x => x.Type == type).OrderBy(x => x.Priority).ToList();
+        var apis = Configuration.ExternalApis.Where(x => x.Type == type && !x.ShouldHaveBody).OrderBy(x => x.Priority).ToList();
 
         if (apis is { Count: 0 } or null)
         {
@@ -53,6 +95,7 @@ public class HttpClientService
                     $"Not enough arguments for {type} for {api}. Required {api.NumberOfRequiredArgs}, got {args.Length}.");
                 continue;
             }
+
 
             var requestUri = string.Format(api.Url, args);
             requestUri = SerializeUrlQuery(requestUri);
@@ -78,7 +121,7 @@ public class HttpClientService
         return default;
     }
 
-    private async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null)
+    private async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null)
     {
         var isServerRateLimited = await _redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
@@ -90,7 +133,13 @@ public class HttpClientService
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            using var request = new HttpRequestMessage(body == null ? HttpMethod.Get : HttpMethod.Post, requestUri);
+
+            if (body != null)
+            {
+                var json = JsonSerializer.Serialize(body);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
 
             if (headers != null)
             {
@@ -181,19 +230,18 @@ public class HttpClientService
 
     private string SerializeUrlQuery(string url)
     {
-        var results = HttpUtility.ParseQueryString(url);
-        var nonEmpty = new Dictionary<string, string>();
+        var uriBuilder = new UriBuilder(url);
+        var queryParameters = HttpUtility.ParseQueryString(uriBuilder.Query);
 
-        if (string.IsNullOrWhiteSpace(results.AllKeys[0])) return url;
-
-        foreach (var k in results.AllKeys)
+        foreach (var key in queryParameters.AllKeys)
         {
-            if (!string.IsNullOrWhiteSpace(results[k]))
+            if (string.IsNullOrEmpty(queryParameters[key]))
             {
-                nonEmpty.Add(k, results[k]);
+                queryParameters.Remove(key);
             }
         }
 
-        return string.Join("&", nonEmpty.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        uriBuilder.Query = queryParameters.ToString();
+        return uriBuilder.ToString();
     }
 }

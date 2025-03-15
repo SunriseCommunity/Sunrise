@@ -44,10 +44,10 @@ public class Beatmap
     public string Version { get; set; }
 
     [JsonPropertyName("accuracy")]
-    public double Accuracy { get; set; }
+    public double? Accuracy { get; set; }
 
     [JsonPropertyName("ar")]
-    public double AR { get; set; }
+    public double? AR { get; set; }
 
     [JsonPropertyName("bpm")]
     public double BPM { get; set; } = 0;
@@ -72,7 +72,7 @@ public class Beatmap
     public DateTime? DeletedAt { get; set; }
 
     [JsonPropertyName("drain")]
-    public double Drain { get; set; }
+    public double? Drain { get; set; }
 
     [JsonPropertyName("hit_length")]
     public int HitLength { get; set; }
