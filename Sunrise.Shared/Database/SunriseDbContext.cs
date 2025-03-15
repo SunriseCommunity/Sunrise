@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
@@ -22,8 +24,6 @@ public class SunriseDbContext : DbContext
     public DbSet<UserStatsSnapshot> UserStatsSnapshot { get; set; }
     public DbSet<UserFile> UserFiles { get; set; }
 
-    public DbSet<BeatmapFile> BeatmapFiles { get; set; }
-
     public DbSet<Medal> Medals { get; set; }
     public DbSet<MedalFile> MedalFiles { get; set; }
 
@@ -31,4 +31,12 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}");
+        }
+    }
 }

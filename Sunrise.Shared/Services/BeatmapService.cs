@@ -2,7 +2,6 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 
@@ -36,20 +35,6 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
         return beatmapSet;
-    }
-
-    public async Task<byte[]?> GetBeatmapFile(BaseSession session, int beatmapId)
-    {
-        var beatmapFile = await database.Beatmaps.Files.GetBeatmapFile(beatmapId);
-
-        if (beatmapFile != null) return beatmapFile;
-
-        beatmapFile = await client.SendRequest<byte[]>(session, ApiType.BeatmapDownload, [beatmapId]);
-
-        if (beatmapFile == null) return null;
-
-        await database.Beatmaps.Files.AddBeatmapFile(beatmapId, beatmapFile);
-        return beatmapFile;
     }
 
     public async Task<List<BeatmapSet>?> SearchBeatmapSets(Session session, string? rankedStatus, string mode,

@@ -151,7 +151,6 @@ public static class Bootstrap
         builder.Services.AddScoped<DatabaseService>();
 
         builder.Services.AddScoped<BeatmapRepository>();
-        builder.Services.AddScoped<BeatmapFileService>();
 
         builder.Services.AddScoped<MedalRepository>();
 
