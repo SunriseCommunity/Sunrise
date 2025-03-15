@@ -19,16 +19,22 @@ public class RecalculateScoresCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (args == null || args.Length < 1)
+        if (args == null || args.Length < 2)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum>; Example: {Configuration.BotPrefix}recalculatescores 0 for osu std.");
+                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum> <startFromId>; Example: {Configuration.BotPrefix}recalculatescores 0 10 for osu std.");
             return Task.CompletedTask;
         }
 
         if (!Enum.TryParse(args[0], out GameMode mode))
         {
             ChatCommandRepository.SendMessage(session, "Invalid mode.");
+            return Task.CompletedTask;
+        }
+
+        if (!int.TryParse(args[1], out var startFromId))
+        {
+            ChatCommandRepository.SendMessage(session, "Invalid startFromId.");
             return Task.CompletedTask;
         }
 
@@ -43,12 +49,13 @@ public class RecalculateScoresCommand : IChatCommand
 
         Configuration.OnMaintenance = true;
 
-        BackgroundJob.Enqueue(() => RecalculateScores(session.UserId, mode));
+        BackgroundJob.Enqueue(() => RecalculateScores(session.UserId, mode, startFromId));
 
         return Task.CompletedTask;
     }
 
-    public async Task RecalculateScores(int userId, GameMode mode)
+    [AutomaticRetry(Attempts = 0)]
+    public async Task RecalculateScores(int userId, GameMode mode, int startFromId)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
@@ -72,9 +79,9 @@ public class RecalculateScoresCommand : IChatCommand
             if (user == null)
                 return;
 
-            var session = new BaseSession(user);
+            var session = BaseSession.GenerateServerSession();
 
-            var allScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)));
+            var allScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
 
             foreach (var score in allScores)
             {
@@ -83,25 +90,40 @@ public class RecalculateScoresCommand : IChatCommand
 
                 score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
 
-                var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
+                var retryCount = 0;
 
-                if (scorePerformanceResult.IsFailure)
+                while (retryCount < 10)
                 {
-                    ChatCommandRepository.TrySendMessage(userId, $"Got exception while trying to update {score.Id}: {scorePerformanceResult.Error}");
-                    throw new Exception(scorePerformanceResult.Error);
+                    var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
+
+                    if (scorePerformanceResult.IsSuccess)
+                    {
+                        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+                        await database.Scores.UpdateScore(score);
+
+                        scoresReviewedTotal++;
+
+                        ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} acc from {oldAccuracy} to {score.Accuracy}");
+                        ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} pp from {oldPerformancePoints} to {score.PerformancePoints}");
+                        ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+
+                        break;
+                    }
+
+                    retryCount++;
+
+                    if (retryCount >= 10)
+                    {
+                        ChatCommandRepository.TrySendMessage(userId, $"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
+                        ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process... Please try again later.");
+                        Configuration.OnMaintenance = false;
+                        ChatCommandRepository.TrySendMessage(userId, "Recalculation is paused. Server is back online.");
+                        throw new Exception($"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
+                    }
+
+                    ChatCommandRepository.TrySendMessage(userId, $"Retrying update for score {score.Id} (Attempt {retryCount}/10)...");
+                    await Task.Delay(10_000);
                 }
-
-                score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
-
-                await database.Scores.UpdateScore(score);
-
-                scoresReviewedTotal++;
-
-                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} acc from {oldAccuracy} to {score.Accuracy}");
-                ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} pp from {oldPerformancePoints} to {score.PerformancePoints}");
-                ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
-
-                Thread.Sleep(2000); // TODO: Current solution to not bash Observatory with requests, should be refactored later
             }
 
             if (allScores.Count < pageSize) break;

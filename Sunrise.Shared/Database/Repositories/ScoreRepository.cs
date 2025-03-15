@@ -193,11 +193,12 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         return (scores, totalCount);
     }
 
-    public async Task<List<Score>> GetScores(GameMode? mode = null, QueryOptions? options = null)
+    public async Task<List<Score>> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null)
     {
         var scoreQuery = dbContext.Scores.FilterValidScores();
 
         if (mode != null) scoreQuery = scoreQuery.Where(s => s.GameMode == mode);
+        if (startFromId != null) scoreQuery = scoreQuery.Where(s => s.Id >= startFromId);
 
         return await scoreQuery
             .UseQueryOptions(options)

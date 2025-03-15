@@ -12,6 +12,8 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Services;
 
+
+// TODO: Return Result with status code in Error;
 public class HttpClientService
 {
     private readonly HttpClient _client = new();
@@ -159,7 +161,7 @@ public class HttpClientService
                 case ApiServer.Observatory:
                     rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out var rateLimitHeader)
                         ? rateLimitHeader.FirstOrDefault()
-                        : "60";
+                        : "300"; // If you use dev token, observatory will not try to stop any of your requests, but you still need to behave yourself.
                     rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader)
                         ? rateLimitHeader.FirstOrDefault()
                         : "60";
