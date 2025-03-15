@@ -38,7 +38,7 @@ public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<Databas
         // Ignore Relax mod for more enhanced calculation for Relax
 
         mods &= ~Mods.Relax;
-        
+
         var performance = await client.SendRequest<List<PerformanceAttributes>?>(session,
             ApiType.CalculateBeatmapPerformance,
             [beatmapId, null, mode, (int)mods, null, null]);
@@ -60,7 +60,7 @@ public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<Databas
         };
 
         var accuraciesString = string.Join("&acc=", accuracies);
-        
+
         // TODO: Replace with proper calculation
         // Ignore Relax mod for more enhanced calculation for Relax
 

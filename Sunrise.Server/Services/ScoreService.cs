@@ -12,6 +12,7 @@ using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -187,7 +188,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
-            beatmap.DifficultyRating = await calculatorService.RecalculateBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+        {
+            var recalculateBeatmapResult = await calculatorService.RecalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+
+            if (recalculateBeatmapResult.IsFailure)
+            {
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error);
+            }
+            else
+            {
+                beatmap.UpdateBeatmapWithPerformance(score.Mods, recalculateBeatmapResult.Value);
+            }
+        }
 
         var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
         var newPBest = updatedScores.GetPersonalBestOf(score.UserId) ?? score;
