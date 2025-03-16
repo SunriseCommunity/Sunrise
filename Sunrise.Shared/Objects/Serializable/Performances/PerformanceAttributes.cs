@@ -5,8 +5,8 @@ namespace Sunrise.Shared.Objects.Serializable.Performances;
 public class PerformanceAttributes
 {
     /**
-  * The difficulty attributes.
-  */
+    * The difficulty attributes.
+    */
     [JsonPropertyName("difficulty")]
     public DifficultyAttributes Difficulty { get; set; }
 

@@ -209,6 +209,61 @@ public class DifficultyAttributes
     public double? Peak { get; set; }
 
     /**
+     * The difficulty of the rhythm skill.
+     * 
+     * Only available for osu!taiko.
+     */
+    [JsonPropertyName("rhythm")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? Rhythm { get; set; }
+
+    /**
+     * The ratio of the aim strain with and without considering sliders
+     * 
+     * Only available for osu!.
+     */
+    [JsonPropertyName("sliderFactor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? SliderFactor { get; set; }
+
+
+    /**
+     * The difficulty of the speed skill.
+     * 
+     * Only available for osu!.
+     */
+    [JsonPropertyName("speed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? Speed { get; set; }
+
+    /**
+     * Weighted sum of speed strains.
+     * 
+     * Only available for osu!.
+     */
+    [JsonPropertyName("speedDifficultStrainCount")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? SpeedDifficultStrainCount { get; set; }
+
+    /**
+     * The number of clickable objects weighted by difficulty.
+     * 
+     * Only available for osu!.
+     */
+    [JsonPropertyName("speedNoteCount")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? SpeedNoteCount { get; set; }
+
+    /**
+     * The difficulty of the stamina skill.
+     * 
+     * Only available for osu!taiko.
+     */
+    [JsonPropertyName("stamina")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? Stamina { get; set; }
+
+    /**
      * The final star rating.
      */
     [JsonPropertyName("stars")]
