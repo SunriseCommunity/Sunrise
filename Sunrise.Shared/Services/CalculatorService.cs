@@ -15,6 +15,12 @@ namespace Sunrise.Shared.Services;
 
 public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
+    /// <summary>
+    ///     Temporary value to disable all custom not standard mods calculations,
+    ///     will be removed in the next versions.
+    /// </summary>
+    private readonly bool IS_USING_CUSTOM_PP_CALCULATION = false;
+
     public async Task<Result<PerformanceAttributes>> CalculateScorePerformance(BaseSession session, Score score)
     {
         var serializedScore = new CalculateScoreRequest(score);
@@ -25,7 +31,8 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while calculating score performance");
 
-        performance.ApplyNotStandardModRecalculationsIfNeeded(score);
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performance.ApplyNotStandardModRecalculationsIfNeeded(score);
 
         return performance;
     }
@@ -41,7 +48,8 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         if (performances == null) return Result.Failure<PerformanceAttributes>("Failed while Calculating beatmap performance");
 
-        performances.ForEach(p => p.ApplyNotStandardModRecalculationsIfNeeded(100, mods));
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performances.ForEach(p => p.ApplyNotStandardModRecalculationsIfNeeded(100, mods));
 
         return performances.First();
     }
@@ -67,14 +75,15 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         if (performances == null || performances.Count == 0) return Result.Failure<(PerformanceAttributes, PerformanceAttributes, PerformanceAttributes, PerformanceAttributes)>("Error while calculating performance points");
 
-        performances
-            .Select((p, index) => new
-            {
-                Performance = p,
-                Index = index
-            })
-            .ToList()
-            .ForEach(x => x.Performance.ApplyNotStandardModRecalculationsIfNeeded(accuracies[x.Index], mods));
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performances
+                .Select((p, index) => new
+                {
+                    Performance = p,
+                    Index = index
+                })
+                .ToList()
+                .ForEach(x => x.Performance.ApplyNotStandardModRecalculationsIfNeeded(accuracies[x.Index], mods));
 
         return (performances[0], performances[1], performances[2], performances[3]);
     }
