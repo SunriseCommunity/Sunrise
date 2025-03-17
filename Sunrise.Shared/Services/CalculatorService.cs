@@ -4,6 +4,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions.Performances;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Utils.Calculators;
@@ -18,14 +19,13 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
     {
         var serializedScore = new CalculateScoreRequest(score);
 
-        // TODO: Replace with proper calculation
-        // Ignore Relax mod for more enhanced calculation for Relax
-
-        serializedScore.Mods &= ~Mods.Relax;
+        score.Mods.IgnoreNotStandardModsForRecalculation();
 
         var performance = await client.SendRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
 
         if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while calculating score performance");
+
+        performance.ApplyNotStandardModRecalculationsIfNeeded(score);
 
         return performance;
     }
@@ -33,18 +33,17 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
     public async Task<Result<PerformanceAttributes>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
         Mods mods = Mods.None, int? combo = null, int? misses = null)
     {
-        // TODO: Replace with proper calculation
-        // Ignore Relax mod for more enhanced calculation for Relax
+        mods.IgnoreNotStandardModsForRecalculation();
 
-        mods &= ~Mods.Relax;
-
-        var performance = await client.SendRequest<List<PerformanceAttributes>?>(session,
+        var performances = await client.SendRequest<List<PerformanceAttributes>?>(session,
             ApiType.CalculateBeatmapPerformance,
-            [beatmapId, null, mode, (int)mods, combo, misses]);
+            [beatmapId, 100, mode, (int)mods, combo, misses]);
 
-        if (performance == null) return Result.Failure<PerformanceAttributes>("Failed while Calculating beatmap performance");
+        if (performances == null) return Result.Failure<PerformanceAttributes>("Failed while Calculating beatmap performance");
 
-        return performance.First();
+        performances.ForEach(p => p.ApplyNotStandardModRecalculationsIfNeeded(100, mods));
+
+        return performances.First();
     }
 
     public async Task<Result<(PerformanceAttributes, PerformanceAttributes, PerformanceAttributes, PerformanceAttributes)>> CalculatePerformancePoints(BaseSession session,
@@ -60,16 +59,22 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         var accuraciesString = string.Join("&acc=", accuracies);
 
-        // TODO: Replace with proper calculation
-        // Ignore Relax mod for more enhanced calculation for Relax
-
-        mods &= ~Mods.Relax;
+        mods.IgnoreNotStandardModsForRecalculation();
 
         var performances = await client.SendRequest<List<PerformanceAttributes>?>(session,
             ApiType.CalculateBeatmapPerformance,
             [beatmapId, accuraciesString, mode, (int)mods, null, null]);
 
         if (performances == null || performances.Count == 0) return Result.Failure<(PerformanceAttributes, PerformanceAttributes, PerformanceAttributes, PerformanceAttributes)>("Error while calculating performance points");
+
+        performances
+            .Select((p, index) => new
+            {
+                Performance = p,
+                Index = index
+            })
+            .ToList()
+            .ForEach(x => x.Performance.ApplyNotStandardModRecalculationsIfNeeded(accuracies[x.Index], mods));
 
         return (performances[0], performances[1], performances[2], performances[3]);
     }

@@ -99,7 +99,17 @@ public class RecalculateScoresCommand : IChatCommand
                     if (scorePerformanceResult.IsSuccess)
                     {
                         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
-                        await database.Scores.UpdateScore(score);
+
+                        var result = await database.Scores.UpdateScore(score);
+
+                        if (result.IsFailure)
+                        {
+                            ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id}, error: {result.Error}");
+                            ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process... Please try again later.");
+                            Configuration.OnMaintenance = false;
+                            ChatCommandRepository.TrySendMessage(userId, "Recalculation is paused. Server is back online.");
+                            throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
+                        }
 
                         scoresReviewedTotal++;
 
