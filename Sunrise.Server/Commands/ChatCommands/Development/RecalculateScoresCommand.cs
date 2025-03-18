@@ -82,9 +82,9 @@ public class RecalculateScoresCommand : IChatCommand
 
             var session = BaseSession.GenerateServerSession();
 
-            var allScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
+            var pageScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
 
-            foreach (var score in allScores)
+            foreach (var score in pageScores)
             {
                 var oldPerformancePoints = score.PerformancePoints;
                 var oldAccuracy = score.Accuracy;
@@ -159,7 +159,7 @@ public class RecalculateScoresCommand : IChatCommand
                 }
             }
 
-            if (allScores.Count < pageSize) break;
+            if (pageScores.Count < pageSize) break;
         }
 
         ChatCommandRepository.TrySendMessage(userId,
