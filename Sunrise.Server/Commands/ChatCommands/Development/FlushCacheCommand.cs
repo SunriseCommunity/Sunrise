@@ -31,7 +31,7 @@ public class FlushCacheCommand : IChatCommand
                     isSoftFlush = false;
                     break;
                 default:
-                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache yes - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
+                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache true - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
                     return Task.CompletedTask;
             }
         }
