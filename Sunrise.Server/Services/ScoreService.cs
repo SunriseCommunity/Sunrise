@@ -193,7 +193,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
             if (recalculateBeatmapResult.IsFailure)
             {
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error);
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error.Message);
             }
             else
             {

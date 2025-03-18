@@ -1,3 +1,4 @@
+using System.Net;
 using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
@@ -96,6 +97,24 @@ public class RecalculateScoresCommand : IChatCommand
                 {
                     var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
 
+                    if (scorePerformanceResult.IsFailure)
+                    {
+                        if (scorePerformanceResult.Error.Status == HttpStatusCode.NotFound)
+                        {
+                            var result = await database.Scores.MarkScoreAsDeleted(score);
+
+                            if (result.IsFailure)
+                            {
+                                ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id} as marked, error: {result.Error}");
+                                StopRecalculation(userId);
+                                throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
+                            }
+
+                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} to be marked as DELETED, since we couldn't find beatmap it was played on");
+                            break;
+                        }
+                    }
+
                     if (scorePerformanceResult.IsSuccess)
                     {
                         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
@@ -113,9 +132,13 @@ public class RecalculateScoresCommand : IChatCommand
 
                         scoresReviewedTotal++;
 
-                        ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} acc from {oldAccuracy} to {score.Accuracy}");
-                        ChatCommandRepository.TrySendMessage(userId, $"Updated score {score.Id} pp from {oldPerformancePoints} to {score.PerformancePoints}");
-                        ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+                        const float tolerance = 0.0001f;
+
+                        if (Math.Abs(oldAccuracy - score.Accuracy) > tolerance)
+                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} acc value from {oldAccuracy} to {score.Accuracy}");
+
+                        if (Math.Abs(oldPerformancePoints - score.PerformancePoints) > tolerance)
+                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} pp value from {oldPerformancePoints} to {score.PerformancePoints}");
 
                         break;
                     }
@@ -145,5 +168,12 @@ public class RecalculateScoresCommand : IChatCommand
         Configuration.OnMaintenance = false;
 
         ChatCommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
+    }
+
+    private static void StopRecalculation(int userId)
+    {
+        ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process...");
+        Configuration.OnMaintenance = false;
+        ChatCommandRepository.TrySendMessage(userId, "Recalculation is stopped. Server is back online.");
     }
 }

@@ -10,6 +10,9 @@ public class CalculateScoreRequest(Score score)
     [JsonPropertyName("beatmapId")]
     public int BeatmapId { get; set; } = score.BeatmapId;
 
+    [JsonPropertyName("beatmapHash")]
+    public string BeatmapHash { get; set; } = score.BeatmapHash;
+
     [JsonPropertyName("acc")]
     public double Accuracy { get; set; } = score.Accuracy;
 
@@ -39,4 +42,7 @@ public class CalculateScoreRequest(Score score)
 
     [JsonPropertyName("mods")]
     public Mods Mods { get; set; } = score.Mods;
+
+    [JsonPropertyName("isScoreFailed")]
+    public bool IsScoreFailed { get; set; } = !score.IsPassed;
 }

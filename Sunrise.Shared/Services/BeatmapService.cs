@@ -9,6 +9,7 @@ namespace Sunrise.Shared.Services;
 
 public class BeatmapService(DatabaseService database, HttpClientService client)
 {
+    // TODO: Return Result
     public async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
         string? beatmapHash = null, int? beatmapId = null)
     {
@@ -19,13 +20,13 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
 
         if (beatmapId != null)
             beatmapSet =
-                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId]);
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId])).GetValueOrDefault();
         if (beatmapHash != null && beatmapSet == null)
             beatmapSet =
-                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash]);
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash])).GetValueOrDefault();
         if (beatmapSetId != null && beatmapSet == null)
             beatmapSet =
-                await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId]);
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId])).GetValueOrDefault();
 
         if (beatmapSet == null)
             return null;
@@ -40,9 +41,9 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
     public async Task<List<BeatmapSet>?> SearchBeatmapSets(Session session, string? rankedStatus, string mode,
         string query, Pagination pagination)
     {
-        var beatmapSets = await client.SendRequest<List<BeatmapSet>?>(session,
+        var beatmapSets = (await client.SendRequest<List<BeatmapSet>?>(session,
             ApiType.BeatmapSetSearch,
-            [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode]);
+            [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode])).GetValueOrDefault();
 
         if (beatmapSets == null) return null;
 

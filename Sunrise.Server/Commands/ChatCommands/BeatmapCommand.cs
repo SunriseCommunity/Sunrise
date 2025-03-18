@@ -64,7 +64,7 @@ public class BeatmapCommand : IChatCommand
 
         if (calculatePerformancePointsResult.IsFailure)
         {
-            ChatCommandRepository.SendMessage(session, calculatePerformancePointsResult.Error);
+            ChatCommandRepository.SendMessage(session, calculatePerformancePointsResult.Error.Message);
             return;
         }
 

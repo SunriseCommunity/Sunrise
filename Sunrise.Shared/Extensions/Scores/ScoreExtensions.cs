@@ -178,9 +178,11 @@ public static class ScoreExtensions
 
         if (scorePerformanceResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error.Message);
             score.PerformancePoints = 0;
-        } else {
+        }
+        else
+        {
             score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
         }
 
@@ -282,7 +284,7 @@ public static class ScoreExtensions
 
             if (recalculateBeatmapResult.IsFailure)
             {
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error);
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error.Message);
             }
             else
             {

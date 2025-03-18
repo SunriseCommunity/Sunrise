@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Keys;
@@ -9,7 +10,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Services;
 
-public class RegionService(RedisRepository redisRepository, HttpClientService client)
+public class RegionService(ILogger<RegionService> logger, RedisRepository redisRepository, HttpClientService client)
 {
     public async Task<Location> GetRegion(IPAddress ip)
     {
@@ -21,7 +22,14 @@ public class RegionService(RedisRepository redisRepository, HttpClientService cl
         }
 
         var guestSession = BaseSession.GenerateGuestSession(ip);
-        var location = await client.SendRequest<Location>(guestSession, ApiType.GetIPLocation, [ip.ToString()]) ?? new Location();
+        var locationResult = await client.SendRequest<Location>(guestSession, ApiType.GetIPLocation, [ip.ToString()]);
+
+        if (locationResult.IsFailure)
+        {
+            logger.LogError(locationResult.Error.Message, "Failed to get location from remote server. Defaulting to empty class");
+        }
+
+        var location = locationResult.IsSuccess ? locationResult.Value : new Location();
 
         location.Ip = ip.ToString();
 

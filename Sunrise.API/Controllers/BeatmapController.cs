@@ -68,7 +68,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? (int)osu.Shared.GameMode.Standard, mods ?? Mods.None, combo, misses);
 
         if (performance.IsFailure)
-            return BadRequest(new ErrorResponse(performance.Error));
+            return BadRequest(new ErrorResponse(performance.Error.Message));
 
         return Ok(performance.Value);
     }
