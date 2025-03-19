@@ -1,4 +1,3 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -36,41 +35,37 @@ public class RecalculateUserStatsCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        if (Configuration.OnMaintenance)
-        {
-            ChatCommandRepository.SendMessage(session, "Server is in maintenance mode. Starting recalculation for user stats is not possible.");
-            return Task.CompletedTask;
-        }
-
-        ChatCommandRepository.SendMessage(session,
-            "Recalculation for user stats has been started. Server will enter maintenance mode until it's done.");
-
-        Configuration.OnMaintenance = true;
-
-        BackgroundJob.Enqueue(() => RecalculateUserStats(session.UserId, mode));
+        BackgroundTasks.TryStartNewBackgroundJob<RecalculateUserStatsCommand>(
+            () => RecalculateUserStats(session.UserId, CancellationToken.None, mode),
+            message => ChatCommandRepository.TrySendMessage(session.UserId, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task RecalculateUserStats(int userId, GameMode? mode = null)
+    public async Task RecalculateUserStats(int userId, CancellationToken token, GameMode? mode = null)
     {
-        if (!mode.HasValue)
-        {
-            foreach (var gameMode in Enum.GetValues<GameMode>())
+        await BackgroundTasks.ExecuteBackgroundTask<RecalculateUserStatsCommand>(
+            async () =>
             {
-                await RecalculateUserStatsInGamemode(userId, gameMode);
-            }
-        }
-        else
-        {
-            await RecalculateUserStatsInGamemode(userId, mode.Value);
-        }
+                if (!mode.HasValue)
+                {
+                    foreach (var gameMode in Enum.GetValues<GameMode>())
+                    {
+                        await RecalculateUserStatsInGamemode(userId, token, gameMode);
+                    }
+                }
+                else
+                {
+                    await RecalculateUserStatsInGamemode(userId, token, mode.Value);
+                }
 
-        Configuration.OnMaintenance = false;
-        ChatCommandRepository.TrySendMessage(userId, "Recalculation user stats has finished. Server is back online.");
+                ChatCommandRepository.TrySendMessage(userId, "Recalculation user stats has finished");
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message)
+        );
     }
 
-    public async Task RecalculateUserStatsInGamemode(int userId, GameMode mode)
+    public async Task RecalculateUserStatsInGamemode(int userId, CancellationToken token, GameMode mode)
     {
         var startTime = DateTime.UtcNow;
 
@@ -94,6 +89,7 @@ public class RecalculateUserStatsCommand : IChatCommand
             foreach (var stats in pageStats)
             {
                 await UpdateUserStats(stats, calculatorService, database, userId);
+                token.ThrowIfCancellationRequested();
             }
 
             if (pageStats.Count < pageSize) break;
