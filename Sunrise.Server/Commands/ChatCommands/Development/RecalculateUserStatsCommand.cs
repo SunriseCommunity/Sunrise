@@ -37,7 +37,8 @@ public class RecalculateUserStatsCommand : IChatCommand
 
         BackgroundTasks.TryStartNewBackgroundJob<RecalculateUserStatsCommand>(
             () => RecalculateUserStats(session.UserId, CancellationToken.None, mode),
-            message => ChatCommandRepository.TrySendMessage(session.UserId, message));
+            message => ChatCommandRepository.TrySendMessage(session.UserId, message),
+            true);
 
         return Task.CompletedTask;
     }

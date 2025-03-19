@@ -8,6 +8,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Repositories;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Application;
@@ -123,19 +124,32 @@ public static class BackgroundTasks
 
     public static void TryStartNewBackgroundJob<T>(
         Expression<Func<Task>> action,
-        Action<string>? trySendMessage = null)
+        Action<string>? trySendMessage,
+        bool? shouldEnterMaintenance = false)
     {
-        if (Configuration.OnMaintenance)
+        if (Configuration.OnMaintenance && shouldEnterMaintenance == true)
         {
-            trySendMessage?.Invoke("Server is in maintenance mode. Starting new jobs is not currently possible.");
+            trySendMessage?.Invoke("Server is in maintenance mode. Starting new jobs which requires server to enter maintenance mode is not possible.");
             return;
         }
 
         var jobName = typeof(T).Name;
 
-        trySendMessage?.Invoke($"{jobName} has been started. Server will enter maintenance mode until it's done.");
+        trySendMessage?.Invoke($"{jobName} has been started.");
 
-        Configuration.OnMaintenance = true;
+        if (shouldEnterMaintenance == true)
+        {
+            Configuration.OnMaintenance = true;
+
+            trySendMessage?.Invoke("Server will enter maintenance mode until it's done.");
+
+            var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+
+            foreach (var userSession in sessions.GetSessions())
+            {
+                userSession.SendBanchoMaintenance();
+            }
+        }
 
         var jobId = BackgroundJob.Enqueue(action);
 

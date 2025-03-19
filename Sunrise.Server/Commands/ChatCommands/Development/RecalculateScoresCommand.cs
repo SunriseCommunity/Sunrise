@@ -9,7 +9,6 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
-using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Calculators;
 
@@ -39,141 +38,119 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        if (Configuration.OnMaintenance)
-        {
-            ChatCommandRepository.SendMessage(session, "Server is in maintenance mode. Recalculation is not possible.");
-            return Task.CompletedTask;
-        }
-
-        ChatCommandRepository.SendMessage(session,
-            "Recalculation started. Server will enter maintenance mode until it's done.");
-
-        Configuration.OnMaintenance = true;
-
-        BackgroundJob.Enqueue(() => RecalculateScores(session.UserId, mode, startFromId));
+        BackgroundTasks.TryStartNewBackgroundJob<RecalculateScoresCommand>(
+            () => RecalculateScores(session.UserId, CancellationToken.None, mode, startFromId),
+            message => ChatCommandRepository.TrySendMessage(session.UserId, message),
+            true);
 
         return Task.CompletedTask;
     }
 
     [AutomaticRetry(Attempts = 0)]
-    public async Task RecalculateScores(int userId, GameMode mode, int startFromId)
+    public async Task RecalculateScores(int userId, CancellationToken ct, GameMode mode, int startFromId)
     {
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
-        foreach (var userSession in sessions.GetSessions())
-        {
-            userSession.SendBanchoMaintenance();
-        }
-
-        var startTime = DateTime.UtcNow;
-
-        var pageSize = 100;
-        var scoresReviewedTotal = 0;
-
-        for (var x = 1;; x++)
-        {
-            using var scope = ServicesProviderHolder.CreateScope();
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-            var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
-
-            var user = await database.Users.GetUser(userId);
-            if (user == null)
-                return;
-
-            var session = BaseSession.GenerateServerSession();
-
-            var pageScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
-
-            foreach (var score in pageScores)
+        await BackgroundTasks.ExecuteBackgroundTask<RecalculateScoresCommand>(
+            async () =>
             {
-                var oldPerformancePoints = score.PerformancePoints;
-                var oldAccuracy = score.Accuracy;
 
-                score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+                var pageSize = 100;
+                var scoresReviewedTotal = 0;
 
-                var retryCount = 0;
-
-                while (retryCount < 10)
+                for (var x = 1;; x++)
                 {
-                    var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
+                    using var scope = ServicesProviderHolder.CreateScope();
+                    var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                    var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-                    if (scorePerformanceResult.IsFailure)
+                    var user = await database.Users.GetUser(userId);
+                    if (user == null)
+                        return;
+
+                    var session = BaseSession.GenerateServerSession();
+
+                    var pageScores = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
+
+                    foreach (var score in pageScores)
                     {
-                        if (scorePerformanceResult.Error.Status == HttpStatusCode.NotFound)
-                        {
-                            var result = await database.Scores.MarkScoreAsDeleted(score);
+                        var oldPerformancePoints = score.PerformancePoints;
+                        var oldAccuracy = score.Accuracy;
 
-                            if (result.IsFailure)
+                        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+
+                        var retryCount = 0;
+
+                        while (retryCount < 10)
+                        {
+                            var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score);
+
+                            if (scorePerformanceResult.IsFailure)
                             {
-                                ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id} as marked, error: {result.Error}");
-                                StopRecalculation(userId);
-                                throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
+                                if (scorePerformanceResult.Error.Status == HttpStatusCode.NotFound)
+                                {
+                                    var result = await database.Scores.MarkScoreAsDeleted(score);
+
+                                    if (result.IsFailure)
+                                    {
+                                        ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id} as marked, error: {result.Error}");
+                                        throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
+                                    }
+
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} to be marked as DELETED, since we couldn't find beatmap it was played on");
+                                    break;
+                                }
                             }
 
-                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} to be marked as DELETED, since we couldn't find beatmap it was played on");
-                            break;
+                            if (scorePerformanceResult.IsSuccess)
+                            {
+                                score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+
+                                ct.ThrowIfCancellationRequested();
+
+                                var result = await database.Scores.UpdateScore(score);
+
+                                if (result.IsFailure)
+                                {
+                                    ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id}, error: {result.Error}");
+                                    throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
+                                }
+
+                                scoresReviewedTotal++;
+
+                                if (scoresReviewedTotal % 100 == 0)
+                                {
+                                    ChatCommandRepository.TrySendMessage(userId, $"Scores reviewed in total: {scoresReviewedTotal}");
+                                }
+
+                                const float tolerance = 0.0001f;
+
+                                if (Math.Abs(oldAccuracy - score.Accuracy) > tolerance)
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} acc value from {oldAccuracy} to {score.Accuracy}");
+
+                                if (Math.Abs(oldPerformancePoints - score.PerformancePoints) > tolerance)
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} pp value from {oldPerformancePoints} to {score.PerformancePoints}");
+
+                                break;
+                            }
+
+                            retryCount++;
+
+                            if (retryCount >= 10)
+                            {
+                                ChatCommandRepository.TrySendMessage(userId, $"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
+                                ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process... Please try again later.");
+                                Configuration.OnMaintenance = false;
+                                ChatCommandRepository.TrySendMessage(userId, "Recalculation is paused. Server is back online.");
+                                throw new Exception($"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
+                            }
+
+                            ChatCommandRepository.TrySendMessage(userId, $"Retrying update for score {score.Id} (Attempt {retryCount}/10)...");
+                            await Task.Delay(10_000, ct);
                         }
                     }
 
-                    if (scorePerformanceResult.IsSuccess)
-                    {
-                        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
-
-                        var result = await database.Scores.UpdateScore(score);
-
-                        if (result.IsFailure)
-                        {
-                            ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id}, error: {result.Error}");
-                            ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process... Please try again later.");
-                            Configuration.OnMaintenance = false;
-                            ChatCommandRepository.TrySendMessage(userId, "Recalculation is paused. Server is back online.");
-                            throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
-                        }
-
-                        scoresReviewedTotal++;
-
-                        const float tolerance = 0.0001f;
-
-                        if (Math.Abs(oldAccuracy - score.Accuracy) > tolerance)
-                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} acc value from {oldAccuracy} to {score.Accuracy}");
-
-                        if (Math.Abs(oldPerformancePoints - score.PerformancePoints) > tolerance)
-                            ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} pp value from {oldPerformancePoints} to {score.PerformancePoints}");
-
-                        break;
-                    }
-
-                    retryCount++;
-
-                    if (retryCount >= 10)
-                    {
-                        ChatCommandRepository.TrySendMessage(userId, $"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
-                        ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process... Please try again later.");
-                        Configuration.OnMaintenance = false;
-                        ChatCommandRepository.TrySendMessage(userId, "Recalculation is paused. Server is back online.");
-                        throw new Exception($"Failed to update {score.Id} after 10 retries: {scorePerformanceResult.Error}");
-                    }
-
-                    ChatCommandRepository.TrySendMessage(userId, $"Retrying update for score {score.Id} (Attempt {retryCount}/10)...");
-                    await Task.Delay(10_000);
+                    if (pageScores.Count < pageSize) break;
                 }
-            }
-
-            if (pageScores.Count < pageSize) break;
-        }
-
-        ChatCommandRepository.TrySendMessage(userId,
-            $"Updating scores for mode {mode} is finished. Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
-
-        Configuration.OnMaintenance = false;
-
-        ChatCommandRepository.TrySendMessage(userId, "Recalculation finished. Server is back online.");
-    }
-
-    private static void StopRecalculation(int userId)
-    {
-        ChatCommandRepository.TrySendMessage(userId, "Stopping the recalculation process...");
-        Configuration.OnMaintenance = false;
-        ChatCommandRepository.TrySendMessage(userId, "Recalculation is stopped. Server is back online.");
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }
