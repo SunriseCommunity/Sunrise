@@ -1,4 +1,3 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -36,22 +35,24 @@ public class FlushCacheCommand : IChatCommand
             }
         }
 
-        BackgroundJob.Enqueue(() => FlushAndUpdateRedisCache(session.UserId, isSoftFlush));
+        BackgroundTasks.TryStartNewBackgroundJob<FlushCacheCommand>(
+            () =>
+                FlushAndUpdateRedisCache(session.UserId, isSoftFlush),
+            message => ChatCommandRepository.SendMessage(session, message));
+
         return Task.CompletedTask;
     }
 
     public async Task FlushAndUpdateRedisCache(int userId, bool isSoftFlush)
     {
-        ChatCommandRepository.TrySendMessage(userId, "Starting to flush cache.");
+        await BackgroundTasks.ExecuteBackgroundTask<FlushCacheCommand>(
+            async () =>
+            {
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var startTime = DateTime.UtcNow;
-
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        await database.FlushAndUpdateRedisCache(isSoftFlush);
-
-        ChatCommandRepository.TrySendMessage(userId,
-            $"Done flushing cache (wasSoft: {isSoftFlush})! Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
+                await database.FlushAndUpdateRedisCache(isSoftFlush);
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

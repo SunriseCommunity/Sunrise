@@ -1,4 +1,3 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -27,32 +26,39 @@ public class DeleteUserCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundJob.Enqueue(() => DeleteUser(session.UserId, userId));
-
+        BackgroundTasks.TryStartNewBackgroundJob<DeleteUserCommand>(
+            () => DeleteUser(session.UserId, userId),
+            message => ChatCommandRepository.SendMessage(session, message));
+        
         return Task.CompletedTask;
     }
 
     public async Task DeleteUser(int userId, int requestedUserId)
     {
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        await BackgroundTasks.ExecuteBackgroundTask<DeleteUserCommand>(
+            async () =>
+            {
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.Users.GetUser(requestedUserId);
+                var user = await database.Users.GetUser(requestedUserId);
 
-        if (user == null)
-        {
-            ChatCommandRepository.TrySendMessage(userId, $"User {requestedUserId} not found.");
-            return;
-        }
+                if (user == null)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"User {requestedUserId} not found.");
+                    return;
+                }
 
-        var deletedUserResult = await database.Users.DeleteUser(user.Id);
+                var deletedUserResult = await database.Users.DeleteUser(user.Id);
 
-        if (deletedUserResult.IsFailure)
-        {
-            ChatCommandRepository.TrySendMessage(userId, $"Failed to delete user {user.Username} ({requestedUserId}). Please check console for more information.");
-            return;
-        }
+                if (deletedUserResult.IsFailure)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Failed to delete user {user.Username} ({requestedUserId}). Please check console for more information.");
+                    return;
+                }
 
-        ChatCommandRepository.TrySendMessage(userId, $"User {user.Username} ({requestedUserId}) has been deleted.");
+                ChatCommandRepository.TrySendMessage(userId, $"User {user.Username} ({requestedUserId}) has been deleted.");
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

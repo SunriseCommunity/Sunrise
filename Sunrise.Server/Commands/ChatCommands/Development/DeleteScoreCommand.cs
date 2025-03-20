@@ -1,4 +1,3 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -27,32 +26,40 @@ public class DeleteScoreCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundJob.Enqueue(() => DeleteScore(session.UserId, scoreId));
+        BackgroundTasks.TryStartNewBackgroundJob<DeleteScoreCommand>(
+            () =>
+                DeleteScore(session.UserId, scoreId),
+            message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
     public async Task DeleteScore(int userId, int requestedScoreId)
     {
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        await BackgroundTasks.ExecuteBackgroundTask<DeleteScoreCommand>(
+            async () =>
+            {
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var score = await database.Scores.GetScore(requestedScoreId);
+                var score = await database.Scores.GetScore(requestedScoreId);
 
-        if (score == null)
-        {
-            ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} not found.");
-            return;
-        }
+                if (score == null)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} not found.");
+                    return;
+                }
 
-        var deletedScoreResult = await database.Scores.MarkScoreAsDeleted(score);
+                var deletedScoreResult = await database.Scores.MarkScoreAsDeleted(score);
 
-        if (deletedScoreResult.IsFailure)
-        {
-            ChatCommandRepository.TrySendMessage(userId, $"Failed to mark score {requestedScoreId} as deleted. Please check console for more information.");
-            return;
-        }
+                if (deletedScoreResult.IsFailure)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Failed to mark score {requestedScoreId} as deleted. Please check console for more information.");
+                    return;
+                }
 
-        ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} has been deleted. Don't forget to update user's stats if needed!");
+                ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} has been deleted. Don't forget to update user's stats if needed!");
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }
