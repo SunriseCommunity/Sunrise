@@ -58,7 +58,7 @@ public static class BackgroundTaskService
         {
             await action();
 
-            trySendMessage?.Invoke($"{jobName} has finished in {stopwatch.ElapsedMilliseconds} ms.");
+            trySendMessage?.Invoke($"{jobName} has successfully finished!");
         }
         catch (OperationCanceledException)
         {
@@ -76,7 +76,7 @@ public static class BackgroundTaskService
             stopwatch.Stop();
 
             Configuration.OnMaintenance = false;
-            trySendMessage?.Invoke($"Server is back online. Took time to proceed job \"{jobName}\": {stopwatch.ElapsedMilliseconds} ms.");
+            trySendMessage?.Invoke($"Server is back online. Took time to proceed job \"{jobName}\": {stopwatch.ElapsedMilliseconds / 1000.0} s.");
         }
     }
 }
