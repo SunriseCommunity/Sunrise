@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -15,7 +16,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTasks.TryStartNewBackgroundJob<UpdateScoresBeatmapsStatusCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<UpdateScoresBeatmapsStatusCommand>(
             () =>
                 UpdateScoresBeatmapStatus(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
@@ -25,7 +26,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 
     public async Task UpdateScoresBeatmapStatus(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<UpdateScoresBeatmapsStatusCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<UpdateScoresBeatmapsStatusCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();
@@ -43,7 +44,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                     scoresReviewedTotal += group.Count();
 
                     if (!isNeedsUpdate) continue;
-                    
+
                     var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
                     var session = BaseSession.GenerateServerSession();

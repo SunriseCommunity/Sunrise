@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -14,7 +15,7 @@ public class AppendNewUserStatsCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTasks.TryStartNewBackgroundJob<AppendNewUserStatsCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<AppendNewUserStatsCommand>(
             () => AppendMissingUserStats(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message),
             true);
@@ -24,7 +25,7 @@ public class AppendNewUserStatsCommand : IChatCommand
 
     public async Task AppendMissingUserStats(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<AppendNewUserStatsCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<AppendNewUserStatsCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();

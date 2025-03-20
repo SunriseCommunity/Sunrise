@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -26,7 +27,7 @@ public class MarkScoreAsDeletedCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundTasks.TryStartNewBackgroundJob<MarkScoreAsDeletedCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<MarkScoreAsDeletedCommand>(
             () =>
                 DeleteScore(session.UserId, scoreId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
@@ -36,7 +37,7 @@ public class MarkScoreAsDeletedCommand : IChatCommand
 
     public async Task DeleteScore(int userId, int requestedScoreId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<MarkScoreAsDeletedCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<MarkScoreAsDeletedCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();
@@ -55,6 +56,7 @@ public class MarkScoreAsDeletedCommand : IChatCommand
                 if (deletedScoreResult.IsFailure)
                 {
                     ChatCommandRepository.TrySendMessage(userId, $"Failed to mark score {requestedScoreId} as deleted. Please check console for more information.");
+                    ChatCommandRepository.TrySendMessage(userId, $"Error message: {deletedScoreResult.Error}");
                     return;
                 }
 

@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -26,16 +27,16 @@ public class DeleteUserCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundTasks.TryStartNewBackgroundJob<DeleteUserCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<DeleteUserCommand>(
             () => DeleteUser(session.UserId, userId),
             message => ChatCommandRepository.SendMessage(session, message));
-        
+
         return Task.CompletedTask;
     }
 
     public async Task DeleteUser(int userId, int requestedUserId)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<DeleteUserCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<DeleteUserCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();
@@ -54,6 +55,7 @@ public class DeleteUserCommand : IChatCommand
                 if (deletedUserResult.IsFailure)
                 {
                     ChatCommandRepository.TrySendMessage(userId, $"Failed to delete user {user.Username} ({requestedUserId}). Please check console for more information.");
+                    ChatCommandRepository.TrySendMessage(userId, $"Error message: {deletedUserResult.Error}");
                     return;
                 }
 

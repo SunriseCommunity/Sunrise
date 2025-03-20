@@ -5,6 +5,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -38,7 +39,7 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundTasks.TryStartNewBackgroundJob<RecalculateScoresCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<RecalculateScoresCommand>(
             () => RecalculateScores(session.UserId, CancellationToken.None, mode, startFromId),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message),
             true);
@@ -49,7 +50,7 @@ public class RecalculateScoresCommand : IChatCommand
     [AutomaticRetry(Attempts = 0)]
     public async Task RecalculateScores(int userId, CancellationToken ct, GameMode mode, int startFromId)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<RecalculateScoresCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<RecalculateScoresCommand>(
             async () =>
             {
 

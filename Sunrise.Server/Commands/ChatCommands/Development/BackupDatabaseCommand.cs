@@ -1,6 +1,7 @@
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -12,7 +13,7 @@ public class BackupDatabaseCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTasks.TryStartNewBackgroundJob<BackupDatabaseCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<BackupDatabaseCommand>(
             () => StartDatabaseBackup(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
 
@@ -21,7 +22,7 @@ public class BackupDatabaseCommand : IChatCommand
 
     public async Task StartDatabaseBackup(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<BackupDatabaseCommand>(() => BackgroundTasks.BackupDatabase(ct),
+        await BackgroundTaskService.ExecuteBackgroundTask<BackupDatabaseCommand>(() => RecurringJobs.BackupDatabase(ct),
             message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

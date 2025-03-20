@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Scores;
@@ -15,7 +16,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTasks.TryStartNewBackgroundJob<UpdateScoresSubmittedStatusCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<UpdateScoresSubmittedStatusCommand>(
             () =>
                 UpdateScoresSubmittedStatus(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
@@ -25,7 +26,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
     public async Task UpdateScoresSubmittedStatus(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<UpdateScoresSubmittedStatusCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<UpdateScoresSubmittedStatusCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();

@@ -1,6 +1,7 @@
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -12,7 +13,7 @@ public class SaveStatsSnapshotCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTasks.TryStartNewBackgroundJob<SaveStatsSnapshotCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<SaveStatsSnapshotCommand>(
             () => StartSaveStatsSnapshot(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
 
@@ -21,8 +22,8 @@ public class SaveStatsSnapshotCommand : IChatCommand
 
     public async Task StartSaveStatsSnapshot(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<SaveStatsSnapshotCommand>(
-            async () => { await BackgroundTasks.SaveStatsSnapshot(ct); },
+        await BackgroundTaskService.ExecuteBackgroundTask<SaveStatsSnapshotCommand>(
+            async () => { await RecurringJobs.SaveUsersStatsSnapshots(ct); },
             message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

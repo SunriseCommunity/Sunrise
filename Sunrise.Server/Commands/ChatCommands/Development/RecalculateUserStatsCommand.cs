@@ -4,6 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
@@ -35,7 +36,7 @@ public class RecalculateUserStatsCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundTasks.TryStartNewBackgroundJob<RecalculateUserStatsCommand>(
+        BackgroundTaskService.TryStartNewBackgroundJob<RecalculateUserStatsCommand>(
             () => RecalculateUserStats(session.UserId, CancellationToken.None, mode),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message),
             true);
@@ -45,7 +46,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
     public async Task RecalculateUserStats(int userId, CancellationToken token, GameMode? mode = null)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<RecalculateUserStatsCommand>(
+        await BackgroundTaskService.ExecuteBackgroundTask<RecalculateUserStatsCommand>(
             async () =>
             {
                 if (!mode.HasValue)
