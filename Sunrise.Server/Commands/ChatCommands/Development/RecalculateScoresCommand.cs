@@ -92,7 +92,7 @@ public class RecalculateScoresCommand : IChatCommand
 
                                     if (result.IsFailure)
                                     {
-                                        ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id} as marked, error: {result.Error}");
+                                        ChatCommandRepository.TrySendMessage(userId, $"Failed to update score {score.Id} as DELETED, error: {result.Error}");
                                         throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
                                     }
 
