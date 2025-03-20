@@ -41,6 +41,12 @@ public static class SubmitScoreHelper
             return;
         }
 
+        if (!score.IsScoreable)
+        {
+            score.SubmissionStatus = SubmissionStatus.Submitted;
+            return;
+        }
+
         var scores = new List<Score>
         {
             score
