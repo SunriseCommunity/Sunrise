@@ -34,14 +34,14 @@ public class MultiModsCommand : IChatCommand
 
         foreach (var mod in args.Where(x => string.IsNullOrWhiteSpace(x) == false))
         {
+            if (mod.Equals("Freemod", StringComparison.CurrentCultureIgnoreCase))
+            {
+                freeMods = true;
+                break;
+            }
+
             if (Enum.TryParse(mod, true, out ModsShorted modShortedEnum) == false)
             {
-                if (mod.Equals("Freemod", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    freeMods = true;
-                    continue;
-                }
-
                 session.SendChannelMessage(channel.Name, $"Invalid mod: {mod}");
                 return Task.CompletedTask;
             }
@@ -53,7 +53,7 @@ public class MultiModsCommand : IChatCommand
         var currentMatch = session.Match.Match;
 
         currentMatch.SpecialModes = freeMods ? MultiSpecialModes.FreeMod : MultiSpecialModes.None;
-        currentMatch.ActiveMods = mods.Aggregate((a, b) => a | b);
+        currentMatch.ActiveMods = freeMods ? default : mods.Aggregate((a, b) => a | b);
 
         session.Match.UpdateMatchSettings(currentMatch, session);
 
