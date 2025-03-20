@@ -8,15 +8,15 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("deletescore", requiredPrivileges: UserPrivilege.Developer)]
-public class DeleteScoreCommand : IChatCommand
+[ChatCommand("markscoreasdeleted", requiredPrivileges: UserPrivilege.Developer)]
+public class MarkScoreAsDeletedCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         if (args == null || args.Length < 1)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}deletescore <id>; Example: {Configuration.BotPrefix}deletescore 1");
+                $"Usage: {Configuration.BotPrefix}markscoreasdeleted <id>; Example: {Configuration.BotPrefix}markscoreasdeleted 1");
             return Task.CompletedTask;
         }
 
@@ -26,17 +26,17 @@ public class DeleteScoreCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        BackgroundTasks.TryStartNewBackgroundJob<DeleteScoreCommand>(
+        BackgroundTasks.TryStartNewBackgroundJob<MarkScoreAsDeletedCommand>(
             () =>
-                DeleteScore(session.UserId, scoreId),
+                DeleteScore(session.UserId, scoreId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task DeleteScore(int userId, int requestedScoreId)
+    public async Task DeleteScore(int userId, int requestedScoreId, CancellationToken ct)
     {
-        await BackgroundTasks.ExecuteBackgroundTask<DeleteScoreCommand>(
+        await BackgroundTasks.ExecuteBackgroundTask<MarkScoreAsDeletedCommand>(
             async () =>
             {
                 using var scope = ServicesProviderHolder.CreateScope();
