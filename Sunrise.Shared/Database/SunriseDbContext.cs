@@ -46,7 +46,7 @@ public class SunriseDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}");
+            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)};Pooling=True;");
         }
     }
 }

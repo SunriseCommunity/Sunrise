@@ -112,7 +112,7 @@ public static class Bootstrap
                 optionsBuilder.AddInterceptors(serviceProvider.GetRequiredService<SecondLevelCacheInterceptor>());
 
             optionsBuilder
-                .UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}");
+                .UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)};Pooling=True;");
 
             optionsBuilder.UseSeeding((ctx, _) => { DatabaseSeeder.UseAsyncSeeding(ctx).Wait(); });
         });
