@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using osu.Shared;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
@@ -13,7 +14,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreFileService)
+public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext, ScoreFileService scoreFileService)
 {
 
     public ScoreFileService Files { get; } = scoreFileService;
@@ -40,6 +41,12 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
+            if (score.IsPassed)
+            {
+                logger.LogWarning($"Score id {score.Id} is not failed score, thus cannot be deleted.");
+                throw new ApplicationException(QueryResultError.CANT_REMOVE_REQUESTED_RECORD);
+            }
+
             score.SubmissionStatus = SubmissionStatus.Deleted;
             await UpdateScore(score);
         });
