@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Repositories;
 
-namespace Sunrise.Shared.Database.Services;
+namespace Sunrise.Shared.Services;
 
 public static class BackgroundTaskService
 {
