@@ -19,15 +19,9 @@ public class BackupDatabaseCommand : IChatCommand
         return Task.CompletedTask;
     }
 
-    public Task StartDatabaseBackup(int userId, CancellationToken ct)
+    public async Task StartDatabaseBackup(int userId, CancellationToken ct)
     {
-        _ = BackgroundTasks.ExecuteBackgroundTask<BackupDatabaseCommand>(() =>
-            {
-                BackgroundTasks.BackupDatabase(ct);
-                return Task.CompletedTask;
-            },
+        await BackgroundTasks.ExecuteBackgroundTask<BackupDatabaseCommand>(() => BackgroundTasks.BackupDatabase(ct),
             message => ChatCommandRepository.TrySendMessage(userId, message));
-
-        return Task.CompletedTask;
     }
 }

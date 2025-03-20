@@ -73,7 +73,6 @@ public class BackgroundTasks
 
     public static async Task DisableInactiveUsers(CancellationToken ct)
     {
-
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
@@ -94,39 +93,101 @@ public class BackgroundTasks
 
     }
 
-    // TODO: Implement cancellation token;
-    public static void BackupDatabase(CancellationToken ct)
+    public static async Task BackupDatabase(CancellationToken ct)
     {
+        var dataFolderPath = Path.Combine(Configuration.DataPath, "Files");
+        var backupPath = Path.Combine(Configuration.DataPath, "Backups");
 
-        var filesPath = Configuration.DataPath;
-
-        var databasePath = Path.Combine(filesPath, Configuration.DatabaseName);
-        var backupDbPath = Path.Combine(filesPath, "Backup.db.tmp");
-
-        var dataFolderPath = Path.Combine(filesPath, "Files");
-        var backupPath = Path.Combine(filesPath, "Backups");
-
-        if (!Directory.Exists(backupPath)) Directory.CreateDirectory(backupPath);
-
-        var files = Directory.GetFiles(backupPath);
-
-        if (files.Length >= Configuration.MaxDailyBackupCount)
-        {
-            var oldestFile = files.OrderBy(f => new FileInfo(f).CreationTime).First();
-            File.Delete(oldestFile);
-        }
+        var databaseFilePath = Path.Combine(Configuration.DataPath, Configuration.DatabaseName);
+        var databaseFileCopyPath = $"{databaseFilePath}.tmp";
 
         var zipFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.zip");
 
-        var sourceFile = new FileInfo(databasePath);
-        sourceFile.CopyTo(backupDbPath, true);
+        try
+        {
+            if (!Directory.Exists(backupPath)) Directory.CreateDirectory(backupPath);
 
-        using var zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
-        zip.CreateEntryFromFile(backupDbPath, Configuration.DatabaseName);
+            var files = Directory.GetFiles(backupPath);
 
-        AddFolderToZip(zip, dataFolderPath, "Files");
+            if (files.Length >= Configuration.MaxDailyBackupCount)
+            {
+                var oldestFile = files.OrderBy(f => new FileInfo(f).CreationTime).First();
+                File.Delete(oldestFile);
+            }
 
-        File.Delete(backupDbPath);
+            using var zipArchive = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
+
+            await CreateShadowCopy(databaseFilePath, databaseFileCopyPath, ct);
+
+            await CopyFileToZip(zipArchive, databaseFilePath + ".tmp", Configuration.DatabaseName, ct);
+
+            foreach (var filePath in GetFilesRecursively(dataFolderPath, ct))
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var relativePath = Path.GetRelativePath(Configuration.DataPath, filePath);
+                await CopyFileToZip(zipArchive, filePath, relativePath, ct);
+            }
+        }
+        catch (Exception _)
+        {
+            if (File.Exists(zipFileName))
+                File.Delete(zipFileName);
+
+            throw;
+        }
+        finally
+        {
+            if (File.Exists(databaseFileCopyPath))
+                File.Delete(databaseFileCopyPath);
+        }
+    }
+
+    private static async Task CopyFileToZip(ZipArchive zipArchive, string path, string zipPath, CancellationToken ct = default)
+    {
+        var zipEntry = zipArchive.CreateEntry(zipPath);
+
+        await using var fileReader = File.OpenRead(path);
+        await using var zipStream = zipEntry.Open();
+        await fileReader.CopyToAsync(zipStream, ct);
+    }
+
+    private static async Task CreateShadowCopy(string filePath, string newFilePath, CancellationToken ct)
+    {
+        await using var inputFile = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite);
+
+        await using var outputFile = new FileStream(newFilePath, FileMode.Create);
+
+        var buffer = new byte[0x10000];
+        int bytes;
+
+        while ((bytes = await inputFile.ReadAsync(buffer, ct)) > 0)
+        {
+            await outputFile.WriteAsync(buffer.AsMemory(0, bytes), ct);
+        }
+    }
+
+    private static IEnumerable<string> GetFilesRecursively(string directory, CancellationToken ct = default)
+    {
+        foreach (var filePath in Directory.GetFiles(directory))
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return filePath;
+        }
+
+        foreach (var subDirectory in Directory.GetDirectories(directory))
+        {
+            ct.ThrowIfCancellationRequested();
+
+            foreach (var filePath in GetFilesRecursively(subDirectory, ct))
+            {
+                yield return filePath;
+            }
+        }
     }
 
     public static void TryStartNewBackgroundJob<T>(
@@ -187,6 +248,7 @@ public class BackgroundTasks
         catch (Exception ex)
         {
             trySendMessage?.Invoke($"Error occurred while executing {jobName}. Check console for more details.");
+            trySendMessage?.Invoke($"Error message: {ex.Message}");
             logger.LogError(ex, $"Exception occurred while executing job \"{jobName}\".");
         }
         finally
@@ -195,22 +257,6 @@ public class BackgroundTasks
 
             Configuration.OnMaintenance = false;
             trySendMessage?.Invoke($"Server is back online. Took time to proceed job \"{jobName}\": {stopwatch.ElapsedMilliseconds} ms.");
-        }
-    }
-
-
-    private static void AddFolderToZip(ZipArchive zip, string sourceDir, string entryRoot)
-    {
-        foreach (var file in Directory.GetFiles(sourceDir))
-        {
-            var entryName = Path.Combine(entryRoot, Path.GetFileName(file));
-            zip.CreateEntryFromFile(file, entryName);
-        }
-
-        foreach (var dir in Directory.GetDirectories(sourceDir))
-        {
-            var entryName = Path.Combine(entryRoot, Path.GetFileName(dir));
-            AddFolderToZip(zip, dir, entryName);
         }
     }
 }
