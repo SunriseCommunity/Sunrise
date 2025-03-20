@@ -5,6 +5,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
@@ -173,7 +174,17 @@ public static class ScoreExtensions
         using var scope = ServicesProviderHolder.CreateScope();
         var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-        score.PerformancePoints = calculatorService.CalculatePerformancePoints(session, score).Result;
+        var scorePerformanceResult = calculatorService.CalculateScorePerformance(session, score).Result;
+
+        if (scorePerformanceResult.IsFailure)
+        {
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error.Message);
+            score.PerformancePoints = 0;
+        }
+        else
+        {
+            score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+        }
 
         return score;
     }
@@ -267,11 +278,20 @@ public static class ScoreExtensions
         using var scope = ServicesProviderHolder.CreateScope();
         var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-        // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
-            beatmap.DifficultyRating = await calculatorService
-                .RecalculateBeatmapDifficulty(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+        {
+            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
 
-        return $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {score.Mods.GetModsString()}| GameMode: {score.GameMode.ToVanillaGameMode()} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★";
+            if (recalculateBeatmapResult.IsFailure)
+            {
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error.Message);
+            }
+            else
+            {
+                beatmap.UpdateBeatmapWithPerformance(score.Mods, recalculateBeatmapResult.Value);
+            }
+        }
+
+        return $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {score.Mods.GetModsString()}| GameMode: {score.GameMode.ToVanillaGameMode()} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap.TotalLength)} | {beatmap.DifficultyRating:0.00} ★";
     }
 }

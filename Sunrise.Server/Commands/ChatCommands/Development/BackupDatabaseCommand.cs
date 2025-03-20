@@ -1,10 +1,11 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -13,26 +14,16 @@ public class BackupDatabaseCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (Configuration.OnMaintenance)
-        {
-            ChatCommandRepository.SendMessage(session, "Server is in maintenance mode. Starting database backup is not possible.");
-            return Task.CompletedTask;
-        }
-
-        ChatCommandRepository.SendMessage(session, "Database backup has been started. Server is in maintenance mode.");
-
-        Configuration.OnMaintenance = true;
-
-        BackgroundJob.Enqueue(() => StartDatabaseBackup(session.UserId));
+        BackgroundTaskService.TryStartNewBackgroundJob<BackupDatabaseCommand>(
+            () => StartDatabaseBackup(session.UserId, CancellationToken.None),
+            message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public void StartDatabaseBackup(int userId)
+    public async Task StartDatabaseBackup(int userId, CancellationToken ct)
     {
-        BackgroundTasks.BackupDatabase();
-
-        ChatCommandRepository.TrySendMessage(userId, "Database backup has been completed. Server is no longer in maintenance mode.");
-        Configuration.OnMaintenance = false;
+        await BackgroundTaskService.ExecuteBackgroundTask<BackupDatabaseCommand>(() => RecurringJobs.BackupDatabase(ct),
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

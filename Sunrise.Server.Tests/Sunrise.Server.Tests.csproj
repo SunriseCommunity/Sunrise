@@ -24,12 +24,4 @@
         <ProjectReference Include="..\Sunrise.Tests\Sunrise.Tests.csproj"/>
     </ItemGroup>
 
-    <Target Name="CopyPpDllForTests" AfterTargets="Build">
-        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Shared\Dependencies\rosu_pp_ffi.dll" DestinationFolder="$(OutDir)"/>
-    </Target>
-
-    <Target Name="CopyPpSoForTests" AfterTargets="Build">
-        <Copy SourceFiles="$(ProjectDir)..\Sunrise.Shared\Dependencies\rosu_pp_ffi.so" DestinationFolder="$(OutDir)/runtimes/linux-x64/native"/>
-    </Target>
-
 </Project>

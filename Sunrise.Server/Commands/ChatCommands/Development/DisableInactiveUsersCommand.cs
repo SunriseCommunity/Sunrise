@@ -1,10 +1,11 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -13,26 +14,17 @@ public class DisableInactiveUsersCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (Configuration.OnMaintenance)
-        {
-            ChatCommandRepository.SendMessage(session, "Server is in maintenance mode. Starting checking for inactive users is not possible.");
-            return Task.CompletedTask;
-        }
-
-        ChatCommandRepository.SendMessage(session, "Checking for inactive users has been started. Server is in maintenance mode.");
-
-        Configuration.OnMaintenance = true;
-
-        BackgroundJob.Enqueue(() => DisableInactiveUsers(session.UserId));
+        BackgroundTaskService.TryStartNewBackgroundJob<DisableInactiveUsersCommand>(
+            () => DisableInactiveUsers(session.UserId, CancellationToken.None),
+            message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task DisableInactiveUsers(int userId)
+    public async Task DisableInactiveUsers(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.DisableInactiveUsers();
-
-        ChatCommandRepository.TrySendMessage(userId, "Checking for inactive users has been completed. Server is no longer in maintenance mode.");
-        Configuration.OnMaintenance = false;
+        await BackgroundTaskService.ExecuteBackgroundTask<DisableInactiveUsersCommand>(
+            async () => { await RecurringJobs.DisableInactiveUsers(ct); },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

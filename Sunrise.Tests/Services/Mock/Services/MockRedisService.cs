@@ -12,6 +12,7 @@ public class MockRedisService(MockService service)
     private readonly FileService _fileService = new();
     private static Dictionary<int, string>? BeatmapFileNamesById => Configuration.GetConfig().GetSection("Test:BeatmapFileNamesById").Get<Dictionary<int, string>>();
     private static Dictionary<string, string>? BeatmapFileNamesByHash => Configuration.GetConfig().GetSection("Test:BeatmapFileNamesByHash").Get<Dictionary<string, string>>();
+    private static Dictionary<string, int>? BeatmapIdsByHashes => Configuration.GetConfig().GetSection("Test:BeatmapIdByHash").Get<Dictionary<string, int>>();
 
     public async Task<BeatmapSet> MockBeatmapSetCache()
     {
@@ -33,61 +34,9 @@ public class MockRedisService(MockService service)
         return beatmapSet;
     }
 
-    public async Task<int> MockLocalBeatmapFile(string beatmapHash)
+    public int GetBeatmapIdFromHash(string hash)
     {
-        ThrowIfCacheDisabled();
-
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        var beatmapFileName = BeatmapFileNamesByHash?.GetValueOrDefault(beatmapHash);
-
-        if (beatmapFileName == null)
-        {
-            throw new InvalidOperationException($"Beatmap file name for beatmap hash {beatmapHash} not found.");
-        }
-
-        var beatmapFilePath = _fileService.GetFileByName(beatmapFileName);
-
-        if (beatmapFilePath == null)
-        {
-            throw new InvalidOperationException($"Beatmap file for beatmap hash {beatmapHash} not found.");
-        }
-
-        var beatmap = await File.ReadAllBytesAsync(beatmapFilePath);
-
-        if (beatmap == null)
-        {
-            throw new InvalidOperationException($"Beatmap file for beatmap hash {beatmapHash} not found.");
-        }
-
-        var beatmapId = BeatmapFileNamesById?
-            .FirstOrDefault(x => x.Value == beatmapFileName).Key;
-
-        if (beatmapId == null)
-        {
-            throw new InvalidOperationException($"Beatmap ID for beatmap hash {beatmapHash} not found.");
-        }
-
-        await database.Beatmaps.Files.AddBeatmapFile(beatmapId.Value, beatmap);
-
-        return beatmapId.Value;
-    }
-
-    public async Task MockBeatmapFile(int beatmapSetId)
-    {
-        ThrowIfCacheDisabled();
-
-        await MockBeatmapFile(beatmapSetId, []);
-    }
-
-    public async Task MockBeatmapFile(int beatmapSetId, byte[] beatmap)
-    {
-        ThrowIfCacheDisabled();
-
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        await database.Beatmaps.Files.AddBeatmapFile(beatmapSetId, beatmap);
+        return BeatmapIdsByHashes?.GetValueOrDefault(hash) ?? 0;
     }
 
     private static void ThrowIfCacheDisabled()

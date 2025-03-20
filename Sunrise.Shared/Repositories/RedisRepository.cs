@@ -136,7 +136,10 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
         var server = redisConnection.GetServer(redisConnection.GetEndPoints().FirstOrDefault());
 
         if (flushOnlyGeneralDatabase)
+        {
             await server.FlushDatabaseAsync(0);
+            return;
+        }
 
         await server.FlushAllDatabasesAsync();
     }

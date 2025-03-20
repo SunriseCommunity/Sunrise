@@ -1,4 +1,3 @@
-using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
@@ -6,11 +5,9 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class BeatmapRepository(RedisRepository redis, BeatmapFileService beatmapFileService)
+public class BeatmapRepository(RedisRepository redis)
 {
     private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
-
-    public BeatmapFileService Files { get; } = beatmapFileService;
 
     public async Task<BeatmapSet?> GetCachedBeatmapSet(int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
     {

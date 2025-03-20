@@ -57,14 +57,15 @@ public static class ChatCommandRepository
 
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var sessionUser = await database.Users.GetUser(session.UserId);
+
         if (sessionUser == null)
         {
             SendMessage(session, "User for your session does not exist. Are you even human?");
             return;
         }
-        
+
         if (!sessionUser.Privilege.HasFlag(handler.RequiredPrivileges))
         {
             SendMessage(session, "You don't have permission to use this command.");
@@ -93,12 +94,13 @@ public static class ChatCommandRepository
         var sessionUser = database.Users.GetUser(session.UserId).Result;
         if (sessionUser == null)
             return [];
-        
-        
+
+
         var privilege = sessionUser.Privilege;
 
         return Handlers
             .Where(x => privilege.HasFlag(x.Value.RequiredPrivileges))
+            .Where(x => !x.Value.Prefix.Contains("mp") || session.Match != null) // Don't add multiplayer specific commands, if user is currently not in multiplayer match.
             .Select(x => x.Key)
             .ToArray();
     }

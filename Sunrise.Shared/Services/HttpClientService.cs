@@ -1,11 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using System.Web;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
@@ -27,22 +30,90 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
-    public async Task<T?> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null)
+    public async Task<Result<T, ErrorMessage>> SendRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
     {
         if (session.IsRateLimited())
         {
             _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
-            return default;
+
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"User {session.UserId} got rate limited. Ignoring request.",
+                Status = HttpStatusCode.TooManyRequests
+            });
         }
 
         headers ??= new Dictionary<string, string>();
 
-        var apis = Configuration.ExternalApis.Where(x => x.Type == type).OrderBy(x => x.Priority).ToList();
+        var apis = Configuration.ExternalApis.Where(x => x.Type == type && x.ShouldHaveBody).OrderBy(x => x.Priority).ToList();
 
         if (apis is { Count: 0 } or null)
         {
             _logger.LogWarning($"No API servers found for {type}.");
-            return default;
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"No API servers found for {type}.",
+                Status = HttpStatusCode.BadRequest
+            });
+        }
+
+        foreach (var api in apis)
+        {
+            SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
+
+            if (api.Server == ApiServer.Observatory)
+            {
+                if (!string.IsNullOrEmpty(Configuration.ObservatoryApiKey))
+                    headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
+            }
+
+            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body);
+
+            if (responseResult.IsSuccess) return responseResult;
+
+            if (!responseResult.IsFailure)
+                continue;
+
+            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
+
+            return responseResult;
+        }
+
+        _logger.LogWarning(
+            $"Failed to get response from any API server for {type}.");
+
+        return Result.Failure<T, ErrorMessage>(new ErrorMessage
+        {
+            Message = $"Failed to get response from any API server for {type}.",
+            Status = HttpStatusCode.BadRequest
+        });
+    }
+
+    public async Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null)
+    {
+        if (session.IsRateLimited())
+        {
+            _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
+
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"User {session.UserId} got rate limited. Ignoring request.",
+                Status = HttpStatusCode.TooManyRequests
+            });
+        }
+
+        headers ??= new Dictionary<string, string>();
+
+        var apis = Configuration.ExternalApis.Where(x => x.Type == type && !x.ShouldHaveBody).OrderBy(x => x.Priority).ToList();
+
+        if (apis is { Count: 0 } or null)
+        {
+            _logger.LogWarning($"No API servers found for {type}.");
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"No API servers found for {type}.",
+                Status = HttpStatusCode.BadRequest
+            });
         }
 
         foreach (var api in apis)
@@ -65,32 +136,52 @@ public class HttpClientService
                     headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
             }
 
-            var (response, isServerRateLimited) = await SendApiRequest<T>(api.Server, requestUri, headers);
+            var responseResult = await SendApiRequest<T>(api.Server, requestUri, headers);
 
-            if (isServerRateLimited) continue;
+            if (responseResult.IsSuccess) return responseResult;
 
-            if (response is not null) return response;
+            if (!responseResult.IsFailure)
+                continue;
+
+            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
+
+            return responseResult;
         }
 
         _logger.LogWarning(
             $"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.");
 
-        return default;
+        return Result.Failure<T, ErrorMessage>(new ErrorMessage
+        {
+            Message = $"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.",
+            Status = HttpStatusCode.BadRequest
+        });
     }
 
-    private async Task<(T?, bool)> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null)
+    private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null)
     {
         var isServerRateLimited = await _redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)
         {
             _logger.LogWarning($"Server {server} is rate limited. Ignoring request.");
-            return (default, true);
+
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"Server {server} is rate limited. Ignoring request.",
+                Status = HttpStatusCode.TooManyRequests
+            });
         }
 
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, requestUri);
+            using var request = new HttpRequestMessage(body == null ? HttpMethod.Get : HttpMethod.Post, requestUri);
+
+            if (body != null)
+            {
+                var json = JsonSerializer.Serialize(body);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
 
             if (headers != null)
             {
@@ -110,7 +201,7 @@ public class HttpClientService
                 case ApiServer.Observatory:
                     rateLimit = response.Headers.TryGetValues("RateLimit-Remaining", out var rateLimitHeader)
                         ? rateLimitHeader.FirstOrDefault()
-                        : "60";
+                        : "300"; // If you use dev token, observatory will not try to stop any of your requests, but you still need to behave yourself.
                     rateLimitReset = response.Headers.TryGetValues("RateLimit-Reset", out rateLimitHeader)
                         ? rateLimitHeader.FirstOrDefault()
                         : "60";
@@ -134,66 +225,92 @@ public class HttpClientService
 
                 await _redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
 
-                return (default, true);
+                return Result.Failure<T, ErrorMessage>(new ErrorMessage
+                {
+                    Message = $"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 1 minute.",
+                    Status = HttpStatusCode.TooManyRequests
+                });
             }
 
             if (!response.IsSuccessStatusCode)
             {
                 if (response.StatusCode < HttpStatusCode.BadGateway)
-                    return (default, false);
-
-                _logger.LogWarning(
-                    $"{server} returned status code {response.StatusCode}. Ignoring server for 10 minutes.");
-                await _redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(10));
-
-                return (default, false);
+                {
+                    return Result.Failure<T, ErrorMessage>(new ErrorMessage
+                    {
+                        Message = $"Request to {server} failed with status code {response.StatusCode}.",
+                        Status = response.StatusCode
+                    });
+                }
             }
 
             switch (typeof(T))
             {
                 case not null when typeof(T) == typeof(byte[]):
-                    return ((T)(object)await response.Content.ReadAsByteArrayAsync(), false);
+                    return (T)(object)await response.Content.ReadAsByteArrayAsync();
                 case not null when typeof(T) == typeof(string):
-                    return ((T)(object)await response.Content.ReadAsStringAsync(), false);
+                    return (T)(object)await response.Content.ReadAsStringAsync();
                 default:
                     var content = await response.Content.ReadAsStringAsync();
 
                     var jsonDoc = JsonDocument.Parse(content);
 
-                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Object && jsonDoc.RootElement.TryGetProperty("status", out var status))
+                    if (jsonDoc.RootElement.ValueKind == JsonValueKind.Object && jsonDoc.RootElement.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Number)
                     {
-                        if (status.ValueKind == JsonValueKind.Number && status.GetInt32() != 200)
+                        var statusCode = status.GetInt32();
+
+                        if (statusCode == 404)
+                        {
+                            return Result.Failure<T, ErrorMessage>(JsonSerializer.Deserialize<ErrorMessage>(content) ?? new ErrorMessage
+                            {
+                                Message = "Exception occured while deserializing error message",
+                                Status = HttpStatusCode.BadRequest
+                            });
+                        }
+
+                        if (statusCode != 200)
                         {
                             _logger.LogError($"Failed to process request to {server} with uri {requestUri}. Status: {status}");
-                            return (default, false);
+                            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+                            {
+                                Message = $"Failed to process request to {server} with uri {requestUri}. Status: {status}",
+                                Status = HttpStatusCode.BadRequest
+                            });
                         }
                     }
 
-                    return (JsonSerializer.Deserialize<T>(content), false);
+                    return JsonSerializer.Deserialize<T>(content) ?? Result.Failure<T, ErrorMessage>(new ErrorMessage
+                    {
+                        Message = "Exception occured while deserializing data",
+                        Status = HttpStatusCode.BadRequest
+                    });
             }
         }
         catch (Exception e)
         {
             _logger.LogError(e, $"Failed to process request to {server} with uri {requestUri}");
-            return (default, false);
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = $"Failed to process request to {server} with uri {requestUri}",
+                Status = HttpStatusCode.BadRequest
+            });
         }
     }
 
     private string SerializeUrlQuery(string url)
     {
-        var results = HttpUtility.ParseQueryString(url);
-        var nonEmpty = new Dictionary<string, string>();
+        var uriBuilder = new UriBuilder(url);
+        var queryParameters = HttpUtility.ParseQueryString(uriBuilder.Query);
 
-        if (string.IsNullOrWhiteSpace(results.AllKeys[0])) return url;
-
-        foreach (var k in results.AllKeys)
+        foreach (var key in queryParameters.AllKeys)
         {
-            if (!string.IsNullOrWhiteSpace(results[k]))
+            if (string.IsNullOrEmpty(queryParameters[key]))
             {
-                nonEmpty.Add(k, results[k]);
+                queryParameters.Remove(key);
             }
         }
 
-        return string.Join("&", nonEmpty.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        uriBuilder.Query = queryParameters.ToString();
+        return uriBuilder.ToString();
     }
 }

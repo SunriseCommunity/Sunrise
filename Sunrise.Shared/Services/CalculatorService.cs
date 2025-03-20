@@ -1,7 +1,12 @@
+using CSharpFunctionalExtensions;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions.Performances;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Utils.Calculators;
 using Mods = osu.Shared.Mods;
@@ -9,32 +14,86 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Services;
 
-public class CalculatorService(Lazy<BeatmapService> beatmapService, Lazy<DatabaseService> database)
+public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
-    public async Task<double> CalculatePerformancePoints(BaseSession session, Score score)
-    {
-        var beatmapBytes = await beatmapService.Value.GetBeatmapFile(session, score.BeatmapId);
-        if (beatmapBytes == null) return 0;
+    /// <summary>
+    ///     Temporary value to disable all custom not standard mods calculations,
+    ///     will be removed in the next versions.
+    /// </summary>
+    private readonly bool IS_USING_CUSTOM_PP_CALCULATION = false;
 
-        return PerformanceCalculator.CalculatePerformancePoints(beatmapBytes, score);
+    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score)
+    {
+        var serializedScore = new CalculateScoreRequest(score)
+        {
+            Mods = score.Mods.IgnoreNotStandardModsForRecalculation()
+        };
+
+        var performanceResult = await client.SendRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
+
+        if (performanceResult.IsFailure) return performanceResult;
+
+        var performance = performanceResult.Value;
+
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performance = performance.ApplyNotStandardModRecalculationsIfNeeded(score);
+
+        return performance;
     }
 
-    public async Task<double> RecalculateBeatmapDifficulty(BaseSession session, int beatmapId, int mode,
-        Mods mods = Mods.None)
+    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
+        Mods mods = Mods.None, int? combo = null, int? misses = null)
     {
-        var beatmapBytes = await beatmapService.Value.GetBeatmapFile(session, beatmapId);
-        if (beatmapBytes == null) return 0;
+        var requestMods = mods.IgnoreNotStandardModsForRecalculation();
 
-        return PerformanceCalculator.RecalculateBeatmapDifficulty(beatmapBytes, mode, mods);
+        var performancesResult = await client.SendRequest<List<PerformanceAttributes>>(session,
+            ApiType.CalculateBeatmapPerformance,
+            [beatmapId, 100, mode, (int)requestMods, combo, misses]);
+
+        if (performancesResult.IsFailure) return performancesResult.ConvertFailure<PerformanceAttributes>();
+
+        var performances = performancesResult.Value;
+
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performances = performances.Select(p => p.ApplyNotStandardModRecalculationsIfNeeded(100, mods)).ToList();
+
+        return performances.First();
     }
 
-    public async Task<(double, double, double, double)> CalculatePerformancePoints(BaseSession session,
+    public async Task<Result<(PerformanceAttributes, PerformanceAttributes, PerformanceAttributes, PerformanceAttributes), ErrorMessage>> CalculatePerformancePoints(BaseSession session,
         int beatmapId, int mode, Mods mods = Mods.None)
     {
-        var beatmapBytes = await beatmapService.Value.GetBeatmapFile(session, beatmapId);
-        if (beatmapBytes == null) return (0, 0, 0, 0);
+        var accuracies = new List<double>
+        {
+            100,
+            99,
+            98,
+            95
+        };
 
-        return PerformanceCalculator.CalculatePerformancePoints(beatmapBytes, mode, mods);
+        var accuraciesString = string.Join("&acc=", accuracies);
+
+        var requestMods = mods.IgnoreNotStandardModsForRecalculation();
+
+        var performancesResult = await client.SendRequest<List<PerformanceAttributes>>(session,
+            ApiType.CalculateBeatmapPerformance,
+            [beatmapId, accuraciesString, mode, (int)requestMods, null, null]);
+
+        if (performancesResult.IsFailure) return performancesResult.ConvertFailure<(PerformanceAttributes, PerformanceAttributes, PerformanceAttributes, PerformanceAttributes)>();
+
+        var performances = performancesResult.Value;
+
+        if (IS_USING_CUSTOM_PP_CALCULATION)
+            performances = performances
+                .Select((p, index) => new
+                {
+                    Performance = p,
+                    Index = index
+                })
+                .Select(x => x.Performance.ApplyNotStandardModRecalculationsIfNeeded(accuracies[x.Index], mods))
+                .ToList();
+
+        return (performances[0], performances[1], performances[2], performances[3]);
     }
 
     public async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)

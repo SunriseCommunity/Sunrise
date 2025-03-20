@@ -121,6 +121,8 @@ public static class Configuration
         if (string.IsNullOrEmpty(ObservatoryUrl)) throw new Exception("Observatory URL is empty. Please check your configuration. Check README if you have issues with setting up Observatory.");
 
         ExternalApis.AddRange([
+            new ExternalApi(ApiType.CalculateBeatmapPerformance, ApiServer.Observatory, $"http://{ObservatoryUrl}/calculator/beatmap/{{0}}?acc={{1}}&mode={{2}}&mods={{3}}&combo={{4}}&misses={{5}}", 0, 1),
+            new ExternalApi(ApiType.CalculateScorePerformance, ApiServer.Observatory, $"http://{ObservatoryUrl}/calculator/score", 0, 0, true),
             new ExternalApi(ApiType.BeatmapDownload, ApiServer.Observatory, $"http://{ObservatoryUrl}/osu/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataByBeatmapId, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/b/{{0}}?full=true", 0, 1),

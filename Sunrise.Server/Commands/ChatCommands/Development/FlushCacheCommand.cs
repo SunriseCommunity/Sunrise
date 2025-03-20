@@ -1,11 +1,12 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -25,33 +26,36 @@ public class FlushCacheCommand : IChatCommand
                 case "false":
                     ChatCommandRepository.SendMessage(session,
                         "WARNING: Are you SURE that you want to flush ALL the cache? It will force rebuilding all user stats leaderboards (can take some time).\n" +
-                        $"Use '{Configuration.BotPrefix}flushcache yes_i_understand_that_im_doing' to proceed.");
+                        $"Use '{Configuration.BotPrefix}flushcache yes_i_understand_what_im_doing' to proceed.");
                     return Task.CompletedTask;
-                case "yes_i_understand_that_im_doing":
+                case "yes_i_understand_what_im_doing":
                     isSoftFlush = false;
                     break;
                 default:
-                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache yes - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
+                    ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}flushcache <isFlushGeneralData?>;\nExample: {Configuration.BotPrefix}flushcache true - flash only general data, such as keys and db queries, but sorted sets will not be flushed");
                     return Task.CompletedTask;
             }
         }
 
-        BackgroundJob.Enqueue(() => FlushAndUpdateRedisCache(session.UserId, isSoftFlush));
+        BackgroundTaskService.TryStartNewBackgroundJob<FlushCacheCommand>(
+            () =>
+                FlushAndUpdateRedisCache(session.UserId, isSoftFlush),
+            message => ChatCommandRepository.SendMessage(session, message),
+            !isSoftFlush);
+
         return Task.CompletedTask;
     }
 
     public async Task FlushAndUpdateRedisCache(int userId, bool isSoftFlush)
     {
-        ChatCommandRepository.TrySendMessage(userId, "Starting to flush cache.");
+        await BackgroundTaskService.ExecuteBackgroundTask<FlushCacheCommand>(
+            async () =>
+            {
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var startTime = DateTime.UtcNow;
-
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        await database.FlushAndUpdateRedisCache(isSoftFlush);
-
-        ChatCommandRepository.TrySendMessage(userId,
-            $"Done flushing cache (wasSoft: {isSoftFlush})! Took {(DateTime.UtcNow - startTime).TotalSeconds} seconds.");
+                await database.FlushAndUpdateRedisCache(isSoftFlush);
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

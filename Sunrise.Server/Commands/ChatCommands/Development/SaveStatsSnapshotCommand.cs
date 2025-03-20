@@ -1,10 +1,11 @@
-using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
@@ -13,26 +14,17 @@ public class SaveStatsSnapshotCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (Configuration.OnMaintenance)
-        {
-            ChatCommandRepository.SendMessage(session, "Server is in maintenance mode. Save stats snapshot is not possible.");
-            return Task.CompletedTask;
-        }
-
-        ChatCommandRepository.SendMessage(session, "Saving stats snapshot has been started. Server is in maintenance mode.");
-
-        Configuration.OnMaintenance = true;
-
-        BackgroundJob.Enqueue(() => StartSaveStatsSnapshot(session.UserId));
+        BackgroundTaskService.TryStartNewBackgroundJob<SaveStatsSnapshotCommand>(
+            () => StartSaveStatsSnapshot(session.UserId, CancellationToken.None),
+            message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task StartSaveStatsSnapshot(int userId)
+    public async Task StartSaveStatsSnapshot(int userId, CancellationToken ct)
     {
-        await BackgroundTasks.SaveStatsSnapshot();
-
-        ChatCommandRepository.TrySendMessage(userId, "Saving stats snapshot has been completed. Server is no longer in maintenance mode.");
-        Configuration.OnMaintenance = false;
+        await BackgroundTaskService.ExecuteBackgroundTask<SaveStatsSnapshotCommand>(
+            async () => { await RecurringJobs.SaveUsersStatsSnapshots(ct); },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
     }
 }

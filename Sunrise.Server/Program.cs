@@ -41,7 +41,7 @@ app.UseWebSockets();
 app.Configure();
 
 app.WarmUpSingletons();
-BackgroundTasks.Initialize();
+RecurringJobs.Initialize();
 
 if (Configuration.ClearCacheOnStartup)
 {

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using Hangfire.Dashboard;
 using Microsoft.Extensions.Caching.Memory;
@@ -29,6 +30,22 @@ public sealed class Middleware(
         if (path.StartsWithSegments(Configuration.ApiDocumentationPath) && !isApiRequest)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        if (isApiRequest && Configuration.OnMaintenance)
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            context.Response.ContentType = "application/json; charset=utf-8";
+
+            var responseMessage = new
+            {
+                error = "Service is currently unavailable due to maintenance. Please try again later."
+            };
+
+            var jsonResponse = JsonSerializer.Serialize(responseMessage);
+            await context.Response.WriteAsync(jsonResponse);
+
             return;
         }
 

@@ -46,7 +46,7 @@ public class BeatmapCommand : IChatCommand
         }
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == beatmapId);
-        
+
         if (beatmap == null)
         {
             ChatCommandRepository.SendMessage(session, "Beatmap not found.");
@@ -57,10 +57,22 @@ public class BeatmapCommand : IChatCommand
 
         var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-        var (pp100, pp99, pp98, pp95) =
-            await calculatorService.CalculatePerformancePoints(session, beatmapId, beatmap.ModeInt, withMods);
+        var calculatePerformancePointsResult = await calculatorService.CalculatePerformancePoints(session,
+            session.LastBeatmapIdUsedWithCommand.Value,
+            beatmap.ModeInt,
+            withMods);
+
+        if (calculatePerformancePointsResult.IsFailure)
+        {
+            ChatCommandRepository.SendMessage(session, calculatePerformancePointsResult.Error.Message);
+            return;
+        }
+
+        beatmap.UpdateBeatmapWithPerformance(withMods, calculatePerformancePointsResult.Value.Item1);
+
+        var pps = calculatePerformancePointsResult.Value.ToTuple();
 
         ChatCommandRepository.SendMessage(session,
-            $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {withMods.GetModsString()}| 95%: {pp95:0.00}pp | 98%: {pp98:0.00}pp | 99%: {pp99:0.00}pp | 100%: {pp100:0.00}pp | {TimeConverter.SecondsToString(beatmap?.TotalLength ?? 0)} | {beatmap?.DifficultyRating:0.00} ★");
+            $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {withMods.GetModsString()}| 95%: {pps.Item4.PerformancePoints:0.00}pp | 98%: {pps.Item3.PerformancePoints:0.00}pp | 99%: {pps.Item2.PerformancePoints:0.00}pp | 100%: {pps.Item1.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap.TotalLength)} | {beatmap.DifficultyRating:0.00} ★");
     }
 }
