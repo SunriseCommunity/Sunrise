@@ -49,6 +49,6 @@ public static class BeatmapExtensions
 
     public static string GetBeatmapInGameChatString(this Beatmap beatmap, BeatmapSet beatmapSet)
     {
-        return $"[{beatmap.Url.Replace("osu.ppy.sh", Configuration.Domain)} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]]";
+        return $"[https://osu.{Configuration.Domain}/beatmapsets/{beatmap.BeatmapsetId}#/{beatmap.Id} {beatmapSet.Artist} - {beatmapSet.Title} [{beatmap.Version}]]";
     }
 }
