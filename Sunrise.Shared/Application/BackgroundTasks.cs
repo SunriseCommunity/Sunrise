@@ -13,18 +13,18 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Application;
 
-public static class BackgroundTasks
+public class BackgroundTasks
 {
     public static void Initialize()
     {
-        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(), "0 3 * * *"); // 3 AM UTC
+        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(CancellationToken.None), "0 3 * * *"); // 3 AM UTC
 
-        RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(), "59 23 * * *"); // 11:59 PM UTC
+        RecurringJob.AddOrUpdate("Save stats snapshot", () => SaveStatsSnapshot(CancellationToken.None), "59 23 * * *"); // 11:59 PM UTC
 
-        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(), "0 1 * * *"); // 1 AM UTC
+        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // 1 AM UTC
     }
 
-    public static async Task SaveStatsSnapshot()
+    public static async Task SaveStatsSnapshot(CancellationToken ct)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -41,7 +41,7 @@ public static class BackgroundTasks
 
                 foreach (var stats in usersStats)
                 {
-                    var user = users.FirstOrDefault(x => x.Id == stats.UserId);
+                    var user = users.FirstOrDefault(u => u.Id == stats.UserId);
                     if (user == null || !user.IsActive(false)) continue;
 
                     var currentSnapshot = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
@@ -61,16 +61,19 @@ public static class BackgroundTasks
                     });
 
                     currentSnapshot.SetSnapshots(rankSnapshots);
+                    ct.ThrowIfCancellationRequested();
                     await database.Users.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
                 }
 
                 if (usersStats.Count < pageSize) break;
             }
         }
+
     }
 
-    public static async Task DisableInactiveUsers()
+    public static async Task DisableInactiveUsers(CancellationToken ct)
     {
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
@@ -82,15 +85,19 @@ public static class BackgroundTasks
 
             foreach (var user in users.Where(user => user.LastOnlineTime.AddDays(90) < DateTime.UtcNow))
             {
+                ct.ThrowIfCancellationRequested();
                 await database.Users.Moderation.DisableUser(user.Id);
             }
 
             if (users.Count < pageSize) break;
         }
+
     }
 
-    public static void BackupDatabase()
+    // TODO: Implement cancellation token;
+    public static void BackupDatabase(CancellationToken ct)
     {
+
         var filesPath = Configuration.DataPath;
 
         var databasePath = Path.Combine(filesPath, Configuration.DatabaseName);
