@@ -58,7 +58,7 @@ public class MarkScoreAsDeletedCommand : IChatCommand
                     return;
                 }
 
-                ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} has been deleted. Don't forget to update user's stats if needed!");
+                ChatCommandRepository.TrySendMessage(userId, $"Score {requestedScoreId} has been marked as deleted. Don't forget to update user's stats if needed!");
             },
             message => ChatCommandRepository.TrySendMessage(userId, message));
     }

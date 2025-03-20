@@ -17,13 +17,13 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
     {
         BackgroundTasks.TryStartNewBackgroundJob<UpdateScoresBeatmapsStatusCommand>(
             () =>
-                UpdateScoresBeatmapStatus(session.UserId),
+                UpdateScoresBeatmapStatus(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task UpdateScoresBeatmapStatus(int userId)
+    public async Task UpdateScoresBeatmapStatus(int userId, CancellationToken ct)
     {
         await BackgroundTasks.ExecuteBackgroundTask<UpdateScoresBeatmapsStatusCommand>(
             async () =>
@@ -43,14 +43,10 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                     scoresReviewedTotal += group.Count();
 
                     if (!isNeedsUpdate) continue;
-
-                    var user = await database.Users.GetUser(userId);
-                    if (user == null)
-                        return;
-
+                    
                     var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-                    var session = new BaseSession(user);
+                    var session = BaseSession.GenerateServerSession();
                     var beatmap = await beatmapService.GetBeatmapSet(session, beatmapId: group.Key);
 
                     var status = BeatmapStatus.NotSubmitted;
@@ -67,6 +63,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                     foreach (var score in group)
                     {
                         score.BeatmapStatus = status;
+                        ct.ThrowIfCancellationRequested();
                         await database.Scores.UpdateScore(score);
                     }
 
@@ -74,7 +71,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                     ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
 
                     // Prevent rate limiting on beatmap mirrors
-                    await Task.Delay(2000);
+                    await Task.Delay(2000, ct);
                 }
             },
             message => ChatCommandRepository.TrySendMessage(userId, message));

@@ -17,13 +17,13 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
     {
         BackgroundTasks.TryStartNewBackgroundJob<UpdateScoresSubmittedStatusCommand>(
             () =>
-                UpdateScoresSubmittedStatus(session.UserId),
+                UpdateScoresSubmittedStatus(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
 
-    public async Task UpdateScoresSubmittedStatus(int userId)
+    public async Task UpdateScoresSubmittedStatus(int userId, CancellationToken ct)
     {
         await BackgroundTasks.ExecuteBackgroundTask<UpdateScoresSubmittedStatusCommand>(
             async () =>
@@ -38,7 +38,6 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
                 foreach (var group in groupedScores)
                 {
-
                     scoresReviewedTotal += group.Count();
 
                     var isNeedsUpdate = group.Any(s => s.SubmissionStatus == SubmissionStatus.Unknown);
@@ -57,6 +56,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                             foreach (var score in scores)
                             {
                                 score.SubmissionStatus = score == bestScore ? SubmissionStatus.Best : score.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+                                ct.ThrowIfCancellationRequested();
                                 await database.Scores.UpdateScore(score);
                             }
                         }

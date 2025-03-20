@@ -15,15 +15,14 @@ public class AppendNewUserStatsCommand : IChatCommand
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         BackgroundTasks.TryStartNewBackgroundJob<AppendNewUserStatsCommand>(
-            () =>
-                AppendMissingUserStats(session.UserId),
+            () => AppendMissingUserStats(session.UserId, CancellationToken.None),
             message => ChatCommandRepository.SendMessage(session, message),
             true);
 
         return Task.CompletedTask;
     }
 
-    public async Task AppendMissingUserStats(int userId)
+    public async Task AppendMissingUserStats(int userId, CancellationToken ct)
     {
         await BackgroundTasks.ExecuteBackgroundTask<AppendNewUserStatsCommand>(
             async () =>
@@ -39,6 +38,7 @@ public class AppendNewUserStatsCommand : IChatCommand
 
                     foreach (var user in users)
                     {
+                        ct.ThrowIfCancellationRequested();
                         await database.Users.Stats.GetUserStats(user.Id, mode);
                     }
 
