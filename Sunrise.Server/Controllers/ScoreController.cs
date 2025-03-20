@@ -31,9 +31,6 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         [FromForm(Name = "sbk")] string? storyboardHash = null
     )
     {
-        if (isScoreNotComplete == "1")
-            return Ok("error: no");
-
         var scoreSerialized = ServerParsers.ParseRijndaelString(osuVersion, iv, scoreEncoded);
         var clientHash = ServerParsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
         var username = scoreSerialized.Split(':')[1].Trim();

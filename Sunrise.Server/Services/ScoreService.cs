@@ -114,7 +114,9 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        var (databaseScores, _) = await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
+        var isScoreScoreable = !isCurrentScoreFailed && score.IsScoreable;
+
+        var (databaseScores, _) = isScoreScoreable ? await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode) : ([], 0);
 
         var globalScores = databaseScores.EnrichWithLeaderboardPositions();
         var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).EnrichWithLeaderboardPositions();
@@ -140,21 +142,12 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        var (prevUserGlobalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode);
+        var (prevUserGlobalRank, _) = isScoreScoreable ? await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode) : (0, 0);
         prevUserStats.LocalProperties.Rank = prevUserGlobalRank;
 
         var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
 
         await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
-
-        var scoreWithSameHash = globalScores.FirstOrDefault(x => x.ScoreHash == score.ScoreHash);
-
-        if (scoreWithSameHash != null)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
-            return "error: no";
-        }
 
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
@@ -178,9 +171,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        if (isCurrentScoreFailed || !score.IsScoreable)
+        if (!isScoreScoreable)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Will not submit failed score");
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
         }
 

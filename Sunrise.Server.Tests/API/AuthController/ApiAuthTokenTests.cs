@@ -51,6 +51,41 @@ public class ApiAuthTokenTests : ApiTest
 
         Assert.True(responseTokens.ExpiresIn > 0);
     }
+    
+    [Fact]
+    public async Task TestGetUserAuthTokensIgnoreUsernameCasing()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var password = _mocker.User.GetRandomPassword();
+        var user = await CreateTestUser(new User
+        {
+            Username = "User",
+            Email = "user@mail.com",
+            Passhash = password.GetPassHash(),
+            Country = _mocker.User.GetRandomCountryCode()
+        });
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/token",
+            new TokenRequest
+            {
+                Username = user.Username.ToUpper(),
+                Password = password
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responseTokens = await response.Content.ReadFromJsonAsync<TokenResponse>();
+
+        Assert.NotNull(responseTokens);
+        Assert.NotNull(responseTokens.Token);
+        Assert.NotNull(responseTokens.RefreshToken);
+
+        Assert.True(responseTokens.ExpiresIn > 0);
+    }
 
     [Fact]
     public async Task TestGetUserAuthTokensMissingBody()

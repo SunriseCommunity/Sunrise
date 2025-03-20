@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Events;
@@ -31,12 +30,23 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
-    
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<User>()
+            .Property(u => u.Username)
+            .HasColumnType("TEXT COLLATE NOCASE");
+
+        modelBuilder.Entity<User>()
+            .Property(u => u.Email)
+            .HasColumnType("TEXT COLLATE NOCASE");
+    }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)}");
+            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)};Pooling=True;");
         }
     }
 }

@@ -207,6 +207,38 @@ public class ApiAuthRegisterTests : ApiTest
     }
 
     [Fact]
+    public async Task TestRegisterUserUsedUsernameWithDifferentCase()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var randomUser = _mocker.User.GetRandomUser();
+        randomUser.Username = randomUser.Username.ToLower();
+        var user = await CreateTestUser(randomUser);
+
+        var password = _mocker.User.GetRandomPassword();
+        var username = user.Username.ToUpper();
+        var email = _mocker.User.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("username already exists", error?.Error);
+    }
+
+    [Fact]
     public async Task TestRegisterUserUsedEmail()
     {
         // Arrange
@@ -217,6 +249,38 @@ public class ApiAuthRegisterTests : ApiTest
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();
         var email = user.Email;
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+
+        Assert.Contains("email already exists", error?.Error);
+    }
+    
+    [Fact]
+    public async Task TestRegisterUserUsedEmailWithDifferentCase()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var randomUser = _mocker.User.GetRandomUser();
+        randomUser.Email = randomUser.Email.ToLower();
+        var user = await CreateTestUser(randomUser);
+
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = user.Email.ToUpper();
 
         // Act
         var response = await client.PostAsJsonAsync("auth/register",
