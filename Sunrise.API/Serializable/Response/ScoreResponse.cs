@@ -25,6 +25,7 @@ public class ScoreResponse
         CountKatu = score.CountKatu;
         CountMiss = score.CountMiss;
         GameMode = (GameMode)score.GameMode.ToVanillaGameMode();
+        GameModeExtended = score.GameMode;
         Grade = score.Grade;
         Id = score.Id;
         IsPassed = score.IsPassed;
@@ -32,6 +33,7 @@ public class ScoreResponse
         LeaderboardRank = score.GetLeaderboardRank().Result;
         MaxCombo = score.MaxCombo;
         Mods = score.Mods.GetModsString();
+        ModsInt = (int)score.Mods;
         Perfect = score.Perfect;
         PerformancePoints = score.PerformancePoints;
         TotalScore = score.TotalScore;
@@ -68,6 +70,9 @@ public class ScoreResponse
     [JsonPropertyName("game_mode")]
     public GameMode GameMode { get; set; }
 
+    [JsonPropertyName("game_mode_extended")]
+    public GameMode GameModeExtended { get; set; }
+
     [JsonPropertyName("grade")]
     public string Grade { get; set; }
 
@@ -89,6 +94,10 @@ public class ScoreResponse
     [JsonPropertyName("mods")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Mods { get; set; }
+
+    [JsonPropertyName("mods_int")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? ModsInt { get; set; }
 
     [JsonPropertyName("is_perfect")]
     public bool Perfect { get; set; }
