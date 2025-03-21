@@ -5,7 +5,6 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
-using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -20,10 +19,10 @@ public class RecalculateScoresCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (args == null || args.Length < 2)
+        if (args == null || args.Length < 3)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum> <startFromId>; Example: {Configuration.BotPrefix}recalculatescores 0 10 for osu std.");
+                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum> <startFromId> <isStartMaintenance>; Example: {Configuration.BotPrefix}recalculatescores 0 10 for osu std starting from score 10 with maintenance mode on..");
             return Task.CompletedTask;
         }
 
@@ -39,10 +38,16 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
+        if (!bool.TryParse(args[2], out var isStartMaintenance))
+        {
+            ChatCommandRepository.SendMessage(session, "Invalid isStartMaintenance value.");
+            return Task.CompletedTask;
+        }
+
         BackgroundTaskService.TryStartNewBackgroundJob<RecalculateScoresCommand>(
             () => RecalculateScores(session.UserId, CancellationToken.None, mode, startFromId),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message),
-            true);
+            isStartMaintenance);
 
         return Task.CompletedTask;
     }

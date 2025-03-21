@@ -21,10 +21,10 @@ public class RecalculateUserStatsCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (args == null || args.Length < 1)
+        if (args == null || args.Length < 2)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}recalculateuserstats <modeEnum | all> | Example: {Configuration.BotPrefix}recalculateuserstats 0 for osu std.");
+                $"Usage: {Configuration.BotPrefix}recalculateuserstats <modeEnum | all> <isStartMaintenance> | Example: {Configuration.BotPrefix}recalculateuserstats 0 true for osu std calculation with maintenance mode on.");
             return Task.CompletedTask;
         }
 
@@ -35,11 +35,17 @@ public class RecalculateUserStatsCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "Invalid mode.");
             return Task.CompletedTask;
         }
+        
+        if (!bool.TryParse(args[1], out var isStartMaintenance))
+        {
+            ChatCommandRepository.SendMessage(session, "Invalid isStartMaintenance value.");
+            return Task.CompletedTask;
+        }
 
         BackgroundTaskService.TryStartNewBackgroundJob<RecalculateUserStatsCommand>(
             () => RecalculateUserStats(session.UserId, CancellationToken.None, mode),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message),
-            true);
+            isStartMaintenance);
 
         return Task.CompletedTask;
     }
