@@ -5,13 +5,12 @@ namespace Sunrise.Shared.Extensions.Performances;
 public static class ModsExtensions
 {
     /// <summary>
-    ///     Ignore needed mods for pp calculations.
-    ///     For now, we do only custom recalculation for relax scores, thus this is the only mode which is ignored.
+    ///     Ignore needed mods for custom pp calculations.
     /// </summary>
     /// <param name="mods"></param>
     /// <returns></returns>
     public static Mods IgnoreNotStandardModsForRecalculation(this Mods mods)
     {
-        return mods & ~Mods.Relax;
+        return mods & ~Mods.Relax & ~Mods.Relax2;
     }
 }
