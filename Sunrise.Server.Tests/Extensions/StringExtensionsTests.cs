@@ -31,6 +31,7 @@ public class StringExtensionsTests
     [MemberData(nameof(GetInvalidCharacters))]
     public void IsValidStringCharacters_WithInvalidString_ReturnsFalse(string invalidCharacter)
     {
+        // Arrange
         var str = $"test123{invalidCharacter}";
 
         // Act
