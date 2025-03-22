@@ -1,6 +1,7 @@
 ﻿using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Extensions.Performances;
 
@@ -8,10 +9,11 @@ public static class PerformanceAttributesExtensions
 {
     public static PerformanceAttributes ApplyNotStandardModRecalculationsIfNeeded(this PerformanceAttributes performance, Score score)
     {
-        if (score.Mods.HasFlag(Mods.Relax))
+        if (score.Mods.HasFlag(Mods.Relax) && score.GameMode == GameMode.RelaxStandard)
         {
             performance.PerformancePoints = RecalculateToRelaxPerformance(performance, score.Accuracy, score.Mods);
         }
+
 
         return performance;
     }
