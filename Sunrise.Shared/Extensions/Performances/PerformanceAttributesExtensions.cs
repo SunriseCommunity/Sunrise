@@ -67,12 +67,12 @@ public static class PerformanceAttributesExtensions
 
         if (mods.HasFlag(Mods.HardRock))
         {
-            multi *= Math.Min(2, Math.Max(1, 1 * (CalculateMissPenalty(performance) / 1.80)));
+            multi *= Math.Min(2, Math.Max(1, 1 * (CalculateMissPenalty(performance) / 1.85)));
         }
 
         var relaxPp = Math.Pow(
-            Math.Pow(performance.PerformancePointsAim ?? 0, 1.1) +
-            Math.Pow(performance.PerformancePointsSpeed ?? 0, 0.7 * accDepression) +
+            Math.Pow(performance.PerformancePointsAim ?? 0, 1.15) +
+            Math.Pow(performance.PerformancePointsSpeed ?? 0, 0.65 * accDepression) +
             Math.Pow(performance.PerformancePointsAccuracy ?? 0, 1.1) +
             Math.Pow(performance.PerformancePointsFlashlight ?? 0, 1.13),
             1.0 / 1.1
