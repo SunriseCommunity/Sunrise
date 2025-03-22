@@ -11,9 +11,18 @@ public static class PerformanceAttributesExtensions
     {
         if (score.Mods.HasFlag(Mods.Relax) && score.GameMode == GameMode.RelaxStandard)
         {
-            performance.PerformancePoints = RecalculateToRelaxPerformance(performance, score.Accuracy, score.Mods);
+            performance.PerformancePoints = RecalculateToRelaxStdPerformance(performance, score.Accuracy, score.Mods);
         }
 
+        if (score.Mods.HasFlag(Mods.Relax) && score.GameMode == GameMode.RelaxCatchTheBeat)
+        {
+            performance.PerformancePoints = RecalculateToRelaxCtbPerformance(performance, score.Mods);
+        }
+
+        if (score.Mods.HasFlag(Mods.Relax2) && score.GameMode == GameMode.AutopilotStandard)
+        {
+            performance.PerformancePoints = RecalculateToAutopilotStdPerformance(performance);
+        }
 
         return performance;
     }
@@ -22,15 +31,25 @@ public static class PerformanceAttributesExtensions
     {
         if (mods.HasFlag(Mods.Relax) && performance.Difficulty.Mode == GameMode.Standard)
         {
-            performance.PerformancePoints = RecalculateToRelaxPerformance(performance, accuracy, mods);
+            performance.PerformancePoints = RecalculateToRelaxStdPerformance(performance, accuracy, mods);
+        }
+
+        if (mods.HasFlag(Mods.Relax) && performance.Difficulty.Mode == GameMode.CatchTheBeat)
+        {
+            performance.PerformancePoints = RecalculateToRelaxCtbPerformance(performance, mods);
+        }
+
+        if (mods.HasFlag(Mods.Relax2) && performance.Difficulty.Mode == GameMode.Standard)
+        {
+            performance.PerformancePoints = RecalculateToAutopilotStdPerformance(performance);
         }
 
         return performance;
     }
 
-    private static double RecalculateToRelaxPerformance(PerformanceAttributes performance, double accuracy, Mods mods)
+    private static double RecalculateToRelaxStdPerformance(PerformanceAttributes performance, double accuracy, Mods mods)
     {
-        var multi = CalculatePpMultiplier(performance);
+        var multi = CalculateStdPpMultiplier(performance);
         var streamsNerf = CalculateStreamsNerf(performance);
 
         double accDepression = 1;
@@ -48,18 +67,43 @@ public static class PerformanceAttributesExtensions
 
         if (mods.HasFlag(Mods.HardRock))
         {
-            multi *= Math.Max(1, 1 * (CalculateMissPenalty(performance) / 1.79));
+            multi *= Math.Min(2, Math.Max(1, 1 * (CalculateMissPenalty(performance) / 1.80)));
         }
 
         var relaxPp = Math.Pow(
-            Math.Pow(performance.PerformancePointsAim ?? 0, 1.11) +
-            Math.Pow(performance.PerformancePointsSpeed ?? 0, 0.83 * accDepression) +
-            Math.Pow(performance.PerformancePointsAccuracy ?? 0, 1.04) +
-            Math.Pow(performance.PerformancePointsFlashlight ?? 0, 1.06),
+            Math.Pow(performance.PerformancePointsAim ?? 0, 1.1) +
+            Math.Pow(performance.PerformancePointsSpeed ?? 0, 0.7 * accDepression) +
+            Math.Pow(performance.PerformancePointsAccuracy ?? 0, 1.1) +
+            Math.Pow(performance.PerformancePointsFlashlight ?? 0, 1.13),
             1.0 / 1.1
         ) * multi;
 
         return double.IsNaN(relaxPp) ? 0.0 : relaxPp;
+    }
+
+    private static double RecalculateToAutopilotStdPerformance(PerformanceAttributes performance)
+    {
+        var multi = CalculateStdPpMultiplier(performance);
+
+        var relaxPp = Math.Pow(
+            Math.Pow(performance.PerformancePointsAim ?? 0, 0.6) +
+            Math.Pow(performance.PerformancePointsSpeed ?? 0, 1.3) +
+            Math.Pow(performance.PerformancePointsAccuracy ?? 0, 1.05) +
+            Math.Pow(performance.PerformancePointsFlashlight ?? 0, 1.13),
+            1.0 / 1.1
+        ) * multi;
+
+        return double.IsNaN(relaxPp) ? 0.0 : relaxPp;
+    }
+
+    private static double RecalculateToRelaxCtbPerformance(PerformanceAttributes performance, Mods mods)
+    {
+        if (mods.HasFlag(Mods.Easy))
+        {
+            performance.PerformancePoints *= 0.67;
+        }
+
+        return performance.PerformancePoints;
     }
 
     private static double CalculateMissPenalty(PerformanceAttributes performance)
@@ -87,7 +131,7 @@ public static class PerformanceAttributesExtensions
         return Math.Round(aimValue / speedValue * 100) / 100;
     }
 
-    private static double CalculatePpMultiplier(PerformanceAttributes performance)
+    private static double CalculateStdPpMultiplier(PerformanceAttributes performance)
     {
         var aimValue = performance.PerformancePointsAim ?? 0;
         var speedValue = performance.PerformancePointsSpeed ?? 0;
