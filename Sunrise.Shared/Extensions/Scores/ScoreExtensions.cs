@@ -162,7 +162,7 @@ public static class ScoreExtensions
             IsScoreable = beatmap.IsScoreable,
             GameMode = (GameMode)int.Parse(split[15]),
             WhenPlayed = DateTime.UtcNow,
-            OsuVersion = split[17],
+            OsuVersion = split[17].Trim(),
             BeatmapStatus = beatmap.Status,
             ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null)
         };
