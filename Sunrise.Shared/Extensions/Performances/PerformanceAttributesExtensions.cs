@@ -20,7 +20,7 @@ public static class PerformanceAttributesExtensions
 
     public static PerformanceAttributes ApplyNotStandardModRecalculationsIfNeeded(this PerformanceAttributes performance, double accuracy, Mods mods)
     {
-        if (mods.HasFlag(Mods.Relax))
+        if (mods.HasFlag(Mods.Relax) && performance.Difficulty.Mode == GameMode.Standard)
         {
             performance.PerformancePoints = RecalculateToRelaxPerformance(performance, accuracy, mods);
         }
