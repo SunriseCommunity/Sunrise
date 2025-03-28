@@ -221,7 +221,9 @@ public static class Bootstrap
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        database.DbContext.Database.Migrate();
+        if (!Configuration.IsTestingEnv)
+            database.DbContext.Database.Migrate();
+
         DatabaseSeeder.UseAsyncSeeding(database.DbContext).Wait();
     }
 

@@ -18,6 +18,7 @@ public static class Configuration
     // API section
     private static string? _webTokenSecret;
     public static bool IsDevelopment => Env == "Development";
+    public static bool IsTestingEnv => Env == "Tests";
 
     public static string WebTokenSecret
     {
