@@ -96,7 +96,7 @@ public class RecurringJobs
         var backupPath = Path.Combine(Configuration.DataPath, "Backups");
 
         const string databaseBackupString = "backup_mysql_{0}_{1}.sql";
-        string? backupDatabaseFilename = null;
+        string? backupDatabaseFilePath = null;
 
         var databaseBackupFilePath = Path.Combine(Configuration.DataPath, databaseBackupString);
 
@@ -121,8 +121,8 @@ public class RecurringJobs
             if (backupDatabaseResult.IsFailure)
                 throw new Exception(backupDatabaseResult.Error);
 
-            var backupDatabaseFilePath = backupDatabaseResult.Value;
-            backupDatabaseFilename = Path.GetFileName(backupDatabaseFilePath);
+            backupDatabaseFilePath = backupDatabaseResult.Value;
+            var backupDatabaseFilename = Path.GetFileName(backupDatabaseFilePath);
 
             await CopyFileToZip(zipArchive, backupDatabaseFilePath, backupDatabaseFilename, ct);
 
@@ -143,8 +143,8 @@ public class RecurringJobs
         }
         finally
         {
-            if (backupDatabaseFilename != null && File.Exists(backupDatabaseFilename))
-                File.Delete(backupDatabaseFilename);
+            if (backupDatabaseFilePath != null && File.Exists(backupDatabaseFilePath))
+                File.Delete(backupDatabaseFilePath);
         }
     }
 
