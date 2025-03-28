@@ -34,7 +34,7 @@ app.Setup();
 app.UseHealthChecks("/health");
 app.UseScalarApiReference();
 
-app.ApplyDatabaseMigrations();
+app.ApplyDatabaseBootstrapping();
 app.UseStaticBackgrounds();
 app.UseMiddlewares();
 app.UseWebSockets();

@@ -112,9 +112,7 @@ public static class Bootstrap
                 optionsBuilder.AddInterceptors(serviceProvider.GetRequiredService<SecondLevelCacheInterceptor>());
 
             optionsBuilder
-                .UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)};Pooling=True;");
-
-            optionsBuilder.UseSeeding((ctx, _) => { DatabaseSeeder.UseAsyncSeeding(ctx).Wait(); });
+                .UseMySQL(Configuration.DatabaseConnectionString);
         });
     }
 
@@ -218,13 +216,13 @@ public static class Bootstrap
             });
     }
 
-    public static void ApplyDatabaseMigrations(this WebApplication app)
+    public static void ApplyDatabaseBootstrapping(this WebApplication app)
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        database.CheckAndApplyOldTypeOfMigrations();
         database.DbContext.Database.Migrate();
+        DatabaseSeeder.UseAsyncSeeding(database.DbContext).Wait();
     }
 
     public static void UseStaticBackgrounds(this WebApplication app)

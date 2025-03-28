@@ -35,18 +35,18 @@ public class SunriseDbContext : DbContext
     {
         modelBuilder.Entity<User>()
             .Property(u => u.Username)
-            .HasColumnType("TEXT COLLATE NOCASE");
+            .UseCollation("utf8mb4_unicode_ci");
 
         modelBuilder.Entity<User>()
             .Property(u => u.Email)
-            .HasColumnType("TEXT COLLATE NOCASE");
+            .UseCollation("utf8mb4_unicode_ci");
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlite($"Data Source={Path.Combine(Configuration.DataPath, Configuration.DatabaseName)};Pooling=True;");
+            optionsBuilder.UseMySQL(Configuration.DatabaseConnectionString);
         }
     }
 }
