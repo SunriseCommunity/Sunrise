@@ -8,6 +8,7 @@ using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -22,10 +23,18 @@ public abstract class DatabaseTest : BaseTest, IDisposable
 
     protected DatabaseTest(bool useRedis = false)
     {
-        UpdateRedisVariables(useRedis);
-        CreateFilesCopy();
+        try
+        {
+            UpdateRedisVariables(useRedis);
+            CreateFilesCopy();
 
-        App = new SunriseServerFactory();
+            App = new SunriseServerFactory();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     protected SunriseServerFactory App { get; }
@@ -39,10 +48,10 @@ public abstract class DatabaseTest : BaseTest, IDisposable
 
         Directory.Delete(Path.Combine(Configuration.DataPath), true);
 
-        Scope.Dispose();
         EnvManager.Dispose();
 
-        App.Dispose();
+        Scope?.Dispose();
+        App?.Dispose();
 
         base.Dispose();
         GC.SuppressFinalize(this);
@@ -90,12 +99,20 @@ public abstract class DatabaseTest : BaseTest, IDisposable
     protected async Task<User> CreateTestUser(User user)
     {
         await Database.Users.AddUser(user);
+
+        user.LastOnlineTime = user.LastOnlineTime.ToDatabasePrecision();
+        user.RegisterDate = user.RegisterDate.ToDatabasePrecision();
+
         return user;
     }
 
     protected async Task<Score> CreateTestScore(bool withReplay = true)
     {
         var user = await CreateTestUser();
+
+        user.LastOnlineTime = user.LastOnlineTime.ToDatabasePrecision();
+        user.RegisterDate = user.RegisterDate.ToDatabasePrecision();
+
         return await CreateTestScore(user, withReplay);
     }
 
@@ -109,6 +126,10 @@ public abstract class DatabaseTest : BaseTest, IDisposable
         }
 
         await Database.Scores.AddScore(score);
+
+        score.WhenPlayed = score.WhenPlayed.ToDatabasePrecision();
+        score.ClientTime = score.ClientTime.ToDatabasePrecision();
+
         return score;
     }
 
@@ -126,6 +147,9 @@ public abstract class DatabaseTest : BaseTest, IDisposable
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.ReplayFileId = replayRecordId;
+
+        score.WhenPlayed = score.WhenPlayed.ToDatabasePrecision();
+        score.ClientTime = score.ClientTime.ToDatabasePrecision();
 
         await Database.Scores.AddScore(score);
 
