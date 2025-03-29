@@ -24,7 +24,23 @@ services:
      networks:
        - monitoring
 
+  mysql-sunrise-db:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=test
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "3318:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
+  mysql:
   redis:
   postgres_data:
 

@@ -20,5 +20,11 @@ jobs:
         run: dotnet build --no-restore
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d
+      - name: Wait for MySQL to be ready
+        run: |
+          while ! docker compose -f docker-compose.tests.yml ps | grep "healthy"; do
+            echo "Waiting for MySQL..."
+            sleep 5
+          done
       - name: Test
         run: dotnet test --no-build --verbosity normal

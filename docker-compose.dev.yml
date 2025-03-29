@@ -46,7 +46,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  mysql-sunrise-db:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=sunrise
+    volumes:
+      - mysql:/var/lib/mysql
+    ports:
+      - "3308:3306"
+
 volumes:
+  mysql:
   redis:
   postgres_data:
 

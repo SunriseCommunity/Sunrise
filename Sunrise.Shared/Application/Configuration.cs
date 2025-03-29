@@ -18,6 +18,7 @@ public static class Configuration
     // API section
     private static string? _webTokenSecret;
     public static bool IsDevelopment => Env == "Development";
+    public static bool IsTestingEnv => Env == "Tests";
 
     public static string WebTokenSecret
     {
@@ -36,10 +37,12 @@ public static class Configuration
     public static string ApiDocumentationPath =>
         Config.GetSection("API").GetValue<string?>("DocumentationPath") ?? "/docs";
 
+    // Database section
+    public static string DatabaseConnectionString => Config.GetSection("Database").GetValue<string?>("ConnectionString") ?? "";
+
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
     public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;
-    public static string DatabaseName => Config.GetSection("Files").GetValue<string?>("DatabaseName") ?? "";
     public static string BannedUsernamesName => Config.GetSection("Files").GetValue<string?>("BannedUsernamesName") ?? "";
 
 

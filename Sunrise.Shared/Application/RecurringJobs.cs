@@ -1,6 +1,8 @@
 using System.IO.Compression;
+using CSharpFunctionalExtensions;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
+using MySql.Data.MySqlClient;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -93,8 +95,10 @@ public class RecurringJobs
         var dataFolderPath = Path.Combine(Configuration.DataPath, "Files");
         var backupPath = Path.Combine(Configuration.DataPath, "Backups");
 
-        var databaseFilePath = Path.Combine(Configuration.DataPath, Configuration.DatabaseName);
-        var databaseFileCopyPath = $"{databaseFilePath}.tmp";
+        const string databaseBackupString = "backup_mysql_{0}_{1}.sql";
+        string? backupDatabaseFilePath = null;
+
+        var databaseBackupFilePath = Path.Combine(Configuration.DataPath, databaseBackupString);
 
         var zipFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.zip");
 
@@ -112,9 +116,15 @@ public class RecurringJobs
 
             using var zipArchive = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
 
-            await CreateShadowCopy(databaseFilePath, databaseFileCopyPath, ct);
+            var backupDatabaseResult = await CreateDatabaseBackup(databaseBackupFilePath, ct);
 
-            await CopyFileToZip(zipArchive, databaseFilePath + ".tmp", Configuration.DatabaseName, ct);
+            if (backupDatabaseResult.IsFailure)
+                throw new Exception(backupDatabaseResult.Error);
+
+            backupDatabaseFilePath = backupDatabaseResult.Value;
+            var backupDatabaseFilename = Path.GetFileName(backupDatabaseFilePath);
+
+            await CopyFileToZip(zipArchive, backupDatabaseFilePath, backupDatabaseFilename, ct);
 
             foreach (var filePath in GetFilesRecursively(dataFolderPath, ct))
             {
@@ -133,8 +143,8 @@ public class RecurringJobs
         }
         finally
         {
-            if (File.Exists(databaseFileCopyPath))
-                File.Delete(databaseFileCopyPath);
+            if (backupDatabaseFilePath != null && File.Exists(backupDatabaseFilePath))
+                File.Delete(backupDatabaseFilePath);
         }
     }
 
@@ -147,23 +157,36 @@ public class RecurringJobs
         await fileReader.CopyToAsync(zipStream, ct);
     }
 
-    private static async Task CreateShadowCopy(string filePath, string newFilePath, CancellationToken ct)
+    private static async Task<Result<string>> CreateDatabaseBackup(string databaseBackupFilePathString, CancellationToken ct)
     {
-        await using var inputFile = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.ReadWrite);
+        var backupDatabaseTask = Task.Run(async () =>
+            {
+                try
+                {
+                    await using var conn = new MySqlConnection(Configuration.DatabaseConnectionString);
+                    await using var cmd = new MySqlCommand();
+                    using var mb = new MySqlBackup(cmd);
 
-        await using var outputFile = new FileStream(newFilePath, FileMode.Create);
+                    var databaseBackupFilename = string.Format(databaseBackupFilePathString, mb.Database.Name, DateTime.UtcNow.ToString("yyyyMMddHHmmss"));
 
-        var buffer = new byte[0x10000];
-        int bytes;
+                    cmd.Connection = conn;
+                    await conn.OpenAsync(ct);
+                    mb.ExportToFile(databaseBackupFilename);
+                    await conn.CloseAsync();
 
-        while ((bytes = await inputFile.ReadAsync(buffer, ct)) > 0)
-        {
-            await outputFile.WriteAsync(buffer.AsMemory(0, bytes), ct);
-        }
+                    return databaseBackupFilename;
+                }
+                catch (Exception ex)
+                {
+                    return Result.Failure<string>(ex.Message);
+                }
+            },
+            ct);
+
+        if (await Task.WhenAny(backupDatabaseTask, Task.Delay(60_000, ct)) == backupDatabaseTask)
+            return backupDatabaseTask.Result;
+
+        return Result.Failure<string>("Database backup operation timed out");
     }
 
     private static IEnumerable<string> GetFilesRecursively(string directory, CancellationToken ct = default)
