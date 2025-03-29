@@ -9,12 +9,10 @@ namespace Sunrise.Server.Packets.PacketHandlers;
 [PacketHandler(PacketType.ClientDisconnect)]
 public class DisconnectHandler : IPacketHandler
 {
-    public Task Handle(BanchoPacket packet, Session session)
+    public async Task Handle(BanchoPacket packet, Session session)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         sessions.WriteToAllSessions(PacketType.ServerUserQuit, session.UserId);
-        sessions.RemoveSession(session);
-
-        return Task.CompletedTask;
+        await sessions.RemoveSession(session);
     }
 }

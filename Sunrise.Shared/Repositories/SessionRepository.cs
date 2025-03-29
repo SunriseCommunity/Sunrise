@@ -56,7 +56,7 @@ public class SessionRepository
      * Soft remove current session from chats, multiplayer and spectating.
      * While not removing it, so on request we could find current session and send LoginReply
      */
-    public void SoftRemoveSession(Session session)
+    public async Task SoftRemoveSession(Session session)
     {
         session.Match?.RemovePlayer(session);
 
@@ -73,21 +73,20 @@ public class SessionRepository
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = database.Users.GetUser(id: session.UserId).ConfigureAwait(false).GetAwaiter().GetResult();
+        var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return;
 
         user.LastOnlineTime = DateTime.UtcNow;
-        _ = database.Users.UpdateUser(user);
+        await database.Users.UpdateUser(user);
     }
 
-    public void RemoveSession(Session session)
+    public async Task RemoveSession(Session session)
     {
-        SoftRemoveSession(session);
+        await SoftRemoveSession(session);
 
         _sessions.TryRemove(session.Token, out _);
     }
-
 
     public bool TryGetSession(string username, string? passhash, out Session? session)
     {
@@ -185,7 +184,7 @@ public class SessionRepository
         _sessions.TryAdd(session.Token, session);
     }
 
-    public void ClearInactiveSessions()
+    public async Task ClearInactiveSessions()
     {
         foreach (var session in _sessions.Values)
         {
@@ -193,7 +192,7 @@ public class SessionRepository
                 continue;
 
             WriteToAllSessions(PacketType.ServerUserQuit, session.UserId);
-            RemoveSession(session);
+            await RemoveSession(session);
         }
     }
 }

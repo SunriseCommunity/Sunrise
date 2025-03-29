@@ -36,7 +36,7 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
         if (oldSession != null)
         {
             oldSession.SendNotification("You have been logged in from another location. Please try again later.");
-            sessions.SoftRemoveSession(oldSession);
+            await sessions.SoftRemoveSession(oldSession);
         }
 
         var location = await regionService.GetRegion(ip);
