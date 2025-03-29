@@ -24,7 +24,7 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
             return (null,
                 "Server is currently in maintenance mode. Please try again later.",
                 LoginResponse.ServerError);
-        
+
         if (user.IsUserSunriseBot())
             return (null, "You can't login as Sunrise Bot", LoginResponse.InvalidCredentials);
 
@@ -36,7 +36,7 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
         if (oldSession != null)
         {
             oldSession.SendNotification("You have been logged in from another location. Please try again later.");
-            await sessions.SoftRemoveSession(oldSession);
+            await sessions.RemoveSession(oldSession);
         }
 
         var location = await regionService.GetRegion(ip);
@@ -52,7 +52,7 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
 
         return (session, null, LoginResponse.Success);
     }
-    
+
     public async Task<string?> GetFriends(int userId)
     {
         var user = await database.Users.GetUser(userId);
