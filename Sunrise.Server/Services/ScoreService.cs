@@ -147,12 +147,22 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
 
-        await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
+        var userGrades = await database.Users.Grades.GetUserGrades(user.Id, userStats.GameMode);
+
+        if (userGrades == null)
+        {
+            await SaveRejectedScore(score);
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user grades while submitting score");
+            return "error: no";
+        }
 
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
             var prevPBestWithSameMods = scoresWithSameMods.GetPersonalBestOf(score.UserId);
             score.UpdateSubmissionStatus(prevPBestWithSameMods);
+
+            await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
+            userGrades.UpdateWithScore(score, prevPBest);
 
             if (prevPBestWithSameMods != null && score.SubmissionStatus == SubmissionStatus.Best)
             {
@@ -163,6 +173,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
             await database.Scores.AddScore(score);
             await database.Users.Stats.UpdateUserStats(userStats, user);
+            await database.Users.Grades.UpdateUserGrades(userGrades);
         });
 
         if (transactionResult.IsFailure)
