@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.Shared.Enums.Users;
-using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models.Users;
 

@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Enums;
-using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models.Users;
 
