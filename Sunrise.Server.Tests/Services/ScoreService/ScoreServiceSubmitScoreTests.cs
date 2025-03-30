@@ -670,7 +670,8 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         if (userGrades == null)
             throw new Exception("UserGrades is null");
 
-        userGrades.CountA = 1;
+        userGrades = _mocker.User.SetRandomUserGrades(userGrades);
+        userGrades.CountA++;
 
         var arrangeUserGradesResult = await Database.Users.Grades.UpdateUserGrades(userGrades);
 
@@ -715,8 +716,12 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         var updatedUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, oldScore.GameMode);
 
         Assert.NotNull(updatedUserGrades);
-        Assert.Equal(1, updatedUserGrades.CountB);
-        Assert.Equal(0, updatedUserGrades.CountA);
+        userGrades.User = null!; // Ignore for comparison
+
+        userGrades.CountB++;
+        userGrades.CountA--;
+
+        Assert.Equivalent(userGrades, updatedUserGrades);
     }
 
     [Fact]

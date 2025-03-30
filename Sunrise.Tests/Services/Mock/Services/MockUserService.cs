@@ -30,6 +30,20 @@ public class MockUserService(MockService service)
         };
     }
 
+    public UserGrades SetRandomUserGrades(UserGrades grades)
+    {
+        grades.CountXH = service.GetRandomInteger(length: 3);
+        grades.CountX = service.GetRandomInteger(length: 3);
+        grades.CountSH = service.GetRandomInteger(length: 3);
+        grades.CountS = service.GetRandomInteger(length: 3);
+        grades.CountA = service.GetRandomInteger(length: 3);
+        grades.CountB = service.GetRandomInteger(length: 3);
+        grades.CountC = service.GetRandomInteger(length: 3);
+        grades.CountD = service.GetRandomInteger(length: 3);
+
+        return grades;
+    }
+
     public User GetRandomUser()
     {
         var username = GetRandomUsername();

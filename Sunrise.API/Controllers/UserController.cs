@@ -53,7 +53,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             user.LastOnlineTime = userSession.Attributes.LastPingRequest;
             userStatus = userSession.Attributes.Status.ToText();
         }
-        
+
         if (mode == null) return Ok(new UserResponse(user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
@@ -128,13 +128,13 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var userStats = await database.Users.Stats.GetUserStats(userId, (GameMode)mode);
+        var userStats = await database.Users.Stats.GetUserStats(userId, mode);
 
         if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
 
-        var snapshots = (await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, (GameMode)mode)).GetSnapshots();
+        var snapshots = (await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, mode)).GetSnapshots();
 
-        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
+        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode);
 
         snapshots.Add(new StatsSnapshot
         {
@@ -214,7 +214,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, (GameMode)mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
         var parsedBeatmaps = beatmapsIds.Select(async pair =>
         {
@@ -285,7 +285,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var countUsers = await database.Users.CountValidUsers();
 
-        var stats = await database.Users.Stats.GetUsersStats((GameMode)mode, (LeaderboardSortType)leaderboardType, options: new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var stats = await database.Users.Stats.GetUsersStats(mode, leaderboardType, options: new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
         if (stats.Count <= 0) return NotFound(new ErrorResponse("User stats not found"));
 
@@ -296,7 +296,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var usersWithStats = stats.Select(async userStats =>
         {
-            var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, (GameMode)mode);
+            var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, mode);
 
             return new UserWithStats(new UserResponse(userStats.User),
                 new UserStatsResponse(userStats, globalRank, countryRank));
@@ -404,10 +404,39 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     public async Task<IActionResult> GetUserMedals(int id,
         [FromQuery(Name = "mode")] GameMode mode)
     {
-        var userMedals = await database.Users.Medals.GetUserMedals(id, (GameMode)mode);
-        var modeMedals = await database.Medals.GetMedals((GameMode)mode);
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var userMedals = await database.Users.Medals.GetUserMedals(id, mode);
+        var modeMedals = await database.Medals.GetMedals(mode);
 
         return Ok(new MedalsResponse(userMedals, modeMedals));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/grades")]
+    [EndpointDescription("Get user grades")]
+    [ProducesResponseType(typeof(GradesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserGrades(int id,
+        [FromQuery(Name = "mode")] GameMode mode)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var userGrades = await database.Users.Grades.GetUserGrades(id, mode);
+
+        if (userGrades is null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        var user = await database.Users.GetUser(userGrades.UserId);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        return Ok(new GradesResponse(userGrades));
     }
 
     [HttpPost(RequestType.AvatarUpload)]
