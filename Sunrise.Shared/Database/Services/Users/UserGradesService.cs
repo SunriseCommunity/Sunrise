@@ -42,7 +42,7 @@ public class UserGradesService(
             var user = await databaseService.Value.Users.GetUser(userId);
             if (user == null) return null;
 
-            _logger.LogCritical($"User grades not found for user (id: {userId}) in mode {mode}. Creating new grades.");
+            _logger.LogInformation($"User grades not found for user (id: {userId}) in mode {mode}. Creating new grades.");
 
             grades = new UserGrades
             {
