@@ -163,6 +163,8 @@ public static class Bootstrap
         builder.Services.AddScoped<UserFavouritesService>();
         builder.Services.AddScoped<UserFileService>();
 
+        builder.Services.AddScoped<UserGradesService>();
+
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
 

@@ -18,7 +18,8 @@ public class UserRepository(
     UserModerationService userModerationService,
     UserMedalsService userMedalsService,
     UserFavouritesService userFavouritesService,
-    UserFileService userFileService)
+    UserFileService userFileService,
+    UserGradesService userGradesService)
 {
     private readonly ILogger _logger = logger;
 
@@ -27,6 +28,7 @@ public class UserRepository(
     public UserMedalsService Medals { get; } = userMedalsService;
     public UserModerationService Moderation { get; } = userModerationService;
     public UserFileService Files { get; } = userFileService;
+    public UserGradesService Grades { get; } = userGradesService;
 
     public async Task<Result> AddUser(User user)
     {

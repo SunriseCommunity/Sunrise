@@ -20,6 +20,7 @@ public class SunriseDbContext : DbContext
     public DbSet<UserFavouriteBeatmap> UserFavouriteBeatmaps { get; set; }
     public DbSet<UserMedals> UserMedals { get; set; }
     public DbSet<UserStats> UserStats { get; set; }
+    public DbSet<UserGrades> UserGrades { get; set; }
     public DbSet<UserStatsSnapshot> UserStatsSnapshot { get; set; }
     public DbSet<UserFile> UserFiles { get; set; }
 
