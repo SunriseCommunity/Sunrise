@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
-using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Tests.Abstracts;
@@ -666,12 +665,14 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         oldScore.EnrichWithSessionData(session);
 
-        var arrangeUserGradesResult = await Database.Users.Grades.UpdateUserGrades(new UserGrades
-        {
-            UserId = oldScore.UserId,
-            GameMode = oldScore.GameMode,
-            CountA = 1
-        });
+
+        var userGrades = await Database.Users.Grades.GetUserGrades(oldScore.UserId, oldScore.GameMode);
+        if (userGrades == null)
+            throw new Exception("UserGrades is null");
+
+        userGrades.CountA = 1;
+
+        var arrangeUserGradesResult = await Database.Users.Grades.UpdateUserGrades(userGrades);
 
         if (arrangeUserGradesResult.IsFailure)
             throw new Exception(arrangeUserGradesResult.Error);
@@ -711,11 +712,11 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, oldScore.GameMode);
+        var updatedUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, oldScore.GameMode);
 
-        Assert.NotNull(userGrades);
-        Assert.Equal(1, userGrades.CountB);
-        Assert.Equal(0, userGrades.CountA);
+        Assert.NotNull(updatedUserGrades);
+        Assert.Equal(1, updatedUserGrades.CountB);
+        Assert.Equal(0, updatedUserGrades.CountA);
     }
 
     [Fact]

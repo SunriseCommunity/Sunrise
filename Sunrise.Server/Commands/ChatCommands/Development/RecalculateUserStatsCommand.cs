@@ -4,13 +4,11 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
-using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
-using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -35,7 +33,7 @@ public class RecalculateUserStatsCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "Invalid mode.");
             return Task.CompletedTask;
         }
-        
+
         if (!bool.TryParse(args[1], out var isStartMaintenance))
         {
             ChatCommandRepository.SendMessage(session, "Invalid isStartMaintenance value.");
@@ -76,13 +74,6 @@ public class RecalculateUserStatsCommand : IChatCommand
     public async Task RecalculateUserStatsInGamemode(int userId, CancellationToken token, GameMode mode)
     {
         var startTime = DateTime.UtcNow;
-
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
-        foreach (var userSession in sessions.GetSessions())
-        {
-            userSession.SendBanchoMaintenance();
-        }
 
         var pageSize = 50;
 

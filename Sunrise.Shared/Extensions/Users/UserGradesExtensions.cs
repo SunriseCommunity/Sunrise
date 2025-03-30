@@ -7,7 +7,7 @@ namespace Sunrise.Shared.Extensions.Users;
 
 public static class UserGradesExtensions
 {
-    public static void UpdateWithScore(this UserGrades userGrades, Score score, Score? prevScore)
+    public static void UpdateWithScore(this UserGrades userGrades, Score score, Score? prevScore = null)
     {
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
