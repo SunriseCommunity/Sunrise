@@ -41,9 +41,9 @@ namespace Sunrise.Shared.Database.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_user_grades_UserId",
+                name: "IX_user_grades_UserId_GameMode",
                 table: "user_grades",
-                column: "UserId",
+                columns: new[] { "UserId", "GameMode" },
                 unique: true);
         }
 

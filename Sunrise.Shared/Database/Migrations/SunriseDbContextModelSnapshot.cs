@@ -405,7 +405,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
+                    b.HasIndex("UserId", "GameMode")
                         .IsUnique();
 
                     b.ToTable("user_grades");

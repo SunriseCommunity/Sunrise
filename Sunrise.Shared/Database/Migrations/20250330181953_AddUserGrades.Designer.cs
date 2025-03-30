@@ -11,7 +11,7 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    [Migration("20250330172037_AddUserGrades")]
+    [Migration("20250330181953_AddUserGrades")]
     partial class AddUserGrades
     {
         /// <inheritdoc />
@@ -408,7 +408,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
+                    b.HasIndex("UserId", "GameMode")
                         .IsUnique();
 
                     b.ToTable("user_grades");

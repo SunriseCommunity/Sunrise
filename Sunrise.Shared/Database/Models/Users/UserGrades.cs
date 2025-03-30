@@ -5,7 +5,7 @@ using Sunrise.Shared.Enums.Beatmaps;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_grades")]
-[Index(nameof(UserId), IsUnique = true)]
+[Index(nameof(UserId), nameof(GameMode), IsUnique = true)]
 public class UserGrades
 {
     public int Id { get; set; }
@@ -13,8 +13,8 @@ public class UserGrades
     [ForeignKey("UserId")]
     public User User { get; set; } = null!;
 
-    public int UserId { get; set; }
-    public GameMode GameMode { get; set; }
+    public required int UserId { get; set; }
+    public required GameMode GameMode { get; set; }
 
     public int CountXH { get; set; } = 0;
     public int CountX { get; set; } = 0;
