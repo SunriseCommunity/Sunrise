@@ -7,7 +7,6 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
-using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models;
 

@@ -1,5 +1,4 @@
-﻿using System.Data.SQLite;
-using CSharpFunctionalExtensions;
+﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -85,80 +84,5 @@ public sealed class DatabaseService(
 
             return Result.Failure($"{ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
         }
-    }
-
-    [Obsolete("This method executes old type of migrations, which would be removed in the future versions.")]
-    public void CheckAndApplyOldTypeOfMigrations()
-    {
-        var connectionString = DbContext.Database.GetDbConnection().ConnectionString;
-
-        using var conn = new SQLiteConnection(connectionString);
-
-        conn.Open();
-
-        var result = new SQLiteCommand("SELECT name FROM sqlite_master WHERE type='table' AND name='migration'", conn).ExecuteScalar();
-        var isOldTypeOfMigrationTableExists = result != null;
-
-        if (!isOldTypeOfMigrationTableExists)
-        {
-            conn.Close();
-            return;
-        }
-
-        List<string> appliedMigrations = [];
-
-        using (var reader = new SQLiteCommand("SELECT name FROM migration", conn).ExecuteReader())
-        {
-            while (reader.Read())
-            {
-                var migrationName = reader.GetString(0);
-                appliedMigrations.Add(migrationName);
-            }
-        }
-
-        var migrationFiles = Directory.GetFiles(Path.Combine(Configuration.DataPath, "Migrations"), "*.sql").OrderBy(f => f).ToList();
-
-        var nonAppliedMigrations = migrationFiles.Where(f => !appliedMigrations.Contains(Path.GetFileName(f))).ToArray();
-
-        using (var transaction = conn.BeginTransaction())
-        {
-            try
-            {
-                foreach (var filePath in nonAppliedMigrations)
-                {
-                    var sqlQuery = File.ReadAllText(filePath);
-                    new SQLiteCommand(sqlQuery, conn, transaction).ExecuteNonQuery();
-
-                    var insertAppliedMigrationCommand = new SQLiteCommand(
-                        "INSERT INTO migration (Name, AppliedAt) VALUES (@MigrationName, @AppliedAt)",
-                        conn,
-                        transaction);
-
-                    insertAppliedMigrationCommand.Parameters.AddWithValue("@MigrationName", Path.GetFileName(filePath));
-                    insertAppliedMigrationCommand.Parameters.AddWithValue("@AppliedAt", DateTime.UtcNow);
-
-                    insertAppliedMigrationCommand.ExecuteNonQuery();
-
-                    Console.WriteLine($"Successfully executed migration: {filePath}");
-                }
-
-                transaction.Commit();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"Migration failed: {ex.Message}");
-                transaction.Rollback();
-
-                throw new Exception("Exception occured while applying migration.", ex);
-            }
-        }
-
-        conn.Close();
-
-        logger.LogInformation($"Successfully applied migrations: {nonAppliedMigrations.Length}");
-
-        logger.LogInformation("Flushing all cache to avoid any data mismatching");
-
-        FlushAndUpdateRedisCache(false).Wait();
     }
 }

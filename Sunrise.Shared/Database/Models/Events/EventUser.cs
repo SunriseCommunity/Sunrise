@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
-using Index = Microsoft.EntityFrameworkCore.IndexAttribute;
 
 namespace Sunrise.Shared.Database.Models.Events;
 

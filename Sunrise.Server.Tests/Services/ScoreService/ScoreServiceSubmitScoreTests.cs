@@ -110,6 +110,51 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
     }
 
     [Fact]
+    public async Task TestSuccessfulUpdateUserGradesAfterScoreSubmission()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.Grade = "S";
+        score.BeatmapId = beatmapId;
+        score.Mods |= Mods.DoubleTime;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
+
+        Assert.NotNull(userGrades);
+        Assert.Equal(1, userGrades.CountS);
+    }
+
+    [Fact]
     public async Task TestSuccessfulUploadReplayUponSubmitScore()
     {
         // Arrange
@@ -603,6 +648,80 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
+    }
+
+    [Fact]
+    public async Task TestUponSubmittingBetterScoreThanPreviousOneUpdateUserGrades()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var oldScore = _mocker.Score.GetBestScoreableRandomScore();
+        oldScore.Grade = "A";
+        oldScore.SubmissionStatus = SubmissionStatus.Best;
+        oldScore.PerformancePoints = -1;
+
+        oldScore.EnrichWithSessionData(session);
+
+
+        var userGrades = await Database.Users.Grades.GetUserGrades(oldScore.UserId, oldScore.GameMode);
+        if (userGrades == null)
+            throw new Exception("UserGrades is null");
+
+        userGrades = _mocker.User.SetRandomUserGrades(userGrades);
+        userGrades.CountA++;
+
+        var arrangeUserGradesResult = await Database.Users.Grades.UpdateUserGrades(userGrades);
+
+        if (arrangeUserGradesResult.IsFailure)
+            throw new Exception(arrangeUserGradesResult.Error);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = oldScore.GameMode;
+        score.Mods = oldScore.Mods;
+        score.BeatmapId = oldScore.BeatmapId;
+        score.BeatmapHash = oldScore.BeatmapHash;
+        score.Grade = "B";
+
+        score.TotalScore = oldScore.TotalScore + 1;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        await Database.Scores.AddScore(oldScore);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var updatedUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, oldScore.GameMode);
+
+        Assert.NotNull(updatedUserGrades);
+        userGrades.User = null!; // Ignore for comparison
+
+        userGrades.CountB++;
+        userGrades.CountA--;
+
+        Assert.Equivalent(userGrades, updatedUserGrades);
     }
 
     [Fact]
