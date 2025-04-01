@@ -112,7 +112,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(database, score)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 

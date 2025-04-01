@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
 using Sunrise.API.Services;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Utils.Converters;
 
@@ -14,21 +17,24 @@ public class UserResponse
     {
     }
 
-    public UserResponse(User user, string? status = null)
+    public UserResponse(DatabaseService database, User user, string? status = null)
     {
+        var avatarRecord = database.DbContext.UserFiles.FirstOrDefault(x => x.OwnerId == user.Id && x.Type == FileType.Avatar);
+        var bannerRecord = database.DbContext.UserFiles.FirstOrDefault(x => x.OwnerId == user.Id && x.Type == FileType.Banner);
+
         Id = user.Id;
         Username = user.Username;
         Description = user.Description;
         Country = ((CountryCode)user.Country).ToString();
         RegisterDate = user.RegisterDate;
+        AvatarUrl = $"https://a.{Configuration.Domain}/avatar/{user.Id}{(avatarRecord != null ? $"?{new DateTimeOffset(avatarRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
+        BannerUrl = $"https://a.{Configuration.Domain}/banner/{user.Id}{(bannerRecord != null ? $"?{new DateTimeOffset(bannerRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
         LastOnlineTime = user.LastOnlineTime;
         IsRestricted = user.IsRestricted();
         SilencedUntil = user.SilencedUntil > DateTime.UtcNow ? user.SilencedUntil : null!;
         Badges = UserService.GetUserBadges(user);
         UserStatus = status;
     }
-
-
 
     [JsonPropertyName("user_id")]
     public int Id { get; set; }
@@ -45,6 +51,13 @@ public class UserResponse
     [JsonPropertyName("register_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     public DateTime RegisterDate { get; set; }
+
+    [JsonPropertyName("avatar_url")]
+    public string AvatarUrl { get; set; }
+
+    [JsonPropertyName("banner_url")]
+    public string BannerUrl { get; set; }
+
 
     [JsonPropertyName("last_online_time")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

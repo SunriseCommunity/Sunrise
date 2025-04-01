@@ -29,7 +29,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
 
         await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
 
-        return Ok(new ScoreResponse(score));
+        return Ok(new ScoreResponse(database, score));
     }
 
     [HttpGet("replay")]
@@ -72,14 +72,14 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var scores = await database.Scores.GetBestScoresByGameMode((GameMode)mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var scores = await database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
         foreach (var score in scores)
         {
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(database, score)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, scores.Count));
     }

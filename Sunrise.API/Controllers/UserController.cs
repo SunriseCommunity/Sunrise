@@ -54,7 +54,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             userStatus = userSession.Attributes.Status.ToText();
         }
 
-        if (mode == null) return Ok(new UserResponse(user, userStatus));
+        if (mode == null) return Ok(new UserResponse(database, user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
@@ -66,7 +66,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(database, user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
@@ -182,7 +182,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(score))
+        var parsedScores = scores.Select(score => new ScoreResponse(database, score))
             .ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalScores));
@@ -298,7 +298,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         {
             var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, mode);
 
-            return new UserWithStats(new UserResponse(userStats.User),
+            return new UserWithStats(new UserResponse(database, userStats.User),
                 new UserStatsResponse(userStats, globalRank, countryRank));
         }).Select(task => task.Result).ToList();
 
@@ -326,7 +326,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        return Ok(users.Select(x => new UserResponse(x)));
+        return Ok(users.Select(x => new UserResponse(database, x)));
     }
 
     [HttpGet]
