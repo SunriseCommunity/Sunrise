@@ -332,6 +332,35 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     }
 
     [HttpGet]
+    [Route("friends")]
+    [EndpointDescription("Get authenticated users friends")]
+    [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFriends(
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 1
+    )
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var users = await database.Users.GetValidUsers(user.FriendsList, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        return Ok(users.Select(x => new UserResponse(database, x)));
+    }
+
+    [HttpGet]
     [Route("{id:int}/friend/status")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get user friendship status")]
