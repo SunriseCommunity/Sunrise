@@ -20,6 +20,10 @@ public class ApiUserFriendsTests : ApiTest
         // Arrange
         var client = App.CreateClient().UseClient("api");
 
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
         // Act
         var response = await client.GetAsync($"user/friends?limit={limit}");
 
@@ -37,6 +41,10 @@ public class ApiUserFriendsTests : ApiTest
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
 
         // Act
         var response = await client.GetAsync($"user/friends?page={page}");
@@ -61,6 +69,8 @@ public class ApiUserFriendsTests : ApiTest
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
 
+        var randomUserResponse = new UserResponse(Database, Sessions, randomUser);
+
         user.AddFriend(randomUser.Id);
         await Database.Users.UpdateUser(user);
 
@@ -74,7 +84,7 @@ public class ApiUserFriendsTests : ApiTest
         var responseUser = responseUsers?.Friends.FirstOrDefault();
         Assert.NotNull(responseUser);
 
-        Assert.Equivalent(randomUser, responseUser);
+        Assert.Equivalent(randomUserResponse, responseUser);
     }
 
     [Fact]

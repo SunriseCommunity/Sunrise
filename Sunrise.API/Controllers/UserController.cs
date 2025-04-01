@@ -323,6 +323,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("friends")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Get authenticated users friends")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
