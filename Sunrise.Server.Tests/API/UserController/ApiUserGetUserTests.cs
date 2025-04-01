@@ -62,7 +62,7 @@ public class ApiUserGetUserTests : ApiTest
         var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
-        var userData = new UserResponse(user);
+        var userData = new UserResponse(Database, user);
 
         // Act
         var response = await client.GetAsync($"user/{user.Id}");
