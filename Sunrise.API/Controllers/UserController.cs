@@ -44,17 +44,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var userStatus = "Offline";
-
-        var userSession = sessions.GetSession(userId: id);
-
-        if (userSession != null)
-        {
-            user.LastOnlineTime = userSession.Attributes.LastPingRequest;
-            userStatus = userSession.Attributes.Status.ToText();
-        }
-
-        if (mode == null) return Ok(new UserResponse(database, user, userStatus));
+        if (mode == null) return Ok(new UserResponse(database, sessions, user));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
@@ -66,7 +56,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(database, user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(database, sessions, user), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
@@ -184,7 +174,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, score))
+        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score))
             .ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalScores));
@@ -300,7 +290,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         {
             var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, mode);
 
-            return new UserWithStats(new UserResponse(database, userStats.User),
+            return new UserWithStats(new UserResponse(database, sessions, userStats.User),
                 new UserStatsResponse(userStats, globalRank, countryRank));
         }).Select(task => task.Result).ToList();
 
@@ -328,7 +318,37 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        return Ok(users.Select(x => new UserResponse(database, x)));
+        return Ok(users.Select(x => new UserResponse(database, sessions, x)));
+    }
+
+    [HttpGet]
+    [Route("friends")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Get authenticated users friends")]
+    [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFriends(
+        [FromQuery(Name = "limit")] int? limit = 50,
+        [FromQuery(Name = "page")] int? page = 1
+    )
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        var user = await database.Users.GetUser(id: session.UserId);
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+
+        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(database, sessions, x)).ToList(), totalCount));
     }
 
     [HttpGet]

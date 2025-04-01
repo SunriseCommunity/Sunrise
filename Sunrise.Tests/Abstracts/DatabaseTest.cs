@@ -40,6 +40,7 @@ public abstract class DatabaseTest : BaseTest, IDisposable
     protected SunriseServerFactory App { get; }
     protected IServiceScope Scope => App.Server.Services.CreateScope();
     protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
+    protected SessionRepository Sessions => Scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
     public new virtual void Dispose()
     {

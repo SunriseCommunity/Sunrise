@@ -8,6 +8,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -18,7 +19,7 @@ namespace Sunrise.API.Controllers;
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService) : ControllerBase
+public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
@@ -113,7 +114,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 

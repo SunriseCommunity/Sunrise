@@ -22,7 +22,7 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager)
+public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions)
 {
     public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
@@ -187,7 +187,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
         }
 
-        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(database, score)));
+        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(database, sessions, score)));
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)

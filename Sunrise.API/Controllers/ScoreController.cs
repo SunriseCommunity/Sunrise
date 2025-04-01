@@ -6,6 +6,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects;
+using Sunrise.Shared.Repositories;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.API.Controllers;
@@ -14,7 +15,7 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class ScoreController(DatabaseService database, SessionManager sessionManager) : ControllerBase
+public class ScoreController(DatabaseService database, SessionManager sessionManager, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("")]
     [ResponseCache(Duration = 300)]
@@ -29,7 +30,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
 
         await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
 
-        return Ok(new ScoreResponse(database, score));
+        return Ok(new ScoreResponse(database, sessions, score));
     }
 
     [HttpGet("replay")]
@@ -81,7 +82,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, scores.Count));
     }

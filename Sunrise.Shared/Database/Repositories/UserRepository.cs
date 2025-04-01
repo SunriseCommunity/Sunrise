@@ -133,6 +133,22 @@ public class UserRepository(
         return user;
     }
 
+    public async Task<(List<User> Users, int TotalCount)> GetUsersFriends(User user, QueryOptions? options = null)
+    {
+        var friendsQuery = dbContext.Users
+            .Where(u => user.FriendsList.Contains(u.Id))
+            .FilterValidUsers();
+
+        var totalCount = await friendsQuery.CountAsync();
+
+        var friends = await friendsQuery
+            .UseQueryOptions(options)
+            .ToListAsync();
+
+        return (friends, totalCount);
+    }
+
+
 
     public async Task<int> CountUsers()
     {

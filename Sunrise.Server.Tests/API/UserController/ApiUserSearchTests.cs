@@ -75,7 +75,7 @@ public class ApiUserSearchTests : ApiTest
         var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
-        var userData = new UserResponse(Database, user);
+        var userData = new UserResponse(Database, Sessions, user);
 
         // Act
         var response = await client.GetAsync($"user/search?query={user.Username}");
@@ -86,7 +86,6 @@ public class ApiUserSearchTests : ApiTest
         var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
         var responseUser = responseUsers?.FirstOrDefault();
         Assert.NotNull(responseUser);
-        responseUser.UserStatus = null; // Ignore user status for comparison
 
         Assert.Equivalent(userData, responseUser);
     }

@@ -61,7 +61,7 @@ public class ApiUserGetSelfTests : ApiTest
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var userData = new UserResponse(Database, user);
+        var userData = new UserResponse(Database, Sessions, user);
 
         // Act
         var response = await client.GetAsync("user/self");
@@ -71,7 +71,6 @@ public class ApiUserGetSelfTests : ApiTest
 
         var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
         Assert.NotNull(responseUser);
-        responseUser.UserStatus = null; // Ignore user status for comparison
 
         Assert.Equivalent(userData, responseUser);
     }

@@ -4,6 +4,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Serializable.Response;
@@ -16,7 +17,7 @@ public class ScoreResponse
     {
     }
 
-    public ScoreResponse(DatabaseService database, Score score)
+    public ScoreResponse(DatabaseService database, SessionRepository sessionRepository, Score score)
     {
         BeatmapId = score.BeatmapId;
         Count100 = score.Count100;
@@ -40,7 +41,7 @@ public class ScoreResponse
         TotalScore = score.TotalScore;
         UserId = score.UserId;
         WhenPlayed = score.WhenPlayed;
-        User = new UserResponse(database, score.User);
+        User = new UserResponse(database, sessionRepository, score.User);
         Accuracy = score.Accuracy;
     }
 
