@@ -78,7 +78,7 @@ public class UserStatsService(
         statsQuery = leaderboardSortType switch
         {
             LeaderboardSortType.Pp => statsQuery.OrderByDescending(e => e.PerformancePoints),
-            LeaderboardSortType.Score => statsQuery.OrderByDescending(e => e.TotalScore),
+            LeaderboardSortType.Score => statsQuery.OrderByDescending(e => e.RankedScore),
             _ => throw new ArgumentOutOfRangeException(nameof(leaderboardSortType), leaderboardSortType, null)
         };
 
