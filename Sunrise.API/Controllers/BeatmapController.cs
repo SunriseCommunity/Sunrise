@@ -118,6 +118,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     }
 
     [HttpGet("beatmapset/{id:int}")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Add/remove beatmapset from users favourites. Provide favourite boolean query to add or remove beatmapset from users favourites")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

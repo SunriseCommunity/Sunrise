@@ -363,6 +363,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpPost]
     [Route("{id:int}/friend/status")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Change friendship status with user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
