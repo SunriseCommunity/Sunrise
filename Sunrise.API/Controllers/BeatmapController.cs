@@ -75,6 +75,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
     [HttpGet("beatmap/{id:int}/leaderboard")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
+    [ResponseCache(Duration = 10)]
     [EndpointDescription("Get beatmap leaderboard")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
@@ -149,6 +150,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     }
 
     [HttpGet("beatmapset/{id:int}/favourited")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Check if beatmapset is favourited by current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]

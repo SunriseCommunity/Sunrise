@@ -12,12 +12,12 @@ namespace Sunrise.API.Controllers;
 
 [Route("score/{id:int}")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class ScoreController(DatabaseService database, SessionManager sessionManager) : ControllerBase
 {
     [HttpGet("")]
+    [ResponseCache(Duration = 300)]
     [EndpointDescription("Get score")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
@@ -33,6 +33,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("replay")]
+    [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [EndpointDescription("Get score replay file")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -60,6 +61,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("/score/top")]
+    [ResponseCache(Duration = 30)]
     [EndpointDescription("Get best scores on the server")]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] GameMode mode,

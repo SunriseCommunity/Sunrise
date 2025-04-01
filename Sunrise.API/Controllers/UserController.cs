@@ -22,7 +22,7 @@ namespace Sunrise.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 10)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class UserController(SessionManager sessionManager, BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
@@ -73,6 +73,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("self")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Same as /user/{id}, but automatically gets id of current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
@@ -115,6 +116,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpGet]
     [Route("{userId:int}/graph")]
     [EndpointDescription("Get user stats graph data")]
+    [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] GameMode mode)
@@ -331,6 +333,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("{id:int}/friend/status")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Get user friendship status")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
