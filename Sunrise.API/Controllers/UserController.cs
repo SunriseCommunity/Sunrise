@@ -22,7 +22,7 @@ namespace Sunrise.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 60)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 10)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class UserController(SessionManager sessionManager, BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
@@ -54,7 +54,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             userStatus = userSession.Attributes.Status.ToText();
         }
 
-        if (mode == null) return Ok(new UserResponse(user, userStatus));
+        if (mode == null) return Ok(new UserResponse(database, user, userStatus));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
@@ -66,13 +66,14 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(database, user, userStatus), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
 
     [HttpGet]
     [Route("self")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Same as /user/{id}, but automatically gets id of current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
@@ -115,6 +116,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpGet]
     [Route("{userId:int}/graph")]
     [EndpointDescription("Get user stats graph data")]
+    [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] GameMode mode)
@@ -182,7 +184,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(score))
+        var parsedScores = scores.Select(score => new ScoreResponse(database, score))
             .ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalScores));
@@ -298,7 +300,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         {
             var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, mode);
 
-            return new UserWithStats(new UserResponse(userStats.User),
+            return new UserWithStats(new UserResponse(database, userStats.User),
                 new UserStatsResponse(userStats, globalRank, countryRank));
         }).Select(task => task.Result).ToList();
 
@@ -326,11 +328,12 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        return Ok(users.Select(x => new UserResponse(x)));
+        return Ok(users.Select(x => new UserResponse(database, x)));
     }
 
     [HttpGet]
     [Route("{id:int}/friend/status")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Get user friendship status")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -360,6 +363,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpPost]
     [Route("{id:int}/friend/status")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Change friendship status with user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]

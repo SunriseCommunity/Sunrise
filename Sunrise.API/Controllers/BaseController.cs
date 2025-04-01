@@ -43,7 +43,6 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
 
     [HttpGet]
     [Route("/status")]
-    [ResponseCache(VaryByHeader = "User-Agent", Duration = 60)]
     [EndpointDescription("Check server status")]
     [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)

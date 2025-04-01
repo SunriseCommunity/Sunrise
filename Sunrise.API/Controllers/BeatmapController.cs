@@ -75,6 +75,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
     [HttpGet("beatmap/{id:int}/leaderboard")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
+    [ResponseCache(Duration = 10)]
     [EndpointDescription("Get beatmap leaderboard")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
@@ -112,11 +113,12 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
         }
 
-        var parsedScores = scores.Select(score => new ScoreResponse(score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(database, score)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 
     [HttpGet("beatmapset/{id:int}")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Add/remove beatmapset from users favourites. Provide favourite boolean query to add or remove beatmapset from users favourites")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -149,6 +151,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     }
 
     [HttpGet("beatmapset/{id:int}/favourited")]
+    [ResponseCache(Duration = 0)]
     [EndpointDescription("Check if beatmapset is favourited by current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]

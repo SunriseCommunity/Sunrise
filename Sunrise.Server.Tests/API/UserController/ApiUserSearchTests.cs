@@ -75,7 +75,7 @@ public class ApiUserSearchTests : ApiTest
         var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
-        var userData = new UserResponse(user);
+        var userData = new UserResponse(Database, user);
 
         // Act
         var response = await client.GetAsync($"user/search?query={user.Username}");

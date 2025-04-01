@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -15,7 +16,7 @@ public class ScoreResponse
     {
     }
 
-    public ScoreResponse(Score score)
+    public ScoreResponse(DatabaseService database, Score score)
     {
         BeatmapId = score.BeatmapId;
         Count100 = score.Count100;
@@ -39,7 +40,7 @@ public class ScoreResponse
         TotalScore = score.TotalScore;
         UserId = score.UserId;
         WhenPlayed = score.WhenPlayed;
-        User = new UserResponse(score.User);
+        User = new UserResponse(database, score.User);
         Accuracy = score.Accuracy;
     }
 
