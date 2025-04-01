@@ -37,7 +37,7 @@ public class ApiUserFriendsTests : ApiTest
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
-        
+
         // Act
         var response = await client.GetAsync($"user/friends?page={page}");
 
@@ -57,10 +57,10 @@ public class ApiUserFriendsTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
-        
+
         user.AddFriend(randomUser.Id);
         await Database.Users.UpdateUser(user);
 
@@ -70,10 +70,9 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
-        var responseUser = responseUsers?.FirstOrDefault();
+        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
+        var responseUser = responseUsers?.Friends.FirstOrDefault();
         Assert.NotNull(responseUser);
-        responseUser.UserStatus = null; // Ignore user status for comparison
 
         Assert.Equivalent(randomUser, responseUser);
     }
@@ -108,11 +107,12 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
         Assert.NotNull(responseUsers);
 
-        Assert.Single(responseUsers);
-        Assert.Equal(responseUsers.First().Id, lastAddedUserId);
+        Assert.Single(responseUsers.Friends);
+        Assert.Equal(responseUsers.Friends.First().Id, lastAddedUserId);
+        Assert.Equal(2, responseUsers.TotalCount);
     }
 
     [Fact]
@@ -124,24 +124,25 @@ public class ApiUserFriendsTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
-        
+
         user.AddFriend(randomUser.Id);
         await Database.Users.UpdateUser(user);
 
         await Database.Users.Moderation.RestrictPlayer(randomUser.Id, null, "Test");
 
         // Act
-        var response = await client.GetAsync($"user/friends");
+        var response = await client.GetAsync("user/friends");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
         Assert.NotNull(responseUsers);
 
-        Assert.Empty(responseUsers);
+        Assert.Empty(responseUsers.Friends);
+        Assert.Equal(0, responseUsers.TotalCount);
     }
 }

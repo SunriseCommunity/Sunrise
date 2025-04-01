@@ -25,7 +25,7 @@ public class ApiScoreGetScoreTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
         var responseScore = await response.Content.ReadFromJsonAsync<ScoreResponse>();
-        var scoreData = new ScoreResponse(Database, score);
+        var scoreData = new ScoreResponse(Database,  Sessions,  score);
 
         Assert.Equivalent(responseScore, scoreData);
     }
