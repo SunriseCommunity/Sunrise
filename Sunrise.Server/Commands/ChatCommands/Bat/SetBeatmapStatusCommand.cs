@@ -1,0 +1,80 @@
+using Sunrise.Server.Attributes;
+using Sunrise.Server.Repositories;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
+
+namespace Sunrise.Server.Commands.ChatCommands.Development;
+
+[ChatCommand("setbeatmapstatus", requiredPrivileges: UserPrivilege.Bat)]
+public class SetBeatmapStatusCommand : IChatCommand
+{
+    public async Task Handle(Session session, ChatChannel? channel, string[]? args)
+    {
+        if (args == null || args.Length < 2)
+        {
+            ChatCommandRepository.SendMessage(session,
+                $"Usage: {Configuration.BotPrefix}setbeatmapstatus <beatmapId | beatmapHash> <beatmapStatus | \"reset\">; Example: {Configuration.BotPrefix}setbeatmapstatus 13 Ranked" 
+                + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatus)))}");
+            return;
+        }
+
+        var beatmapHash = args[0];
+
+        if (!Enum.TryParse(args[1], out BeatmapStatus status))
+        {
+            ChatCommandRepository.SendMessage(session, "Invalid status.");
+            return;
+        }
+
+        using var scope = ServicesProviderHolder.CreateScope();
+        var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
+
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash);
+
+        if (beatmapSet == null)
+        {
+            ChatCommandRepository.SendMessage(session, "Beatmap set not found.");
+            return;
+        }
+
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
+
+        if (beatmap == null)
+        {
+            ChatCommandRepository.SendMessage(session, "Beatmap not found.");
+            return;
+        }
+
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var customStatus = await database.CustomBeatmapStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
+
+        if (customStatus != null)
+        {
+            customStatus.Status = status;
+            customStatus.UpdatedByUserId = session.UserId;
+        }
+        else
+        {
+            customStatus = new CustomBeatmapStatus
+            {
+                Status = status,
+                UpdatedByUserId = session.UserId,
+                BeatmapHash = beatmap.Checksum!,
+                BeatmapSetId = beatmapSet.Id
+            };
+        }
+
+        await database.CustomBeatmapStatuses.UpdateCustomBeatmapStatus(customStatus);
+        await database.Beatmaps.ClearCachedBeatmapSet(beatmapSet);
+
+        ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} steatus was updated to {status}!");
+    }
+}

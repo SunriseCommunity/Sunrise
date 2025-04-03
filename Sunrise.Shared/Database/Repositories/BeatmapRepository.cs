@@ -5,7 +5,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class BeatmapRepository(RedisRepository redis)
+public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusRepository customBeatmapStatusRepository)
 {
     private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
 
@@ -59,7 +59,9 @@ public class BeatmapRepository(RedisRepository redis)
 
         if (beatmapSet == null) return null;
 
-        beatmapSet.UpdateBeatmapRanking();
+        var customStatuses = await customBeatmapStatusRepository.GetCustomBeatmapSetStatuses(beatmapSet.Id);
+
+        beatmapSet.UpdateBeatmapRanking(customStatuses);
 
         return beatmapSet;
     }
