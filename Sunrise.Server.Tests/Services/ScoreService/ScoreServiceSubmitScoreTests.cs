@@ -68,7 +68,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
     }
-    
+
     [Fact]
     public async Task TestSuccessfulSubmitScoreForBeatmapWithCustomStatusRanked()
     {
@@ -90,9 +90,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.StatusString = "pending";
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
-        
+
         await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
             Status = BeatmapStatus.Ranked,
@@ -122,8 +122,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
         Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapStatus);
+        Assert.True(databaseScore.IsScoreable);
     }
-    
+
     [Fact]
     public async Task TestSuccessfulSubmitScoreForBeatmapWithCustomStatusDerank()
     {
@@ -145,9 +146,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         beatmap.StatusString = "ranked";
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
-        
+
         await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
             Status = BeatmapStatus.Pending,
@@ -177,6 +178,7 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         Assert.Equal(SubmissionStatus.Submitted, databaseScore.SubmissionStatus);
         Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapStatus);
+        Assert.False(databaseScore.IsScoreable);
     }
 
     [Fact]
