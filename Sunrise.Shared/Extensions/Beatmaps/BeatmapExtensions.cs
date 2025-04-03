@@ -1,5 +1,6 @@
 using osu.Shared;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
 
@@ -7,13 +8,11 @@ namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class BeatmapExtensions
 {
-    public static void UpdateBeatmapRanking(this Beatmap beatmap)
+    public static void UpdateBeatmapRanking(this Beatmap beatmap, BeatmapStatus beatmapStatus)
     {
-        if (!Configuration.IgnoreBeatmapRanking) return;
-
-        beatmap.StatusString = "ranked";
-        beatmap.IsScoreable = true;
-        beatmap.Ranked = 1;
+        beatmap.StatusString = beatmapStatus.BeatmapStatusToString();
+        beatmap.IsScoreable = beatmapStatus.IsScoreable();
+        beatmap.Ranked = beatmapStatus.IsRanked() ? 1 : 0;
     }
 
     public static void UpdateBeatmapWithPerformance(this Beatmap beatmap, Mods mods, PerformanceAttributes performance)

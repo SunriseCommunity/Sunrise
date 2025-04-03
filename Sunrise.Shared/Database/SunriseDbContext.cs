@@ -24,6 +24,7 @@ public class SunriseDbContext : DbContext
     public DbSet<UserStatsSnapshot> UserStatsSnapshot { get; set; }
     public DbSet<UserFile> UserFiles { get; set; }
 
+
     public DbSet<Medal> Medals { get; set; }
     public DbSet<MedalFile> MedalFiles { get; set; }
 
@@ -31,6 +32,8 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
+
+    public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -165,6 +165,8 @@ public static class Bootstrap
 
         builder.Services.AddScoped<UserGradesService>();
 
+        builder.Services.AddScoped<CustomBeatmapStatusRepository>();
+
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
 
