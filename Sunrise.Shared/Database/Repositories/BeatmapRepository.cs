@@ -61,7 +61,8 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusReposit
 
         var customStatuses = await customBeatmapStatusRepository.GetCustomBeatmapSetStatuses(beatmapSet.Id);
 
-        beatmapSet.UpdateBeatmapRanking(customStatuses);
+        if (customStatuses.Any())
+            beatmapSet.UpdateBeatmapRanking(customStatuses);
 
         return beatmapSet;
     }

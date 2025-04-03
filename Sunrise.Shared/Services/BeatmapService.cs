@@ -31,11 +31,11 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
         if (beatmapSet == null)
             return null;
 
+        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
+
         var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
-
-        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
         return beatmapSet;
     }
