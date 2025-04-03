@@ -42,7 +42,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
-        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash || x.BeatmapsetId == beatmapSet.Id);
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash || x.Id == beatmapId);
 
         if (beatmap == null)
         {
