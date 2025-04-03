@@ -31,7 +31,9 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
         if (beatmapSet == null)
             return null;
 
-        beatmapSet.UpdateBeatmapRanking();
+        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id);
+
+        beatmapSet.UpdateBeatmapRanking(customStatuses);
 
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
@@ -47,9 +49,12 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
 
         if (beatmapSets == null) return null;
 
+
         foreach (var set in beatmapSets)
         {
-            set.UpdateBeatmapRanking();
+            var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(set.Id);
+
+            set.UpdateBeatmapRanking(customStatuses);
         }
 
         return beatmapSets;

@@ -1,22 +1,12 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.Shared.Objects.Serializable;
 
 public class Beatmap
 {
-    private readonly Dictionary<string, BeatmapStatus> _statusMap = new()
-    {
-        ["loved"] = BeatmapStatus.Loved,
-        ["qualified"] = BeatmapStatus.Qualified,
-        ["approved"] = BeatmapStatus.Approved,
-        ["ranked"] = BeatmapStatus.Ranked,
-        ["pending"] = BeatmapStatus.Pending,
-        ["graveyard"] = BeatmapStatus.Pending,
-        ["wip"] = BeatmapStatus.Pending
-    };
-
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
@@ -32,7 +22,7 @@ public class Beatmap
     [JsonPropertyName("status")]
     public string StatusString { get; set; }
 
-    public BeatmapStatus Status => _statusMap.GetValueOrDefault(StatusString, BeatmapStatus.Pending);
+    public BeatmapStatus Status => StatusString.StringToBeatmapStatus();
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; }
