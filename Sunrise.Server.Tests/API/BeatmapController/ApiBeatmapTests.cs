@@ -1,4 +1,9 @@
 ﻿using System.Net;
+using System.Text.Json;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -26,6 +31,46 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestGetBeatmapWithCustomStatus()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var randomBeatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        randomBeatmap.Id = 1;
+        randomBeatmap.StatusString = BeatmapStatus.Pending.BeatmapStatusToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
+        var randomUser = _mocker.User.GetRandomUser();
+        await Database.Users.AddUser(randomUser);
+
+        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        {
+            Status = BeatmapStatus.Loved,
+            BeatmapHash = randomBeatmap.Checksum,
+            BeatmapSetId = beatmapSet.Id,
+            UpdatedByUserId = randomUser.Id
+        });
+        
+        // Act
+        var response = await client.GetAsync("beatmap/1");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var beatmap = JsonSerializer.Deserialize<BeatmapResponse>(responseString);
+
+        Assert.NotNull(beatmap);
+
+        Assert.Equal(BeatmapStatus.Loved.BeatmapStatusToString(), beatmap.Status);
     }
 }
 

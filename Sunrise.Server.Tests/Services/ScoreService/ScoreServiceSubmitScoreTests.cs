@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
+using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Tests.Abstracts;
@@ -65,6 +67,116 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+    }
+    
+    [Fact]
+    public async Task TestSuccessfulSubmitScoreForBeatmapWithCustomStatusRanked()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+        beatmap.StatusString = "pending";
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+        
+        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        {
+            Status = BeatmapStatus.Ranked,
+            BeatmapHash = beatmap.Checksum,
+            BeatmapSetId = beatmapSet.Id,
+            UpdatedByUserId = session.UserId
+        });
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+        Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapStatus);
+    }
+    
+    [Fact]
+    public async Task TestSuccessfulSubmitScoreForBeatmapWithCustomStatusDerank()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+        beatmap.StatusString = "ranked";
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+        
+        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        {
+            Status = BeatmapStatus.Pending,
+            BeatmapHash = beatmap.Checksum,
+            BeatmapSetId = beatmapSet.Id,
+            UpdatedByUserId = session.UserId
+        });
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.Contains("error", resultString);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        Assert.Equal(SubmissionStatus.Submitted, databaseScore.SubmissionStatus);
+        Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapStatus);
     }
 
     [Fact]
