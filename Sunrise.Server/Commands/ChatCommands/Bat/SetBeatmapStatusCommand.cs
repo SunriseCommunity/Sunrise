@@ -64,6 +64,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             }
 
             await database.CustomBeatmapStatuses.DeleteCustomBeatmapStatus(customStatus);
+            ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to default status!");
             return;
         }
 
