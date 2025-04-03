@@ -29,8 +29,4 @@
     <ItemGroup>
         <ProjectReference Include="../Sunrise.API/Sunrise.API.csproj"/>
     </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Commands\ChatCommands\"/>
-    </ItemGroup>
 </Project>
