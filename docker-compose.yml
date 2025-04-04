@@ -30,7 +30,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
-  
+
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -43,7 +43,7 @@ services:
       - ./grafana:/var/lib/grafana
     depends_on:
       - prometheus
-  
+
   postgres:
     image: postgres:latest
     restart: unless-stopped
@@ -53,9 +53,10 @@ services:
       POSTGRES_DB: hangfire
     volumes:
       - postgres_data:/var/lib/postgresql/data
-  
+
   mysql-sunrise-db:
     image: mysql
+    restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=sunrise

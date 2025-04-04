@@ -9,7 +9,7 @@ services:
       - "6379:6379"
     networks:
       - monitoring
-  
+
   prometheus:
     image: prom/prometheus:latest
     restart: unless-stopped
@@ -33,7 +33,7 @@ services:
       - prometheus
     networks:
       - monitoring
-  
+
   postgres:
     image: postgres:latest
     restart: unless-stopped
@@ -48,6 +48,7 @@ services:
 
   mysql-sunrise-db:
     image: mysql
+    restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=sunrise
