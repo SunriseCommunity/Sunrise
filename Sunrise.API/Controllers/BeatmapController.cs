@@ -66,7 +66,16 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
-        var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? (int)osu.Shared.GameMode.Standard, mods ?? Mods.None, combo, misses);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
+        if (beatmapSet == null)
+            return NotFound(new ErrorResponse("Beatmap set not found"));
+
+        var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
+
+        if (beatmap == null)
+            return NotFound(new ErrorResponse("Beatmap not found"));
+
+        var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? beatmap.ModeInt, mods ?? Mods.None, combo, misses);
 
         if (performance.IsFailure)
             return BadRequest(new ErrorResponse(performance.Error.Message));
