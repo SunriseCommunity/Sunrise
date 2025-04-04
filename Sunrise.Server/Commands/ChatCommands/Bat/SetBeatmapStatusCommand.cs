@@ -1,3 +1,6 @@
+using Sunrise.API.Enums;
+using Sunrise.API.Objects;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -5,10 +8,13 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
+using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Commands.ChatCommands.Bat;
 
@@ -52,6 +58,14 @@ public class SetBeatmapStatusCommand : IChatCommand
 
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
+        var batUser = await database.Users.GetUser(session.UserId);
+
+        if (batUser == null)
+        {
+            ChatCommandRepository.SendMessage(session, "User not found.");
+            return;
+        }
+
         var customStatus = await database.CustomBeatmapStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
 
         if (args[1] is "reset")
@@ -93,6 +107,13 @@ public class SetBeatmapStatusCommand : IChatCommand
 
             await database.CustomBeatmapStatuses.AddCustomBeatmapStatus(customStatus);
         }
+
+        var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
+        var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        beatmapSet.UpdateBeatmapRanking([customStatus]);
+
+        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, new UserResponse(database, sessionRepository, batUser))));
 
         ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to {status}!");
     }

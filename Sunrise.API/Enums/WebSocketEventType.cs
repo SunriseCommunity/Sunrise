@@ -2,5 +2,6 @@
 
 public enum WebSocketEventType
 {
-    NewScoreSubmitted
+    NewScoreSubmitted,
+    CustomBeatmapStatusChanged
 }
