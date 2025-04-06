@@ -125,10 +125,10 @@ public static class PerformanceAttributesExtensions
 
     private static double CalculateStreamsNerf(PerformanceAttributes performance)
     {
-        var aimValue = performance.PerformancePointsAim ?? 0;
-        var speedValue = performance.PerformancePointsSpeed ?? 0;
+        var aimStrainValue = performance.Difficulty.AimDifficultStrainCount ?? 0;
+        var speedStrainValue = performance.Difficulty.SpeedDifficultStrainCount ?? 0;
 
-        return Math.Round(aimValue / speedValue * 100) / 100;
+        return Math.Round(aimStrainValue / speedStrainValue * 100) / 100;
     }
 
     private static double CalculateStdPpMultiplier(PerformanceAttributes performance)
