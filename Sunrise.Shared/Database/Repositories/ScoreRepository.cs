@@ -123,7 +123,11 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
                     s.BeatmapHash == EF.Constant(beatmapHash) &&
                     s.GameMode == EF.Constant(gameMode));
 
-        if (type is LeaderboardType.GlobalWithMods && mods != null) scoresGrouped = scoresGrouped.Where(s => s.Mods == EF.Constant(mods));
+        if (type is LeaderboardType.GlobalWithMods && mods != null)
+        {
+            scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));
+        }
+
         if (type is LeaderboardType.Friends && user != null) scoresGrouped = scoresGrouped.Where(s => EF.Constant(user.FriendsList).Contains(s.UserId));
         if (type is LeaderboardType.Country && user != null) scoresGrouped = scoresGrouped.Where(s => s.User.Country == EF.Constant(user.Country));
 
