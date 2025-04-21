@@ -210,7 +210,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             null,
             "-1", // Any mode
             query,
-            new Pagination(page, limit));
+            new Pagination(page - 1, limit));
 
         return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
     }
