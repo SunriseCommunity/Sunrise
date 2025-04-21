@@ -168,7 +168,7 @@ public class BeatmapAvailability
 public class BeatmapSetGenre
 {
     [JsonPropertyName("id")]
-    public int Id { get; set; }
+    public int? Id { get; set; }
 
     [JsonPropertyName("name")]
     public string Name { get; set; }
@@ -177,7 +177,7 @@ public class BeatmapSetGenre
 public class BeatmapSetLanguage
 {
     [JsonPropertyName("id")]
-    public int Id { get; set; }
+    public int? Id { get; set; }
 
     [JsonPropertyName("name")]
     public string Name { get; set; }

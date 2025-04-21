@@ -6,6 +6,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Repositories;
@@ -63,7 +64,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         if (gameMode is < 0 or > 3)
             return BadRequest(new ErrorResponse("Invalid game mode"));
-        
+
         if (accuracy is < 0 or > 100)
             return BadRequest(new ErrorResponse("Invalid accuracy"));
 
@@ -183,5 +184,40 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         {
             Favourited = favourited
         });
+    }
+
+    [HttpGet("/beatmapset/search")]
+    [EndpointDescription("Search beatmapsets")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BeatmapResponse[]), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchBeatmapsets(
+        [FromQuery(Name = "query")] string query,
+        [FromQuery(Name = "status")] BeatmapStatusSearch[]? status,
+        [FromQuery(Name = "mode")] GameMode? mode,
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1
+    )
+    {
+        if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
+
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+
+        var beatmapsetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
+        var beatmapsetGamemode = mode.HasValue ? (int)mode : -1;
+
+        var beatmapSets = await beatmapService.SearchBeatmapSets(session,
+            beatmapsetStatus,
+            beatmapsetGamemode.ToString(),
+            query,
+            new Pagination(page - 1, limit));
+
+        return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
     }
 }
