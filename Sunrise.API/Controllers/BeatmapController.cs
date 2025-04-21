@@ -63,7 +63,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         if (gameMode is < 0 or > 3)
             return BadRequest(new ErrorResponse("Invalid game mode"));
-        
+
         if (accuracy is < 0 or > 100)
             return BadRequest(new ErrorResponse("Invalid accuracy"));
 
@@ -183,5 +183,35 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         {
             Favourited = favourited
         });
+    }
+
+    [HttpGet("/beatmapset/search")]
+    [EndpointDescription("Search beatmapsets")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BeatmapResponse[]), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchBeatmapsets(
+        [FromQuery(Name = "query")] string query,
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1
+    )
+    {
+        if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
+
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+
+        var beatmapSets = await beatmapService.SearchBeatmapSets(session,
+            null,
+            "-1", // Any mode
+            query,
+            new Pagination(page, limit));
+
+        return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
     }
 }

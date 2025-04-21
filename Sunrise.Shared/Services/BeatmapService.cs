@@ -40,7 +40,7 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
         return beatmapSet;
     }
 
-    public async Task<List<BeatmapSet>?> SearchBeatmapSets(Session session, string? rankedStatus, string mode,
+    public async Task<List<BeatmapSet>?> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,
         string query, Pagination pagination)
     {
         var beatmapSets = (await client.SendRequest<List<BeatmapSet>?>(session,
