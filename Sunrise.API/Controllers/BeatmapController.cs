@@ -192,7 +192,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [ProducesResponseType(typeof(BeatmapResponse[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchBeatmapsets(
         [FromQuery(Name = "query")] string query,
-        [FromQuery(Name = "status")] BeatmapStatusSearch? status,
+        [FromQuery(Name = "status")] BeatmapStatusSearch[]? status,
         [FromQuery(Name = "mode")] GameMode? mode,
         [FromQuery(Name = "limit")] int limit = 50,
         [FromQuery(Name = "page")] int page = 1
@@ -209,7 +209,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapsetStatus = ((int)(status ?? BeatmapStatusSearch.Any)).ToString();
+        var beatmapsetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapsetGamemode = mode.HasValue ? (int)mode : -1;
 
         var beatmapSets = await beatmapService.SearchBeatmapSets(session,
