@@ -6,6 +6,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Repositories;
@@ -191,6 +192,8 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [ProducesResponseType(typeof(BeatmapResponse[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchBeatmapsets(
         [FromQuery(Name = "query")] string query,
+        [FromQuery(Name = "status")] BeatmapStatusSearch? status,
+        [FromQuery(Name = "mode")] GameMode? mode,
         [FromQuery(Name = "limit")] int limit = 50,
         [FromQuery(Name = "page")] int page = 1
     )
@@ -206,9 +209,12 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
 
+        var beatmapsetStatus = ((int)(status ?? BeatmapStatusSearch.Any)).ToString();
+        var beatmapsetGamemode = mode.HasValue ? (int)mode : -1;
+
         var beatmapSets = await beatmapService.SearchBeatmapSets(session,
-            null,
-            "-1", // Any mode
+            beatmapsetStatus,
+            beatmapsetGamemode.ToString(),
             query,
             new Pagination(page - 1, limit));
 

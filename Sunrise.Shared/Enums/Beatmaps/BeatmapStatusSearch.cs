@@ -1,9 +1,10 @@
-﻿namespace Sunrise.Server.Enums;
+﻿namespace Sunrise.Shared.Enums.Beatmaps;
 
 public enum BeatmapStatusSearch
 {
-    Any = -2,
-    Graveyard = -1,
+    Any = -3,
+    Graveyard = -2,
+    Wip = -1,
     Pending = 0,
     Ranked = 1,
     Approved = 2,

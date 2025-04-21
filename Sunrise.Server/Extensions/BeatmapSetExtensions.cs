@@ -1,5 +1,5 @@
-using Sunrise.Server.Enums;
 using Sunrise.Server.Utils;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 

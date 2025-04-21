@@ -1,7 +1,7 @@
-using Sunrise.Server.Enums;
 using Sunrise.Server.Extensions;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 
@@ -26,7 +26,7 @@ public class DirectService(BeatmapService beatmapService)
         var parsedStatus = BeatmapStatusSearchParser.WebStatusToSearchStatus(ranked);
         var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
 
-        var beatmapSets = await beatmapService.SearchBeatmapSets(session, beatmapStatus, mode, query, new Pagination(page-1, 100));
+        var beatmapSets = await beatmapService.SearchBeatmapSets(session, beatmapStatus, mode, query, new Pagination(page - 1, 100));
 
         if (beatmapSets == null)
             return "0";
