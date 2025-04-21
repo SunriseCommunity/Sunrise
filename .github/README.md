@@ -108,7 +108,6 @@ website. The server is currently in development and is not yet ready for public 
 ## Dependencies 📦
 
 - [Observatory (beatmap manager)](https://github.com/SunriseCommunity/Observatory)
-- [rosu-pp-ffi (rosu-pp bindings for C#)](https://github.com/fantasyzhjk/rosu-pp-ffi)
 
 ## Contributing 💖
 
