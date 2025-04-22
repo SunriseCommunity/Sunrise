@@ -34,7 +34,7 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
     }
 
     public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
-        Mods mods = Mods.None, int? combo = null, int? misses = null, int? accuracy = null)
+        Mods mods = Mods.None, int? combo = null, int? misses = null, float? accuracy = null)
     {
         var requestMods = mods.IgnoreNotStandardModsForRecalculation();
 

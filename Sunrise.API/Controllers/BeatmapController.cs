@@ -54,7 +54,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [EndpointDescription("Get beatmap performance")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(PerformanceAttributes), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapPerformance(int id, [FromQuery(Name = "mods")] Mods? mods = null, [FromQuery(Name = "mode")] int? gameMode = null, [FromQuery(Name = "combo")] int? combo = null, [FromQuery(Name = "misses")] int? misses = null, [FromQuery(Name = "accuracy")] int? accuracy = null)
+    public async Task<IActionResult> GetBeatmapPerformance(int id, [FromQuery(Name = "mods")] Mods? mods = null, [FromQuery(Name = "mode")] int? gameMode = null, [FromQuery(Name = "combo")] int? combo = null, [FromQuery(Name = "misses")] int? misses = null, [FromQuery(Name = "accuracy")] float? accuracy = null)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
