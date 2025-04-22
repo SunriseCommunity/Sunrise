@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
@@ -45,17 +46,40 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
     [Route("/status")]
     [EndpointDescription("Check server status")]
     [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false)
+    public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false, [FromQuery(Name = "includeRecentUsers")] bool includeRecentUsers = false)
     {
         var usersOnline = sessions.GetSessions().Count;
         var totalUsers = await database.Users.CountUsers();
 
+        long? totalScores = null;
+        long? totalRestrictions = null;
+
         if (detailed)
         {
-            var totalScores = await database.Scores.CountScores();
-            return Ok(new StatusResponse(usersOnline, totalUsers, totalScores));
+            totalScores = await database.Scores.CountScores();
+            totalRestrictions = await database.Users.CountRestrictedUsers();
         }
 
-        return Ok(new StatusResponse(usersOnline, totalUsers));
+        if (includeRecentUsers)
+        {
+            var usersOnlineData = await database.DbContext.Users
+                .Where(u => sessions.GetSessions().Select(s => s.UserId).Contains(u.Id))
+                .OrderBy(u => u.LastOnlineTime)
+                .Take(3)
+                .ToListAsync();
+
+            var usersRegisteredData = await database.DbContext.Users.OrderByDescending(u => u.Id)
+                .Take(3)
+                .ToListAsync();
+
+            return Ok(new StatusResponse(usersOnline,
+                totalUsers,
+                totalScores,
+                totalRestrictions,
+                usersOnlineData.Select(u => new UserResponse(database, sessions, u)).ToList(),
+                usersRegisteredData.Select(u => new UserResponse(database, sessions, u)).ToList()));
+        }
+
+        return Ok(new StatusResponse(usersOnline, totalUsers, totalScores, totalRestrictions));
     }
 }

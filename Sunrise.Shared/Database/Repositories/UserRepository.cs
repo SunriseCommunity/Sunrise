@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -153,6 +154,13 @@ public class UserRepository(
     public async Task<int> CountUsers()
     {
         return await dbContext.Users
+            .CountAsync();
+    }
+
+    public async Task<int> CountRestrictedUsers()
+    {
+        return await dbContext.Users
+            .Where(u => u.AccountStatus == UserAccountStatus.Restricted)
             .CountAsync();
     }
 
