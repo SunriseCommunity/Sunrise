@@ -4,6 +4,10 @@
   <img src="./readme.jpg" alt="Artwork made by torekka. We don't own the rights to this image.">
 </p>
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/SunriseCommunity/Sunrise.svg?style=social&label=Star)](https://github.com/SunriseCommunity/Sunrise)
+
+
 Sunrise is a private server for osu! written in C#. This repository has both endpoints for game-client and for the
 website. The server is currently in development and is not yet ready for public use.
 
