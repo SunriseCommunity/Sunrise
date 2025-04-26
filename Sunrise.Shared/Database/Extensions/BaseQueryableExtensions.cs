@@ -36,12 +36,22 @@ public static class QueryableExtensions
 
     public static bool IsOrdered<T>(this IQueryable<T> queryable)
     {
-        if (queryable == null)
+        ArgumentNullException.ThrowIfNull(queryable);
+
+        return queryable.Expression.Type == typeof(IOrderedQueryable<T>) || HasOrderingOperation(queryable.Expression);
+    }
+
+    private static bool HasOrderingOperation(Expression expression)
+    {
+        if (expression is MethodCallExpression methodCall)
         {
-            throw new ArgumentNullException(nameof(queryable));
+            if (methodCall.Method.Name.StartsWith("OrderBy") || methodCall.Method.Name.StartsWith("ThenBy"))
+                return true;
+
+            return methodCall.Arguments.Any(HasOrderingOperation);
         }
 
-        return queryable.Expression.Type == typeof(IOrderedQueryable<T>);
+        return false;
     }
 
     // FIXME: We *should* have Id for all Models, but we don't have any base class we can rely on to use it in OrderBy.

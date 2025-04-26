@@ -219,26 +219,41 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
     public async Task<List<Score>> EnrichScoresWithLeaderboardPosition(List<Score> scores)
     {
-        var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
-        var scoreIds = scores.Select(s => s.Id).ToList();
+        if (scores.Count == 0) return scores;
 
-        var leaderboardPositions = await dbContext.Scores
-            .Where(s => scoreIds.Contains(s.Id))
-            .Select(s => new
+        var scoresIds = string.Join(",", scores.Select(s => s.Id));
+
+        var connection = dbContext.Database.GetDbConnection();
+        await connection.OpenAsync();
+
+        var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
+
+        var orderByValue = gameModesWithoutScoreMultiplier.Contains(scores.FirstOrDefault()?.GameMode ?? GameMode.Standard) ? nameof(Score.PerformancePoints) : nameof(Score.TotalScore);
+
+        var command = connection.CreateCommand();
+        command.CommandText = $"""
+                               
+                                       SELECT Id,
+                                              RANK() OVER (PARTITION BY BeatmapId ORDER BY {orderByValue} DESC) AS LeaderboardPosition
+                                       FROM score
+                                       WHERE Id IN ({scoresIds})
+                               """;
+
+        var leaderboardMap = new Dictionary<long, int>();
+
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
             {
-                s.Id,
-                LeaderboardPosition = dbContext.Scores
-                    .Count(os => os.BeatmapId == s.BeatmapId &&
-                                 (
-                                     EF.Constant(gameModesWithoutScoreMultiplier).Contains(s.GameMode)
-                                         ? os.PerformancePoints > s.PerformancePoints
-                                         : os.TotalScore > s.TotalScore)) + 1
-            })
-            .ToDictionaryAsync(x => x.Id, x => x.LeaderboardPosition);
+                var id = reader.GetInt64(0);
+                var rank = reader.GetInt32(1);
+                leaderboardMap[id] = rank;
+            }
+        }
 
         foreach (var score in scores)
         {
-            if (leaderboardPositions.TryGetValue(score.Id, out var position))
+            if (leaderboardMap.TryGetValue(score.Id, out var position))
             {
                 score.LocalProperties.LeaderboardPosition = position;
             }
