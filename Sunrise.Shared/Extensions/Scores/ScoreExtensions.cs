@@ -3,7 +3,6 @@ using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
@@ -20,39 +19,6 @@ public static class ScoreExtensions
     public static T? GetPersonalBestOf<T>(this List<T> scores, int userId) where T : Score
     {
         return scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
-    }
-
-    public static int GetLeaderboardRankOf<T>(this List<T> scores, T score) where T : Score
-    {
-        if (scores.Find(x => x.UserId == score.UserId) == null)
-        {
-            scores = scores.UpsertUserScoreToSortedScores(score);
-        }
-
-        return scores.IndexOf(score) + 1;
-    }
-
-    public static async Task<int> GetLeaderboardRank(this Score score)
-    {
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        // TODO: Should support multiple leaderboard 
-
-        var pageSize = 1;
-
-        for (var page = 1;; page++)
-        {
-            var (scores, _) = await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, options: new QueryOptions(true, new Pagination(page, pageSize)));
-
-            var leaderboardRank = scores.GetLeaderboardRankOf(score);
-
-            if (leaderboardRank > 0) return leaderboardRank;
-
-            if (scores.Count < pageSize) break;
-        }
-
-        return 0;
     }
 
     public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores) where T : Score

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_favourite_beatmap")]
-[Index(nameof(BeatmapSetId))]
+[Index(nameof(UserId), nameof(BeatmapSetId))]
 [Index(nameof(UserId))]
 public class UserFavouriteBeatmap
 {

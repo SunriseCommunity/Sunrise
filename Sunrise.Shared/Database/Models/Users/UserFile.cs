@@ -6,7 +6,7 @@ namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_file")]
 [Index(nameof(OwnerId))]
-[Index(nameof(Type))]
+[Index(nameof(OwnerId), nameof(Type))]
 public class UserFile
 {
     public int Id { get; set; }

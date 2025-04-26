@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
@@ -11,21 +10,18 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 namespace Sunrise.Shared.Database.Models;
 
 [Table("score")]
-[Index(nameof(TotalScore))]
-[Index(nameof(PerformancePoints))]
-[Index(nameof(Mods))]
-[Index(nameof(GameMode))]
 [Index(nameof(UserId))]
-[Index(nameof(SubmissionStatus))]
-[Index(nameof(BeatmapId))]
-[Index(nameof(BeatmapStatus))]
+[Index(nameof(UserId), nameof(BeatmapId))]
+[Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
+[Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
+[Index(nameof(BeatmapHash))]
 public class Score
 {
     public Score()
     {
         LocalProperties = new LocalProperties().FromScore(this);
     }
-    
+
     public int Id { get; set; }
 
     [ForeignKey(nameof(UserId))]

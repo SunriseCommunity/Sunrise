@@ -8,7 +8,7 @@ namespace Sunrise.Shared.Database.Models.Events;
 
 [Table("event_user")]
 [Index(nameof(EventType), nameof(UserId))]
-[Index(nameof(Ip))]
+[Index(nameof(EventType), nameof(Ip))]
 public class EventUser
 {
     public int Id { get; set; }
