@@ -46,7 +46,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         });
     }
 
-    public async Task<List<Score>> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
+    public async Task<(List<Score>, int)> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
     {
         var groupedBestScores = dbContext.Scores
             .FilterValidScores()
@@ -54,15 +54,16 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .Where(x => x.GameMode == EF.Constant(mode))
             .SelectUsersPersonalBestScores();
 
-        var queryScore = dbContext.Scores
+        var scoresQuery = dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
             .OrderByDescending(x => x.PerformancePoints)
-            .ThenByDescending(x => x.WhenPlayed)
-            .UseQueryOptions(options);
+            .ThenByDescending(x => x.WhenPlayed);
 
-        var queryResult = await queryScore.ToListAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync() : -1;
 
-        return queryResult;
+        var scores = await scoresQuery.UseQueryOptions(options).ToListAsync();
+
+        return (scores, totalCount);
     }
 
     public async Task<Score?> GetScore(int id, QueryOptions? options = null)
@@ -83,6 +84,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .FirstOrDefaultAsync();
     }
 
+
     public async Task<(List<KeyValuePair<int, int>>, int)> GetUserMostPlayedBeatmapIds(int userId, GameMode mode, QueryOptions? options = null)
     {
         var groupedBeatmapsQuery = dbContext.Scores
@@ -90,7 +92,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .Where(s => s.UserId == userId && s.GameMode == mode)
             .GroupScoresByBeatmapPlaycount();
 
-        var groupedBeatmapsCount = await groupedBeatmapsQuery.CountAsync();
+        var groupedBeatmapsCount = options?.IgnoreCountQueryIfExists == false ? await groupedBeatmapsQuery.CountAsync() : -1;
 
         var mostPlayedBeatmaps = await groupedBeatmapsQuery
             .OrderByDescending(g => g.Count)
@@ -134,7 +136,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(scoresGrouped.SelectUsersPersonalBestScores().ToQueryString());
 
-        var totalCount = await scoresQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync() : -1;
 
         var scores = await scoresQuery
             .OrderByScoreValueDescending()
@@ -189,7 +191,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         scoresQuery = scoresQuery.Where(s => s.UserId == userId); // Add where user id query only after forming sqlRaw query, to get proper beatmaps top plays
 
-        var totalCount = await scoresQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync() : -1;
 
         var scores = await scoresQuery
             .UseQueryOptions(options)
@@ -198,16 +200,20 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         return (scores, totalCount);
     }
 
-    public async Task<List<Score>> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null)
+    public async Task<(List<Score>, int)> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null)
     {
-        var scoreQuery = dbContext.Scores.FilterValidScores();
+        var scoresQuery = dbContext.Scores.FilterValidScores();
 
-        if (mode != null) scoreQuery = scoreQuery.Where(s => s.GameMode == mode);
-        if (startFromId != null) scoreQuery = scoreQuery.Where(s => s.Id >= startFromId);
+        if (mode != null) scoresQuery = scoresQuery.Where(s => s.GameMode == mode);
+        if (startFromId != null) scoresQuery = scoresQuery.Where(s => s.Id >= startFromId);
 
-        return await scoreQuery
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync() : -1;
+
+        var scores = await scoresQuery
             .UseQueryOptions(options)
             .ToListAsync();
+
+        return (scores, totalCount);
     }
 
     public async Task<long> CountScores()

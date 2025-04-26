@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Runtime.CompilerServices;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Sunrise.Shared.Database.Objects;
 
 namespace Sunrise.Shared.Database.Extensions;
@@ -20,6 +22,8 @@ public static class QueryableExtensions
         
         if (options.Pagination != null) query = query.PaginationTake(options.Pagination);
         if (options.AsNoTracking) query = query.AsNoTracking();
+        if (options.QueryModifier != null)
+            query = (IQueryable<TEntity>)options.QueryModifier(query);
 
         return query;
     }

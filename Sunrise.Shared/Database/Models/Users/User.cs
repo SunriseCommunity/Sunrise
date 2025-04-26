@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 
 namespace Sunrise.Shared.Database.Models.Users;
@@ -25,6 +27,20 @@ public class User
     public string Friends { get; set; } = string.Empty;
     public UserAccountStatus AccountStatus { get; set; } = UserAccountStatus.Active;
     public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
+
+    public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
+
+    [NotMapped]
+    public UserFile? AvatarRecord => UserFiles.FirstOrDefault(f => f.Type == FileType.Avatar);
+
+    [NotMapped]
+    public string AvatarUrl => $"https://a.{Configuration.Domain}/avatar/{Id}{(AvatarRecord != null ? $"?{new DateTimeOffset(AvatarRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
+
+    [NotMapped]
+    public UserFile? BannerRecord => UserFiles.FirstOrDefault(f => f.Type == FileType.Banner);
+
+    [NotMapped]
+    public string BannerUrl => $"https://a.{Configuration.Domain}/banner/{Id}{(BannerRecord != null ? $"?{new DateTimeOffset(BannerRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
 
     [NotMapped]
     public List<int> FriendsList => Friends.Split(',')
