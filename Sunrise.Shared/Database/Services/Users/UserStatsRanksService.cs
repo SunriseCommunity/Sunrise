@@ -11,35 +11,50 @@ namespace Sunrise.Shared.Database.Services.Users;
 
 public class UserStatsRanksService(Lazy<DatabaseService> databaseService, SunriseDbContext dbContext)
 {
+    private readonly SemaphoreSlim _dbSemaphore = new(1);
+
     public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true)
     {
         var getUserRanksResult = await ResultUtil.TryExecuteAsync(async () =>
         {
-            var globalRank = await databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), user.Id);
-            var countryRank = await databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, (CountryCode)user.Country), user.Id);
+            var globalRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), user.Id);
+            var countryRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, (CountryCode)user.Country), user.Id);
 
-            if (!globalRank.HasValue || !countryRank.HasValue)
+            await Task.WhenAll(globalRankTask, countryRankTask);
+
+            var globalRank = globalRankTask.Result;
+            var countryRank = countryRankTask.Result;
+
+            try
             {
-                if (!addRanksIfNotFound)
-                    throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                if (!globalRank.HasValue || !countryRank.HasValue)
+                {
+                    if (!addRanksIfNotFound)
+                        throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-                var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode);
-                if (userStats == null)
-                    throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                    await _dbSemaphore.WaitAsync();
 
-                var addOrUpdateUserRanksResult = await AddOrUpdateUserRanks(userStats, user);
-                if (addOrUpdateUserRanksResult.IsFailure)
-                    throw new ApplicationException(addOrUpdateUserRanksResult.Error);
+                    var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode);
+                    if (userStats == null)
+                        throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-                var getUserRanksResult = await GetUserRanks(user, mode, false);
-                (globalRank, countryRank) = getUserRanksResult;
+                    var addOrUpdateUserRanksResult = await AddOrUpdateUserRanks(userStats, user);
+                    if (addOrUpdateUserRanksResult.IsFailure)
+                        throw new ApplicationException(addOrUpdateUserRanksResult.Error);
+
+                    var getUserRanksResult = await GetUserRanks(user, mode, false);
+                    (globalRank, countryRank) = getUserRanksResult;
+                }
+
+                return (globalRank.Value + 1, countryRank.Value + 1);
             }
-
-            return (globalRank.Value + 1, countryRank.Value + 1);
+            finally
+            {
+                _dbSemaphore.Release();
+            }
         });
 
         return getUserRanksResult.IsSuccess ? getUserRanksResult.Value : (long.MaxValue, long.MaxValue);
-
     }
 
     public async Task<Result> AddOrUpdateUserRanks(UserStats stats, User user)

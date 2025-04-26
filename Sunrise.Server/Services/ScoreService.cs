@@ -187,7 +187,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
         }
 
-        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(database, sessions, score)));
+        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(sessions, score)));
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)

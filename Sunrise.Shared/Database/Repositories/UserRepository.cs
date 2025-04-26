@@ -74,6 +74,7 @@ public class UserRepository(
         if (passhash != null) userQuery = userQuery.Where(u => u.Passhash == passhash);
 
         var user = await userQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .FirstOrDefaultAsync();
 
@@ -101,6 +102,7 @@ public class UserRepository(
 
         var user = await userQuery
             .FilterValidUsers()
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .FirstOrDefaultAsync();
 
@@ -114,6 +116,7 @@ public class UserRepository(
         if (ids != null) userQuery = userQuery.Where(u => ids.Contains(u.Id));
 
         var user = await userQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .ToListAsync();
 
@@ -128,6 +131,7 @@ public class UserRepository(
 
         var user = await baseQuery
             .FilterValidUsers()
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .ToListAsync();
 
@@ -140,9 +144,10 @@ public class UserRepository(
             .Where(u => user.FriendsList.Contains(u.Id))
             .FilterValidUsers();
 
-        var totalCount = await friendsQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await friendsQuery.CountAsync() : -1;
 
         var friends = await friendsQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .ToListAsync();
 
@@ -223,6 +228,7 @@ public class UserRepository(
         return await dbContext.Users
             .FilterValidUsers()
             .Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%"))
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
             .ToListAsync();
     }

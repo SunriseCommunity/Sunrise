@@ -13,7 +13,7 @@ public class UserWithStats(UserResponse user, UserStatsResponse stats)
 
 public class LeaderboardResponse
 {
-    public LeaderboardResponse(List<UserWithStats?> data, int totalCount)
+    public LeaderboardResponse(List<UserWithStats> data, int totalCount)
     {
         Users = data.ToList();
         TotalCount = totalCount;

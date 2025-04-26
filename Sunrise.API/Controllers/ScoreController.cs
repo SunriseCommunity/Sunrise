@@ -4,6 +4,8 @@ using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;
@@ -24,13 +26,18 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScore(int id)
     {
-        var score = await database.Scores.GetScore(id, new QueryOptions(true));
+        var score = await database.Scores.GetScore(id,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            });
+        
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
+        
+        score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score])).First();
 
-        await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
-
-        return Ok(new ScoreResponse(database, sessions, score));
+        return Ok(new ScoreResponse(sessions, score));
     }
 
     [HttpGet("replay")]
@@ -75,14 +82,15 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var scores = await database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (scores, _) = await database.Scores.GetBestScoresByGameMode(mode,
+            new QueryOptions(true, new Pagination(page!.Value, limit!.Value))
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            });
 
-        foreach (var score in scores)
-        {
-            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
-        }
+        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, scores.Count));
     }

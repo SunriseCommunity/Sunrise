@@ -8,6 +8,8 @@ using Sunrise.API.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -44,7 +46,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        if (mode == null) return Ok(new UserResponse(database, sessions, user));
+        if (mode == null) return Ok(new UserResponse(sessions, user));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
@@ -56,7 +58,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode);
 
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(database, sessions, user), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
@@ -167,14 +169,14 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var (scores, totalScores) = await database.Scores.GetUserScores(id, mode, scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
-
-        foreach (var score in scores)
+        var (scores, totalScores) = await database.Scores.GetUserScores(id, mode, scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value))
         {
-            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
-        }
+            QueryModifier = query => query.Cast<Score>().IncludeUser()
+        });
+        
+        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score))
+        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score))
             .ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalScores));
@@ -277,24 +279,26 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var countUsers = await database.Users.CountValidUsers();
 
-        var stats = await database.Users.Stats.GetUsersStats(mode, leaderboardType, options: new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var stats = await database.Users.Stats.GetUsersStats(mode,
+            leaderboardType,
+            options: new QueryOptions(true, new Pagination(page.Value, limit.Value))
+            {
+                QueryModifier = query => query.Cast<UserStats>().IncludeUser()
+            });
 
         if (stats.Count <= 0) return NotFound(new ErrorResponse("User stats not found"));
 
-        foreach (var userStats in stats)
-        {
-            await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
-        }
-
-        var usersWithStats = stats.Select(async userStats =>
+        var usersWithStatsTask = stats.Select(async userStats =>
         {
             var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(userStats.User, mode);
 
-            return new UserWithStats(new UserResponse(database, sessions, userStats.User),
+            return new UserWithStats(new UserResponse(sessions, userStats.User),
                 new UserStatsResponse(userStats, globalRank, countryRank));
-        }).Select(task => task.Result).ToList();
+        }).ToList();
 
-        return Ok(new LeaderboardResponse(usersWithStats, countUsers));
+        var usersWithStats = await Task.WhenAll(usersWithStatsTask);
+
+        return Ok(new LeaderboardResponse(usersWithStats.ToList(), countUsers));
     }
 
     [HttpGet]
@@ -318,7 +322,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        return Ok(users.Select(x => new UserResponse(database, sessions, x)));
+        return Ok(users.Select(x => new UserResponse(sessions, x)));
     }
 
     [HttpGet]
@@ -348,7 +352,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
 
-        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(database, sessions, x)).ToList(), totalCount));
+        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x)).ToList(), totalCount));
     }
 
     [HttpGet]

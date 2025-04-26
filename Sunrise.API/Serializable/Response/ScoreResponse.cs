@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -17,7 +16,7 @@ public class ScoreResponse
     {
     }
 
-    public ScoreResponse(DatabaseService database, SessionRepository sessionRepository, Score score)
+    public ScoreResponse(SessionRepository sessionRepository, Score score)
     {
         BeatmapId = score.BeatmapId;
         Count100 = score.Count100;
@@ -32,7 +31,7 @@ public class ScoreResponse
         Id = score.Id;
         IsPassed = score.IsPassed;
         HasReplay = score.ReplayFileId != null;
-        LeaderboardRank = score.GetLeaderboardRank().Result;
+        LeaderboardRank = score.LocalProperties.LeaderboardPosition;
         MaxCombo = score.MaxCombo;
         Mods = score.Mods.GetModsString();
         ModsInt = (int)score.Mods;
@@ -41,7 +40,7 @@ public class ScoreResponse
         TotalScore = score.TotalScore;
         UserId = score.UserId;
         WhenPlayed = score.WhenPlayed;
-        User = new UserResponse(database, sessionRepository, score.User);
+        User = new UserResponse(sessionRepository, score.User);
         Accuracy = score.Accuracy;
     }
 

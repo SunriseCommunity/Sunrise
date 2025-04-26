@@ -56,7 +56,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "User not found.");
             return;
         }
-        
+
         var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
         var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
@@ -108,9 +108,9 @@ public class SetBeatmapSetStatusCommand : IChatCommand
 
             beatmapSet.UpdateBeatmapRanking([customStatus]);
 
-            
+
             if (oldStatus != status)
-                webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, oldStatus, new UserResponse(database, sessionRepository, batUser))));
+                webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, oldStatus, new UserResponse(sessionRepository, batUser))));
 
             ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to {status} from {oldStatus}!");
         }

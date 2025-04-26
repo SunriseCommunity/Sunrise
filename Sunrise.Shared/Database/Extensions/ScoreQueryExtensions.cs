@@ -91,6 +91,6 @@ public static class ScoreQueryableExtensions
     {
         return queryable
             .Include(x => x.User)
-            .Include(u => u.User.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner));
+            .Include(y => y.User.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner));
     }
 }

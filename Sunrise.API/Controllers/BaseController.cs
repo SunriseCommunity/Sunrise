@@ -76,8 +76,8 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
                 totalUsers,
                 totalScores,
                 totalRestrictions,
-                usersOnlineData.Select(u => new UserResponse(database, sessions, u)).ToList(),
-                usersRegisteredData.Select(u => new UserResponse(database, sessions, u)).ToList()));
+                usersOnlineData.Select(u => new UserResponse(sessions, u)).ToList(),
+                usersRegisteredData.Select(u => new UserResponse(sessions, u)).ToList()));
         }
 
         return Ok(new StatusResponse(usersOnline, totalUsers, totalScores, totalRestrictions));

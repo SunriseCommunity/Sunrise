@@ -5,6 +5,8 @@ using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -120,14 +122,14 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             mode,
             mods is null ? LeaderboardType.Global : LeaderboardType.GlobalWithMods,
             mods,
-            options: new QueryOptions(new Pagination(1, limit)));
+            options: new QueryOptions(new Pagination(1, limit))
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            });
 
-        foreach (var score in scores)
-        {
-            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
-        }
+        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 

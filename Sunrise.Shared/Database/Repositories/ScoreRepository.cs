@@ -8,6 +8,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -214,6 +215,36 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .ToListAsync();
 
         return (scores, totalCount);
+    }
+
+    public async Task<List<Score>> EnrichScoresWithLeaderboardPosition(List<Score> scores)
+    {
+        var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
+        var scoreIds = scores.Select(s => s.Id).ToList();
+
+        var leaderboardPositions = await dbContext.Scores
+            .Where(s => scoreIds.Contains(s.Id))
+            .Select(s => new
+            {
+                s.Id,
+                LeaderboardPosition = dbContext.Scores
+                    .Count(os => os.BeatmapId == s.BeatmapId &&
+                                 (
+                                     EF.Constant(gameModesWithoutScoreMultiplier).Contains(s.GameMode)
+                                         ? os.PerformancePoints > s.PerformancePoints
+                                         : os.TotalScore > s.TotalScore)) + 1
+            })
+            .ToDictionaryAsync(x => x.Id, x => x.LeaderboardPosition);
+
+        foreach (var score in scores)
+        {
+            if (leaderboardPositions.TryGetValue(score.Id, out var position))
+            {
+                score.LocalProperties.LeaderboardPosition = position;
+            }
+        }
+
+        return scores;
     }
 
     public async Task<long> CountScores()
