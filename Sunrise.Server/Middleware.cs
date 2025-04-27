@@ -96,7 +96,7 @@ public sealed class Middleware(
                     AutoReplenishment = true,
                     TokenLimit = Configuration.GeneralCallsPerWindow,
                     TokensPerPeriod = Configuration.GeneralCallsPerWindow,
-                    QueueLimit = 100,
+                    QueueLimit = Configuration.QueueLimit,
                     ReplenishmentPeriod = TimeSpan.FromSeconds(Configuration.GeneralWindow)
                 });
             }) ?? throw new InvalidOperationException($"Failed to create rate limiter for {key}");

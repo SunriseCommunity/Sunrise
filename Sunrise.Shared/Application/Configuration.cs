@@ -57,6 +57,9 @@ public static class Configuration
     public static int GeneralWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
 
+    public static int QueueLimit =>
+        Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("QueueLimit") ?? 15;
+
     public static bool OnMaintenance { get; set; } =
         Config.GetSection("General").GetValue<bool?>("OnMaintenance") ?? false;
 
