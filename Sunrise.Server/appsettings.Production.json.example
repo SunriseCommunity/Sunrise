@@ -11,7 +11,7 @@
     "ObservatoryUrl": "host.docker.internal:3333",
     "OnMaintenance": false,
     "RateLimit": {
-      "CallsPerWindow": 100,
+      "CallsPerWindow": 200,
       "Window": 10,
       "QueueLimit": 20
     }
@@ -45,7 +45,7 @@
   },
   "API": {
     "RateLimit": {
-      "CallsPerWindow": 60,
+      "CallsPerWindow": 100,
       "Window": 30
     },
     "TokenExpiresIn": 3600,
