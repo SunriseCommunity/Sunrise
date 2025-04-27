@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
@@ -35,7 +36,7 @@ public static class ScoreQueryableExtensions
     {
         return queryable.Where(s => s.IsScoreable && s.IsPassed && s.SubmissionStatus != SubmissionStatus.Failed);
     }
-    
+
     public static IQueryable<Score> SelectBeatmapsBestScores(this IQueryable<Score> queryable)
     {
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
@@ -82,7 +83,14 @@ public static class ScoreQueryableExtensions
             {
                 Key = g.Key,
                 Count = g.Count(),
-                WhenPlayed = g.Max(x => x.WhenPlayed),
+                WhenPlayed = g.Max(x => x.WhenPlayed)
             });
+    }
+
+    public static IQueryable<Score> IncludeUser(this IQueryable<Score> queryable)
+    {
+        return queryable
+            .Include(x => x.User)
+            .Include(y => y.User.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner));
     }
 }

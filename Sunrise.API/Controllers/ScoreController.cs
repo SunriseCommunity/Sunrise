@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.API.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;
@@ -22,15 +25,21 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [EndpointDescription("Get score")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetScore(int id)
+    public async Task<IActionResult> GetScore(int id, CancellationToken ct = default)
     {
-        var score = await database.Scores.GetScore(id, new QueryOptions(true));
+        var score = await database.Scores.GetScore(id,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            },
+            ct);
+
         if (score == null)
             return NotFound(new ErrorResponse("Score not found"));
 
-        await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
+        score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score], ct)).First();
 
-        return Ok(new ScoreResponse(database, sessions, score));
+        return Ok(new ScoreResponse(sessions, score));
     }
 
     [HttpGet("replay")]
@@ -39,17 +48,17 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetScoreReplay(int id)
+    public async Task<IActionResult> GetScoreReplay(int id, CancellationToken ct = default)
     {
-        var session = await sessionManager.GetSessionFromRequest(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
-        var score = await database.Scores.GetScore(id, new QueryOptions(true));
+        var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
         if (score?.ReplayFileId == null)
             return NotFound(new ErrorResponse("Score or replay not found"));
 
-        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value);
+        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
         if (replay == null)
             return NotFound(new ErrorResponse("Replay not found"));
 
@@ -67,7 +76,8 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "limit")] int? limit = 15,
-        [FromQuery(Name = "page")] int? page = 1)
+        [FromQuery(Name = "page")] int? page = 1,
+        CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -75,14 +85,16 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var scores = await database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (scores, _) = await database.Scores.GetBestScoresByGameMode(mode,
+            new QueryOptions(true, new Pagination(page!.Value, limit!.Value))
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            },
+            ct);
 
-        foreach (var score in scores)
-        {
-            await database.DbContext.Entry(score).Reference(s => s.User).LoadAsync();
-        }
+        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(database, sessions, score)).ToList();
+        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, scores.Count));
     }

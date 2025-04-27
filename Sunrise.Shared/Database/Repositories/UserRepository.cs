@@ -60,7 +60,8 @@ public class UserRepository(
         string? username = null,
         string? email = null,
         string? passhash = null,
-        QueryOptions? options = null
+        QueryOptions? options = null,
+        CancellationToken ct = default
     )
     {
         if (passhash != null && id == null && username == null && email == null)
@@ -74,8 +75,9 @@ public class UserRepository(
         if (passhash != null) userQuery = userQuery.Where(u => u.Passhash == passhash);
 
         var user = await userQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
 
         return user;
     }
@@ -86,7 +88,8 @@ public class UserRepository(
         string? username = null,
         string? email = null,
         string? passhash = null,
-        QueryOptions? options = null
+        QueryOptions? options = null,
+        CancellationToken ct = default
     )
     {
         if (passhash != null && id == null && username == null && email == null)
@@ -101,26 +104,28 @@ public class UserRepository(
 
         var user = await userQuery
             .FilterValidUsers()
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
 
         return user;
     }
 
-    public async Task<List<User>> GetUsers(List<int>? ids = null, QueryOptions? options = null)
+    public async Task<List<User>> GetUsers(List<int>? ids = null, QueryOptions? options = null, CancellationToken ct = default)
     {
         var userQuery = dbContext.Users.AsQueryable();
 
         if (ids != null) userQuery = userQuery.Where(u => ids.Contains(u.Id));
 
         var user = await userQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return user;
     }
 
-    public async Task<List<User>> GetValidUsers(List<int>? ids = null, QueryOptions? options = null)
+    public async Task<List<User>> GetValidUsers(List<int>? ids = null, QueryOptions? options = null, CancellationToken ct = default)
     {
         var baseQuery = dbContext.Users.AsQueryable();
 
@@ -128,47 +133,47 @@ public class UserRepository(
 
         var user = await baseQuery
             .FilterValidUsers()
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return user;
     }
 
-    public async Task<(List<User> Users, int TotalCount)> GetUsersFriends(User user, QueryOptions? options = null)
+    public async Task<(List<User> Users, int TotalCount)> GetUsersFriends(User user, QueryOptions? options = null, CancellationToken ct = default)
     {
         var friendsQuery = dbContext.Users
             .Where(u => user.FriendsList.Contains(u.Id))
             .FilterValidUsers();
 
-        var totalCount = await friendsQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await friendsQuery.CountAsync(cancellationToken: ct) : -1;
 
         var friends = await friendsQuery
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return (friends, totalCount);
     }
 
-
-
-    public async Task<int> CountUsers()
+    public async Task<int> CountUsers(CancellationToken ct = default)
     {
         return await dbContext.Users
-            .CountAsync();
+            .CountAsync(cancellationToken: ct);
     }
 
-    public async Task<int> CountRestrictedUsers()
+    public async Task<int> CountRestrictedUsers(CancellationToken ct = default)
     {
         return await dbContext.Users
             .Where(u => u.AccountStatus == UserAccountStatus.Restricted)
-            .CountAsync();
+            .CountAsync(cancellationToken: ct);
     }
 
-    public async Task<int> CountValidUsers()
+    public async Task<int> CountValidUsers(CancellationToken ct = default)
     {
         return await dbContext.Users
             .FilterValidUsers()
-            .CountAsync();
+            .CountAsync(cancellationToken: ct);
     }
 
     public async Task<Result> UpdateUserUsername(User user, string oldUsername, string newUsername, int? updatedById = null, string? userIp = null)
@@ -218,12 +223,13 @@ public class UserRepository(
         });
     }
 
-    public async Task<List<User>> GetValidUsersByQueryLike(string queryLike, QueryOptions? options = null)
+    public async Task<List<User>> GetValidUsersByQueryLike(string queryLike, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Users
             .FilterValidUsers()
             .Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%"))
+            .IncludeUserThumbnails()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
     }
 }

@@ -61,7 +61,7 @@ public class ApiUserGetSelfTests : ApiTest
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var userData = new UserResponse(Database, Sessions, user);
+        var userData = new UserResponse(Sessions, user);
 
         // Act
         var response = await client.GetAsync("user/self");

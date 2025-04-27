@@ -15,9 +15,9 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
-    public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault)
+    public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault, CancellationToken ct = default)
     {
-        var getAvatarResult = await assetService.GetAvatar(id, fallToDefault ?? true);
+        var getAvatarResult = await assetService.GetAvatar(id, fallToDefault ?? true, ct);
 
         if (getAvatarResult.IsFailure)
         {
@@ -31,9 +31,9 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
     }
 
     [HttpGet(RequestType.GetBanner)]
-    public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault)
+    public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault, CancellationToken ct = default)
     {
-        var getBannerResult = await assetService.GetBanner(id, fallToDefault ?? true);
+        var getBannerResult = await assetService.GetBanner(id, fallToDefault ?? true, ct);
 
         if (getBannerResult.IsFailure)
         {
@@ -48,9 +48,9 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
 
     [HttpGet]
     [Route(RequestType.GetScreenshot)]
-    public async Task<IActionResult> GetScreenshot(int id)
+    public async Task<IActionResult> GetScreenshot(int id, CancellationToken ct = default)
     {
-        var getScreenshotResult = await assetService.GetScreenshot(id);
+        var getScreenshotResult = await assetService.GetScreenshot(id, ct);
 
         if (getScreenshotResult.IsFailure)
         {
@@ -63,9 +63,9 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
 
     [HttpGet(RequestType.GetMedalHighImage)]
     [HttpGet(RequestType.GetMedalImage)]
-    public async Task<IActionResult> GetMedalImage(int medalId)
+    public async Task<IActionResult> GetMedalImage(int medalId, CancellationToken ct = default)
     {
-        var medal = await database.Medals.GetMedal(medalId);
+        var medal = await database.Medals.GetMedal(medalId, ct: ct);
 
         if (medal == null)
             return NotFound();
@@ -79,7 +79,7 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
         if (!medal.FileId.HasValue)
             return NotFound();
 
-        var data = await assetService.GetMedalImage(medal.FileId.Value, isHighRes);
+        var data = await assetService.GetMedalImage(medal.FileId.Value, isHighRes, ct);
         if (data == null)
             return NotFound();
 
@@ -93,9 +93,9 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
     }
 
     [HttpGet(RequestType.EventBanner)]
-    public async Task<IActionResult> GetEventBanner()
+    public async Task<IActionResult> GetEventBanner(CancellationToken ct = default)
     {
-        var data = await assetService.GetEventBanner();
+        var data = await assetService.GetEventBanner(ct);
         if (data == null)
             return NotFound();
 

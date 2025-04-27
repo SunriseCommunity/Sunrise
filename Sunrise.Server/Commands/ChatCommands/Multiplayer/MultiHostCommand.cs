@@ -25,9 +25,11 @@ public class MultiHostCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp host <username>");
             return Task.CompletedTask;
         }
+        
+        var username = string.Join(" ", args[0..]);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-        var targetSession = sessions.GetSession(args[0]);
+        var targetSession = sessions.GetSession(username);
 
         if (targetSession == null)
         {
@@ -45,7 +47,7 @@ public class MultiHostCommand : IChatCommand
 
         session.Match.TransferHost(targetSlot.Key);
 
-        session.SendChannelMessage(channel.Name, $"Host has been transferred to {args[0]}.");
+        session.SendChannelMessage(channel.Name, $"Host has been transferred to {username}.");
 
         return Task.CompletedTask;
     }

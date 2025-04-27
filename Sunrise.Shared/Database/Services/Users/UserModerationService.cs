@@ -19,16 +19,24 @@ public class UserModerationService(
 {
     private readonly ILogger _logger = logger;
 
-    public async Task<string?> GetActiveRestrictionReason(int userId)
+    public async Task<string?> GetActiveRestrictionReason(int userId, CancellationToken ct = default)
     {
-        var restrictionReason = await dbContext.Restrictions.AsNoTracking().Where(x => x.UserId == userId).Select(r => r.Reason).FirstOrDefaultAsync();
+        var restrictionReason = await dbContext.Restrictions
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(r => r.Reason)
+            .FirstOrDefaultAsync(cancellationToken: ct);
 
         return restrictionReason;
     }
 
-    public async Task<bool> IsUserRestricted(int userId)
+    public async Task<bool> IsUserRestricted(int userId, CancellationToken ct = default)
     {
-        var restrictionExpiryDate = await dbContext.Restrictions.AsNoTracking().Where(x => x.UserId == userId).Select(r => r.ExpiryDate).FirstOrDefaultAsync();
+        var restrictionExpiryDate = await dbContext.Restrictions
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(r => r.ExpiryDate)
+            .FirstOrDefaultAsync(cancellationToken: ct);
 
         if (restrictionExpiryDate == DateTime.MinValue)
             return false;

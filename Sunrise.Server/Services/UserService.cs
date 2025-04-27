@@ -53,9 +53,9 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
         return (session, null, LoginResponse.Success);
     }
 
-    public async Task<string?> GetFriends(int userId)
+    public async Task<string?> GetFriends(int userId, CancellationToken ct = default)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = await database.Users.GetUser(userId, ct: ct);
         if (user == null)
             return null;
 

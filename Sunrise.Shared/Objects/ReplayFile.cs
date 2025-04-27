@@ -1,3 +1,4 @@
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using osu.Shared.Serialization;
@@ -7,6 +8,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils;
@@ -110,14 +112,16 @@ public class ReplayFile
         return memoryStream;
     }
 
-    public async Task<string> GetFileName(BaseSession? session)
+    public async Task<string> GetFileName(BaseSession session)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = session != null
-            ? await beatmapService.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash)
-            : null;
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash);
+        if (beatmapSetResult.IsFailure)
+            return $"{User?.Username} - Unknown - Unknown [{Score.BeatmapId}] ({Score.WhenPlayed:yyyy-MM-dd}) {Score.GameMode}.osr";
+
+        var beatmapSet = beatmapSetResult.Value;
 
         return
             $"{User?.Username} - {beatmapSet?.Artist} - {beatmapSet?.Title} [{Score.BeatmapId}] ({Score.WhenPlayed:yyyy-MM-dd}) {Score.GameMode}.osr";

@@ -69,7 +69,7 @@ public class ApiUserFriendsTests : ApiTest
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
 
-        var randomUserResponse = new UserResponse(Database, Sessions, randomUser);
+        var randomUserResponse = new UserResponse(Sessions, randomUser);
 
         user.AddFriend(randomUser.Id);
         await Database.Users.UpdateUser(user);

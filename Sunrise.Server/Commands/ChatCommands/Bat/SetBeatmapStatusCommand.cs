@@ -40,7 +40,15 @@ public class SetBeatmapStatusCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, beatmapId: beatmapId);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, beatmapId: beatmapId);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            ChatCommandRepository.SendMessage(session, beatmapSetResult.Error.Message);
+            return;
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (beatmapSet == null)
         {
@@ -114,9 +122,9 @@ public class SetBeatmapStatusCommand : IChatCommand
         var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
         beatmapSet.UpdateBeatmapRanking([customStatus]);
-        
+
         if (oldStatus != status)
-            webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, oldStatus, new UserResponse(database, sessionRepository, batUser))));
+            webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, oldStatus, new UserResponse(sessionRepository, batUser))));
 
         ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to {status} from {oldStatus}!");
     }

@@ -6,7 +6,6 @@ using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
-using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -28,7 +27,15 @@ public class RecentScoreCommand : IChatCommand
 
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: lastScore.BeatmapHash);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: lastScore.BeatmapHash);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            ChatCommandRepository.SendMessage(session, beatmapSetResult.Error.Message);
+            return;
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (beatmapSet == null)
         {
@@ -45,7 +52,7 @@ public class RecentScoreCommand : IChatCommand
         }
 
         var scoreMessage = await lastScore.GetBeatmapInGameChatString(beatmapSet, session);
-        
+
         ChatCommandRepository.SendMessage(session, scoreMessage);
     }
 }

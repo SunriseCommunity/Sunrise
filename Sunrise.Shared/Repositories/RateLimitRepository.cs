@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
+using RateLimiter = Sunrise.Shared.Objects.RateLimiter;
 
 namespace Sunrise.Shared.Repositories;
 

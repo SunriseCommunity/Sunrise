@@ -9,9 +9,9 @@ namespace Sunrise.Shared.Database.Services.Users;
 
 public class UserStatsSnapshotService(SunriseDbContext dbContext)
 {
-    public async Task<UserStatsSnapshot> GetUserStatsSnapshot(int userId, GameMode mode)
+    public async Task<UserStatsSnapshot> GetUserStatsSnapshot(int userId, GameMode mode, CancellationToken ct = default)
     {
-        var snapshot = await dbContext.UserStatsSnapshot.Where(uss => uss.UserId == userId && uss.GameMode == mode).FirstOrDefaultAsync();
+        var snapshot = await dbContext.UserStatsSnapshot.Where(uss => uss.UserId == userId && uss.GameMode == mode).FirstOrDefaultAsync(cancellationToken: ct);
 
         if (snapshot == null)
         {

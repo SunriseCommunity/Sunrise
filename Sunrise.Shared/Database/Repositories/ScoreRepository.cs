@@ -8,6 +8,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -46,7 +47,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         });
     }
 
-    public async Task<List<Score>> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null)
+    public async Task<(List<Score>, int)> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
         var groupedBestScores = dbContext.Scores
             .FilterValidScores()
@@ -54,66 +55,68 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .Where(x => x.GameMode == EF.Constant(mode))
             .SelectUsersPersonalBestScores();
 
-        var queryScore = dbContext.Scores
+        var scoresQuery = dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
             .OrderByDescending(x => x.PerformancePoints)
-            .ThenByDescending(x => x.WhenPlayed)
-            .UseQueryOptions(options);
+            .ThenByDescending(x => x.WhenPlayed);
 
-        var queryResult = await queryScore.ToListAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
 
-        return queryResult;
+        var scores = await scoresQuery.UseQueryOptions(options).ToListAsync(cancellationToken: ct);
+
+        return (scores, totalCount);
     }
 
-    public async Task<Score?> GetScore(int id, QueryOptions? options = null)
+    public async Task<Score?> GetScore(int id, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Scores
             .FilterValidScores()
             .Where(s => s.Id == id)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
-    public async Task<Score?> GetScore(string scoreHash, QueryOptions? options = null)
+    public async Task<Score?> GetScore(string scoreHash, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Scores
             .FilterValidScores()
             .Where(s => s.ScoreHash == scoreHash)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
-    public async Task<(List<KeyValuePair<int, int>>, int)> GetUserMostPlayedBeatmapIds(int userId, GameMode mode, QueryOptions? options = null)
+
+    public async Task<(List<KeyValuePair<int, int>>, int)> GetUserMostPlayedBeatmapIds(int userId, GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
         var groupedBeatmapsQuery = dbContext.Scores
             .FilterValidScores()
             .Where(s => s.UserId == userId && s.GameMode == mode)
             .GroupScoresByBeatmapPlaycount();
 
-        var groupedBeatmapsCount = await groupedBeatmapsQuery.CountAsync();
+        var groupedBeatmapsCount = options?.IgnoreCountQueryIfExists == false ? await groupedBeatmapsQuery.CountAsync(cancellationToken: ct) : -1;
 
         var mostPlayedBeatmaps = await groupedBeatmapsQuery
             .OrderByDescending(g => g.Count)
             .ThenByDescending(g => g.WhenPlayed)
             .UseQueryOptions(options)
             .Select(g => new KeyValuePair<int, int>(g.Key, g.Count))
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return (mostPlayedBeatmaps, groupedBeatmapsCount);
     }
 
-    public async Task<Score?> GetUserLastScore(int userId, QueryOptions? options = null)
+    public async Task<Score?> GetUserLastScore(int userId, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Scores
             .FilterValidScores()
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.WhenPlayed)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
     public async Task<(List<Score> Scores, int TotalCount)> GetBeatmapScores(string beatmapHash, GameMode gameMode,
-        LeaderboardType type = LeaderboardType.Global, Mods? mods = null, User? user = null, QueryOptions? options = null)
+        LeaderboardType type = LeaderboardType.Global, Mods? mods = null, User? user = null, QueryOptions? options = null, CancellationToken ct = default)
     {
         var scoresGrouped = dbContext.Scores
             .FilterValidScores()
@@ -134,17 +137,17 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(scoresGrouped.SelectUsersPersonalBestScores().ToQueryString());
 
-        var totalCount = await scoresQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
 
         var scores = await scoresQuery
             .OrderByScoreValueDescending()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return (scores, totalCount);
     }
 
-    public async Task<(List<Score> Scores, int TotalCount)> GetUserScores(int userId, GameMode mode, ScoreTableType type, QueryOptions? options = null)
+    public async Task<(List<Score> Scores, int TotalCount)> GetUserScores(int userId, GameMode mode, ScoreTableType type, QueryOptions? options = null, CancellationToken ct = default)
     {
         var scoresQuery = dbContext.Scores
             .FilterValidScores()
@@ -187,31 +190,80 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
-        scoresQuery = scoresQuery.Where(s => s.UserId == userId); // Add where user id query only after forming sqlRaw query, to get proper beatmaps top plays
+        scoresQuery = scoresQuery.Where(s => s.UserId == userId); // We are adding user id query only after forming sqlRaw query to get proper beatmaps top plays
 
-        var totalCount = await scoresQuery.CountAsync();
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
 
         var scores = await scoresQuery
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         return (scores, totalCount);
     }
 
-    public async Task<List<Score>> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null)
+    public async Task<(List<Score>, int)> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null, CancellationToken ct = default)
     {
-        var scoreQuery = dbContext.Scores.FilterValidScores();
+        var scoresQuery = dbContext.Scores.FilterValidScores();
 
-        if (mode != null) scoreQuery = scoreQuery.Where(s => s.GameMode == mode);
-        if (startFromId != null) scoreQuery = scoreQuery.Where(s => s.Id >= startFromId);
+        if (mode != null) scoresQuery = scoresQuery.Where(s => s.GameMode == mode);
+        if (startFromId != null) scoresQuery = scoresQuery.Where(s => s.Id >= startFromId);
 
-        return await scoreQuery
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
+
+        var scores = await scoresQuery
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
+
+        return (scores, totalCount);
     }
 
-    public async Task<long> CountScores()
+    public async Task<List<Score>> EnrichScoresWithLeaderboardPosition(List<Score> scores, CancellationToken ct = default)
     {
-        return await dbContext.Scores.FilterValidScores().CountAsync();
+        if (scores.Count == 0) return scores;
+
+        var scoresIds = string.Join(",", scores.Select(s => s.Id));
+
+        var connection = dbContext.Database.GetDbConnection();
+        await connection.OpenAsync(ct);
+
+        var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
+
+        var orderByValue = gameModesWithoutScoreMultiplier.Contains(scores.FirstOrDefault()?.GameMode ?? GameMode.Standard) ? nameof(Score.PerformancePoints) : nameof(Score.TotalScore);
+
+        var command = connection.CreateCommand();
+        command.CommandText = $"""
+                               
+                                       SELECT Id,
+                                              RANK() OVER (PARTITION BY BeatmapId ORDER BY {orderByValue} DESC) AS LeaderboardPosition
+                                       FROM score
+                                       WHERE Id IN ({scoresIds})
+                               """;
+
+        var leaderboardMap = new Dictionary<long, int>();
+
+        await using (var reader = await command.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                var id = reader.GetInt64(0);
+                var rank = reader.GetInt32(1);
+                leaderboardMap[id] = rank;
+            }
+        }
+
+        foreach (var score in scores)
+        {
+            if (leaderboardMap.TryGetValue(score.Id, out var position))
+            {
+                score.LocalProperties.LeaderboardPosition = position;
+            }
+        }
+
+        return scores;
+    }
+
+    public async Task<long> CountScores(CancellationToken ct = default)
+    {
+        return await dbContext.Scores.FilterValidScores().CountAsync(cancellationToken: ct);
     }
 }

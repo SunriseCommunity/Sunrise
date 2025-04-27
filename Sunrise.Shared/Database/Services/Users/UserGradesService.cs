@@ -33,13 +33,13 @@ public class UserGradesService(
         });
     }
 
-    public async Task<UserGrades?> GetUserGrades(int userId, GameMode mode)
+    public async Task<UserGrades?> GetUserGrades(int userId, GameMode mode, CancellationToken ct = default)
     {
-        var grades = await dbContext.UserGrades.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync();
+        var grades = await dbContext.UserGrades.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync(cancellationToken: ct);
 
         if (grades == null)
         {
-            var user = await databaseService.Value.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId, ct: ct);
             if (user == null) return null;
 
             _logger.LogInformation($"User grades not found for user (id: {userId}) in mode {mode}. Creating new grades.");

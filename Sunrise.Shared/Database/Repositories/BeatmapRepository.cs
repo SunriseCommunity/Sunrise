@@ -53,13 +53,13 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusReposit
         return await GetCachedBeatmapSetBySetId(beatmapSetId.Value);
     }
 
-    private async Task<BeatmapSet?> GetCachedBeatmapSetBySetId(int beatmapSetId)
+    private async Task<BeatmapSet?> GetCachedBeatmapSetBySetId(int beatmapSetId, CancellationToken ct = default)
     {
         var beatmapSet = await redis.Get<BeatmapSet?>(RedisKey.BeatmapSetBySetId(beatmapSetId));
 
         if (beatmapSet == null) return null;
 
-        var customStatuses = await customBeatmapStatusRepository.GetCustomBeatmapSetStatuses(beatmapSet.Id);
+        var customStatuses = await customBeatmapStatusRepository.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: ct);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 

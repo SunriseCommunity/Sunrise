@@ -10,20 +10,20 @@ namespace Sunrise.Shared.Database.Repositories;
 
 public class CustomBeatmapStatusRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext)
 {
-    public async Task<CustomBeatmapStatus?> GetCustomBeatmapStatus(string beatmapHash, QueryOptions? options = null)
+    public async Task<CustomBeatmapStatus?> GetCustomBeatmapStatus(string beatmapHash, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.CustomBeatmapStatuses
             .Where(m => m.BeatmapHash == beatmapHash)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
-    public async Task<List<CustomBeatmapStatus>> GetCustomBeatmapSetStatuses(int beatmapSetId, QueryOptions? options = null)
+    public async Task<List<CustomBeatmapStatus>> GetCustomBeatmapSetStatuses(int beatmapSetId, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.CustomBeatmapStatuses
             .Where(m => m.BeatmapSetId == beatmapSetId)
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
     }
 
     public async Task<Result> AddCustomBeatmapStatus(CustomBeatmapStatus status)
@@ -43,7 +43,7 @@ public class CustomBeatmapStatusRepository(ILogger<ScoreRepository> logger, Sunr
             await dbContext.SaveChangesAsync();
         });
     }
-    
+
     public async Task<Result> DeleteCustomBeatmapStatus(CustomBeatmapStatus status)
     {
         return await ResultUtil.TryExecuteAsync(async () =>

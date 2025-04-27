@@ -47,14 +47,14 @@ public class UserFileService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true)
+    public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar, ct);
 
         if (record == null && !fallToDefault) return null;
 
         var filePath = Path.Combine(DataPath, record?.Path ?? "Files/Avatars/Default.png");
-        var file = await LocalStorageRepository.ReadFileAsync(filePath);
+        var file = await LocalStorageRepository.ReadFileAsync(filePath, ct);
 
         return file;
     }
@@ -83,15 +83,15 @@ public class UserFileService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<byte[]?> GetScreenshot(int screenshotId)
+    public async Task<byte[]?> GetScreenshot(int screenshotId, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot, ct);
 
         if (record == null)
             return null;
 
         var filePath = Path.Combine(DataPath, record.Path);
-        var file = await LocalStorageRepository.ReadFileAsync(filePath);
+        var file = await LocalStorageRepository.ReadFileAsync(filePath, ct);
 
         return file;
     }
@@ -129,14 +129,14 @@ public class UserFileService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true)
+    public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner, ct);
 
         if (record == null && !fallToDefault) return null;
 
         var filePath = Path.Combine(DataPath, record?.Path ?? "Files/Banners/Default.png");
-        var file = await LocalStorageRepository.ReadFileAsync(filePath);
+        var file = await LocalStorageRepository.ReadFileAsync(filePath, ct);
         return file;
     }
 }

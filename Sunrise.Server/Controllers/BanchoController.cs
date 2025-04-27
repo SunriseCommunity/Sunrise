@@ -34,9 +34,9 @@ public class BanchoController(ILogger<BanchoController> logger, AuthService auth
     }
 
     [HttpGet(RequestType.BanchoProcess)]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken ct = default)
     {
-        var image = await assetService.GetPeppyImage();
+        var image = await assetService.GetPeppyImage(ct);
         if (image == null)
             return NotFound();
 

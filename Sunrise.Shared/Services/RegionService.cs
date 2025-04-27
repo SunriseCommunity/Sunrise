@@ -12,7 +12,7 @@ namespace Sunrise.Shared.Services;
 
 public class RegionService(ILogger<RegionService> logger, RedisRepository redisRepository, HttpClientService client)
 {
-    public async Task<Location> GetRegion(IPAddress ip)
+    public async Task<Location> GetRegion(IPAddress ip, CancellationToken ct = default)
     {
         var cachedRegion = await redisRepository.Get<Location>(RedisKey.LocationFromIp(ip.ToString()));
 
@@ -22,7 +22,7 @@ public class RegionService(ILogger<RegionService> logger, RedisRepository redisR
         }
 
         var guestSession = BaseSession.GenerateGuestSession(ip);
-        var locationResult = await client.SendRequest<Location>(guestSession, ApiType.GetIPLocation, [ip.ToString()]);
+        var locationResult = await client.SendRequest<Location>(guestSession, ApiType.GetIPLocation, [ip.ToString()], ct: ct);
 
         if (locationResult.IsFailure)
         {

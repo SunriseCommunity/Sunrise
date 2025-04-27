@@ -29,10 +29,12 @@ public class MultiKickCommand : IChatCommand
             return;
         }
         
+        var username = string.Join(" ", args[0..]);
+        
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
         
-        var userToKick = await database.Users.GetUser(username: args[0]);
+        var userToKick = await database.Users.GetUser(username: username);
         if (userToKick == null)
         {
             session.SendChannelMessage(channel.Name, "User not found.");

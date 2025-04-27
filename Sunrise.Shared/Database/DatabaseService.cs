@@ -57,10 +57,10 @@ public sealed class DatabaseService(
         logger.LogInformation("User ranks rebuilt. Sorted sets is now up to date.");
     }
 
-    public async Task<Result> CommitAsTransactionAsync(Func<Task> action)
+    public async Task<Result> CommitAsTransactionAsync(Func<Task> action, CancellationToken ct = default)
     {
         var isCurrentlyInOtherTransactionScope = DbContext.Database.CurrentTransaction != null;
-        await using var transaction = isCurrentlyInOtherTransactionScope ? null : await DbContext.Database.BeginTransactionAsync();
+        await using var transaction = isCurrentlyInOtherTransactionScope ? null : await DbContext.Database.BeginTransactionAsync(ct);
 
         try
         {
@@ -68,7 +68,7 @@ public sealed class DatabaseService(
             await DbContext.SaveChangesAsync();
 
             if (!isCurrentlyInOtherTransactionScope && transaction != null)
-                await transaction.CommitAsync();
+                await transaction.CommitAsync(ct);
 
             return Result.Success();
         }
@@ -79,7 +79,7 @@ public sealed class DatabaseService(
         catch (Exception ex)
         {
             if (!isCurrentlyInOtherTransactionScope && transaction != null)
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(ct);
 
             logger.LogWarning(ex, "Failed to process db transaction");
 

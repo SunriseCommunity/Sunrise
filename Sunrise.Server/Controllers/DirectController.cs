@@ -18,13 +18,14 @@ public class DirectController(DirectService directService, SessionRepository ses
         [FromQuery(Name = "p")] int page,
         [FromQuery(Name = "q")] string query,
         [FromQuery(Name = "m")] string mode,
-        [FromQuery(Name = "r")] int ranked
+        [FromQuery(Name = "r")] int ranked,
+        CancellationToken ct = default
     )
     {
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await directService.SearchBeatmapSets(session, page + 1, query, mode == "-1" ? "" : mode, ranked);
+        var result = await directService.SearchBeatmapSets(session, page + 1, query, mode == "-1" ? "" : mode, ranked, ct);
 
         if (result == null)
             return BadRequest("no");
@@ -38,13 +39,14 @@ public class DirectController(DirectService directService, SessionRepository ses
         [FromQuery(Name = "h")] string passhash,
         [FromQuery(Name = "s")] int? setId,
         [FromQuery(Name = "b")] int? beatmapId,
-        [FromQuery(Name = "c")] string? beatmapHash
+        [FromQuery(Name = "c")] string? beatmapHash,
+        CancellationToken ct = default
     )
     {
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return BadRequest("no");
 
-        var result = await directService.SearchBeatmap(session, setId, beatmapId, beatmapHash);
+        var result = await directService.SearchBeatmap(session, setId, beatmapId, beatmapHash, ct);
 
         return Ok(result);
     }

@@ -23,7 +23,7 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
             Mods = score.Mods.IgnoreNotStandardModsForRecalculation()
         };
 
-        var performanceResult = await client.SendRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
+        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
 
         if (performanceResult.IsFailure) return performanceResult;
 

@@ -1,4 +1,5 @@
-﻿using osu.Shared;
+﻿using System.Net;
+using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;
 using Sunrise.API.Serializable.Response;
@@ -28,7 +29,21 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            var isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
+
+            SubmitScoreHelper.ReportRejectionToMetrics(session,
+                scoreSerialized,
+                isBeatmapsetNotFound ? "Invalid request: BeatmapSet not found" : "Beatmap set couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
+
+            return "error: no";
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
+
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmap == null || beatmapSet == null)
@@ -187,7 +202,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
         }
 
-        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(database, sessions, score)));
+        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(sessions, score)));
 
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
@@ -223,18 +238,26 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     }
 
     public async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
-        LeaderboardType leaderboardType, string beatmapHash, string filename)
+        LeaderboardType leaderboardType, string beatmapHash, string filename, CancellationToken ct = default)
     {
         gameMode = gameMode.EnrichWithMods(mods);
 
-        var user = await database.Users.GetUser(session.UserId);
+        var user = await database.Users.GetUser(session.UserId, ct: ct);
         if (user == null)
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
 
-        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true));
+        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true), ct);
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, beatmapHash);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, retryCount: int.MaxValue, ct: ct);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            return $"{(int)BeatmapStatus.NotSubmitted}|false";
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
+
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)
