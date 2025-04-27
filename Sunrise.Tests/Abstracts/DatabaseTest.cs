@@ -154,6 +154,10 @@ public abstract class DatabaseTest : BaseTest, IDisposable
 
         await Database.Scores.AddScore(score);
 
+        var scoreLeaderboardTask = await Database.Scores.EnrichScoresWithLeaderboardPosition([score]);
+
+        score = scoreLeaderboardTask.First();
+
         return score;
     }
 
