@@ -78,13 +78,12 @@ public class LocalProperties
     public Mods SerializedMods { get; set; }
 
     public bool IsRanked { get; set; }
-    public int LeaderboardPosition { get; set; }
+    public int? LeaderboardPosition { get; set; }
 
     public LocalProperties FromScore(Score score)
     {
         SerializedMods = score.Mods & ~Mods.Nightcore;
         IsRanked = score.BeatmapStatus.IsRanked();
-        LeaderboardPosition = -1;
         return this;
     }
 }

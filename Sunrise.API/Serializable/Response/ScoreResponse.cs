@@ -87,7 +87,8 @@ public class ScoreResponse
     public bool HasReplay { get; set; }
 
     [JsonPropertyName("leaderboard_rank")]
-    public int LeaderboardRank { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? LeaderboardRank { get; set; }
 
     [JsonPropertyName("max_combo")]
     public int MaxCombo { get; set; }

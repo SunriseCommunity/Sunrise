@@ -152,8 +152,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     public async Task<IActionResult> GetUserScores(int id,
         [FromQuery(Name = "mode")] GameMode mode = 0,
         [FromQuery(Name = "type")] ScoreTableType scoresType = 0,
-        [FromQuery(Name = "limit")] int? limit = 15,
-        [FromQuery(Name = "page")] int? page = 1)
+        [FromQuery(Name = "limit")] int limit = 15,
+        [FromQuery(Name = "page")] int page = 1)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -169,7 +169,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var (scores, totalScores) = await database.Scores.GetUserScores(id, mode, scoresType, new QueryOptions(true, new Pagination(page.Value, limit.Value))
+        var (scores, totalScores) = await database.Scores.GetUserScores(id, mode, scoresType, new QueryOptions(true, new Pagination(page, limit))
         {
             QueryModifier = query => query.Cast<Score>().IncludeUser()
         });
@@ -189,8 +189,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMostPlayedMaps(int id,
         [FromQuery(Name = "mode")] GameMode mode,
-        [FromQuery(Name = "limit")] int? limit = 15,
-        [FromQuery(Name = "page")] int? page = 1)
+        [FromQuery(Name = "limit")] int limit = 15,
+        [FromQuery(Name = "page")] int page = 1)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -208,7 +208,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page, limit)));
 
         var parsedBeatmaps = beatmapsIds.Select(async pair =>
         {
@@ -230,8 +230,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFavourites(int id,
-        [FromQuery(Name = "limit")] int? limit = 50,
-        [FromQuery(Name = "page")] int? page = 1)
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1)
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -250,7 +250,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             return NotFound(new ErrorResponse("User is restricted"));
 
         var favouritesCount = await database.Users.Favourites.GetUserFavouriteBeatmapIdsCount(id);
-        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)));
 
         var parsedFavourites = favourites.Select(async setId =>
         {
@@ -266,8 +266,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
-        [FromQuery(Name = "limit")] int? limit = 50,
-        [FromQuery(Name = "page")] int? page = 1)
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1)
     {
 
         if (ModelState.IsValid != true)
@@ -281,7 +281,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var stats = await database.Users.Stats.GetUsersStats(mode,
             leaderboardType,
-            options: new QueryOptions(true, new Pagination(page.Value, limit.Value))
+            options: new QueryOptions(true, new Pagination(page, limit))
             {
                 QueryModifier = query => query.Cast<UserStats>().IncludeUser()
             });
@@ -307,8 +307,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SeachUsers(
         [FromQuery(Name = "query")] string query,
-        [FromQuery(Name = "limit")] int? limit = 50,
-        [FromQuery(Name = "page")] int? page = 1
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1
     )
     {
         if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
@@ -320,7 +320,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page, limit)));
 
         return Ok(users.Select(x => new UserResponse(sessions, x)));
     }
@@ -331,8 +331,8 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [EndpointDescription("Get authenticated users friends")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
-        [FromQuery(Name = "limit")] int? limit = 50,
-        [FromQuery(Name = "page")] int? page = 1
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1
     )
     {
         if (ModelState.IsValid != true)
@@ -350,7 +350,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page.Value, limit.Value)));
+        var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page, limit)));
 
         return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x)).ToList(), totalCount));
     }
