@@ -26,7 +26,7 @@ public class UsernameCommand : IChatCommand
             return;
         }
         
-        var username =  string.Join(" ", args[1..]);
+        var username = string.Join(" ", args[1..]);
 
         var (isUsernameValid, error) = username.IsValidUsername();
 

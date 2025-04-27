@@ -25,7 +25,7 @@ public class Session : BaseSession
     public Session(User user, Location location, LoginRequest loginRequest) : base(user)
     {
         _helper = new PacketHelper();
-        
+
         Token = Guid.NewGuid().ToString();
         Attributes = new UserAttributes(user, location, loginRequest);
     }
@@ -96,7 +96,7 @@ public class Session : BaseSession
         var user = GetSessionUser();
         if (user == null)
             return;
-        
+
         _helper.WritePacket(PacketType.ServerUserPermissions, user.GetPrivilegeRank() | PlayerRank.Supporter);
     }
 
@@ -155,7 +155,7 @@ public class Session : BaseSession
         var user = GetSessionUser();
         if (user == null)
             return;
-        
+
         _helper.WritePacket(PacketType.ServerFriendsList, user.FriendsList);
     }
 
@@ -169,17 +169,13 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerMultiMatchJoinSuccess, match);
     }
 
-    public void SendMultiInvite(BanchoMultiplayerMatch match, Session sender)
+    public void SendMultiInvite(BanchoMultiplayerMatch match, User sender)
     {
-        var user = GetSessionUser();
-        if (user == null)
-            return;
-        
         var message = new BanchoChatMessage
         {
-            Sender = user.Username,
-            SenderId = user.Id,
-            Channel = user.Username,
+            Sender = sender.Username,
+            SenderId = sender.Id,
+            Channel = sender.Username,
             Message = $"Come join my multiplayer match! [osump://{match.MatchId}/{match.GamePassword} {match.GameName}]"
         };
 
@@ -190,7 +186,7 @@ public class Session : BaseSession
     {
         return _helper.GetBytesToSend();
     }
-    
+
     public void AddSpectator(Session session)
     {
         foreach (var spectator in Spectators)
@@ -214,14 +210,14 @@ public class Session : BaseSession
 
         Spectators.Remove(session);
     }
-    
+
     private User? GetSessionUser()
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
-        var user = database.Users.GetUser(id: UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
-        
+
+        var user = database.Users.GetUser(UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+
         if (user == null)
             throw new ApplicationException($"User with id {UserId} not found");
 

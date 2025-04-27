@@ -121,6 +121,7 @@ Data/Files/Replays/*
 Data/Files/Screenshot/*
 Data/Files/SeasonalBackgrounds/*
 Data/Backups/*
+backup_mysql*
 
 # Ignore test database files
 *.test

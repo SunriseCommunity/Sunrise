@@ -28,8 +28,8 @@ public class MultiMoveCommand : IChatCommand
             return;
         }
 
-        var username = args[0];
-        var slot = args[1];
+        var slot = args[^1];
+        var username = string.Join(" ", args[..^1]);
 
         if (int.TryParse(slot, out var slotNumber) == false)
         {
@@ -46,7 +46,7 @@ public class MultiMoveCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
         
-        var userToMove = await database.Users.GetUser(username: args[0]);
+        var userToMove = await database.Users.GetUser(username: username);
         if (userToMove == null)
         {
             session.SendChannelMessage(channel.Name, "User not found.");

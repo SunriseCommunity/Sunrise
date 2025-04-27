@@ -28,8 +28,11 @@ public class MultiTeamCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp team <username> <color>");
             return;
         }
+        
+        var teamColor = args[^1]; 
+        var username = string.Join(" ", args[..^1]);
 
-        if (args[1] != "red" && args[1] != "blue")
+        if (teamColor != "red" && teamColor != "blue")
         {
             session.SendChannelMessage(channel.Name, "Invalid team color. Use 'red' or 'blue'.");
             return;
@@ -44,7 +47,7 @@ public class MultiTeamCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
                 
-        var targetUser = await database.Users.GetUser(username: args[0]);
+        var targetUser = await database.Users.GetUser(username: username);
         if (targetUser == null)
             return;
 
@@ -56,8 +59,8 @@ public class MultiTeamCommand : IChatCommand
             return;
         }
 
-        session.Match.ChangeTeam(targetSession, args[1] == "red" ? SlotTeams.Red : SlotTeams.Blue, true);
+        session.Match.ChangeTeam(targetSession, teamColor == "red" ? SlotTeams.Red : SlotTeams.Blue, true);
 
-        session.SendChannelMessage(channel.Name, $"{args[1]}'s team color has been updated.");
+        session.SendChannelMessage(channel.Name, $"{username}'s team color has been updated.");
     }
 }
