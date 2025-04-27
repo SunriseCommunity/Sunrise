@@ -20,6 +20,21 @@ public sealed class Middleware(
         var path = context.Request.Path;
 
         var isApiRequest = context.Request.Host.Host.StartsWith("api.");
+        var isAssetsRequest = context.Request.Host.Host.StartsWith("a.") || context.Request.Host.Host.StartsWith("assets.");
+
+        if (path.StartsWithSegments(Configuration.ApiDocumentationPath) && !isApiRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+
+        var isIpFormLocalNetwork = ip.IsFromLocalNetwork() || ip.IsFromDocker();
+
+        if (path.StartsWithSegments("/metrics") && !isIpFormLocalNetwork)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
 
         if (Configuration.BannedIps.Contains(ip.ToString()) && !isApiRequest)
         {
@@ -27,9 +42,9 @@ public sealed class Middleware(
             return;
         }
 
-        if (path.StartsWithSegments(Configuration.ApiDocumentationPath) && !isApiRequest)
+        if (isAssetsRequest)
         {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await next(context);
             return;
         }
 
@@ -49,19 +64,6 @@ public sealed class Middleware(
             return;
         }
 
-        if (path.StartsWithSegments("/metrics") && !ip.IsFromLocalNetwork() &&
-            !ip.IsFromDocker())
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return;
-        }
-
-        // TODO: Add caching for assets
-        if (context.Request.Host.Host.StartsWith("a."))
-        {
-            await next(context);
-            return;
-        }
 
         var limiter = GetRateLimiter(ip);
         using var lease = await limiter.AcquireAsync(1, context.RequestAborted);
@@ -94,7 +96,7 @@ public sealed class Middleware(
                     AutoReplenishment = true,
                     TokenLimit = Configuration.GeneralCallsPerWindow,
                     TokensPerPeriod = Configuration.GeneralCallsPerWindow,
-                    QueueLimit = 0,
+                    QueueLimit = 100,
                     ReplenishmentPeriod = TimeSpan.FromSeconds(Configuration.GeneralWindow)
                 });
             }) ?? throw new InvalidOperationException($"Failed to create rate limiter for {key}");

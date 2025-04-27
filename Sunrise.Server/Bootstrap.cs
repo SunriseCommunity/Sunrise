@@ -1,3 +1,4 @@
+using System.Text.Json;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -10,6 +11,7 @@ using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Managers;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
@@ -86,8 +88,19 @@ public static class Bootstrap
         {
             options.DefaultPolicy = new RequestTimeoutPolicy
             {
-                Timeout = TimeSpan.FromSeconds(10),
-                TimeoutStatusCode = StatusCodes.Status408RequestTimeout
+                Timeout = TimeSpan.FromSeconds(30),
+                TimeoutStatusCode = StatusCodes.Status408RequestTimeout,
+                WriteTimeoutResponse = async context =>
+                {
+                    if (!context.Response.HasStarted)
+                    {
+                        context.Response.ContentType = "application/json";
+
+                        var errorResponse = new ErrorResponse("Request timed out.");
+                        var json = JsonSerializer.Serialize(errorResponse);
+                        await context.Response.WriteAsync(json);
+                    }
+                }
             };
         });
     }
