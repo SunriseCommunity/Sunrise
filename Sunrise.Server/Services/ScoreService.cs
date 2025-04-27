@@ -223,18 +223,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     }
 
     public async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
-        LeaderboardType leaderboardType, string beatmapHash, string filename)
+        LeaderboardType leaderboardType, string beatmapHash, string filename, CancellationToken ct = default)
     {
         gameMode = gameMode.EnrichWithMods(mods);
 
-        var user = await database.Users.GetUser(session.UserId);
+        var user = await database.Users.GetUser(session.UserId, ct: ct);
         if (user == null)
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
 
-        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true));
+        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true), ct);
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, beatmapHash);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, ct: ct);
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)

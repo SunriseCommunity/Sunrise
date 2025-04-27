@@ -48,13 +48,13 @@ public class UserStatsService(
         });
     }
 
-    public async Task<UserStats?> GetUserStats(int userId, GameMode mode)
+    public async Task<UserStats?> GetUserStats(int userId, GameMode mode, CancellationToken ct = default)
     {
-        var stats = await dbContext.UserStats.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync();
+        var stats = await dbContext.UserStats.Where(e => e.UserId == userId && e.GameMode == mode).FirstOrDefaultAsync(cancellationToken: ct);
 
         if (stats == null)
         {
-            var user = await databaseService.Value.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId, ct: ct);
             if (user == null) return null;
 
             _logger.LogCritical($"User stats not found for user (id: {userId}) in mode {mode}. Creating new stats.");
@@ -71,7 +71,7 @@ public class UserStatsService(
         return stats;
     }
 
-    public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true)
+    public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true, CancellationToken ct = default)
     {
         var statsQuery = dbContext.UserStats.Where(e => e.GameMode == mode);
 
@@ -87,31 +87,32 @@ public class UserStatsService(
         var stats = await statsQuery
             .FilterValidUserStats()
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
 
         var isSomeStatsMissing = userIds != null && stats.Count != userIds.Count;
 
         if (isSomeStatsMissing && addMissingUserStats)
         {
-            var users = await databaseService.Value.Users.GetValidUsers(ids: userIds);
+            var users = await databaseService.Value.Users.GetValidUsers(userIds, ct: ct);
             if (users.Count == stats.Count)
                 return stats; // We return only valid users stats, so if we can't find user by user id in valid users, user stats can't exist
 
             var usersWithoutStats = users.Where(u => !stats.Select(us => us.UserId).Contains(u.Id));
 
             var transactionResult = await databaseService.Value.CommitAsTransactionAsync(async () =>
-            {
-                foreach (var user in usersWithoutStats)
                 {
-                    _logger.LogCritical($"User stats not found for user (id: {user.Id}) in mode {mode}. Creating new stats.");
-                    await AddUserStats(new UserStats
-                        {
-                            UserId = user.Id,
-                            GameMode = mode
-                        },
-                        user);
-                }
-            });
+                    foreach (var user in usersWithoutStats)
+                    {
+                        _logger.LogCritical($"User stats not found for user (id: {user.Id}) in mode {mode}. Creating new stats.");
+                        await AddUserStats(new UserStats
+                            {
+                                UserId = user.Id,
+                                GameMode = mode
+                            },
+                            user);
+                    }
+                },
+                ct);
 
             if (transactionResult.IsFailure)
                 throw new Exception(transactionResult.Error);

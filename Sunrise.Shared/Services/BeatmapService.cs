@@ -11,7 +11,7 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
 {
     // TODO: Return Result
     public async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null)
+        string? beatmapHash = null, int? beatmapId = null, CancellationToken ct = default)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null) return null;
 
@@ -20,20 +20,20 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
 
         if (beatmapId != null)
             beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId])).GetValueOrDefault();
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: ct)).GetValueOrDefault();
         if (beatmapHash != null && beatmapSet == null)
             beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash])).GetValueOrDefault();
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: ct)).GetValueOrDefault();
         if (beatmapSetId != null && beatmapSet == null)
             beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId])).GetValueOrDefault();
+                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: ct)).GetValueOrDefault();
 
         if (beatmapSet == null)
             return null;
 
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
-        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id);
+        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: ct);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 
@@ -41,18 +41,19 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
     }
 
     public async Task<List<BeatmapSet>?> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,
-        string query, Pagination pagination)
+        string query, Pagination pagination, CancellationToken ct = default)
     {
         var beatmapSets = (await client.SendRequest<List<BeatmapSet>?>(session,
             ApiType.BeatmapSetSearch,
-            [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode])).GetValueOrDefault();
+            [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode],
+            ct: ct)).GetValueOrDefault();
 
         if (beatmapSets == null) return null;
 
 
         foreach (var set in beatmapSets)
         {
-            var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(set.Id);
+            var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(set.Id, ct: ct);
 
             set.UpdateBeatmapRanking(customStatuses);
         }

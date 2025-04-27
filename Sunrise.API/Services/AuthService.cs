@@ -37,7 +37,7 @@ public class AuthService(DatabaseService database)
         return (token, refreshToken, TokenExpires.ToSeconds());
     }
 
-    public async Task<User?> GetUserFromToken(string token)
+    public async Task<User?> GetUserFromToken(string token, CancellationToken ct = default)
     {
         var userIdResult = await ValidateJwtToken(token);
         if (userIdResult.IsFailure)
@@ -45,7 +45,7 @@ public class AuthService(DatabaseService database)
 
         var userId = userIdResult.Value;
 
-        var user = await database.Users.GetValidUser(userId);
+        var user = await database.Users.GetValidUser(userId, ct: ct);
 
         return user;
     }

@@ -33,23 +33,23 @@ public class RecurringJobs
         {
             for (var x = 1;; x++)
             {
-                var usersStats = await database.Users.Stats.GetUsersStats(i, LeaderboardSortType.Pp, options: new QueryOptions(true, new Pagination(x, pageSize)));
+                var usersStats = await database.Users.Stats.GetUsersStats(i, LeaderboardSortType.Pp, options: new QueryOptions(true, new Pagination(x, pageSize)), ct: ct);
 
-                var users = await database.Users.GetUsers(usersStats.Select(us => us.UserId).ToList());
+                var users = await database.Users.GetUsers(usersStats.Select(us => us.UserId).ToList(), ct: ct);
 
                 foreach (var stats in usersStats)
                 {
                     var user = users.FirstOrDefault(u => u.Id == stats.UserId);
                     if (user == null || !user.IsActive(false)) continue;
 
-                    var currentSnapshot = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode);
+                    var currentSnapshot = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode, ct);
                     var rankSnapshots = currentSnapshot.GetSnapshots();
 
                     rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
 
                     if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
 
-                    var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, stats.GameMode);
+                    var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, stats.GameMode, ct: ct);
 
                     rankSnapshots.Add(new StatsSnapshot
                     {
@@ -59,7 +59,6 @@ public class RecurringJobs
                     });
 
                     currentSnapshot.SetSnapshots(rankSnapshots);
-                    ct.ThrowIfCancellationRequested();
                     await database.Users.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
                 }
 
@@ -77,7 +76,7 @@ public class RecurringJobs
 
         for (var i = 1;; i++)
         {
-            var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)));
+            var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)), ct: ct);
 
             foreach (var user in users.Where(user => user.LastOnlineTime.AddDays(90) < DateTime.UtcNow))
             {

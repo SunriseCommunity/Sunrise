@@ -24,12 +24,12 @@ public class AuthController(
     [HttpPost("token")]
     [EndpointDescription("Generate user auth tokens")]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request)
+    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request, CancellationToken ct = default)
     {
         if (!ModelState.IsValid || request == null)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
-        var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash());
+        var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid credentials"));
@@ -39,11 +39,11 @@ public class AuthController(
 
         if (user.IsRestricted())
         {
-            var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id);
+            var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id, ct);
             return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
         }
 
-        var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
+        var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request), ct);
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 

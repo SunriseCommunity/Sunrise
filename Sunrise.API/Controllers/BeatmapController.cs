@@ -29,7 +29,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [EndpointDescription("Get beatmap")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmap(int id)
+    public async Task<IActionResult> GetBeatmap(int id, CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -37,9 +37,9 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
@@ -56,7 +56,13 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [EndpointDescription("Get beatmap performance")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(PerformanceAttributes), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapPerformance(int id, [FromQuery(Name = "mods")] Mods? mods = null, [FromQuery(Name = "mode")] int? gameMode = null, [FromQuery(Name = "combo")] int? combo = null, [FromQuery(Name = "misses")] int? misses = null, [FromQuery(Name = "accuracy")] float? accuracy = null)
+    public async Task<IActionResult> GetBeatmapPerformance(int id,
+        [FromQuery(Name = "mods")] Mods? mods = null,
+        [FromQuery(Name = "mode")] int? gameMode = null,
+        [FromQuery(Name = "combo")] int? combo = null,
+        [FromQuery(Name = "misses")] int? misses = null,
+        [FromQuery(Name = "accuracy")] float? accuracy = null,
+        CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -70,9 +76,9 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (accuracy is < 0 or > 100)
             return BadRequest(new ErrorResponse("Invalid accuracy"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
@@ -98,7 +104,8 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     public async Task<IActionResult> GetBeatmapLeaderboard(int id,
         [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "mods")] Mods? mods = null,
-        [FromQuery(Name = "limit")] int limit = 50)
+        [FromQuery(Name = "limit")] int limit = 50,
+        CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -106,11 +113,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
@@ -125,9 +132,10 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             options: new QueryOptions(new Pagination(1, limit))
             {
                 QueryModifier = query => query.Cast<Score>().IncludeUser()
-            });
+            },
+            ct: ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores);
+        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
 
         var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
@@ -139,14 +147,14 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(BeatmapSetResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapSet(int id, [FromQuery] bool? favourite)
+    public async Task<IActionResult> GetBeatmapSet(int id, [FromQuery] bool? favourite, CancellationToken ct = default)
     {
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, id);
+        var beatmapSet = await beatmapService.GetBeatmapSet(session, id, ct: ct);
         if (beatmapSet == null)
             return NotFound(new ErrorResponse("Beatmap set not found"));
 
@@ -171,16 +179,16 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     [EndpointDescription("Check if beatmapset is favourited by current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetFavourited(int id)
+    public async Task<IActionResult> GetFavourited(int id, CancellationToken ct = default)
     {
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct);
         if (session == null)
             return Unauthorized(new ErrorResponse("Unauthorized"));
 
-        var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(session.UserId, id);
+        var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(session.UserId, id, ct);
 
         return Ok(new FavouritedResponse
         {
@@ -197,7 +205,8 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         [FromQuery(Name = "status")] BeatmapStatusSearch[]? status,
         [FromQuery(Name = "mode")] GameMode? mode,
         [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1
+        [FromQuery(Name = "page")] int page = 1,
+        CancellationToken ct = default
     )
     {
         if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
@@ -209,7 +218,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
         var beatmapsetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapsetGamemode = mode.HasValue ? (int)mode : -1;
@@ -218,7 +227,8 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
             beatmapsetStatus,
             beatmapsetGamemode.ToString(),
             query,
-            new Pagination(page - 1, limit));
+            new Pagination(page - 1, limit),
+            ct);
 
         return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
     }

@@ -82,13 +82,13 @@ public class UserEventService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<EventUser?> GetLastUsernameChangeEvent(int userId, QueryOptions? options = null)
+    public async Task<EventUser?> GetLastUsernameChangeEvent(int userId, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.EventUsers
             .Where(x => x.UserId == userId && x.EventType == UserEventType.ChangeUsername)
             .OrderByDescending(x => x.Id)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
     public async Task<Result> AddUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername, int? updatedById = null)
@@ -114,17 +114,17 @@ public class UserEventService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<bool> IsUserHasAnyLoginEvents(int userId)
+    public async Task<bool> IsUserHasAnyLoginEvents(int userId, CancellationToken ct = default)
     {
         return await dbContext.EventUsers
             .AsNoTracking()
-            .AnyAsync(x => x.UserId == userId && (x.EventType == UserEventType.GameLogin || x.EventType == UserEventType.WebLogin));
+            .AnyAsync(x => x.UserId == userId && (x.EventType == UserEventType.GameLogin || x.EventType == UserEventType.WebLogin), ct);
     }
 
-    public async Task<bool> IsIpHasAnyRegisterEvents(string ip)
+    public async Task<bool> IsIpHasAnyRegisterEvents(string ip, CancellationToken ct = default)
     {
         return await dbContext.EventUsers
             .AsNoTracking()
-            .AnyAsync(x => x.Ip == ip && x.EventType == UserEventType.Register);
+            .AnyAsync(x => x.Ip == ip && x.EventType == UserEventType.Register, ct);
     }
 }

@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums;
@@ -39,15 +40,15 @@ public class ScoreFileService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<byte[]?> GetReplayFile(int replayId)
+    public async Task<byte[]?> GetReplayFile(int replayId, CancellationToken ct = default)
     {
-        var record = dbContext.UserFiles.FirstOrDefault(record => record.Id == replayId);
+        var record = await dbContext.UserFiles.FirstOrDefaultAsync(record => record.Id == replayId, ct);
 
         if (record == null)
             return null;
 
         var filePath = Path.Combine(DataPath, record.Path);
-        var file = await LocalStorageRepository.ReadFileAsync(filePath);
+        var file = await LocalStorageRepository.ReadFileAsync(filePath, ct);
 
         return file;
     }

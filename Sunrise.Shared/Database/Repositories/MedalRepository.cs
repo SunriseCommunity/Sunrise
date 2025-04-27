@@ -10,34 +10,34 @@ namespace Sunrise.Shared.Database.Repositories;
 
 public class MedalRepository(SunriseDbContext dbContext)
 {
-    public async Task<List<Medal>> GetMedals(GameMode mode, QueryOptions? options = null)
+    public async Task<List<Medal>> GetMedals(GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Medals
             .Where(m => m.GameMode == mode || m.GameMode == null)
             .UseQueryOptions(options)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: ct);
     }
 
-    public async Task<Medal?> GetMedal(int medalId, QueryOptions? options = null)
+    public async Task<Medal?> GetMedal(int medalId, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Medals
             .Where(m => m.Id == medalId)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
-    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false, QueryOptions? options = null)
+    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false, QueryOptions? options = null, CancellationToken ct = default)
     {
         var record = await dbContext.MedalFiles
             .Where(r => r.Id == medalFileId)
             .UseQueryOptions(options)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken: ct);
 
         if (record == null)
             return null;
 
         var imagePath = isHighRes ? record.Path.Replace(".png", "@2x.png") : record.Path;
-        var file = await LocalStorageRepository.ReadFileAsync(Path.Combine(Configuration.DataPath, imagePath));
+        var file = await LocalStorageRepository.ReadFileAsync(Path.Combine(Configuration.DataPath, imagePath), ct);
 
         return file;
     }

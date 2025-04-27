@@ -30,7 +30,7 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
-    public async Task<Result<T, ErrorMessage>> SendRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
+    public async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
     {
         if (session.IsRateLimited())
         {
@@ -89,7 +89,7 @@ public class HttpClientService
         });
     }
 
-    public async Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null)
+    public async Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
         if (session.IsRateLimited())
         {
@@ -136,7 +136,7 @@ public class HttpClientService
                     headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
             }
 
-            var responseResult = await SendApiRequest<T>(api.Server, requestUri, headers);
+            var responseResult = await SendApiRequest<T>(api.Server, requestUri, headers, ct: ct);
 
             if (responseResult.IsSuccess) return responseResult;
 
@@ -158,7 +158,7 @@ public class HttpClientService
         });
     }
 
-    private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null)
+    private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null, CancellationToken ct = default)
     {
         var isServerRateLimited = await _redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
@@ -191,7 +191,7 @@ public class HttpClientService
                 }
             }
 
-            var response = await _client.SendAsync(request);
+            var response = await _client.SendAsync(request, ct);
 
             var rateLimit = string.Empty;
             var rateLimitReset = "60";
@@ -247,11 +247,11 @@ public class HttpClientService
             switch (typeof(T))
             {
                 case not null when typeof(T) == typeof(byte[]):
-                    return (T)(object)await response.Content.ReadAsByteArrayAsync();
+                    return (T)(object)await response.Content.ReadAsByteArrayAsync(ct);
                 case not null when typeof(T) == typeof(string):
-                    return (T)(object)await response.Content.ReadAsStringAsync();
+                    return (T)(object)await response.Content.ReadAsStringAsync(ct);
                 default:
-                    var content = await response.Content.ReadAsStringAsync();
+                    var content = await response.Content.ReadAsStringAsync(ct);
 
                     var jsonDoc = JsonDocument.Parse(content);
 
@@ -285,6 +285,14 @@ public class HttpClientService
                         Status = HttpStatusCode.BadRequest
                     });
             }
+        }
+        catch (OperationCanceledException)
+        {
+            return Result.Failure<T, ErrorMessage>(new ErrorMessage
+            {
+                Message = "Operation was cancelled.",
+                Status = HttpStatusCode.BadRequest
+            });
         }
         catch (Exception e)
         {

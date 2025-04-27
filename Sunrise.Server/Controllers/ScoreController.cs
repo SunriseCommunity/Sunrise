@@ -2,7 +2,6 @@
 using osu.Shared;
 using Sunrise.Server.Services;
 using Sunrise.Server.Utils;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Objects.Keys;
@@ -14,7 +13,7 @@ namespace Sunrise.Server.Controllers;
 [Route("/web")]
 [Subdomain("osu")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class ScoreController(ScoreService scoreService, AssetService assetService) : ControllerBase
+public class ScoreController(ScoreService scoreService, AssetService assetService, SessionRepository sessions) : ControllerBase
 {
     [HttpPost(RequestType.OsuSubmitScore)]
     public async Task<IActionResult> Submit(
@@ -35,7 +34,6 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         var clientHash = ServerParsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
         var username = scoreSerialized.Split(':')[1].Trim();
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
@@ -62,28 +60,28 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         [FromQuery(Name = "f")] string filename,
         [FromQuery(Name = "i")] int setId,
         [FromQuery(Name = "m")] GameMode mode,
-        [FromQuery(Name = "mods")] Mods mods
+        [FromQuery(Name = "mods")] Mods mods,
+        CancellationToken ct = default
     )
     {
         if (fromEditor == "1" || leaderboardVersion != "4")
             return Ok("error: pass");
 
-        var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
         var result =
-            await scoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename);
+            await scoreService.GetBeatmapScores(session, setId, mode, mods, leaderboardType, beatmapHash, filename, ct);
 
         return Ok(result);
     }
 
     [HttpGet(RequestType.OsuGetReplay)]
     public async Task<IActionResult> GetReplay(
-        [FromQuery(Name = "c")] int scoreId
+        [FromQuery(Name = "c")] int scoreId, CancellationToken ct = default
     )
     {
-        var getReplayResult = await assetService.GetOsuReplayBytes(scoreId);
+        var getReplayResult = await assetService.GetOsuReplayBytes(scoreId, ct);
         if (getReplayResult.IsFailure)
             return Ok("error: no-replay");
 

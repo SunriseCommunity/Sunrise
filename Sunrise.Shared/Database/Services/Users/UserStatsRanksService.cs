@@ -13,7 +13,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 {
     private readonly SemaphoreSlim _dbSemaphore = new(1);
 
-    public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true)
+    public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true, CancellationToken ct = default)
     {
         var getUserRanksResult = await ResultUtil.TryExecuteAsync(async () =>
         {
@@ -32,9 +32,9 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     if (!addRanksIfNotFound)
                         throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-                    await _dbSemaphore.WaitAsync();
+                    await _dbSemaphore.WaitAsync(ct);
 
-                    var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode);
+                    var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode, ct);
                     if (userStats == null)
                         throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 

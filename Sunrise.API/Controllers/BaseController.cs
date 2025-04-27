@@ -31,13 +31,13 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
     [Route("/limits")]
     [EndpointDescription("Check current API limits")]
     [ProducesResponseType(typeof(LimitsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetLimits()
+    public async Task<IActionResult> GetLimits(CancellationToken ct = default)
     {
         var key = RegionService.GetUserIpAddress(Request);
         var limiter = cache.Get(key) as RateLimiter;
         var statistics = limiter?.GetStatistics();
 
-        var session = await sessionManager.GetSessionFromRequest(Request);
+        var session = await sessionManager.GetSessionFromRequest(Request, ct);
 
         return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session?.GetRemainingCalls()));
     }
@@ -46,18 +46,18 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
     [Route("/status")]
     [EndpointDescription("Check server status")]
     [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false, [FromQuery(Name = "includeRecentUsers")] bool includeRecentUsers = false)
+    public async Task<IActionResult> GetStatus([FromQuery(Name = "detailed")] bool detailed = false, [FromQuery(Name = "includeRecentUsers")] bool includeRecentUsers = false, CancellationToken ct = default)
     {
         var usersOnline = sessions.GetSessions().Count;
-        var totalUsers = await database.Users.CountUsers();
+        var totalUsers = await database.Users.CountUsers(ct);
 
         long? totalScores = null;
         long? totalRestrictions = null;
 
         if (detailed)
         {
-            totalScores = await database.Scores.CountScores();
-            totalRestrictions = await database.Users.CountRestrictedUsers();
+            totalScores = await database.Scores.CountScores(ct);
+            totalRestrictions = await database.Users.CountRestrictedUsers(ct);
         }
 
         if (includeRecentUsers)
@@ -66,11 +66,11 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
                 .Where(u => sessions.GetSessions().Select(s => s.UserId).Contains(u.Id))
                 .OrderBy(u => u.LastOnlineTime)
                 .Take(3)
-                .ToListAsync();
+                .ToListAsync(cancellationToken: ct);
 
             var usersRegisteredData = await database.DbContext.Users.OrderByDescending(u => u.Id)
                 .Take(3)
-                .ToListAsync();
+                .ToListAsync(cancellationToken: ct);
 
             return Ok(new StatusResponse(usersOnline,
                 totalUsers,

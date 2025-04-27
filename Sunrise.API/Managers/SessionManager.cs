@@ -6,7 +6,7 @@ namespace Sunrise.API.Managers;
 
 public class SessionManager(AuthService authService)
 {
-    public async Task<BaseSession?> GetSessionFromRequest(HttpRequest request)
+    public async Task<BaseSession?> GetSessionFromRequest(HttpRequest request, CancellationToken ct = default)
     {
         var header = request.Headers.Authorization;
 
@@ -20,7 +20,7 @@ public class SessionManager(AuthService authService)
         if (string.IsNullOrEmpty(token))
             return null;
 
-        var user = await authService.GetUserFromToken(token);
+        var user = await authService.GetUserFromToken(token, ct);
         if (user == null || user.IsUserSunriseBot())
             return null;
 

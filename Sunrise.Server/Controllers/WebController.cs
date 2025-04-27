@@ -40,12 +40,13 @@ public class WebController(DatabaseService database, SessionRepository sessions,
     [HttpGet(RequestType.OsuGetFriends)]
     public async Task<IActionResult> OsuGetFriends(
         [FromQuery(Name = "u")] string username,
-        [FromQuery(Name = "h")] string passhash)
+        [FromQuery(Name = "h")] string passhash,
+        CancellationToken ct = default)
     {
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var friends = await userService.GetFriends(session.UserId);
+        var friends = await userService.GetFriends(session.UserId, ct);
         if (friends == null)
             return BadRequest("error: no");
 
@@ -173,9 +174,9 @@ public class WebController(DatabaseService database, SessionRepository sessions,
     }
 
     [HttpGet("/wiki/en/Do_you_really_want_to_ask_peppy")]
-    public async Task<IActionResult> AskPeppy()
+    public async Task<IActionResult> AskPeppy(CancellationToken ct = default)
     {
-        var image = await assetService.GetPeppyImage();
+        var image = await assetService.GetPeppyImage(ct);
         if (image == null)
             return NotFound();
 

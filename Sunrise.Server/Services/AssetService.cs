@@ -12,16 +12,16 @@ public class AssetService(DatabaseService database)
     private const int Megabyte = 1024 * 1024;
     private static string DataPath => Configuration.DataPath;
 
-    public async Task<Result<byte[]>> GetOsuReplayBytes(int scoreId)
+    public async Task<Result<byte[]>> GetOsuReplayBytes(int scoreId, CancellationToken ct = default)
     {
-        var score = await database.Scores.GetScore(scoreId);
+        var score = await database.Scores.GetScore(scoreId, ct: ct);
         if (score is null)
             return Result.Failure<byte[]>($"Score with ID {scoreId} not found");
 
         if (score.ReplayFileId == null)
             return Result.Failure<byte[]>($"Replay file for score with ID {scoreId} not found");
 
-        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value);
+        var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
         if (replay is null)
             return Result.Failure<byte[]>($"Replay file with ID {score.ReplayFileId.Value} not found");
 
@@ -64,50 +64,50 @@ public class AssetService(DatabaseService database)
         return Result.Success($"https://a.{Configuration.Domain}/ss/{addScreenshotResult.Value}.jpg");
     }
 
-    public async Task<Result<byte[]>> GetScreenshot(int screenshotId)
+    public async Task<Result<byte[]>> GetScreenshot(int screenshotId, CancellationToken ct = default)
     {
-        var screenshot = await database.Users.Files.GetScreenshot(screenshotId);
+        var screenshot = await database.Users.Files.GetScreenshot(screenshotId, ct);
         if (screenshot == null)
             return Result.Failure<byte[]>("Screenshot not found");
 
         return Result.Success(screenshot);
     }
 
-    public async Task<Result<byte[]>> GetAvatar(int userId, bool toFallback = true)
+    public async Task<Result<byte[]>> GetAvatar(int userId, bool toFallback = true, CancellationToken ct = default)
     {
-        var avatar = await database.Users.Files.GetAvatar(userId, toFallback);
+        var avatar = await database.Users.Files.GetAvatar(userId, toFallback, ct);
         if (avatar == null)
             return Result.Failure<byte[]>("Avatar not found");
 
         return Result.Success(avatar);
     }
 
-    public async Task<Result<byte[]>> GetBanner(int userId, bool toFallback = true)
+    public async Task<Result<byte[]>> GetBanner(int userId, bool toFallback = true, CancellationToken ct = default)
     {
-        var banner = await database.Users.Files.GetBanner(userId, toFallback);
+        var banner = await database.Users.Files.GetBanner(userId, toFallback, ct);
         if (banner == null)
             return Result.Failure<byte[]>("Banner not found");
 
         return Result.Success(banner);
     }
 
-    public async Task<byte[]?> GetEventBanner()
+    public async Task<byte[]?> GetEventBanner(CancellationToken ct = default)
     {
-        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"));
+        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/EventBanner.png"), ct);
     }
 
-    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false)
+    public async Task<byte[]?> GetMedalImage(int medalFileId, bool isHighRes = false, CancellationToken ct = default)
     {
-        var medalImage = await database.Medals.GetMedalImage(medalFileId, isHighRes);
+        var medalImage = await database.Medals.GetMedalImage(medalFileId, isHighRes, ct: ct);
 
         var defaultImagePath = Path.Combine(Configuration.DataPath, "Files/Medals/default.png");
         var defaultImage = isHighRes ? defaultImagePath.Replace(".png", "@2x.png") : defaultImagePath;
 
-        return medalImage ?? await LocalStorageRepository.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage));
+        return medalImage ?? await LocalStorageRepository.ReadFileAsync(Path.Combine(Directory.GetCurrentDirectory(), defaultImage), ct);
     }
 
-    public async Task<byte[]?> GetPeppyImage()
+    public async Task<byte[]?> GetPeppyImage(CancellationToken ct = default)
     {
-        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/Peppy.jpg"));
+        return await LocalStorageRepository.ReadFileAsync(Path.Combine(DataPath, "Files/Assets/Peppy.jpg"), ct);
     }
 }
