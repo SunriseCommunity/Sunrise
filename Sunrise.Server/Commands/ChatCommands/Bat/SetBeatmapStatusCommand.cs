@@ -40,7 +40,15 @@ public class SetBeatmapStatusCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, beatmapId: beatmapId);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, beatmapId: beatmapId);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            ChatCommandRepository.SendMessage(session, beatmapSetResult.Error.Message);
+            return;
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (beatmapSet == null)
         {

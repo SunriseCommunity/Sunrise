@@ -1,3 +1,6 @@
+using System.Net;
+using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
@@ -7,49 +10,80 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Services;
 
-public class BeatmapService(DatabaseService database, HttpClientService client)
+public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService database, HttpClientService client)
 {
-    // TODO: Return Result
-    public async Task<BeatmapSet?> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null, CancellationToken ct = default)
+    public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
+        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, CancellationToken ct = default)
     {
-        if (beatmapSetId == null && beatmapHash == null && beatmapId == null) return null;
+        if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
+            return Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
+            {
+                Message = "No proper ids were specified.",
+                Status = HttpStatusCode.BadRequest
+            });
 
         var beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
         if (beatmapSet != null) return beatmapSet;
 
-        if (beatmapId != null)
-            beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: ct)).GetValueOrDefault();
-        if (beatmapHash != null && beatmapSet == null)
-            beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: ct)).GetValueOrDefault();
-        if (beatmapSetId != null && beatmapSet == null)
-            beatmapSet =
-                (await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: ct)).GetValueOrDefault();
+        var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
+        {
+            Message = "Could not retrieve beatmap set.",
+            Status = HttpStatusCode.BadRequest
+        });
 
-        if (beatmapSet == null)
-            return null;
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
-        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
+        while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(beatmapSetTask))
+        {
+            retryCount--;
 
-        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: ct);
+            if (beatmapId != null)
+                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: linkedCts.Token);
+
+            if (beatmapHash != null && !IsValidResult(beatmapSetTask))
+                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: linkedCts.Token);
+
+            if (beatmapSetId != null && !IsValidResult(beatmapSetTask))
+                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: linkedCts.Token);
+
+            if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
+            {
+                logger.LogWarning($"Error while getting beatmap set: {beatmapSetTask.Error.Message}, Retry count: {retryCount}");
+
+                if (retryCount > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), linkedCts.Token);
+                }
+            }
+        }
+
+        if (beatmapSetTask.IsFailure)
+            return beatmapSetTask;
+
+        beatmapSet = beatmapSetTask.Value;
+
+        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: linkedCts.Token);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 
         return beatmapSet;
     }
 
-    public async Task<List<BeatmapSet>?> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,
+    public async Task<Result<List<BeatmapSet>, ErrorMessage>> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,
         string query, Pagination pagination, CancellationToken ct = default)
     {
-        var beatmapSets = (await client.SendRequest<List<BeatmapSet>?>(session,
+        var beatmapSetsResult = await client.SendRequest<List<BeatmapSet>>(session,
             ApiType.BeatmapSetSearch,
             [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode],
-            ct: ct)).GetValueOrDefault();
+            ct: ct);
 
-        if (beatmapSets == null) return null;
+        if (beatmapSetsResult.IsFailure)
+            return beatmapSetsResult;
 
+        var beatmapSets = beatmapSetsResult.Value;
+
+        if (beatmapSets == null) return new List<BeatmapSet>();
 
         foreach (var set in beatmapSets)
         {
@@ -59,5 +93,13 @@ public class BeatmapService(DatabaseService database, HttpClientService client)
         }
 
         return beatmapSets;
+    }
+
+    private bool IsValidResult(Result<BeatmapSet, ErrorMessage> result)
+    {
+        var isNotFoundResult = result.IsFailure && result.Error.Status == HttpStatusCode.NotFound;
+        var isValidResult = result.IsSuccess || isNotFoundResult;
+
+        return isValidResult;
     }
 }

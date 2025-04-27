@@ -221,7 +221,12 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
             var bId = pair.Key;
             var count = pair.Value;
 
-            var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: bId, ct: ct);
+            var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: bId, ct: ct);
+            if (beatmapSetResult.IsFailure)
+                return null;
+
+            var beatmapSet = beatmapSetResult.Value;
+
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
             return beatmap == null ? null : new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
@@ -261,7 +266,12 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
         var parsedFavourites = favourites.Select(async setId =>
         {
-            var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, ct: ct);
+            var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, ct: ct);
+            if (beatmapSetResult.IsFailure)
+                return null;
+
+            var beatmapSet = beatmapSetResult.Value;
+
             return beatmapSet == null ? null : new BeatmapSetResponse(session, beatmapSet);
         }).Select(task => task.Result).Where(x => x != null).ToList();
 

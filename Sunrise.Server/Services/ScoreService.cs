@@ -1,4 +1,5 @@
-﻿using osu.Shared;
+﻿using System.Net;
+using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;
 using Sunrise.API.Serializable.Response;
@@ -28,7 +29,21 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            var isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
+
+            SubmitScoreHelper.ReportRejectionToMetrics(session,
+                scoreSerialized,
+                isBeatmapsetNotFound ? "Invalid request: BeatmapSet not found" : "Beatmap set couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
+
+            return "error: no";
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
+
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmap == null || beatmapSet == null)
@@ -234,7 +249,15 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true), ct);
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, ct: ct);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, retryCount: int.MaxValue, ct: ct);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            return $"{(int)BeatmapStatus.NotSubmitted}|false";
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
+
         var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)

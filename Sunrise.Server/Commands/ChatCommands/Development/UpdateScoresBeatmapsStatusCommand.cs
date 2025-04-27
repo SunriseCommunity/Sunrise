@@ -31,7 +31,7 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                 using var scope = ServicesProviderHolder.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                var (allScores, _) = await database.Scores.GetScores();
+                var (allScores, _) = await database.Scores.GetScores(ct: ct);
                 var groupedScores = allScores.GroupBy(x => x.BeatmapId);
 
                 var scoresReviewedTotal = 0;
@@ -47,17 +47,25 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                     var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
                     var session = BaseSession.GenerateServerSession();
-                    var beatmap = await beatmapService.GetBeatmapSet(session, beatmapId: group.Key);
+                    var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: group.Key, ct: ct);
+
+                    if (beatmapSetResult.IsFailure)
+                    {
+                        ChatCommandRepository.TrySendMessage(userId, $"Beatmap set {group.Key} returned error: {beatmapSetResult.Error}");
+                        return;
+                    }
+
+                    var beatmapSet = beatmapSetResult.Value;
 
                     var status = BeatmapStatus.NotSubmitted;
 
-                    if (beatmap == null)
+                    if (beatmapSet == null)
                     {
-                        ChatCommandRepository.TrySendMessage(userId, $"Beatmap {group.Key} not found. Setting status to graveyard.");
+                        ChatCommandRepository.TrySendMessage(userId, $"Beatmap set {group.Key} not found. Setting status to graveyard.");
                     }
                     else
                     {
-                        status = beatmap.Status;
+                        status = beatmapSet.Status;
                     }
 
                     foreach (var score in group)

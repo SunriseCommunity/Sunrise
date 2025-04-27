@@ -34,11 +34,16 @@ public class HttpClientService
     {
         if (session.IsRateLimited())
         {
+            if (session is Session gameSession)
+            {
+                gameSession.SendRateLimitWarning();
+            }
+
             _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
-                Message = $"User {session.UserId} got rate limited. Ignoring request.",
+                Message = "You're sending requests faster than we can handle! Please wait a moment before trying again.",
                 Status = HttpStatusCode.TooManyRequests
             });
         }
@@ -93,11 +98,16 @@ public class HttpClientService
     {
         if (session.IsRateLimited())
         {
+            if (session is Session gameSession)
+            {
+                gameSession.SendRateLimitWarning();
+            }
+
             _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
-                Message = $"User {session.UserId} got rate limited. Ignoring request.",
+                Message = "You're sending requests faster than we can handle! Please wait a moment before trying again.",
                 Status = HttpStatusCode.TooManyRequests
             });
         }

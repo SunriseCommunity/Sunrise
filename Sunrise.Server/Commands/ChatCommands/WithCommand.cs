@@ -34,7 +34,15 @@ public class WithCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: session.LastBeatmapIdUsedWithCommand);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            ChatCommandRepository.SendMessage(session, beatmapSetResult.Error.Message);
+            return;
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (beatmapSet == null)
         {

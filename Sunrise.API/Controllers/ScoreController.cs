@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.API.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -63,7 +64,12 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
 
         var replayFile = new ReplayFile(score, replay);
         var replayStream = await replayFile.ReadReplay();
-        var replayFileName = await replayFile.GetFileName(session);
+        var replayFileNameResult = await replayFile.GetFileName(session);
+
+        if (replayFileNameResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(replayFileNameResult.Error);
+
+        var replayFileName = replayFileNameResult.Value;
 
         Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
         return File(replayStream.ToArray(), "application/octet-stream", replayFileName);

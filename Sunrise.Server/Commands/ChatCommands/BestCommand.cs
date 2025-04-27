@@ -9,7 +9,6 @@ using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
-using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.Server.Commands.ChatCommands;
 
@@ -42,7 +41,15 @@ public class BestCommand : IChatCommand
 
         foreach (var (score, index) in bestScores.Select((value, i) => (value, i)))
         {
-            var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
+            var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: score.BeatmapHash);
+
+            if (beatmapSetResult.IsFailure)
+            {
+                ChatCommandRepository.SendMessage(session, beatmapSetResult.Error.Message);
+                return;
+            }
+
+            var beatmapSet = beatmapSetResult.Value;
 
             if (beatmapSet == null)
             {
@@ -57,7 +64,7 @@ public class BestCommand : IChatCommand
                 ChatCommandRepository.SendMessage(session, "Beatmap not found.");
                 continue;
             }
-            
+
             result += $"[{index + 1}] {await score.GetBeatmapInGameChatString(beatmapSet, session)}\n";
         }
 

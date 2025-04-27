@@ -69,6 +69,14 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
 
+    public void SendRateLimitWarning()
+    {
+        var message =
+            "Whoa there! You're sending requests a little too fast. Because of this, some data like the leaderboard might not update correctly or could appear broken. Please slow down a bit!";
+
+        _helper.WritePacket(PacketType.ServerNotification, message);
+    }
+
     public void SendJoinChannel(ChatChannel channel)
     {
         _helper.WritePacket(PacketType.ServerChatChannelJoinSuccess, channel.Name);

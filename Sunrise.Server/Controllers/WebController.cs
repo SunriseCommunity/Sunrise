@@ -145,7 +145,13 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapSetId);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapSetId);
+
+        if (beatmapSetResult.IsFailure)
+            return Ok("error: beatmap");
+
+        var beatmapSet = beatmapSetResult.Value;
+
         if (beatmapSet == null)
             return Ok("error: beatmap");
 

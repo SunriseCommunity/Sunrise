@@ -40,7 +40,15 @@ public class MultiMapCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: beatmapId);
+
+        if (beatmapSetResult.IsFailure)
+        {
+            session.SendChannelMessage(channel.Name, beatmapSetResult.Error.Message);
+            return;
+        }
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (beatmapSet == null)
         {

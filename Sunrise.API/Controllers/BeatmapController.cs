@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.API.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -39,9 +40,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
-        if (beatmapSet == null)
-            return NotFound(new ErrorResponse("Beatmap set not found"));
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
@@ -78,9 +81,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
-        if (beatmapSet == null)
-            return NotFound(new ErrorResponse("Beatmap set not found"));
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
@@ -117,9 +122,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
-        if (beatmapSet == null)
-            return NotFound(new ErrorResponse("Beatmap set not found"));
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
 
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
         if (beatmap == null || beatmap.IsScoreable == false)
@@ -154,9 +161,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapSet = await beatmapService.GetBeatmapSet(session, id, ct: ct);
-        if (beatmapSet == null)
-            return NotFound(new ErrorResponse("Beatmap set not found"));
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
 
         if (favourite.HasValue)
         {
@@ -220,15 +229,20 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
 
-        var beatmapsetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
-        var beatmapsetGamemode = mode.HasValue ? (int)mode : -1;
+        var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
+        var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;
 
-        var beatmapSets = await beatmapService.SearchBeatmapSets(session,
-            beatmapsetStatus,
-            beatmapsetGamemode.ToString(),
+        var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session,
+            beatmapSetStatus,
+            beatmapSetGameMode.ToString(),
             query,
             new Pagination(page - 1, limit),
             ct);
+
+        if (beatmapSetsResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetsResult.Error);
+
+        var beatmapSets = beatmapSetsResult.Value;
 
         return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
     }
