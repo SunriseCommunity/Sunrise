@@ -112,14 +112,14 @@ public class ReplayFile
         return memoryStream;
     }
 
-    public async Task<Result<string, ErrorMessage>> GetFileName(BaseSession session)
+    public async Task<string> GetFileName(BaseSession session)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: Score.BeatmapHash);
         if (beatmapSetResult.IsFailure)
-            return beatmapSetResult.Error;
+            return $"{User?.Username} - Unknown - Unknown [{Score.BeatmapId}] ({Score.WhenPlayed:yyyy-MM-dd}) {Score.GameMode}.osr";
 
         var beatmapSet = beatmapSetResult.Value;
 
