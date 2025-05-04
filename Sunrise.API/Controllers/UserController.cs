@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Enums;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
@@ -31,10 +32,10 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 {
     [HttpGet]
     [Route("{id:int}")]
-    [EndpointDescription("Get user profile. Include mode query to also get user stats")]
+    [EndpointDescription("Get user profile")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUser(int id, [FromQuery(Name = "mode")] GameMode? mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUser(int id, CancellationToken ct = default)
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
@@ -46,17 +47,35 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        if (mode == null) return Ok(new UserResponse(sessions, user));
+        return Ok(new UserResponse(sessions, user));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/{mode}")]
+    [EndpointDescription("Get user profile with user stats")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserWithStats(int id, GameMode mode, CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
 
         var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
         if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
 
-        var stats = await database.Users.Stats.GetUserStats(id, (GameMode)mode, ct);
+        var stats = await database.Users.Stats.GetUserStats(id, mode, ct);
 
         if (stats == null)
             return NotFound(new ErrorResponse("User stats not found"));
 
-        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, (GameMode)mode, ct: ct);
+        var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
 
         var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
 
@@ -66,25 +85,40 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpGet]
     [Route("self")]
     [ResponseCache(Duration = 0)]
-    [EndpointDescription("Same as /user/{id}, but automatically gets id of current user")]
+    [EndpointDescription("Same as /user/{id}, but automatically gets id of current user from token")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSelfUser([FromQuery(Name = "mode")] GameMode? mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetSelfUser(CancellationToken ct = default)
     {
         var session = await sessionManager.GetSessionFromRequest(Request, ct);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
 
-        return await GetUser(session.UserId, mode, ct);
+        return await GetUser(session.UserId, ct);
+    }
+
+    [HttpGet]
+    [Route("self/{mode}")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Same as /user/{id}/{mode}, but automatically gets id of current user")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSelfUserWithStats(GameMode mode, CancellationToken ct = default)
+    {
+        var session = await sessionManager.GetSessionFromRequest(Request, ct);
+        if (session == null)
+            return Unauthorized(new ErrorResponse("Invalid session"));
+
+        return await GetUserWithStats(session.UserId, mode, ct);
     }
 
     [HttpPost]
     [Route("edit/description")]
     [EndpointDescription("Update current user's description")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest? request)
+    public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
-        if (!ModelState.IsValid || request == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("Description is required"));
 
         var session = await sessionManager.GetSessionFromRequest(Request);
@@ -95,7 +129,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
 
-        if (request.Description!.Length > 2000)
+        if (request.Description.Length > 2000)
             return BadRequest(new ErrorResponse("Description is too long. Max 2000 characters"));
 
         user.Description = request.Description;
@@ -280,6 +314,9 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
 
     [HttpGet]
     [Route("leaderboard")]
+    [EndpointDescription("Get servers leaderboard")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(LeaderboardResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
@@ -349,7 +386,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [Route("friends")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get authenticated users friends")]
-    [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
         [FromQuery(Name = "limit")] int limit = 50,
         [FromQuery(Name = "page")] int page = 1,
@@ -412,8 +449,11 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [EndpointDescription("Change friendship status with user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> EditFriendStatus(int id, [FromQuery(Name = "action")] string action)
+    public async Task<IActionResult> EditFriendStatus(int id, [FromBody] EditFriendshipStatusRequest request)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
@@ -427,16 +467,16 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (requestedUser == null)
             return NotFound(new ErrorResponse("User not found"));
 
-        switch (action)
+        switch (request.Action)
         {
-            case "add":
+            case UpdateFriendshipStatusAction.Add:
                 user.AddFriend(requestedUser.Id);
                 break;
-            case "remove":
+            case UpdateFriendshipStatusAction.Remove:
                 user.RemoveFriend(requestedUser.Id);
                 break;
             default:
-                return BadRequest(new ErrorResponse("Invalid action parameter. Use 'add' or 'remove'"));
+                return BadRequest(new ErrorResponse($"Invalid action parameter. Use any of: {Enum.GetNames(typeof(UpdateFriendshipStatusAction)).Aggregate((x, y) => x + "," + y)}"));
         }
 
         var result = await database.Users.UpdateUser(user);
@@ -551,8 +591,11 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpPost(RequestType.PasswordChange)]
     [EndpointDescription("Change current password")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest? request)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
             return Unauthorized(new ErrorResponse("Invalid session"));
@@ -560,12 +603,6 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-
-        if (!ModelState.IsValid || request == null)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
-        if (request.CurrentPassword == null || request.NewPassword == null)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var userByCurrentPassword = await database.Users.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: user.Username);
 
@@ -590,7 +627,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
     [HttpPost(RequestType.UsernameChange)]
     [EndpointDescription("Change current username")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest? request)
+    public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
         var session = await sessionManager.GetSessionFromRequest(Request);
         if (session == null)
@@ -600,10 +637,7 @@ public class UserController(SessionManager sessionManager, BeatmapService beatma
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
 
-        if (!ModelState.IsValid || request == null)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
-        if (request.NewUsername == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var (isUsernameValid, error) = request.NewUsername.IsValidUsername();

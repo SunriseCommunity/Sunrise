@@ -207,7 +207,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         // Mods can change difficulty rating, important to recalculate it for right medal unlocking
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
         {
-            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, score.GameMode, score.Mods);
 
             if (recalculateBeatmapResult.IsFailure)
             {
