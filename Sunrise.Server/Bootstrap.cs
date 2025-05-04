@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.OpenApi.Models;
 using Prometheus;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -52,7 +54,23 @@ public static class Bootstrap
     {
 
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(c =>
+        {
+            c.EnableAnnotations();
+            c.SupportNonNullableReferenceTypes();
+            c.NonNullableReferenceTypesAsRequired();
+            c.AddSecurityDefinition("Bearer",
+                new OpenApiSecurityScheme
+                {
+                    In = ParameterLocation.Header,
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    BearerFormat = "JWT",
+                    Scheme = "Bearer"
+                });
+        });
+        builder.Services.AddControllersWithViews()
+            .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     }
 
 
@@ -230,6 +248,13 @@ public static class Bootstrap
             {
                 options.Title = "Sunrise API Documentation";
                 options.Theme = ScalarTheme.Mars;
+
+                options.WithModels(false);
+                options.WithDownloadButton(false);
+
+                options
+                    .WithPreferredScheme("Bearer")
+                    .AddHttpAuthentication("Bearer", auth => { auth.Token = "ey..."; });
             });
     }
 
