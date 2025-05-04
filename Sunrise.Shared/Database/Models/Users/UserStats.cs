@@ -36,14 +36,14 @@ public class UserStats
     public int TotalHits { get; set; }
 
     [Column(TypeName = "BIGINT")]
-    public long? BestGlobalRank { get; set; }
+    public long BestGlobalRank { get; set; }
 
-    public DateTime? BestGlobalRankDate { get; set; }
+    public DateTime BestGlobalRankDate { get; set; }
 
     [Column(TypeName = "BIGINT")]
-    public long? BestCountryRank { get; set; }
+    public long BestCountryRank { get; set; }
 
-    public DateTime? BestCountryRankDate { get; set; }
+    public DateTime BestCountryRankDate { get; set; }
 
     [NotMapped]
     public LocalProperties LocalProperties { get; set; }

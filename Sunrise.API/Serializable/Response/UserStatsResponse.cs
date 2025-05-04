@@ -67,16 +67,16 @@ public class UserStatsResponse
     public int TotalHits { get; set; }
 
     [JsonPropertyName("best_global_rank")]
-    public long? BestGlobalRank { get; set; }
+    public long BestGlobalRank { get; set; }
 
     [JsonPropertyName("best_global_rank_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
-    public DateTime? BestGlobalRankDate { get; set; }
+    public DateTime BestGlobalRankDate { get; set; }
 
     [JsonPropertyName("best_country_rank")]
-    public long? BestCountryRank { get; set; }
+    public long BestCountryRank { get; set; }
 
     [JsonPropertyName("best_country_rank_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
-    public DateTime? BestCountryRankDate { get; set; }
+    public DateTime BestCountryRankDate { get; set; }
 }
