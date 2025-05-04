@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Utils.Converters;
@@ -14,7 +15,7 @@ public class BeatmapSetResponse
         Title = beatmapSet.Title;
         Creator = beatmapSet.Creator;
         CreatorId = beatmapSet.UserId;
-        StatusString = beatmapSet.StatusString;
+        Status = beatmapSet.StatusGeneric;
         LastUpdated = beatmapSet.LastUpdated;
         SubmittedDate = beatmapSet.SubmittedDate;
         RankedDate = beatmapSet.RankedDate;
@@ -48,7 +49,7 @@ public class BeatmapSetResponse
     public int CreatorId { get; set; }
 
     [JsonPropertyName("status")]
-    public string StatusString { get; set; }
+    public BeatmapStatusSearch Status { get; set; }
 
     [JsonPropertyName("last_updated")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

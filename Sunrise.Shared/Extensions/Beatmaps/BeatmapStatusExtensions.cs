@@ -14,6 +14,17 @@ public static class BeatmapStatusExtensions
         ["graveyard"] = BeatmapStatus.Pending,
         ["wip"] = BeatmapStatus.Pending
     };
+    
+    private static readonly Dictionary<string, BeatmapStatusSearch> _statusSearchMap = new()
+    {
+        ["loved"] = BeatmapStatusSearch.Loved,
+        ["qualified"] = BeatmapStatusSearch.Qualified,
+        ["approved"] = BeatmapStatusSearch.Approved,
+        ["ranked"] = BeatmapStatusSearch.Ranked,
+        ["pending"] = BeatmapStatusSearch.Pending,
+        ["graveyard"] = BeatmapStatusSearch.Graveyard,
+        ["wip"] = BeatmapStatusSearch.Wip
+    };
 
     private static readonly Dictionary<BeatmapStatus, string> _statusMapString = new()
     {
@@ -27,6 +38,11 @@ public static class BeatmapStatusExtensions
     public static BeatmapStatus StringToBeatmapStatus(this string statusString)
     {
         return _statusMap.GetValueOrDefault(statusString, BeatmapStatus.Pending);
+    }
+    
+    public static BeatmapStatusSearch StringToBeatmapStatusSearch(this string statusString)
+    {
+        return _statusSearchMap.GetValueOrDefault(statusString, BeatmapStatusSearch.Pending);
     }
 
     public static string BeatmapStatusToString(this BeatmapStatus statusString)
