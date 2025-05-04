@@ -1,10 +1,10 @@
 ﻿using System.Net;
-using System.Text.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -65,8 +65,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var beatmap = JsonSerializer.Deserialize<BeatmapResponse>(responseString);
+        var beatmap = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapResponse>();
 
         Assert.NotNull(beatmap);
 
