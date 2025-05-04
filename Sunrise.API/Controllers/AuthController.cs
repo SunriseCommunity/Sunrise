@@ -69,13 +69,13 @@ public class AuthController(
     [HttpPost("refresh")]
     [EndpointDescription("Refresh user auth token")]
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        if (!ModelState.IsValid || request == null || request.RefreshToken == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);

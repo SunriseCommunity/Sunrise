@@ -1,5 +1,6 @@
 using Hangfire;
 using Sunrise.Server;
+using Sunrise.Server.Middlewares;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
@@ -16,6 +17,8 @@ builder.AddSingletons();
 builder.AddMiddlewares();
 builder.AddApiEndpoints();
 builder.AddApiDocs();
+
+builder.AddAuthorizationPolicies();
 
 builder.AddSunriseDbContextPool();
 
@@ -36,7 +39,7 @@ app.UseScalarApiReference();
 
 app.ApplyDatabaseBootstrapping();
 app.UseStaticBackgrounds();
-app.UseMiddlewares();
+
 app.UseWebSockets();
 app.Configure();
 

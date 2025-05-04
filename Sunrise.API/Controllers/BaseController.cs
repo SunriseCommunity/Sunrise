@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Sunrise.API.Extensions;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
@@ -16,7 +17,7 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class BaseController(IMemoryCache cache, SessionManager sessionManager, DatabaseService database, SessionRepository sessions) : ControllerBase
+public class BaseController(IMemoryCache cache, DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet]
     [Route("/ping")]
@@ -37,9 +38,9 @@ public class BaseController(IMemoryCache cache, SessionManager sessionManager, D
         var limiter = cache.Get(key) as RateLimiter;
         var statistics = limiter?.GetStatistics();
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct);
+        var session = HttpContext.GetCurrentSession();
 
-        return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session?.GetRemainingCalls()));
+        return Ok(new LimitsResponse(statistics?.CurrentAvailablePermits, session.GetRemainingCalls()));
     }
 
     [HttpGet]

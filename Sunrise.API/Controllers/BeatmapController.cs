@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
+using Sunrise.API.Extensions;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
@@ -15,16 +17,15 @@ using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
-using AuthService = Sunrise.API.Services.AuthService;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.API.Controllers;
 
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
+// [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class BeatmapController(SessionManager sessionManager, DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions) : ControllerBase
+public class BeatmapController(DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
@@ -39,7 +40,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSetResult.IsFailure)
@@ -80,7 +81,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (accuracy is < 0 or > 100)
             return BadRequest(new ErrorResponse("Invalid accuracy"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSetResult.IsFailure)
@@ -121,7 +122,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
@@ -134,8 +135,8 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
         if (beatmap == null || beatmap.IsScoreable == false)
             return Ok(new ScoresResponse([], 0));
-        
-        
+
+
         var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
 
         var (scores, totalScores) = await database.Scores.GetBeatmapScores(beatmap.Checksum,
@@ -156,7 +157,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
     [HttpGet("beatmapset/{id:int}")]
     [ResponseCache(Duration = 0)]
-    [EndpointDescription("Fetch Beatmapset")]
+    [EndpointDescription("Get beatmapset")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSet(int id, CancellationToken ct = default)
@@ -164,7 +165,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
         if (beatmapSetResult.IsFailure)
@@ -176,6 +177,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     }
 
     [HttpPost("beatmapset/{id:int}/favourited")]
+    [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Add/remove beatmapset from users favourites")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -189,14 +191,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id);
         if (beatmapSetResult.IsFailure)
             return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
-
-        if (session.IsGuest)
-            return Unauthorized(new ErrorResponse("Unauthorized"));
 
         if (request.Favourited)
             await database.Users.Favourites.AddFavouriteBeatmap(session.UserId, id);
@@ -207,6 +206,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
     }
 
     [HttpGet("beatmapset/{id:int}/favourited")]
+    [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Check if beatmapset is favourited by current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -216,11 +216,11 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
         if (id < 0)
             return BadRequest(new ErrorResponse("Invalid beatmap id"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct);
-        if (session == null)
-            return Unauthorized(new ErrorResponse("Unauthorized"));
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
 
-        var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(session.UserId, id, ct);
+        var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(user.Id, id, ct);
 
         return Ok(new FavouritedResponse
         {
@@ -250,7 +250,7 @@ public class BeatmapController(SessionManager sessionManager, DatabaseService da
 
         if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var session = await sessionManager.GetSessionFromRequest(Request, ct) ?? AuthService.GenerateIpSession(Request);
+        var session = HttpContext.GetCurrentSession();
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;

@@ -2,17 +2,18 @@ using System.Text.Json;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.OpenApi.Models;
 using Prometheus;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
-using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Server.Middlewares;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
@@ -21,6 +22,8 @@ using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Shared.Services;
@@ -58,16 +61,10 @@ public static class Bootstrap
             c.EnableAnnotations();
             c.SupportNonNullableReferenceTypes();
             c.NonNullableReferenceTypesAsRequired();
-            c.AddSecurityDefinition("Bearer",
-                new OpenApiSecurityScheme
-                {
-                    In = ParameterLocation.Header,
-                    Name = "Authorization",
-                    Type = SecuritySchemeType.Http,
-                    BearerFormat = "JWT",
-                    Scheme = "Bearer"
-                });
+
+            c.AddJwtAuth();
         });
+
         builder.Services.AddControllersWithViews()
             .AddJsonOptions(options =>
             {
@@ -78,6 +75,23 @@ public static class Bootstrap
             });
     }
 
+    public static void AddAuthorizationPolicies(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddAuthentication(x =>
+        {
+            x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            x.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        }).AddJwtBearer(x => { x.TokenValidationParameters = Configuration.WebTokenValidationParameters; });
+
+        builder.Services.AddAuthorizationBuilder()
+            .AddPolicy("RequireDeveloper", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Developer)))
+            .AddPolicy("RequireAdmin", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Admin)))
+            .AddPolicy("RequireBat", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Bat)));
+
+        builder.Services.AddScoped<IAuthorizationHandler, DatabaseAuthorizationHandler>();
+        builder.Services.AddScoped<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
+    }
 
     public static void AddHangfire(this WebApplicationBuilder builder)
     {
@@ -224,7 +238,6 @@ public static class Bootstrap
         builder.Services.AddScoped<UserService>();
 
         builder.Services.AddScoped<Services.AuthService>();
-        builder.Services.AddScoped<SessionManager>();
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();
@@ -296,6 +309,12 @@ public static class Bootstrap
         app.UseRouting();
         app.UseW3CLogging();
         app.UseMetricServer().UseHttpMetrics();
+
+        app.UseAuthentication();
+
+        app.UseMiddlewares();
+
+        app.UseAuthorization();
 
 #pragma warning disable ASP0014
         app.UseEndpoints(endpoints =>

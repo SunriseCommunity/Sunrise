@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Sessions;
@@ -37,19 +36,6 @@ public class AuthService(DatabaseService database)
         return (token, refreshToken, TokenExpires.ToSeconds());
     }
 
-    public async Task<User?> GetUserFromToken(string token, CancellationToken ct = default)
-    {
-        var userIdResult = await ValidateJwtToken(token);
-        if (userIdResult.IsFailure)
-            return null;
-
-        var userId = userIdResult.Value;
-
-        var user = await database.Users.GetValidUser(userId, ct: ct);
-
-        return user;
-    }
-
     public async Task<Result<(string, int)>> RefreshToken(string token)
     {
         var userIdResult = await ValidateJwtToken(token);
@@ -77,16 +63,7 @@ public class AuthService(DatabaseService database)
         {
             var handler = new JwtSecurityTokenHandler();
             var result = handler.ValidateToken(token,
-                new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TokenSecret)),
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidIssuer = "Sunrise",
-                    ValidAudience = "Sunrise",
-                    ClockSkew = TimeSpan.Zero
-                },
+                Configuration.WebTokenValidationParameters,
                 out _);
 
             if (result.Identity is not ClaimsIdentity identity)
@@ -103,12 +80,6 @@ public class AuthService(DatabaseService database)
             var hashClaim = identity.FindFirst(ClaimTypes.Hash);
             if (hashClaim == null || hashClaim.Value != $"{user.Id}{user.Passhash}".ToHash())
                 return Result.Failure<int>("Invalid user password");
-
-            if (user.AccountStatus == UserAccountStatus.Disabled)
-            {
-                database.Users.Moderation.EnableUser(user.Id).Wait();
-                // TODO: Send message from bot about account being enabled
-            }
 
             return id;
         }
@@ -131,6 +102,7 @@ public class AuthService(DatabaseService database)
             "Sunrise",
             "Sunrise",
             [
+                new Claim(ClaimTypes.Name, userId.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
                 new Claim(ClaimTypes.Hash, $"{userId}{user.Passhash}".ToHash())
             ],

@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Extensions;
 using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
-using Sunrise.API.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -18,7 +19,7 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class ScoreController(DatabaseService database, SessionManager sessionManager, SessionRepository sessions) : ControllerBase
+public class ScoreController(DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("")]
     [ResponseCache(Duration = 300)]
@@ -43,6 +44,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("replay")]
+    [Authorize]
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [EndpointDescription("Get score replay file")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -50,9 +52,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScoreReplay(int id, CancellationToken ct = default)
     {
-        var session = await sessionManager.GetSessionFromRequest(Request, ct);
-        if (session == null)
-            return Unauthorized(new ErrorResponse("Invalid session"));
+        var session = HttpContext.GetCurrentSession();
 
         var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
         if (score?.ReplayFileId == null)
