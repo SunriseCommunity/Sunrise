@@ -1,7 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using Sunrise.API.Enums;
+using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -20,12 +24,16 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status", new StringContent(""));
+        var response = await client.PostAsJsonAsync($"user/{requestedUser.Id}/friend/status",
+            new EditFriendshipStatusRequest
+            {
+                Action = UpdateFriendshipStatusAction.Add
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -44,12 +52,16 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status", new StringContent(""));
+        var response = await client.PostAsJsonAsync($"user/{requestedUser.Id}/friend/status",
+            new EditFriendshipStatusRequest
+            {
+                Action = UpdateFriendshipStatusAction.Add
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -66,7 +78,11 @@ public class ApiUserEditFriendStatusTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsync($"user/{userId}/friend/status", new StringContent(""));
+        var response = await client.PostAsJsonAsync($"user/{userId}/friend/status",
+            new EditFriendshipStatusRequest
+            {
+                Action = UpdateFriendshipStatusAction.Add
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -85,14 +101,17 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
         var action = _mocker.GetRandomString();
 
+        var json = $"{{\"action\":\"{action}\"}}";
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action={action}", new StringContent(""));
+        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status", content);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("action parameter", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("fields are invalid", responseError?.Error);
     }
 
     [Theory]
@@ -110,7 +129,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         var requestedUser = await CreateTestUser();
-        var action = isFriendsAfter ? "add" : "remove";
+        var action = isFriendsAfter ? UpdateFriendshipStatusAction.Add : UpdateFriendshipStatusAction.Remove;
 
         if (isFriendsBefore)
         {
@@ -125,9 +144,12 @@ public class ApiUserEditFriendStatusTests : ApiTest
         if (result.IsFailure)
             throw new Exception(result.Error);
 
-
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action={action}", new StringContent(""));
+        var response = await client.PostAsJsonAsync($"user/{requestedUser.Id}/friend/status",
+            new EditFriendshipStatusRequest
+            {
+                Action = action
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -154,12 +176,16 @@ public class ApiUserEditFriendStatusTests : ApiTest
         await Database.Users.Moderation.RestrictPlayer(requestedUser.Id, null, "Test");
 
         // Act
-        var response = await client.PostAsync($"user/{requestedUser.Id}/friend/status?action=add", new StringContent(""));
+        var response = await client.PostAsJsonAsync($"user/{requestedUser.Id}/friend/status",
+            new EditFriendshipStatusRequest
+            {
+                Action = UpdateFriendshipStatusAction.Add
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User not found", responseError?.Error);
     }
 }

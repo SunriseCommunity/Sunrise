@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -49,7 +49,7 @@ public class ApiBeatmapFavouritedTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var responseString = await response.Content.ReadFromJsonAsync<FavouritedResponse>();
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<FavouritedResponse>();
         Assert.NotNull(responseString);
 
         Assert.Equal(favouriteBeatmapSetBeforeAct, responseString.Favourited);

@@ -4,6 +4,7 @@ using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -30,7 +31,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -57,7 +58,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -77,7 +78,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("fields are missing", responseError?.Error);
     }
 
@@ -104,7 +105,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("fields are missing", responseError?.Error);
     }
 
@@ -141,7 +142,7 @@ public class ApiUserPasswordChangeTests : ApiTest
 
         var (_, expectedError) = newPassword.IsValidPassword();
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Equal(expectedError, responseError?.Error);
     }
 
@@ -165,7 +166,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Equal("Current password is incorrect", responseError?.Error);
     }
 

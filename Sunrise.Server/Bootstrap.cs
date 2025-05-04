@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -70,7 +69,13 @@ public static class Bootstrap
                 });
         });
         builder.Services.AddControllersWithViews()
-            .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+            .AddJsonOptions(options =>
+            {
+                foreach (var converter in Configuration.SystemTextJsonOptions.Converters)
+                {
+                    options.JsonSerializerOptions.Converters.Add(converter);
+                }
+            });
     }
 
 

@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -29,7 +29,7 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<BeatmapSetsResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetsResponse>();
         Assert.NotNull(responseData);
 
         Assert.NotEmpty(responseData.Sets);
@@ -56,7 +56,7 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<BeatmapSetsResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetsResponse>();
         Assert.NotNull(responseData);
 
         Assert.NotEmpty(responseData.Sets);
@@ -103,7 +103,7 @@ public class ApiUserFavouritesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -123,7 +123,7 @@ public class ApiUserFavouritesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -143,7 +143,7 @@ public class ApiUserFavouritesTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<BeatmapSetsResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetsResponse>();
         Assert.NotNull(responseData);
 
         Assert.Empty(responseData.Sets);
@@ -165,7 +165,7 @@ public class ApiUserFavouritesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseError?.Error);
     }
 }

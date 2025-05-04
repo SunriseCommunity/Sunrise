@@ -1,10 +1,10 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -36,7 +36,7 @@ public class ApiUserGetUserTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User not found", responseContent?.Error);
     }
 
@@ -70,7 +70,7 @@ public class ApiUserGetUserTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+        var responseUser = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse>();
         Assert.NotNull(responseUser);
 
         Assert.Equivalent(userData, responseUser);
@@ -91,7 +91,7 @@ public class ApiUserGetUserTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+        var responseUser = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse>();
         Assert.NotNull(responseUser);
 
         Assert.Equal(session.Attributes.Status.ToText(), responseUser.UserStatus);
@@ -114,7 +114,7 @@ public class ApiUserGetUserTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseContent?.Error);
     }
 
@@ -131,12 +131,12 @@ public class ApiUserGetUserTests : ApiTest
         await Database.Scores.AddScore(score);
 
         // Act
-        var response = await client.GetAsync($"user/{user.Id}?mode={(int)mode}");
+        var response = await client.GetAsync($"user/{user.Id}/{mode}");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        var jsonDoc = await response.Content.ReadFromJsonAsyncWithAppConfig<JsonDocument>();
         var responseStats = jsonDoc?.RootElement.GetProperty("stats").Deserialize<UserStatsResponse>();
 
         Assert.NotNull(responseStats);
@@ -155,7 +155,7 @@ public class ApiUserGetUserTests : ApiTest
         var user = await CreateTestUser();
 
         // Act
-        var response = await client.GetAsync($"user/{user.Id}?mode={mode}");
+        var response = await client.GetAsync($"user/{user.Id}/{mode}");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

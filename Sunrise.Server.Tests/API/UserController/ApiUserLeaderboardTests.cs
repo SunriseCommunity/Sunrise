@@ -1,8 +1,8 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -35,7 +35,7 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -54,7 +54,7 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -72,7 +72,7 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -109,7 +109,7 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<LeaderboardResponse>();
         Assert.NotNull(responseData);
 
         Assert.Equivalent(userIdsSortedByPp.LastOrDefault(), responseData.Users.FirstOrDefault()?.User.Id);
@@ -138,7 +138,7 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<LeaderboardResponse>();
         Assert.NotNull(responseData);
 
         Assert.DoesNotContain(responseData.Users, x => x.User.Id == restrictedUser.Id);
@@ -178,7 +178,11 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<LeaderboardResponse>();
+        var data = await response.Content.ReadAsStringAsync();
+
+        Console.WriteLine(data);
+
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<LeaderboardResponse>();
         Assert.NotNull(responseData);
 
         Assert.Single(responseData.Users);

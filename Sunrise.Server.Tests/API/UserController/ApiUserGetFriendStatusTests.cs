@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -25,7 +25,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -49,7 +49,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Invalid session", responseError?.Error);
     }
 
@@ -106,7 +106,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<FriendStatusResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendStatusResponse>();
         Assert.NotNull(responseContent);
 
         Assert.Equal(isFollowingYou, responseContent.IsFollowingYou);
@@ -133,7 +133,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User not found", responseError?.Error);
     }
 }

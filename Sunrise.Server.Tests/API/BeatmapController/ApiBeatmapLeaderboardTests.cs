@@ -38,7 +38,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var content = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var content = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(content);
 
         Assert.Contains(content.Scores, s => s.Id == score.Id);
@@ -79,7 +79,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var content = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var content = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(content);
 
         scores = scores.Where(s => mods == null || s.Mods == mods).ToList();

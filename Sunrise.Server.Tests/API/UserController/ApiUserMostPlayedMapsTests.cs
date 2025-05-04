@@ -45,7 +45,7 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<MostPlayedResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<MostPlayedResponse>();
         Assert.NotNull(responseData);
 
         Assert.NotEmpty(responseData.MostPlayed);
@@ -90,7 +90,7 @@ public class ApiUserMostPlayedMapsRedisTests() : ApiTest(true)
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<MostPlayedResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<MostPlayedResponse>();
         Assert.NotNull(responseData);
 
         Assert.NotEmpty(responseData.MostPlayed);
@@ -136,7 +136,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -156,7 +156,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -174,7 +174,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseData = await response.Content.ReadFromJsonAsync<MostPlayedResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<MostPlayedResponse>();
         Assert.NotNull(responseData);
 
         Assert.Empty(responseData.MostPlayed);
@@ -196,7 +196,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseError?.Error);
     }
 }

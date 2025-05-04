@@ -1,10 +1,10 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
@@ -69,7 +69,7 @@ public class ApiUserGetSelfTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+        var responseUser = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse>();
         Assert.NotNull(responseUser);
 
         Assert.Equivalent(userData, responseUser);
@@ -93,7 +93,7 @@ public class ApiUserGetSelfTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUser = await response.Content.ReadFromJsonAsync<UserResponse>();
+        var responseUser = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse>();
         Assert.NotNull(responseUser);
 
         Assert.Equal(session.Attributes.Status.ToText(), responseUser.UserStatus);
@@ -112,12 +112,12 @@ public class ApiUserGetSelfTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.GetAsync($"user/self?mode={(int)mode}");
+        var response = await client.GetAsync($"user/self/{mode}");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var jsonDoc = await response.Content.ReadFromJsonAsync<JsonDocument>();
+        var jsonDoc = await response.Content.ReadFromJsonAsyncWithAppConfig<JsonDocument>();
         var responseStats = jsonDoc?.RootElement.GetProperty("stats").Deserialize<UserStatsResponse>();
 
         Assert.NotNull(responseStats);
@@ -134,7 +134,7 @@ public class ApiUserGetSelfTests : ApiTest
         var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         // Act
-        var response = await client.GetAsync($"user/self?mode={mode}");
+        var response = await client.GetAsync($"user/self/{mode}");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

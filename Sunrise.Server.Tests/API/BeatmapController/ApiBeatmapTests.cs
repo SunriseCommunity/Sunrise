@@ -58,7 +58,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = randomUser.Id
         });
-        
+
         // Act
         var response = await client.GetAsync("beatmap/1");
 
@@ -70,7 +70,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
 
         Assert.NotNull(beatmap);
 
-        Assert.Equal(BeatmapStatus.Loved.BeatmapStatusToString(), beatmap.Status);
+        Assert.Equal(BeatmapStatusSearch.Loved, beatmap.Status);
     }
 }
 

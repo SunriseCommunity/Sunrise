@@ -108,7 +108,7 @@ public class ApiUserGetUserScoresTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
 
         Assert.NotNull(scores);
         Assert.Single(scores.Scores);
@@ -164,7 +164,7 @@ public class ApiUserGetUserScoresTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         var expectedScoresCount = type switch
@@ -206,7 +206,7 @@ public class ApiUserGetUserScoresTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
 
         Assert.NotNull(scores);
         Assert.Single(scores.Scores);
@@ -229,7 +229,7 @@ public class ApiUserGetUserScoresTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseError?.Error);
     }
 }

@@ -5,6 +5,7 @@ using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.AuthController;
@@ -32,7 +33,7 @@ public class ApiAuthRefreshTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseTokens = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<RefreshTokenResponse>();
 
         Assert.NotNull(responseTokens);
         Assert.NotNull(responseTokens.Token);

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
@@ -15,8 +17,19 @@ public static class Configuration
         .AddEnvironmentVariables()
         .Build();
 
+
+
     // API section
     private static string? _webTokenSecret;
+
+    public static JsonSerializerOptions SystemTextJsonOptions = new()
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
+
     public static bool IsDevelopment => Env == "Development";
     public static bool IsTestingEnv => Env == "Tests";
 
