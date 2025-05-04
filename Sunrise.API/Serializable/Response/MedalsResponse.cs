@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace Sunrise.API.Serializable.Response;
 
@@ -38,6 +39,7 @@ public class MedalsResponse(List<UserMedals> userMeals, List<Medal> medals)
     public class Category
     {
         [JsonPropertyName("medals")]
+        [SwaggerSchema(ReadOnly = true)]
         public List<UserMedalResponse> Medals { get; set; }
     }
 }
