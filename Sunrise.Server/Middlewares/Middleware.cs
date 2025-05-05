@@ -2,8 +2,10 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Extensions;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
@@ -62,6 +64,10 @@ public sealed class Middleware(
         if (isShouldStopApiRequest)
             return;
 
+        var isAuthorizeRequestDoesntHasUser = await ShouldStopIfHasAuthorizationButDontHaveUser(context);
+        if (isAuthorizeRequestDoesntHasUser)
+            return;
+
         await next(context);
     }
 
@@ -106,6 +112,22 @@ public sealed class Middleware(
         return false;
     }
 
+    private async Task<bool> ShouldStopIfHasAuthorizationButDontHaveUser(HttpContext context)
+    {
+        var endpoint = context.GetEndpoint();
+        var hasAuthorize = endpoint?.Metadata?.GetMetadata<AuthorizeAttribute>() != null;
+
+        if (hasAuthorize && context.Items["CurrentUser"] == null)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new ErrorResponse("Authorization failed. Please authorize to access this resource."));
+            return true;
+        }
+
+        return false;
+    }
+
     private async Task SetCurrentUserFromRequestIfPossible(HttpContext context)
     {
         var userClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -113,7 +135,7 @@ public sealed class Middleware(
 
         if (userClaim != null && int.TryParse(userClaim.Value, out var userId) && hashClaim != null)
         {
-            var user = await database.Users.GetUser(userId);
+            var user = await database.Users.GetValidUser(userId);
 
             if (user == null)
                 return;

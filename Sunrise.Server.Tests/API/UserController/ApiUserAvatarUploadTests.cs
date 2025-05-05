@@ -28,7 +28,7 @@ public class ApiUserAvatarUploadTests : ApiTest
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ApiUserAvatarUploadTests : ApiTest
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class ApiUserAvatarUploadTests : ApiTest
             });
 
         await using var imageBytes = File.OpenRead(imagePath);
-        
+
         using var content = new MultipartFormDataContent();
         content.Headers.ContentType!.MediaType = "multipart/form-data";
         content.Add(new StreamContent(imageBytes), "file", "image.png");
