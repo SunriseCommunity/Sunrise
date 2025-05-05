@@ -48,16 +48,15 @@ public class AssetService(DatabaseService database)
     public async Task<Result<string>> SaveScreenshot(Session session, IFormFile screenshot,
         CancellationToken ct)
     {
-        using var buffer = new MemoryStream();
-        await screenshot.CopyToAsync(buffer, ct);
+        await using var stream = screenshot.OpenReadStream();
 
-        if (buffer.Length > 5 * Megabyte)
-            return Result.Failure<string>($"Screenshot is too large ({buffer.Length / Megabyte}MB)");
+        if (stream.Length > 5 * Megabyte)
+            return Result.Failure<string>($"Screenshot is too large ({stream.Length / Megabyte}MB)");
 
-        if (!ImageTools.IsValidImage(buffer))
+        if (!ImageTools.IsValidImage(stream))
             return Result.Failure<string>("Invalid image format");
 
-        var addScreenshotResult = await database.Users.Files.AddScreenshot(session.UserId, buffer.ToArray());
+        var addScreenshotResult = await database.Users.Files.AddScreenshot(session.UserId, stream);
         if (addScreenshotResult.IsFailure)
             return Result.Failure<string>(addScreenshotResult.Error);
 

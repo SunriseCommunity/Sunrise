@@ -64,11 +64,13 @@ public static class UserSeeder
 
     private static async Task AddSunriseBotAvatar(DbContext context, User sunriseBot, CancellationToken ct = default)
     {
-        var sunriseBotAvatar = await File.ReadAllBytesAsync(Path.Combine(Configuration.DataPath, "Files/Assets/BotAvatar.png"), ct);
+        var inputPath = Path.Combine(Configuration.DataPath, "Files/Assets/BotAvatar.png");
         var imagePath = $"Files/Avatars/{sunriseBot.Id}.png";
         var filePath = Path.Combine(Configuration.DataPath, imagePath);
+        
+        await using var inputStream = new FileStream(inputPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(sunriseBotAvatar, 256, 256), ct))
+        if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(inputStream, 256, 256), ct))
             throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
 
         var record = new UserFile

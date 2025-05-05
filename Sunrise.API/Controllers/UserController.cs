@@ -535,10 +535,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return BadRequest(new ErrorResponse("No files were uploaded"));
 
         var file = Request.Form.Files[0];
-        using var buffer = new MemoryStream();
-        await file.CopyToAsync(buffer, Request.HttpContext.RequestAborted);
+        await using var stream = file.OpenReadStream();
 
-        var (isSet, error) = await assetService.SetAvatar(user.Id, buffer);
+        var (isSet, error) = await assetService.SetAvatar(user.Id, stream);
 
         if (!isSet || error != null)
         {
@@ -566,10 +565,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return BadRequest(new ErrorResponse("No files were uploaded"));
 
         var file = Request.Form.Files[0];
-        using var buffer = new MemoryStream();
-        await file.CopyToAsync(buffer, Request.HttpContext.RequestAborted);
-
-        var (isSet, error) = await assetService.SetBanner(user.Id, buffer);
+        await using var stream = file.OpenReadStream();
+        
+        var (isSet, error) = await assetService.SetBanner(user.Id, stream);
 
         if (!isSet || error != null)
         {

@@ -25,6 +25,26 @@ public static class LocalStorageRepository
             return false;
         }
     }
+    
+    public static async Task<bool> WriteFileAsync(string path, Stream dataStream, CancellationToken ct = default)
+    {
+        try
+        {
+            if (dataStream.CanSeek)
+            {
+                dataStream.Seek(0, SeekOrigin.Begin);
+            }
+            
+            await using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+            await dataStream.CopyToAsync(fileStream, ct);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e, $"Failed to write file to {path}");
+            return false;
+        }
+    }
 
     public static async Task<byte[]?> ReadFileAsync(string path, CancellationToken ct = default)
     {

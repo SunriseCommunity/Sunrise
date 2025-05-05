@@ -14,14 +14,15 @@ public class UserFileService(SunriseDbContext dbContext)
 {
     private static string DataPath => Configuration.DataPath;
 
-    public async Task<Result> AddOrUpdateAvatar(int userId, byte[] avatar)
+    public async Task<Result> AddOrUpdateAvatar(int userId, Stream fileStream)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var imagePath = $"Files/Avatars/{userId}.png";
+            var imageType = ImageTools.GetImageType(fileStream);
+            var imagePath = $"Files/Avatars/{userId}.{imageType}";
             var filePath = Path.Combine(DataPath, imagePath);
 
-            if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(avatar, 256, 256)))
+            if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(fileStream, 256, 256)))
                 throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
 
             var record = new UserFile
@@ -39,6 +40,10 @@ public class UserFileService(SunriseDbContext dbContext)
                 await dbContext.SaveChangesAsync();
                 return;
             }
+            
+            var prevRecordFilePath = Path.Combine(DataPath, prevRecord.Path);
+            if (prevRecordFilePath != filePath && File.Exists(prevRecordFilePath))
+                File.Delete(prevRecordFilePath);
 
             prevRecord.UpdatedAt = DateTime.Now;
             prevRecord.Path = imagePath;
@@ -59,14 +64,15 @@ public class UserFileService(SunriseDbContext dbContext)
         return file;
     }
 
-    public async Task<Result<int>> AddScreenshot(int userId, byte[] screenshot)
+    public async Task<Result<int>> AddScreenshot(int userId, Stream fileStream)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var imagePath = $"Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.jpg";
+            var imageType = ImageTools.GetImageType(fileStream);
+            var imagePath = $"Files/Screenshot/{userId}-{DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}.{imageType}";
             var filePath = Path.Combine(DataPath, imagePath);
 
-            if (!await LocalStorageRepository.WriteFileAsync(filePath, screenshot))
+            if (!await LocalStorageRepository.WriteFileAsync(filePath, fileStream))
                 throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
 
             var record = new UserFile
@@ -96,14 +102,15 @@ public class UserFileService(SunriseDbContext dbContext)
         return file;
     }
 
-    public async Task<Result> AddOrUpdateBanner(int userId, byte[] banner)
+    public async Task<Result> AddOrUpdateBanner(int userId, Stream fileStream)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var imagePath = $"Files/Banners/{userId}.png";
+            var imageType = ImageTools.GetImageType(fileStream);
+            var imagePath = $"Files/Banners/{userId}.{imageType}";
             var filePath = Path.Combine(DataPath, imagePath);
 
-            if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(banner, 1280, 320)))
+            if (!await LocalStorageRepository.WriteFileAsync(filePath, ImageTools.ResizeImage(fileStream, 1280, 320)))
                 throw new ApplicationException(QueryResultError.CREATING_FILE_FAILED);
 
             var record = new UserFile
@@ -121,6 +128,10 @@ public class UserFileService(SunriseDbContext dbContext)
                 await dbContext.SaveChangesAsync();
                 return;
             }
+
+            var prevRecordFilePath = Path.Combine(DataPath, prevRecord.Path);
+            if (prevRecordFilePath != filePath && File.Exists(prevRecordFilePath))
+                File.Delete(prevRecordFilePath);
 
             prevRecord.UpdatedAt = DateTime.Now;
             prevRecord.Path = imagePath;
