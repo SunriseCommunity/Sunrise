@@ -147,11 +147,11 @@ public class ApiUserBannerUploadTests : ApiTest
                 MaxSize = Megabyte * 5
             });
 
-        var imageBytes = await File.ReadAllBytesAsync(imagePath);
+        await using var imageBytes = File.OpenRead(imagePath);
 
         using var content = new MultipartFormDataContent();
         content.Headers.ContentType!.MediaType = "multipart/form-data";
-        content.Add(new ByteArrayContent(imageBytes), "file", "image.png");
+        content.Add(new StreamContent(imageBytes), "file", "image.png");
 
         // Act
         var response = await client.PostAsync("user/upload/banner", content);

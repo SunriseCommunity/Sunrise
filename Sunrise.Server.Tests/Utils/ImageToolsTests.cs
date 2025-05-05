@@ -19,7 +19,7 @@ public class ImageToolsTests : FilesystemTest
         // Arrange
         var imagePath = _fileService.GetRandomFilePath("jpg");
 
-        var imageBytes = File.ReadAllBytes(imagePath);
+        using var imageBytes = File.OpenRead(imagePath);
         var size = new Size(100, 100);
 
         // Act
@@ -36,7 +36,7 @@ public class ImageToolsTests : FilesystemTest
         // Arrange
         var imagePath = _fileService.GetRandomFilePath("jpg");
 
-        var imageBytes = File.ReadAllBytes(imagePath);
+        using var imageBytes = File.OpenRead(imagePath);
         var size = new Size(0, -100);
 
         // Act & Assert
@@ -47,7 +47,7 @@ public class ImageToolsTests : FilesystemTest
     public void TestResizeImageWithInvalidImage()
     {
         // Arrange
-        var imageBytes = Array.Empty<byte>();
+        using var imageBytes = new MemoryStream();
         var size = new Size(100, 100);
 
         // Act & Assert
@@ -59,8 +59,8 @@ public class ImageToolsTests : FilesystemTest
     {
         // Arrange
         var textFilePath = _fileService.GetRandomFilePath("txt");
-
-        var imageBytes = File.ReadAllBytes(textFilePath);
+        
+        using var imageBytes = File.OpenRead(textFilePath);
         var size = new Size(100, 100);
 
         // Act & Assert
