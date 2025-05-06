@@ -69,7 +69,10 @@ public class Beatmap
     public int HitLength { get; set; }
 
     [JsonPropertyName("is_scoreable")]
-    public bool IsScoreable { get; set; }
+    public bool IsScoreable => Status.IsScoreable();
+    
+    [JsonPropertyName("is_ranked")]
+    public bool IsRanked => Status.IsRanked();
 
     [JsonPropertyName("last_updated")]
     [JsonConverter(typeof(DateTimeUnixConverter))]
