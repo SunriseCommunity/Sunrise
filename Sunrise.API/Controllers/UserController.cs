@@ -86,10 +86,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         }
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
-
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(userStats, (int)globalRank, (int)countryRank)));
-
-        return Ok(data);
+        
+        return Ok(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(userStats, (int)globalRank, (int)countryRank)));
     }
 
     [HttpGet]
