@@ -223,7 +223,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         var scoresIds = string.Join(",", scores.Select(s => s.Id));
 
-        var connection = dbContext.Database.GetDbConnection();
+        await using var connection = dbContext.Database.GetDbConnection();
         await connection.OpenAsync(ct);
 
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
