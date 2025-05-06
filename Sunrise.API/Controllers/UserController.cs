@@ -39,10 +39,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-        
+
         var isRequestingSelf = id == HttpContext.GetCurrentSession().UserId;
-        var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, ct: ct);
-        
+        var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
+
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
 
@@ -62,26 +62,32 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
-        var isRequestingSelf = id == HttpContext.GetCurrentSession().UserId;
-        var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, ct: ct);
-        
+        var user = await database.Users.GetUser(id,
+            options: new QueryOptions(true)
+            {
+                QueryModifier = q => q.Cast<User>().IncludeUserStats(mode)
+            },
+            ct: ct);
+
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
 
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var isValidMode = Enum.IsDefined(typeof(GameMode), (byte)mode);
-        if (isValidMode != true) return BadRequest(new ErrorResponse("Invalid mode parameter"));
+        var userStats = user.UserStats.FirstOrDefault(m => m.GameMode == mode);
 
-        var stats = await database.Users.Stats.GetUserStats(id, mode, ct);
+        if (userStats == null)
+        {
+            userStats = await database.Users.Stats.GetUserStats(id, mode, ct);
 
-        if (stats == null)
-            return NotFound(new ErrorResponse("User stats not found"));
+            if (userStats == null)
+                return NotFound(new ErrorResponse("User stats not found"));
+        }
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
 
-        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(stats, (int)globalRank, (int)countryRank)));
+        var data = JsonSerializer.SerializeToElement(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(userStats, (int)globalRank, (int)countryRank)));
 
         return Ok(data);
     }
@@ -117,7 +123,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost]
     [Authorize]
     [Route("edit/description")]
-    [EndpointDescription("Update current user's description")]
+    [EndpointDescription("Update current users description")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
@@ -149,17 +155,40 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
-        var user = await database.Users.GetUser(userId, ct: ct);
-        if (user == null) return NotFound(new ErrorResponse("User not found"));
+        var user = await database.Users.GetUser(userId,
+            options: new QueryOptions(true)
+            {
+                QueryModifier = q => q
+                    .Cast<User>()
+                    .IncludeUserStats(mode)
+                    .IncludeUserStatsSnapshots(mode)
+            },
+            ct: ct);
+
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
 
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var userStats = await database.Users.Stats.GetUserStats(userId, mode, ct);
+        var userStats = user.UserStats.FirstOrDefault(m => m.GameMode == mode);
 
-        if (userStats == null) return NotFound(new ErrorResponse("User stats not found"));
+        if (userStats == null)
+        {
+            userStats = await database.Users.Stats.GetUserStats(userId, mode, ct);
 
-        var snapshots = (await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, mode, ct)).GetSnapshots();
+            if (userStats == null)
+                return NotFound(new ErrorResponse("User stats not found"));
+        }
+
+        var userSnapshots = user.UserStatsSnapshots.FirstOrDefault(m => m.GameMode == mode);
+
+        if (userSnapshots == null)
+        {
+            userSnapshots = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(userId, mode, ct);
+        }
+
+        var snapshots = userSnapshots.GetSnapshots();
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
 
@@ -194,7 +223,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var user = await database.Users.GetUser(id, ct: ct);
 
@@ -236,7 +265,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var session = HttpContext.GetCurrentSession();
 
@@ -285,7 +314,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var user = await database.Users.GetUser(id, ct: ct);
 
@@ -294,8 +323,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user.IsRestricted())
             return NotFound(new ErrorResponse("User is restricted"));
 
-        var favouritesCount = await database.Users.Favourites.GetUserFavouriteBeatmapIdsCount(id, ct);
-        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)), ct);
+        var (favourites, favouritesCount) = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)), ct);
 
         var parsedFavourites = favourites.Select(async setId =>
         {
@@ -306,7 +334,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             var beatmapSet = beatmapSetResult.Value;
 
             return beatmapSet == null ? null : new BeatmapSetResponse(session, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).ToList();
+        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
     }
@@ -323,13 +351,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         [FromQuery(Name = "page")] int page = 1,
         CancellationToken ct = default)
     {
-
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var countUsers = await database.Users.CountValidUsers(ct);
 
@@ -374,7 +401,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
 
@@ -395,14 +422,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-        
+
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
 
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page, limit)), ct);
 
@@ -447,7 +474,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         if (ModelState.IsValid != true)
             return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-        
+
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -527,7 +554,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-        
+
         if (Request.HasFormContentType == false)
             return BadRequest(new ErrorResponse("Invalid content type"));
 
@@ -557,7 +584,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-        
+
         if (Request.HasFormContentType == false)
             return BadRequest(new ErrorResponse("Invalid content type"));
 
@@ -566,7 +593,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var file = Request.Form.Files[0];
         await using var stream = file.OpenReadStream();
-        
+
         var (isSet, error) = await assetService.SetBanner(user.Id, stream);
 
         if (!isSet || error != null)
@@ -586,7 +613,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
-        
+
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));

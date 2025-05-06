@@ -30,6 +30,10 @@ public class User
 
     public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
 
+    public ICollection<UserStats> UserStats { get; set; } = new List<UserStats>();
+
+    public ICollection<UserStatsSnapshot> UserStatsSnapshots { get; set; } = new List<UserStatsSnapshot>();
+
     [NotMapped]
     public UserFile? AvatarRecord => UserFiles.FirstOrDefault(f => f.Type == FileType.Avatar);
 

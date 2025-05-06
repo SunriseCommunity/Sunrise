@@ -93,7 +93,10 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(userId,
             mode,
             ScoreTableType.Best,
-            new QueryOptions(true, new Pagination(1, 100)));
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
         return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
     }

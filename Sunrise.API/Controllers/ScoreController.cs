@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Extensions;
-using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
@@ -85,7 +84,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var (scores, _) = await database.Scores.GetBestScoresByGameMode(mode,
+        var (scores, totalCount) = await database.Scores.GetBestScoresByGameMode(mode,
             new QueryOptions(true, new Pagination(page!.Value, limit!.Value))
             {
                 QueryModifier = query => query.Cast<Score>().IncludeUser()
@@ -96,6 +95,6 @@ public class ScoreController(DatabaseService database, SessionRepository session
 
         var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
 
-        return Ok(new ScoresResponse(parsedScores, scores.Count));
+        return Ok(new ScoresResponse(parsedScores, totalCount));
     }
 }

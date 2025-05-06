@@ -46,22 +46,19 @@ public class UserFavouritesService(SunriseDbContext dbContext)
         return await dbContext.UserFavouriteBeatmaps.AsNoTracking().AnyAsync(ufb => ufb.UserId == userId && ufb.BeatmapSetId == beatmapSetId, ct);
     }
 
-    public async Task<List<int>> GetUserFavouriteBeatmapIds(int userId, QueryOptions? options = null, CancellationToken ct = default)
+    public async Task<(List<int>, int)> GetUserFavouriteBeatmapIds(int userId, QueryOptions? options = null, CancellationToken ct = default)
     {
-        return await dbContext.UserFavouriteBeatmaps
+        var beatmapsQuery = dbContext.UserFavouriteBeatmaps
             .Where(ufb => ufb.UserId == userId)
-            .AsNoTracking()
+            .AsNoTracking();
+
+        var totalCount = options?.IgnoreCountQueryIfExists == false ? await beatmapsQuery.CountAsync(cancellationToken: ct) : -1;
+
+        var beatmapsIds = await beatmapsQuery
             .UseQueryOptions(options)
             .Select(ufb => ufb.BeatmapSetId)
             .ToListAsync(cancellationToken: ct);
-    }
 
-    public async Task<int> GetUserFavouriteBeatmapIdsCount(int userId, CancellationToken ct = default)
-    {
-        return await dbContext.UserFavouriteBeatmaps
-            .Where(ufb => ufb.UserId == userId)
-            .AsNoTracking()
-            .Select(ufb => ufb.BeatmapSetId)
-            .CountAsync(cancellationToken: ct);
+        return (beatmapsIds, totalCount);
     }
 }

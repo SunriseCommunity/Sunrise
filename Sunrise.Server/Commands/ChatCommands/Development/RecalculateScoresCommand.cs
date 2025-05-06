@@ -74,7 +74,12 @@ public class RecalculateScoresCommand : IChatCommand
 
                     var session = BaseSession.GenerateServerSession();
 
-                    var (pageScores, _) = await database.Scores.GetScores(mode, new QueryOptions(new Pagination(x, pageSize)), startFromId);
+                    var (pageScores, _) = await database.Scores.GetScores(mode,
+                        new QueryOptions(new Pagination(x, pageSize))
+                        {
+                            IgnoreCountQueryIfExists = true
+                        },
+                        startFromId);
 
                     foreach (var score in pageScores)
                     {

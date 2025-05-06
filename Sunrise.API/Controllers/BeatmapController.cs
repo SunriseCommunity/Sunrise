@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.API.Extensions;
-using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.API.Utils;
@@ -22,7 +21,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 namespace Sunrise.API.Controllers;
 
 [Subdomain("api")]
-// [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
+[ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class BeatmapController(DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions) : ControllerBase
@@ -254,6 +253,9 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;
+
+        if (mode is > GameMode.Mania)
+            return BadRequest(new ErrorResponse("Invalid game mode"));
 
         var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session,
             beatmapSetStatus,

@@ -6,6 +6,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -131,7 +132,14 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var isScoreScoreable = !isCurrentScoreFailed && score.IsScoreable;
 
-        var (databaseScores, _) = isScoreScoreable ? await database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode) : ([], 0);
+        var (databaseScores, _) = isScoreScoreable
+            ? await database.Scores.GetBeatmapScores(score.BeatmapHash,
+                score.GameMode,
+                options: new QueryOptions
+                {
+                    IgnoreCountQueryIfExists = true
+                })
+            : ([], 0);
 
         var globalScores = databaseScores.EnrichWithLeaderboardPositions();
         var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).EnrichWithLeaderboardPositions();
@@ -246,7 +254,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         if (user == null)
             return $"{(int)BeatmapStatus.NotSubmitted}|false";
 
-        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash, gameMode, leaderboardType, mods, user, new QueryOptions(true), ct);
+        var (databaseScores, _) = await database.Scores.GetBeatmapScores(beatmapHash,
+            gameMode,
+            leaderboardType,
+            mods,
+            user,
+            new QueryOptions(true)
+            {
+                IgnoreCountQueryIfExists = true,
+                QueryModifier = q => q.Cast<Score>().IncludeUser()
+            },
+            ct);
+
         var scores = databaseScores.EnrichWithLeaderboardPositions();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, retryCount: int.MaxValue, ct: ct);
@@ -276,13 +295,13 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return string.Join("\n", responses);
 
         var personalBest = scores.GetPersonalBestOf(session.UserId);
-        responses.Add(personalBest != null ? await personalBest.GetString() : "");
+        responses.Add(personalBest != null ? personalBest.GetString() : "");
 
         var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);
 
         foreach (var score in leaderboardScores)
         {
-            responses.Add(await score.GetString());
+            responses.Add(score.GetString());
         }
 
         return string.Join("\n", responses);

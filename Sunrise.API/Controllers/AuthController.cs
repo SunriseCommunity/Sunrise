@@ -24,9 +24,9 @@ public class AuthController(
     [HttpPost("token")]
     [EndpointDescription("Generate user auth tokens")]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid || request == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
@@ -90,9 +90,9 @@ public class AuthController(
     [HttpPost("register")]
     [EndpointDescription("Register new user")]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest? request)
+    public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest request)
     {
-        if (!ModelState.IsValid || request?.Username == null || request.Password == null || request.Email == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var ip = RegionService.GetUserIpAddress(Request);

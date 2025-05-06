@@ -3,10 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Extensions;
-using Sunrise.API.Managers;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using RateLimiter = System.Threading.RateLimiting.RateLimiter;
@@ -65,12 +66,15 @@ public class BaseController(IMemoryCache cache, DatabaseService database, Sessio
         {
             var usersOnlineData = await database.DbContext.Users
                 .Where(u => sessions.GetSessions().Select(s => s.UserId).Contains(u.Id))
+                .IncludeUserThumbnails()
                 .OrderBy(u => u.LastOnlineTime)
-                .Take(3)
+                .UseQueryOptions(new QueryOptions(true, new Pagination(1, 3)))
                 .ToListAsync(cancellationToken: ct);
 
-            var usersRegisteredData = await database.DbContext.Users.OrderByDescending(u => u.Id)
-                .Take(3)
+            var usersRegisteredData = await database.DbContext.Users
+                .IncludeUserThumbnails()
+                .OrderByDescending(u => u.Id)
+                .UseQueryOptions(new QueryOptions(true, new Pagination(1, 3)))
                 .ToListAsync(cancellationToken: ct);
 
             return Ok(new StatusResponse(usersOnline,
