@@ -9,6 +9,5 @@ public static class BeatmapExtensions
     {
         beatmap.Checksum = score.BeatmapHash;
         beatmap.Id = score.BeatmapId;
-        beatmap.IsScoreable = score.IsScoreable;
     }
 }
