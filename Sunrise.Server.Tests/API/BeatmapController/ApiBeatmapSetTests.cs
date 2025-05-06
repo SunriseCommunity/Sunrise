@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
+using Sunrise.API.Serializable.Request;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -43,7 +45,11 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         // Act
-        var response = await client.GetAsync($"beatmapset/{beatmapSet.Id}?favourite=true");
+        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
+            new EditBeatmapsetFavouriteStatusRequest
+            {
+                Favourited = true
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -70,7 +76,12 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
             await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
 
         // Act
-        var response = await client.GetAsync($"beatmapset/{beatmapSet.Id}?favourite={favouriteBeatmapSetAfterAct}");
+        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
+            new EditBeatmapsetFavouriteStatusRequest
+            {
+                Favourited = favouriteBeatmapSetAfterAct
+            }
+        );
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

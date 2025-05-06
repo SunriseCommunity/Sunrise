@@ -1,8 +1,8 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -27,8 +27,8 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -49,8 +49,8 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("No files", responseError?.Error);
     }
 
@@ -94,7 +94,7 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("content type", responseError?.Error);
     }
 
@@ -126,7 +126,7 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("size", responseError?.Error);
     }
 
@@ -147,11 +147,11 @@ public class ApiUserBannerUploadTests : ApiTest
                 MaxSize = Megabyte * 5
             });
 
-        var imageBytes = await File.ReadAllBytesAsync(imagePath);
+        await using var imageBytes = File.OpenRead(imagePath);
 
         using var content = new MultipartFormDataContent();
         content.Headers.ContentType!.MediaType = "multipart/form-data";
-        content.Add(new ByteArrayContent(imageBytes), "file", "image.png");
+        content.Add(new StreamContent(imageBytes), "file", "image.png");
 
         // Act
         var response = await client.PostAsync("user/upload/banner", content);
@@ -191,7 +191,7 @@ public class ApiUserBannerUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("image format", responseError?.Error);
     }
 }

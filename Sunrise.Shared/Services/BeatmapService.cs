@@ -63,6 +63,8 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         beatmapSet = beatmapSetTask.Value;
 
+        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
+
         var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: linkedCts.Token);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);

@@ -33,14 +33,14 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         return performance;
     }
 
-    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, int mode,
+    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, GameMode mode,
         Mods mods = Mods.None, int? combo = null, int? misses = null, float? accuracy = null)
     {
         var requestMods = mods.IgnoreNotStandardModsForRecalculation();
 
         var performancesResult = await client.SendRequest<List<PerformanceAttributes>>(session,
             ApiType.CalculateBeatmapPerformance,
-            [beatmapId, accuracy ?? 100, mode, (int)requestMods, combo, misses]);
+            [beatmapId, accuracy ?? 100, (int)mode, (int)requestMods, combo, misses]);
 
         if (performancesResult.IsFailure) return performancesResult.ConvertFailure<PerformanceAttributes>();
 
@@ -93,7 +93,10 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(userId,
             mode,
             ScoreTableType.Best,
-            new QueryOptions(true, new Pagination(1, 100)));
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
         return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
     }

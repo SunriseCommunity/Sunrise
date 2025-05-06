@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Keys;
@@ -195,20 +194,16 @@ public static class ScoreExtensions
     /// </summary>
     /// <param name="score"></param>
     /// <returns></returns>
-    public static async Task<string> GetString(this Score score)
+    public static string GetString(this Score score)
     {
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
         var time = (int)score.WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
-        var username = (await database.Users.GetUser(score.UserId))?.Username ?? "Unknown";
         var hasReplay = score.ReplayFileId != null ? "1" : "0";
 
         // If the game mode is not scoreable, we should return the performance points instead of the total score
         var totalScore = score.GameMode.IsGameModeWithoutScoreMultiplier() ? (int)score.PerformancePoints : score.TotalScore;
 
         return
-            $"{score.Id}|{username}|{totalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{score.LocalProperties.LeaderboardPosition}|{time}|{hasReplay}";
+            $"{score.Id}|{score.User.Username}|{totalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{score.LocalProperties.LeaderboardPosition}|{time}|{hasReplay}";
     }
 
     public static string ComputeOnlineHash(this Score score, string username, string clientHash, string? storyboardHash)
@@ -246,7 +241,7 @@ public static class ScoreExtensions
 
         if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
         {
-            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, (int)score.GameMode, score.Mods);
+            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, score.GameMode, score.Mods);
 
             if (recalculateBeatmapResult.IsFailure)
             {

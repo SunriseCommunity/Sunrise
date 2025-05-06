@@ -1,4 +1,4 @@
-on: [push, pull_request]
+on: [push]
 name: .NET Build and Test CI
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -1,4 +1,8 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects;
@@ -15,8 +19,19 @@ public static class Configuration
         .AddEnvironmentVariables()
         .Build();
 
+
+
     // API section
     private static string? _webTokenSecret;
+
+    public static JsonSerializerOptions SystemTextJsonOptions = new()
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
+
     public static bool IsDevelopment => Env == "Development";
     public static bool IsTestingEnv => Env == "Tests";
 
@@ -24,6 +39,18 @@ public static class Configuration
     {
         get { return _webTokenSecret ??= GetApiToken().ToHash(); }
     }
+
+    public static TokenValidationParameters WebTokenValidationParameters = new TokenValidationParameters
+    {
+        ValidIssuer = "Sunrise",
+        ValidAudience = "Sunrise",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(WebTokenSecret)),
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.Zero
+    };
 
     public static TimeSpan WebTokenExpiration =>
         TimeSpan.FromSeconds(Config.GetSection("API").GetValue<int?>("TokenExpiresIn") ?? 3600);

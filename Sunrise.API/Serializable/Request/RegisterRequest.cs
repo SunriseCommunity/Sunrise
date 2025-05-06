@@ -5,14 +5,11 @@ namespace Sunrise.API.Serializable.Request;
 public class RegisterRequest
 {
     [JsonPropertyName("username")]
-    [JsonRequired]
-    public string? Username { get; set; }
+    public required string Username { get; set; }
 
     [JsonPropertyName("password")]
-    [JsonRequired]
-    public string? Password { get; set; }
+    public required string Password { get; set; }
 
     [JsonPropertyName("email")]
-    [JsonRequired]
-    public string? Email { get; set; }
+    public required string Email { get; set; }
 }

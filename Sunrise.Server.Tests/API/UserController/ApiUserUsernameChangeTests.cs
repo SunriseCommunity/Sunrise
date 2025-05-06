@@ -5,6 +5,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -30,8 +31,8 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -56,8 +57,8 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Contains("Invalid session", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("fields are missing", responseError?.Error);
     }
 
@@ -111,7 +112,7 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         var (_, expectedError) = newUsername.IsValidUsername();
 
-        var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Equal(expectedError, responseError?.Error);
     }
 
@@ -182,7 +183,7 @@ public class ApiUserUsernameChangeTests : ApiTest
         }
         else
         {
-            var responseError = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
             Assert.Contains("Username is already taken", responseError?.Error);
         }
     }

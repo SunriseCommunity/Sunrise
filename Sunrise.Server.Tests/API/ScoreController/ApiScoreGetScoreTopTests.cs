@@ -1,9 +1,9 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -12,7 +12,7 @@ namespace Sunrise.Server.Tests.API.ScoreController;
 public class ApiScoreGetScoreTopTests : ApiTest
 {
     private readonly MockService _mocker = new();
-    
+
     public static IEnumerable<object[]> GetBeatmapStatuses()
     {
         return Enum.GetValues(typeof(BeatmapStatus)).Cast<BeatmapStatus>().Select(status => new object[]
@@ -86,7 +86,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
 
         Assert.NotNull(scores);
         Assert.Single(scores.Scores);
@@ -117,7 +117,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Equal(randomInt, scores.Scores.Count);
@@ -148,12 +148,12 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Single(scores.Scores);
     }
-    
+
     [Fact]
     public async Task TestIgnoreTopScoresInOtherModeCategoriesForRelaxTopScore()
     {
@@ -161,43 +161,43 @@ public class ApiScoreGetScoreTopTests : ApiTest
         var client = App.CreateClient().UseClient("api").UseUserAuthToken(await GetUserAuthTokens());
 
         var gamemode = GameMode.RelaxStandard;
-        
+
         var user = await CreateTestUser();
         var beatmapId = _mocker.GetRandomInteger();
-        
+
         var vanillaScore = _mocker.Score.GetBestScoreableRandomScore();
         vanillaScore.UserId = user.Id;
         vanillaScore.GameMode = (GameMode)gamemode.ToVanillaGameMode();
         vanillaScore.BeatmapId = beatmapId;
         vanillaScore.TotalScore = 1_000_000;
         vanillaScore.PerformancePoints = 0;
-        
+
         var addVanillaScoreResult = await Database.Scores.AddScore(vanillaScore);
         if (addVanillaScoreResult.IsFailure)
             throw new Exception(addVanillaScoreResult.Error);
-        
+
         var relaxScore = _mocker.Score.GetBestScoreableRandomScore();
         relaxScore.UserId = user.Id;
         relaxScore.GameMode = gamemode;
         relaxScore.BeatmapId = beatmapId;
         relaxScore.TotalScore = 0;
         relaxScore.PerformancePoints = 1_000;
-        
+
         var addRelaxScoreResult = await Database.Scores.AddScore(relaxScore);
         if (addRelaxScoreResult.IsFailure)
             throw new Exception(addRelaxScoreResult.Error);
-        
+
         // Act
         var response = await client.GetAsync($"score/top?mode={(int)gamemode}&limit=1");
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Equal(relaxScore.Id, scores.Scores.First().Id);
     }
-    
+
     [Fact]
     public async Task TestIncludeScoresOnTheSameBeatmapByDifferentPeopleTopScore()
     {
@@ -225,12 +225,12 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Equal(scores.TotalCount, scoresCount);
     }
-    
+
     [Theory]
     [MemberData(nameof(GetBeatmapStatuses))]
     public async Task TestGetIgnoreNonRankedTopScore(BeatmapStatus status)
@@ -245,7 +245,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
         score.UserId = user.Id;
         score.GameMode = gamemode;
         score.BeatmapStatus = status;
-            
+
         await Database.Scores.AddScore(score);
 
         // Act
@@ -253,7 +253,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         var isBeatmapStatusRanked = status is BeatmapStatus.Ranked or BeatmapStatus.Approved;
@@ -298,7 +298,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Equal(randomInt - 1, scores.Scores.Count);
@@ -334,7 +334,7 @@ public class ApiScoreGetScoreTopTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var scores = await response.Content.ReadFromJsonAsync<ScoresResponse>();
+        var scores = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
         Assert.NotNull(scores);
 
         Assert.Equal(randomInt, scores.Scores.Count);

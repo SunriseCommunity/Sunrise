@@ -5,6 +5,5 @@ namespace Sunrise.API.Serializable.Request;
 public class EditDescriptionRequest
 {
     [JsonPropertyName("description")]
-    [JsonRequired]
-    public string? Description { get; set; }
+    public required string Description { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.API.Enums;
 using Sunrise.API.Services;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
@@ -70,9 +71,8 @@ public class UserResponse
     public DateTime? SilencedUntil { get; set; }
 
     [JsonPropertyName("badges")]
-    public List<string> Badges { get; set; }
+    public List<UserBadge> Badges { get; set; }
 
     [JsonPropertyName("user_status")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? UserStatus { get; set; }
+    public string UserStatus { get; set; }
 }

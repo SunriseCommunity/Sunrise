@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Attributes;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -23,10 +24,11 @@ public class AuthController(
 {
     [HttpPost("token")]
     [EndpointDescription("Generate user auth tokens")]
+    [IgnoreMaintenance]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest? request, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserToken([FromBody] TokenRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid || request == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
@@ -67,15 +69,16 @@ public class AuthController(
     }
 
     [HttpPost("refresh")]
+    [IgnoreMaintenance]
     [EndpointDescription("Refresh user auth token")]
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
         var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        if (!ModelState.IsValid || request == null || request.RefreshToken == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);
@@ -90,9 +93,9 @@ public class AuthController(
     [HttpPost("register")]
     [EndpointDescription("Register new user")]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest? request)
+    public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest request)
     {
-        if (!ModelState.IsValid || request?.Username == null || request.Password == null || request.Email == null)
+        if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var ip = RegionService.GetUserIpAddress(Request);

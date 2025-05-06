@@ -4,6 +4,7 @@ using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -167,7 +168,11 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var favourites = await database.Users.Favourites.GetUserFavouriteBeatmapIds(session.UserId);
+        var (favourites, _) = await database.Users.Favourites.GetUserFavouriteBeatmapIds(session.UserId,
+            new QueryOptions
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
         return Ok(string.Join("/n", favourites.Select(x => x)));
     }

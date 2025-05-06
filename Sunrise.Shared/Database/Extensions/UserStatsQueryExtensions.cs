@@ -17,6 +17,7 @@ public static class UserStatsQueryableExtensions
     {
         return queryable
             .Include(x => x.User)
-            .Include(y => y.User.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner));
+            .Include(y => y.User.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            .AsSingleQuery();
     }
 }

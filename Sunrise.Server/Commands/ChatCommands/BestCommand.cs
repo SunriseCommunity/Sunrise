@@ -33,7 +33,13 @@ public class BestCommand : IChatCommand
             return;
         }
 
-        var (bestScores, _) = await database.Scores.GetUserScores(user.Id, (GameMode)session.Attributes.Status.PlayMode, ScoreTableType.Best, new QueryOptions(true, new Pagination(1, 5)));
+        var (bestScores, _) = await database.Scores.GetUserScores(user.Id,
+            (GameMode)session.Attributes.Status.PlayMode,
+            ScoreTableType.Best,
+            new QueryOptions(true, new Pagination(1, 5))
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
         var result = $"[★ {user.Username}'s Best Scores]\n";
 

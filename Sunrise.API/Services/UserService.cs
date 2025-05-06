@@ -1,4 +1,4 @@
-using Sunrise.Shared.Application;
+using Sunrise.API.Enums;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 
@@ -6,27 +6,24 @@ namespace Sunrise.API.Services;
 
 public static class UserService
 {
-    public static List<string> GetUserBadges(User user)
+    public static List<UserBadge> GetUserBadges(User user)
     {
-        var badges = new List<string>();
+        var badges = new List<UserBadge>();
 
         if (user.Privilege.HasFlag(UserPrivilege.Developer))
-            badges.Add("developer");
+            badges.Add(UserBadge.Developer);
 
         if (user.Privilege.HasFlag(UserPrivilege.Admin))
-            badges.Add("admin");
+            badges.Add(UserBadge.Admin);
 
         if (user.Privilege.HasFlag(UserPrivilege.Bat))
-            badges.Add("bat");
+            badges.Add(UserBadge.Bat);
 
         if (user.IsUserSunriseBot())
-            badges.Add("bot");
+            badges.Add(UserBadge.Bot);
 
         if (user.Privilege.HasFlag(UserPrivilege.Supporter))
-            badges.Add("supporter");
-
-        if (user.AccountStatus == UserAccountStatus.Restricted)
-            badges.Add("restricted");
+            badges.Add(UserBadge.Supporter);
 
         return badges;
     }

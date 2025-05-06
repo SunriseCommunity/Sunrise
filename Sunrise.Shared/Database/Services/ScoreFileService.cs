@@ -42,7 +42,7 @@ public class ScoreFileService(SunriseDbContext dbContext)
 
     public async Task<byte[]?> GetReplayFile(int replayId, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(record => record.Id == replayId, ct);
+        var record = await dbContext.UserFiles.AsNoTracking().FirstOrDefaultAsync(record => record.Id == replayId, ct);
 
         if (record == null)
             return null;

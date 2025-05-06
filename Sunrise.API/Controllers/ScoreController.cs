@@ -1,8 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.API.Managers;
+using Sunrise.API.Extensions;
 using Sunrise.API.Serializable.Response;
-using Sunrise.API.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -18,7 +18,7 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-public class ScoreController(DatabaseService database, SessionManager sessionManager, SessionRepository sessions) : ControllerBase
+public class ScoreController(DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("")]
     [ResponseCache(Duration = 300)]
@@ -43,6 +43,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     }
 
     [HttpGet("replay")]
+    [Authorize]
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [EndpointDescription("Get score replay file")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -50,9 +51,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScoreReplay(int id, CancellationToken ct = default)
     {
-        var session = await sessionManager.GetSessionFromRequest(Request, ct);
-        if (session == null)
-            return Unauthorized(new ErrorResponse("Invalid session"));
+        var session = HttpContext.GetCurrentSession();
 
         var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
         if (score?.ReplayFileId == null)
@@ -85,7 +84,7 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
         if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
         if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var (scores, _) = await database.Scores.GetBestScoresByGameMode(mode,
+        var (scores, totalCount) = await database.Scores.GetBestScoresByGameMode(mode,
             new QueryOptions(true, new Pagination(page!.Value, limit!.Value))
             {
                 QueryModifier = query => query.Cast<Score>().IncludeUser()
@@ -96,6 +95,6 @@ public class ScoreController(DatabaseService database, SessionManager sessionMan
 
         var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
 
-        return Ok(new ScoresResponse(parsedScores, scores.Count));
+        return Ok(new ScoresResponse(parsedScores, totalCount));
     }
 }

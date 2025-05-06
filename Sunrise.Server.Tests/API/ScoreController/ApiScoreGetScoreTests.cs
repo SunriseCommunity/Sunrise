@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
@@ -24,8 +24,8 @@ public class ApiScoreGetScoreTests : ApiTest
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var responseScore = await response.Content.ReadFromJsonAsync<ScoreResponse>();
-        var scoreData = new ScoreResponse(Sessions,  score);
+        var responseScore = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoreResponse>();
+        var scoreData = new ScoreResponse(Sessions, score);
 
         Assert.Equivalent(responseScore, scoreData);
     }
@@ -45,7 +45,7 @@ public class ApiScoreGetScoreTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Score not found", responseContent?.Error);
     }
 
@@ -66,7 +66,7 @@ public class ApiScoreGetScoreTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("Score not found", responseContent?.Error);
     }
 

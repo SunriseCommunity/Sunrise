@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -23,7 +23,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("query parameter", responseData?.Error);
     }
 
@@ -44,7 +44,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -64,7 +64,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -83,7 +83,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse[]>();
         var responseUser = responseUsers?.FirstOrDefault();
         Assert.NotNull(responseUser);
 
@@ -110,7 +110,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse[]>();
         Assert.NotNull(responseUsers);
 
         Assert.Single(responseUsers);
@@ -136,7 +136,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse[]>();
         Assert.NotNull(responseUsers);
 
         Assert.Single(responseUsers);
@@ -158,7 +158,7 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<UserResponse[]>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<UserResponse[]>();
         Assert.NotNull(responseUsers);
 
         Assert.Empty(responseUsers);

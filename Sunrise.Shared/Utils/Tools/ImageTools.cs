@@ -19,14 +19,17 @@ public static class ImageTools
         // @formatter:on
     };
 
-    public static byte[] ResizeImage(byte[] bytes, int width, int height)
+    public static byte[] ResizeImage(Stream fileStream, int width, int height)
     {
-        using var memoryStream = new MemoryStream(bytes);
+        if (!fileStream.CanSeek)
+            throw new InvalidOperationException("Input stream must be seekable.");
+        
+        fileStream.Position = 0;
 
-        var imageFormat = Image.DetectFormat(memoryStream);
-        memoryStream.Seek(0, SeekOrigin.Begin);
+        var imageFormat = Image.DetectFormat(fileStream);
+        fileStream.Position = 0;
 
-        using var image = Image.Load(memoryStream);
+        using var image = Image.Load(fileStream);
 
         var options = new ResizeOptions
         {
@@ -50,14 +53,23 @@ public static class ImageTools
         return outputStream.ToArray();
     }
 
-    public static bool IsValidImage(MemoryStream stream)
+    public static bool IsValidImage(Stream fileStream)
     {
-        return IsValidImage(stream.ToArray());
-    }
+        if (!fileStream.CanSeek)
+            throw new InvalidOperationException("Input stream must be seekable.");
+        
+        fileStream.Position = 0;
+        
+        var maxHeaderSize = ValidImageBytes.Max(x => x.Value.Length);
+        var header = new byte[maxHeaderSize];
 
-    private static bool IsValidImage(byte[] bytes)
-    {
-        return ValidImageBytes.Any(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length)));
+        var bytesRead = fileStream.Read(header, 0, maxHeaderSize);
+
+        fileStream.Position = 0;
+
+        return ValidImageBytes.Any(x => 
+            bytesRead >= x.Value.Length && 
+            x.Value.SequenceEqual(header.Take(x.Value.Length)));
     }
 
     public static string? GetImageType(byte[] bytes)
@@ -65,15 +77,35 @@ public static class ImageTools
         var extension = ValidImageBytes.FirstOrDefault(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length))).Key;
         return extension?[1..];
     }
-
-    public static (bool, string?) IsHasValidImageAttributes(MemoryStream buffer)
+    
+    public static string? GetImageType(Stream fileStream)
     {
-        if (buffer.Length > 5 * 1024 * 1024)
+        if (!fileStream.CanSeek)
+            throw new InvalidOperationException("Input stream must be seekable.");
+        
+        fileStream.Position = 0;
+
+        var maxHeaderLength = ValidImageBytes.Max(x => x.Value.Length);
+        var buffer = new byte[maxHeaderLength];
+        var bytesRead = fileStream.Read(buffer, 0, maxHeaderLength);
+
+        fileStream.Position = 0;
+
+        var match = ValidImageBytes.FirstOrDefault(x =>
+            bytesRead >= x.Value.Length &&
+            x.Value.SequenceEqual(buffer.Take(x.Value.Length)));
+
+        return match.Key?[1..];
+    }
+
+    public static (bool, string?) IsHasValidImageAttributes(Stream stream)
+    {
+        if (stream.Length > 5 * 1024 * 1024)
         {
             return (false, "UserFile is too large. Max size is 5MB");
         }
 
-        if (!IsValidImage(buffer))
+        if (!IsValidImage(stream))
         {
             return (false, "Invalid image format");
         }

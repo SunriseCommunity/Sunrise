@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Utils.Converters;
@@ -13,7 +14,7 @@ public class BeatmapResponse
         BeatmapsetId = beatmap.BeatmapsetId;
         Hash = beatmap.Checksum;
         Version = beatmap.Version;
-        Status = beatmap.StatusString;
+        Status = beatmap.StatusGeneric;
         StarRating = beatmap.ModeInt switch
         {
             0 => beatmap.DifficultyRating,
@@ -53,6 +54,7 @@ public class BeatmapResponse
         IsScoreable = beatmap.IsScoreable;
         LastUpdated = beatmap.LastUpdated;
         ModeInt = beatmap.ModeInt;
+        Mode = (GameMode)beatmap.ModeInt;
         Ranked = beatmap.Ranked;
         Title = beatmapSet?.Title;
         Artist = beatmapSet?.Artist;
@@ -78,7 +80,7 @@ public class BeatmapResponse
     public string Version { get; set; }
 
     [JsonPropertyName("status")]
-    public string Status { get; set; }
+    public BeatmapStatusSearch Status { get; set; }
 
     [JsonPropertyName("star_rating_osu")]
     public double StarRating { get; set; }
@@ -142,6 +144,9 @@ public class BeatmapResponse
 
     [JsonPropertyName("mode_int")]
     public int ModeInt { get; set; }
+    
+    [JsonPropertyName("mode")]
+    public GameMode Mode { get; set; } 
 
     [JsonPropertyName("ranked")]
     public int Ranked { get; set; }

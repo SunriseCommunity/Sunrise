@@ -1,9 +1,9 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -36,7 +36,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User not found", responseContent?.Error);
     }
 
@@ -73,7 +73,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseContent?.Error);
     }
 
@@ -92,7 +92,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseSnapshots = await response.Content.ReadFromJsonAsync<StatsSnapshotsResponse>();
+        var responseSnapshots = await response.Content.ReadFromJsonAsyncWithAppConfig<StatsSnapshotsResponse>();
         Assert.NotNull(responseSnapshots);
 
         var (userRank, _) = await Database.Users.Stats.Ranks.GetUserRanks(user, gamemode);
@@ -133,7 +133,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseSnapshots = await response.Content.ReadFromJsonAsync<StatsSnapshotsResponse>();
+        var responseSnapshots = await response.Content.ReadFromJsonAsyncWithAppConfig<StatsSnapshotsResponse>();
         Assert.NotNull(responseSnapshots);
 
         var sortedSnapshots = snapshots.OrderBy(x => x.SavedAt).ToList();
@@ -180,7 +180,7 @@ public class ApiUserGetUserGraphTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseSnapshots = await response.Content.ReadFromJsonAsync<StatsSnapshotsResponse>();
+        var responseSnapshots = await response.Content.ReadFromJsonAsyncWithAppConfig<StatsSnapshotsResponse>();
         Assert.NotNull(responseSnapshots);
 
         snapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));

@@ -1,8 +1,8 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -34,7 +34,7 @@ public class ApiUserGetUserGradesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User not found", responseContent?.Error);
     }
 
@@ -80,7 +80,7 @@ public class ApiUserGetUserGradesTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseGrades = await response.Content.ReadFromJsonAsync<GradesResponse>();
+        var responseGrades = await response.Content.ReadFromJsonAsyncWithAppConfig<GradesResponse>();
         Assert.NotNull(responseGrades);
 
         Assert.Equivalent(userGradesData, responseGrades);
@@ -103,7 +103,7 @@ public class ApiUserGetUserGradesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("User is restricted", responseContent?.Error);
     }
 

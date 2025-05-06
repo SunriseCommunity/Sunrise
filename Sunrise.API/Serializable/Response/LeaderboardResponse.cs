@@ -23,7 +23,7 @@ public class LeaderboardResponse
     public LeaderboardResponse() { }
 
     [JsonPropertyName("users")]
-    public List<UserWithStats?> Users { get; set; }
+    public List<UserWithStats> Users { get; set; }
 
     [JsonPropertyName("total_count")]
     public int TotalCount { get; set; }

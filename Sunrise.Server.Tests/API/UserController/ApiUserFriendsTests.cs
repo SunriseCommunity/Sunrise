@@ -1,7 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -30,7 +30,7 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -52,7 +52,7 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("invalid", responseData?.Error.ToLower());
     }
 
@@ -80,7 +80,7 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
         var responseUser = responseUsers?.Friends.FirstOrDefault();
         Assert.NotNull(responseUser);
 
@@ -117,7 +117,7 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
         Assert.NotNull(responseUsers);
 
         Assert.Single(responseUsers.Friends);
@@ -149,7 +149,7 @@ public class ApiUserFriendsTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsync<FriendsResponse>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
         Assert.NotNull(responseUsers);
 
         Assert.Empty(responseUsers.Friends);
