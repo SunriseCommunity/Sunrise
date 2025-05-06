@@ -40,7 +40,7 @@ public class UserFileService(SunriseDbContext dbContext)
                 await dbContext.SaveChangesAsync();
                 return;
             }
-            
+
             var prevRecordFilePath = Path.Combine(DataPath, prevRecord.Path);
             if (prevRecordFilePath != filePath && File.Exists(prevRecordFilePath))
                 File.Delete(prevRecordFilePath);
@@ -54,7 +54,7 @@ public class UserFileService(SunriseDbContext dbContext)
 
     public async Task<byte[]?> GetAvatar(int userId, bool fallToDefault = true, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar, ct);
+        var record = await dbContext.UserFiles.AsNoTracking().FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Avatar, ct);
 
         if (record == null && !fallToDefault) return null;
 
@@ -91,7 +91,7 @@ public class UserFileService(SunriseDbContext dbContext)
 
     public async Task<byte[]?> GetScreenshot(int screenshotId, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot, ct);
+        var record = await dbContext.UserFiles.AsNoTracking().FirstOrDefaultAsync(x => x.Id == screenshotId && x.Type == FileType.Screenshot, ct);
 
         if (record == null)
             return null;
@@ -142,7 +142,7 @@ public class UserFileService(SunriseDbContext dbContext)
 
     public async Task<byte[]?> GetBanner(int userId, bool fallToDefault = true, CancellationToken ct = default)
     {
-        var record = await dbContext.UserFiles.FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner, ct);
+        var record = await dbContext.UserFiles.AsNoTracking().FirstOrDefaultAsync(x => x.OwnerId == userId && x.Type == FileType.Banner, ct);
 
         if (record == null && !fallToDefault) return null;
 
