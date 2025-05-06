@@ -11,8 +11,7 @@ public static class BeatmapExtensions
     public static void UpdateBeatmapRanking(this Beatmap beatmap, BeatmapStatus beatmapStatus)
     {
         beatmap.StatusString = beatmapStatus.BeatmapStatusToString();
-        beatmap.IsScoreable = beatmapStatus.IsScoreable();
-        beatmap.Ranked = beatmapStatus.IsRanked() ? 1 : 0;
+        beatmap.Ranked = beatmapStatus.IsRanked() ? 1 : 0; // TODO: Should use https://osu.ppy.sh/docs/#beatmapset-rank-status
     }
 
     public static void UpdateBeatmapWithPerformance(this Beatmap beatmap, Mods mods, PerformanceAttributes performance)

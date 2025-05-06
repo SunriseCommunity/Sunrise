@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Utils.Converters;
@@ -52,6 +53,7 @@ public class BeatmapResponse
         Drain = beatmap.Drain;
         HitLength = beatmap.HitLength;
         IsScoreable = beatmap.IsScoreable;
+        IsRanked = beatmap.IsRanked;
         LastUpdated = beatmap.LastUpdated;
         ModeInt = beatmap.ModeInt;
         Mode = (GameMode)beatmap.ModeInt;
@@ -137,6 +139,9 @@ public class BeatmapResponse
 
     [JsonPropertyName("is_scoreable")]
     public bool IsScoreable { get; set; }
+    
+    [JsonPropertyName("is_ranked")]
+    public bool IsRanked { get; set; }
 
     [JsonPropertyName("last_updated")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

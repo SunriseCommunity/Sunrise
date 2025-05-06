@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
@@ -118,7 +119,7 @@ public class ApiUserGetSelfTests : ApiTest
         response.EnsureSuccessStatusCode();
 
         var jsonDoc = await response.Content.ReadFromJsonAsyncWithAppConfig<JsonDocument>();
-        var responseStats = jsonDoc?.RootElement.GetProperty("stats").Deserialize<UserStatsResponse>();
+        var responseStats = jsonDoc?.RootElement.GetProperty("stats").Deserialize<UserStatsResponse>(Configuration.SystemTextJsonOptions);
 
         Assert.NotNull(responseStats);
         Assert.Equal(responseStats.GameMode, mode);
