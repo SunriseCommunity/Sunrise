@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Attributes;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -23,6 +24,7 @@ public class AuthController(
 {
     [HttpPost("token")]
     [EndpointDescription("Generate user auth tokens")]
+    [IgnoreMaintenance]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest request, CancellationToken ct = default)
     {
@@ -67,6 +69,7 @@ public class AuthController(
     }
 
     [HttpPost("refresh")]
+    [IgnoreMaintenance]
     [EndpointDescription("Refresh user auth token")]
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)

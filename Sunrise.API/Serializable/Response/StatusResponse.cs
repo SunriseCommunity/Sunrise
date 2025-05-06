@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Application;
 
 namespace Sunrise.API.Serializable.Response;
 
@@ -7,6 +8,7 @@ public class StatusResponse
     public StatusResponse(int usersOnline, long totalUsers, long? totalScores = null, long? totalRestrictions = null, List<UserResponse> usersOnlineData = null, List<UserResponse> usersRegisteredData = null)
     {
         IsOnline = true;
+        IsOnMaintenance = Configuration.OnMaintenance;
         UsersOnline = usersOnline;
         CurrentUsersOnline = usersOnlineData;
         TotalUsers = totalUsers;
@@ -23,6 +25,9 @@ public class StatusResponse
 
     [JsonPropertyName("is_online")]
     public bool IsOnline { get; set; }
+
+    [JsonPropertyName("is_on_maintenance")]
+    public bool IsOnMaintenance { get; set; }
 
     [JsonPropertyName("users_online")]
     public int UsersOnline { get; set; }

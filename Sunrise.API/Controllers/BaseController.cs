@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
@@ -21,6 +22,7 @@ namespace Sunrise.API.Controllers;
 public class BaseController(IMemoryCache cache, DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet]
+    [IgnoreMaintenance]
     [Route("/ping")]
     [EndpointDescription("Basic ping endpoint")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
@@ -30,6 +32,7 @@ public class BaseController(IMemoryCache cache, DatabaseService database, Sessio
     }
 
     [HttpGet]
+    [IgnoreMaintenance]
     [Route("/limits")]
     [EndpointDescription("Check current API limits")]
     [ProducesResponseType(typeof(LimitsResponse), StatusCodes.Status200OK)]
@@ -45,6 +48,7 @@ public class BaseController(IMemoryCache cache, DatabaseService database, Sessio
     }
 
     [HttpGet]
+    [IgnoreMaintenance]
     [Route("/status")]
     [EndpointDescription("Check server status")]
     [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]

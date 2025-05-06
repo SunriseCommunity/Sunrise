@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
+using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -158,6 +159,14 @@ public sealed class Middleware(
     private async Task<bool> ShouldStopUnauthorizedApiRequestIfOnMaintenance(HttpContext context)
     {
         var isApiRequest = context.Request.Host.Host.StartsWith("api.");
+
+        var endpoint = context.GetEndpoint();
+        var hasIgnoreMaintenance = endpoint?.Metadata.GetMetadata<IgnoreMaintenanceAttribute>() != null;
+
+        if (hasIgnoreMaintenance)
+        {
+            return false;
+        }
 
         var user = context.GetCurrentUser();
         var ignoreMaintenanceMode = user != null && user.Privilege.HasFlag(UserPrivilege.Admin);

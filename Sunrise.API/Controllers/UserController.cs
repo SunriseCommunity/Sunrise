@@ -292,7 +292,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
             return beatmap == null ? null : new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).ToList();
+        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new MostPlayedResponse(parsedBeatmaps, totalIdsCount));
     }
@@ -450,12 +450,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
 
+        if (id == user.Id)
+            return BadRequest(new ErrorResponse("You can't check your own friendship status"));
+
         var requestedUser = await database.Users.GetValidUser(id, ct: ct);
         if (requestedUser == null)
             return NotFound(new ErrorResponse("User not found"));
-
-        if (requestedUser.Id == user.Id)
-            return BadRequest(new ErrorResponse("You can't check your own friend status"));
 
         var isFollowing = requestedUser.FriendsList.Contains(user.Id);
         var isFollowed = user.FriendsList.Contains(requestedUser.Id);
@@ -644,12 +644,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are missing."));
+
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
 
         var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
         if (!isUsernameValid)
