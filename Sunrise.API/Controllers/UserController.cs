@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -86,7 +85,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         }
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
-        
+
         return Ok(new UserWithStatsResponse(new UserResponse(sessions, user), new UserStatsResponse(userStats, (int)globalRank, (int)countryRank)));
     }
 
@@ -136,6 +135,27 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return BadRequest(new ErrorResponse("Description is too long. Max 2000 characters"));
 
         user.Description = request.Description;
+
+        await database.Users.UpdateUser(user);
+
+        return new OkResult();
+    }
+
+    [HttpPost]
+    [Authorize]
+    [Route("edit/default-gamemode")]
+    [EndpointDescription("Update current users default gamemode")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditUserDefaultGameMode([FromBody] EditDefaultGameModeRequest request)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        user.DefaultGameMode = request.DefaultGameMode;
 
         await database.Users.UpdateUser(user);
 
