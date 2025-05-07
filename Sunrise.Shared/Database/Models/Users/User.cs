@@ -1,9 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
-using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using PlayerRank = osu.Shared.PlayerRank;
 
 namespace Sunrise.Shared.Database.Models.Users;
 
@@ -27,6 +28,7 @@ public class User
     public string Friends { get; set; } = string.Empty;
     public UserAccountStatus AccountStatus { get; set; } = UserAccountStatus.Active;
     public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
+    public GameMode DefaultGameMode { get; set; } = GameMode.Standard;
 
     public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
 

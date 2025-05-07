@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Sunrise.API.Enums;
 using Sunrise.API.Services;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Repositories;
@@ -32,6 +33,7 @@ public class UserResponse
         LastOnlineTime = session != null ? session.Attributes.LastPingRequest : user.LastOnlineTime;
         IsRestricted = user.IsRestricted();
         SilencedUntil = user.SilencedUntil > DateTime.UtcNow ? user.SilencedUntil : null!;
+        DefaultGameMode = user.DefaultGameMode;
         Badges = UserService.GetUserBadges(user);
     }
 
@@ -69,6 +71,9 @@ public class UserResponse
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTime? SilencedUntil { get; set; }
+
+    [JsonPropertyName("default_gamemode")]
+    public GameMode DefaultGameMode { get; set; }
 
     [JsonPropertyName("badges")]
     public List<UserBadge> Badges { get; set; }
