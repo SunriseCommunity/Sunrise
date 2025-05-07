@@ -77,8 +77,14 @@ public class UserStatsService(
 
         statsQuery = leaderboardSortType switch
         {
-            LeaderboardSortType.Pp => statsQuery.OrderByDescending(e => e.PerformancePoints),
-            LeaderboardSortType.Score => statsQuery.OrderByDescending(e => e.RankedScore),
+            LeaderboardSortType.Pp => statsQuery.OrderByDescending(e => e.PerformancePoints)
+                .ThenByDescending(e => dbContext.Scores.Where(s => s.UserId == e.UserId && s.GameMode == mode)
+                    .OrderBy(s => s.WhenPlayed).FirstOrDefault())
+                .ThenBy(e => e.Id),
+            LeaderboardSortType.Score => statsQuery.OrderByDescending(e => e.RankedScore)
+                .ThenByDescending(e => dbContext.Scores.Where(s => s.UserId == e.UserId && s.GameMode == mode)
+                    .OrderBy(s => s.WhenPlayed).FirstOrDefault())
+                .ThenBy(e => e.Id),
             _ => throw new ArgumentOutOfRangeException(nameof(leaderboardSortType), leaderboardSortType, null)
         };
 
