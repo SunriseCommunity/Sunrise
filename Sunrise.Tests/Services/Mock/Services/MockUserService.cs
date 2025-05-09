@@ -43,6 +43,23 @@ public class MockUserService(MockService service)
 
         return grades;
     }
+    
+    public UserMetadata SetRandomUserMetadata(UserMetadata metadata)
+    {
+        metadata.Location = service.GetRandomString(32);
+        metadata.Occupation = service.GetRandomString(32);
+        metadata.Interest = service.GetRandomString(32);
+        
+        metadata.Discord = service.GetRandomString(32);
+        metadata.Telegram = service.GetRandomString(32);
+        metadata.Twitch = service.GetRandomString(32);
+        metadata.Twitter = service.GetRandomString(32);
+        metadata.Website = service.GetRandomString(200);
+
+        metadata.Playstyle = GetRandomUserPlaystyle();
+
+        return metadata;
+    }
 
     public User GetRandomUser()
     {
@@ -76,6 +93,13 @@ public class MockUserService(MockService service)
         var random = new Random();
         var values = Enum.GetValues(typeof(CountryCode));
         return (short)values.GetValue(random.Next(values.Length))!;
+    }
+    
+    public UserPlaystyle GetRandomUserPlaystyle()
+    {
+        var random = new Random();
+        var values = Enum.GetValues(typeof(UserPlaystyle));
+        return (UserPlaystyle)values.GetValue(random.Next(values.Length))!;
     }
 
     public string GetRandomPassword()
