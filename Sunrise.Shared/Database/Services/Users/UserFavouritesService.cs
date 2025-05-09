@@ -52,7 +52,7 @@ public class UserFavouritesService(SunriseDbContext dbContext)
             .Where(ufb => ufb.UserId == userId)
             .AsNoTracking();
 
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await beatmapsQuery.CountAsync(cancellationToken: ct) : -1;
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await beatmapsQuery.CountAsync(cancellationToken: ct);
 
         var beatmapsIds = await beatmapsQuery
             .UseQueryOptions(options)
