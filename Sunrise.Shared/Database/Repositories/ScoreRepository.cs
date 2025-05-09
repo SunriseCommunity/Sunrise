@@ -7,7 +7,9 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
+using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -15,7 +17,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext, ScoreFileService scoreFileService)
+public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext, ScoreFileService scoreFileService, UserRelationshipService userRelationshipService)
 {
 
     public ScoreFileService Files { get; } = scoreFileService;
@@ -130,9 +132,19 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         {
             scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));
         }
-
-        if (type is LeaderboardType.Friends && user != null) scoresGrouped = scoresGrouped.Where(s => EF.Constant(user.FriendsList).Contains(s.UserId));
+        
         if (type is LeaderboardType.Country && user != null) scoresGrouped = scoresGrouped.Where(s => s.User.Country == EF.Constant(user.Country));
+        if (type is LeaderboardType.Friends && user != null)
+        {
+            var (friends, _) = await userRelationshipService.GetUserFriends(user.Id, new QueryOptions()
+                {
+                    IgnoreCountQueryIfExists = true
+                }, ct: ct);
+                
+            var friendIds = friends.Select(f => f.Id).ToHashSet();
+
+            scoresGrouped = scoresGrouped.Where(s => friendIds.Contains(s.UserId));
+        }
 
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(scoresGrouped.SelectUsersPersonalBestScores().ToQueryString());

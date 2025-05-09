@@ -158,13 +158,13 @@ public class Session : BaseSession
         _helper.WritePacket(type, data);
     }
 
-    public void SendFriendsList()
+    public void SendFriendsList(List<int> friendsIds)
     {
         var user = GetSessionUser();
         if (user == null)
             return;
 
-        _helper.WritePacket(PacketType.ServerFriendsList, user.FriendsList);
+        _helper.WritePacket(PacketType.ServerFriendsList, friendsIds);
     }
 
     public void SendMultiMatchJoinFail()

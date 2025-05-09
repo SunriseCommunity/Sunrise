@@ -17,6 +17,7 @@ public class SunriseDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
+    public DbSet<UserRelationship> UserRelationships { get; set; }
     public DbSet<UserFavouriteBeatmap> UserFavouriteBeatmaps { get; set; }
     public DbSet<UserMedals> UserMedals { get; set; }
     public DbSet<UserMetadata> UserMetadata { get; set; }
@@ -45,6 +46,18 @@ public class SunriseDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(u => u.Email)
             .UseCollation("utf8mb4_unicode_ci");
+
+        modelBuilder.Entity<UserRelationship>()
+            .HasOne(ur => ur.User)
+            .WithMany(u => u.UserInitiatedRelationships)
+            .HasForeignKey(ur => ur.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserRelationship>()
+            .HasOne(ur => ur.Target)
+            .WithMany(u => u.UserReceivedRelationships)
+            .HasForeignKey(ur => ur.TargetId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

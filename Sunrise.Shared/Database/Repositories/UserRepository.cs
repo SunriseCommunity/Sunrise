@@ -16,6 +16,7 @@ public class UserRepository(
     Lazy<DatabaseService> databaseService,
     SunriseDbContext dbContext,
     UserStatsService userStatsService,
+    UserRelationshipService userRelationshipService,
     UserModerationService userModerationService,
     UserMetadataService userMetadataService,
     UserMedalsService userMedalsService,
@@ -25,6 +26,7 @@ public class UserRepository(
 {
     private readonly ILogger _logger = logger;
 
+    public UserRelationshipService Relationship { get; } = userRelationshipService;
     public UserStatsService Stats { get; } = userStatsService;
     public UserFavouritesService Favourites { get; } = userFavouritesService;
     public UserMedalsService Medals { get; } = userMedalsService;
@@ -140,22 +142,6 @@ public class UserRepository(
             .ToListAsync(cancellationToken: ct);
 
         return user;
-    }
-
-    public async Task<(List<User> Users, int TotalCount)> GetUsersFriends(User user, QueryOptions? options = null, CancellationToken ct = default)
-    {
-        var friendsQuery = dbContext.Users
-            .Where(u => user.FriendsList.Contains(u.Id))
-            .FilterValidUsers();
-
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await friendsQuery.CountAsync(cancellationToken: ct) : -1;
-
-        var friends = await friendsQuery
-            .IncludeUserThumbnails()
-            .UseQueryOptions(options)
-            .ToListAsync(cancellationToken: ct);
-
-        return (friends, totalCount);
     }
 
     public async Task<int> CountUsers(CancellationToken ct = default)

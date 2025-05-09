@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
 using Sunrise.API.Serializable.Request;
@@ -13,7 +14,9 @@ using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Keys;
@@ -446,9 +449,16 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
-        var (friends, totalCount) = await database.Users.GetUsersFriends(user, new QueryOptions(true, new Pagination(page, limit)), ct);
+        var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.Target)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
 
-        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x)).ToList(), totalCount));
+        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x.Target)).ToList(), totalCount));
     }
 
     [HttpGet]
@@ -467,14 +477,31 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (id == user.Id)
             return BadRequest(new ErrorResponse("You can't check your own friendship status"));
 
-        var requestedUser = await database.Users.GetValidUser(id, ct: ct);
-        if (requestedUser == null)
+        var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id, ct);
+        if (relationship == null)
             return NotFound(new ErrorResponse("User not found"));
 
-        var isFollowing = requestedUser.FriendsList.Contains(user.Id);
-        var isFollowed = user.FriendsList.Contains(requestedUser.Id);
+        var targetRelationship = await database.Users.Relationship.GetUserRelationship(id, user.Id, ct);
+        if (targetRelationship == null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        var isFollowing = targetRelationship.Relation == UserRelation.Friend;
+        var isFollowed = relationship.Relation == UserRelation.Friend;
 
         return Ok(new FriendStatusResponse(isFollowing, isFollowed));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/friends/count")]
+    [EndpointDescription("Get user friends counters")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserRelationsCountersResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserRelationsCounters(int id, CancellationToken ct = default)
+    {
+        var (_, totalFriends) = await database.Users.Relationship.GetUserFriends(id, ct: ct);
+        var (_, totalFollowers) = await database.Users.Relationship.GetUserFollowers(id, ct: ct);
+
+        return Ok(new UserRelationsCountersResponse(totalFollowers, totalFriends));
     }
 
     [HttpPost]
@@ -492,24 +519,24 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
 
-        var requestedUser = await database.Users.GetValidUser(id);
-
-        if (requestedUser == null)
+        var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id);
+        if (relationship == null)
             return NotFound(new ErrorResponse("User not found"));
 
         switch (request.Action)
         {
             case UpdateFriendshipStatusAction.Add:
-                user.AddFriend(requestedUser.Id);
+                relationship.Relation = UserRelation.Friend;
                 break;
             case UpdateFriendshipStatusAction.Remove:
-                user.RemoveFriend(requestedUser.Id);
+                relationship.Relation = UserRelation.None;
                 break;
+            // TODO: Add ability to block user
             default:
                 return BadRequest(new ErrorResponse($"Invalid action parameter. Use any of: {Enum.GetNames(typeof(UpdateFriendshipStatusAction)).Aggregate((x, y) => x + "," + y)}"));
         }
 
-        var result = await database.Users.UpdateUser(user);
+        var result = await database.Users.Relationship.UpdateUserRelationship(relationship);
         if (result.IsFailure)
             return BadRequest(result.Error);
 
