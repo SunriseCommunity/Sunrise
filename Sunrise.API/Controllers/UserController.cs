@@ -15,6 +15,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -24,7 +25,6 @@ namespace Sunrise.API.Controllers;
 
 [Route("/user")]
 [Subdomain("api")]
-[ResponseCache(VaryByHeader = "Authorization", Duration = 10)]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
 public class UserController(BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
@@ -92,7 +92,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Authorize]
     [Route("self")]
-    [ResponseCache(Duration = 0)]
     [EndpointDescription("Same as /user/{id}, but automatically gets id of current user from token")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
@@ -106,7 +105,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Authorize]
     [Route("self/{mode}")]
-    [ResponseCache(Duration = 0)]
     [EndpointDescription("Same as /user/{id}/{mode}, but automatically gets id of current user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
@@ -429,7 +427,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Authorize]
     [Route("friends")]
-    [ResponseCache(Duration = 0)]
     [EndpointDescription("Get authenticated users friends")]
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
@@ -457,7 +454,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Authorize]
     [Route("{id:int}/friend/status")]
-    [ResponseCache(Duration = 0)]
     [EndpointDescription("Get user friendship status")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -484,7 +480,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost]
     [Authorize]
     [Route("{id:int}/friend/status")]
-    [ResponseCache(Duration = 0)]
     [EndpointDescription("Change friendship status with user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
@@ -561,6 +556,70 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return NotFound(new ErrorResponse("User is restricted"));
 
         return Ok(new GradesResponse(userGrades));
+    }
+
+    [HttpGet]
+    [Route("{id:int}/metadata")]
+    [EndpointDescription("Get user metadata")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserMetadataResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserMetadata(int id, CancellationToken ct = default)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var userMetadata = await database.Users.Metadata.GetUserMetadata(id, ct);
+
+        if (userMetadata is null)
+            return NotFound(new ErrorResponse("User not found"));
+
+        var user = await database.Users.GetUser(userMetadata.UserId, ct: ct);
+
+        if (user == null) return NotFound(new ErrorResponse("User not found"));
+
+        if (user.IsRestricted())
+            return NotFound(new ErrorResponse("User is restricted"));
+
+        return Ok(new UserMetadataResponse(userMetadata));
+    }
+
+    [HttpPost]
+    [Authorize]
+    [Route("edit/metadata")]
+    [EndpointDescription("Update self metadata")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var user = HttpContext.GetCurrentUser();
+
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        var userMetadata = await database.Users.Metadata.GetUserMetadata(user.Id, ct);
+
+        if (userMetadata is null)
+            return NotFound(new ErrorResponse("User metadata not found"));
+
+        var playstyleEnum = JsonStringFlagEnumHelper.CombineFlags(request.Playstyle);
+
+        userMetadata.Playstyle = request.Playstyle != null ? playstyleEnum : userMetadata.Playstyle;
+
+        userMetadata.Location = request.Location ?? userMetadata.Location;
+        userMetadata.Interest = request.Interest ?? userMetadata.Interest;
+        userMetadata.Occupation = request.Occupation ?? userMetadata.Occupation;
+
+        userMetadata.Telegram = request.Telegram ?? userMetadata.Telegram;
+        userMetadata.Twitch = request.Twitch ?? userMetadata.Twitch;
+        userMetadata.Twitter = request.Twitter ?? userMetadata.Twitter;
+        userMetadata.Discord = request.Discord ?? userMetadata.Discord;
+        userMetadata.Website = request.Website ?? userMetadata.Website;
+
+        await database.Users.Metadata.UpdateUserMetadata(userMetadata);
+
+        return new OkResult();
     }
 
     [HttpPost(RequestType.AvatarUpload)]

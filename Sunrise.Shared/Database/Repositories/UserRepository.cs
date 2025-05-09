@@ -17,6 +17,7 @@ public class UserRepository(
     SunriseDbContext dbContext,
     UserStatsService userStatsService,
     UserModerationService userModerationService,
+    UserMetadataService userMetadataService,
     UserMedalsService userMedalsService,
     UserFavouritesService userFavouritesService,
     UserFileService userFileService,
@@ -30,6 +31,7 @@ public class UserRepository(
     public UserModerationService Moderation { get; } = userModerationService;
     public UserFileService Files { get; } = userFileService;
     public UserGradesService Grades { get; } = userGradesService;
+    public UserMetadataService Metadata { get; } = userMetadataService;
 
     public async Task<Result> AddUser(User user)
     {
