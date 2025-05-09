@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -70,9 +71,14 @@ public class ApiUserFriendsTests : ApiTest
         await CreateTestUser(randomUser);
 
         var randomUserResponse = new UserResponse(Sessions, randomUser);
+        
+        var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+        if (relationship == null)
+            return;
 
-        user.AddFriend(randomUser.Id);
-        await Database.Users.UpdateUser(user);
+        relationship.Relation = UserRelation.Friend;
+
+        await Database.Users.Relationship.UpdateUserRelationship(relationship);
 
         // Act
         var response = await client.GetAsync("user/friends");
@@ -105,7 +111,15 @@ public class ApiUserFriendsTests : ApiTest
             randomUser.Username = $"username_{i.ToString()}";
 
             await CreateTestUser(randomUser);
-            user.AddFriend(randomUser.Id);
+          
+            var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+            if (relationship == null)
+                return;
+
+            relationship.Relation = UserRelation.Friend;
+
+            await Database.Users.Relationship.UpdateUserRelationship(relationship);
+            
             await Database.Users.UpdateUser(user);
 
             lastAddedUserId = randomUser.Id;
@@ -137,8 +151,15 @@ public class ApiUserFriendsTests : ApiTest
 
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
+        
+        var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+        if (relationship == null)
+            return;
 
-        user.AddFriend(randomUser.Id);
+        relationship.Relation = UserRelation.Friend;
+
+        await Database.Users.Relationship.UpdateUserRelationship(relationship);
+  
         await Database.Users.UpdateUser(user);
 
         await Database.Users.Moderation.RestrictPlayer(randomUser.Id, null, "Test");

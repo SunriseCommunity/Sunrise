@@ -4,6 +4,7 @@ using System.Text;
 using Sunrise.API.Enums;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -131,14 +132,20 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var requestedUser = await CreateTestUser();
         var action = isFriendsAfter ? UpdateFriendshipStatusAction.Add : UpdateFriendshipStatusAction.Remove;
 
+        var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, requestedUser.Id);
+        if (relationship == null)
+            return;
+        
         if (isFriendsBefore)
         {
-            user.AddFriend(requestedUser.Id);
+            relationship.Relation = UserRelation.Friend;
         }
         else
         {
-            user.RemoveFriend(requestedUser.Id);
+            relationship.Relation = UserRelation.None;
         }
+        
+        await Database.Users.Relationship.UpdateUserRelationship(relationship);
 
         var result = await Database.Users.UpdateUser(user);
         if (result.IsFailure)
@@ -155,10 +162,10 @@ public class ApiUserEditFriendStatusTests : ApiTest
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var updatedUser = await Database.Users.GetUser(user.Id);
-        await Database.DbContext.Entry(updatedUser!).ReloadAsync();
+        await Database.DbContext.Entry(relationship).ReloadAsync();
 
         Assert.NotNull(updatedUser);
-        Assert.Equal(isFriendsAfter, updatedUser.FriendsList.Contains(requestedUser.Id));
+        Assert.Equal(isFriendsAfter, relationship.Relation == UserRelation.Friend);
     }
 
     [Fact]
