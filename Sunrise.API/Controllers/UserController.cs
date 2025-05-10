@@ -406,7 +406,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Route("search")]
     [EndpointDescription("Search user by query")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> SeachUsers(
+    public async Task<IActionResult> SearchUsers(
         [FromQuery(Name = "query")] string query,
         [FromQuery(Name = "limit")] int limit = 50,
         [FromQuery(Name = "page")] int page = 1,
@@ -431,6 +431,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("friends")]
     [EndpointDescription("Get authenticated users friends")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
         [FromQuery(Name = "limit")] int limit = 50,
@@ -459,6 +460,41 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             ct);
 
         return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x.Target)).ToList(), totalCount));
+    }
+
+    [HttpGet]
+    [Authorize]
+    [Route("followers")]
+    [EndpointDescription("Get authenticated users followers")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFollowers(
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.User)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
+
+        return Ok(new FollowersResponse(followers.Select(x => new UserResponse(sessions, x.User)).ToList(), totalCount));
     }
 
     [HttpGet]
@@ -498,6 +534,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(UserRelationsCountersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserRelationsCounters(int id, CancellationToken ct = default)
     {
+        var user = await database.Users.GetValidUser(id, ct: ct);
+        if (user == null)
+            return NotFound(new ErrorResponse("User not found"));
+        
         var (_, totalFriends) = await database.Users.Relationship.GetUserFriends(id, ct: ct);
         var (_, totalFollowers) = await database.Users.Relationship.GetUserFollowers(id, ct: ct);
 
