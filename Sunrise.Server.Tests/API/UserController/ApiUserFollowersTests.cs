@@ -8,7 +8,7 @@ using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserFriendsTests : ApiTest
+public class ApiUserFollowersTests : ApiTest
 {
     private readonly MockService _mocker = new();
 
@@ -16,7 +16,7 @@ public class ApiUserFriendsTests : ApiTest
     [InlineData("0")]
     [InlineData("101")]
     [InlineData("test")]
-    public async Task TestUserFriendsInvalidLimit(string limit)
+    public async Task TestUserFollowersInvalidLimit(string limit)
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -26,7 +26,7 @@ public class ApiUserFriendsTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.GetAsync($"user/friends?limit={limit}");
+        var response = await client.GetAsync($"user/followers?limit={limit}");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -38,7 +38,7 @@ public class ApiUserFriendsTests : ApiTest
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]
-    public async Task TestUserFriendsInvalidPage(string page)
+    public async Task TestUserFollowersInvalidPage(string page)
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -48,7 +48,7 @@ public class ApiUserFriendsTests : ApiTest
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.GetAsync($"user/friends?page={page}");
+        var response = await client.GetAsync($"user/followers?page={page}");
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -58,7 +58,7 @@ public class ApiUserFriendsTests : ApiTest
     }
 
     [Fact]
-    public async Task TestUserFriends()
+    public async Task TestUserFollowers()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -72,7 +72,7 @@ public class ApiUserFriendsTests : ApiTest
 
         var randomUserResponse = new UserResponse(Sessions, randomUser);
         
-        var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+        var relationship = await Database.Users.Relationship.GetUserRelationship(randomUser.Id, user.Id);
         if (relationship == null)
             return;
 
@@ -81,20 +81,20 @@ public class ApiUserFriendsTests : ApiTest
         await Database.Users.Relationship.UpdateUserRelationship(relationship);
 
         // Act
-        var response = await client.GetAsync("user/friends");
+        var response = await client.GetAsync("user/followers");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
-        var responseUser = responseUsers?.Friends.FirstOrDefault();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FollowersResponse>();
+        var responseUser = responseUsers?.Followers.FirstOrDefault();
         Assert.NotNull(responseUser);
 
         Assert.Equivalent(randomUserResponse, responseUser);
     }
 
     [Fact]
-    public async Task TestUserFriendsPageAndLimitAttribute()
+    public async Task TestUserFollowersPageAndLimitAttribute()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -112,7 +112,7 @@ public class ApiUserFriendsTests : ApiTest
 
             await CreateTestUser(randomUser);
           
-            var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+            var relationship = await Database.Users.Relationship.GetUserRelationship(randomUser.Id, user.Id);
             if (relationship == null)
                 return;
 
@@ -124,21 +124,21 @@ public class ApiUserFriendsTests : ApiTest
         }
 
         // Act
-        var response = await client.GetAsync("user/friends?page=2&limit=1");
+        var response = await client.GetAsync("user/followers?page=2&limit=1");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FollowersResponse>();
         Assert.NotNull(responseUsers);
 
-        Assert.Single(responseUsers.Friends);
-        Assert.Equal(responseUsers.Friends.First().Id, lastAddedUserId);
+        Assert.Single(responseUsers.Followers);
+        Assert.Equal(responseUsers.Followers.First().Id, lastAddedUserId);
         Assert.Equal(2, responseUsers.TotalCount);
     }
 
     [Fact]
-    public async Task TestUserFriendsIgnoreRestrictedUsers()
+    public async Task TestUserFollowersIgnoreRestrictedUsers()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -150,26 +150,26 @@ public class ApiUserFriendsTests : ApiTest
         var randomUser = _mocker.User.GetRandomUser();
         await CreateTestUser(randomUser);
         
-        var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, randomUser.Id);
+        var relationship = await Database.Users.Relationship.GetUserRelationship(randomUser.Id, user.Id);
         if (relationship == null)
             return;
 
         relationship.Relation = UserRelation.Friend;
 
         await Database.Users.Relationship.UpdateUserRelationship(relationship);
-        
+
         await Database.Users.Moderation.RestrictPlayer(randomUser.Id, null, "Test");
 
         // Act
-        var response = await client.GetAsync("user/friends");
+        var response = await client.GetAsync("user/followers");
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FriendsResponse>();
+        var responseUsers = await response.Content.ReadFromJsonAsyncWithAppConfig<FollowersResponse>();
         Assert.NotNull(responseUsers);
 
-        Assert.Empty(responseUsers.Friends);
+        Assert.Empty(responseUsers.Followers);
         Assert.Equal(0, responseUsers.TotalCount);
     }
 }
