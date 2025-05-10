@@ -160,10 +160,6 @@ public class Session : BaseSession
 
     public void SendFriendsList(List<int> friendsIds)
     {
-        var user = GetSessionUser();
-        if (user == null)
-            return;
-
         _helper.WritePacket(PacketType.ServerFriendsList, friendsIds);
     }
 
