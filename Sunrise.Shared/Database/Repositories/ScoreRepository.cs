@@ -7,6 +7,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
+using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils;
@@ -15,7 +16,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext, ScoreFileService scoreFileService)
+public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext, ScoreFileService scoreFileService, UserRelationshipService userRelationshipService)
 {
 
     public ScoreFileService Files { get; } = scoreFileService;
@@ -60,7 +61,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .OrderByDescending(x => x.PerformancePoints)
             .ThenByDescending(x => x.WhenPlayed);
 
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 
         var scores = await scoresQuery.UseQueryOptions(options).ToListAsync(cancellationToken: ct);
 
@@ -93,7 +94,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .Where(s => s.UserId == userId && s.GameMode == mode)
             .GroupScoresByBeatmapPlaycount();
 
-        var groupedBeatmapsCount = options?.IgnoreCountQueryIfExists == false ? await groupedBeatmapsQuery.CountAsync(cancellationToken: ct) : -1;
+        var groupedBeatmapsCount = options?.IgnoreCountQueryIfExists == true ? -1 : await groupedBeatmapsQuery.CountAsync(cancellationToken: ct);
 
         var mostPlayedBeatmaps = await groupedBeatmapsQuery
             .OrderByDescending(g => g.Count)
@@ -131,13 +132,26 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));
         }
 
-        if (type is LeaderboardType.Friends && user != null) scoresGrouped = scoresGrouped.Where(s => EF.Constant(user.FriendsList).Contains(s.UserId));
         if (type is LeaderboardType.Country && user != null) scoresGrouped = scoresGrouped.Where(s => s.User.Country == EF.Constant(user.Country));
+
+        if (type is LeaderboardType.Friends && user != null)
+        {
+            var (friends, _) = await userRelationshipService.GetUserFriends(user.Id,
+                new QueryOptions
+                {
+                    IgnoreCountQueryIfExists = true
+                },
+                ct);
+
+            var friendIds = friends.Select(f => f.Id).ToHashSet();
+
+            scoresGrouped = scoresGrouped.Where(s => friendIds.Contains(s.UserId));
+        }
 
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(scoresGrouped.SelectUsersPersonalBestScores().ToQueryString());
 
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 
         var scores = await scoresQuery
             .OrderByScoreValueDescending()
@@ -192,7 +206,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         scoresQuery = scoresQuery.Where(s => s.UserId == userId); // We are adding user id query only after forming sqlRaw query to get proper beatmaps top plays
 
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 
         var scores = await scoresQuery
             .UseQueryOptions(options)
@@ -208,7 +222,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         if (mode != null) scoresQuery = scoresQuery.Where(s => s.GameMode == mode);
         if (startFromId != null) scoresQuery = scoresQuery.Where(s => s.Id >= startFromId);
 
-        var totalCount = options?.IgnoreCountQueryIfExists == false ? await scoresQuery.CountAsync(cancellationToken: ct) : -1;
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 
         var scores = await scoresQuery
             .UseQueryOptions(options)

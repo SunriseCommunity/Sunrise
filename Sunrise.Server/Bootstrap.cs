@@ -208,6 +208,10 @@ public static class Bootstrap
         builder.Services.AddScoped<UserStatsSnapshotService>();
         builder.Services.AddScoped<UserStatsRanksService>();
 
+        builder.Services.AddScoped<UserMetadataService>();
+
+        builder.Services.AddScoped<UserRelationshipService>();
+
         builder.Services.AddScoped<UserModerationService>();
         builder.Services.AddScoped<UserMedalsService>();
         builder.Services.AddScoped<UserFavouritesService>();

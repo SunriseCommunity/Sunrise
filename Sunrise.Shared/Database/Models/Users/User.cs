@@ -25,12 +25,14 @@ public class User
     public UserPrivilege Privilege { get; set; } = UserPrivilege.User;
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
     public DateTime LastOnlineTime { get; set; } = DateTime.UtcNow;
-    public string Friends { get; set; } = string.Empty;
     public UserAccountStatus AccountStatus { get; set; } = UserAccountStatus.Active;
     public DateTime SilencedUntil { get; set; } = DateTime.MinValue;
     public GameMode DefaultGameMode { get; set; } = GameMode.Standard;
 
     public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
+
+    public ICollection<UserRelationship> UserInitiatedRelationships { get; set; } = new List<UserRelationship>();
+    public ICollection<UserRelationship> UserReceivedRelationships { get; set; } = new List<UserRelationship>();
 
     public ICollection<UserStats> UserStats { get; set; } = new List<UserStats>();
 
@@ -47,29 +49,7 @@ public class User
 
     [NotMapped]
     public string BannerUrl => $"https://a.{Configuration.Domain}/banner/{Id}{(BannerRecord != null ? $"?{new DateTimeOffset(BannerRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
-
-    [NotMapped]
-    public List<int> FriendsList => Friends.Split(',')
-        .Where(x => !string.IsNullOrEmpty(x))
-        .Select(int.Parse)
-        .ToList();
-
-    public void AddFriend(int friendId)
-    {
-        if (FriendsList.Contains(friendId))
-            return;
-
-        Friends += $",{friendId}";
-    }
-
-    public void RemoveFriend(int friendId)
-    {
-        if (!FriendsList.Contains(friendId))
-            return;
-
-        Friends = string.Join(',', FriendsList.Where(x => x != friendId));
-    }
-
+    
     public PlayerRank GetPrivilegeRank()
     {
         var privilegeRank = PlayerRank.Default;

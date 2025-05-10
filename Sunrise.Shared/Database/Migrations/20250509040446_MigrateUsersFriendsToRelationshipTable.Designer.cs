@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -10,9 +11,11 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    partial class SunriseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250509040446_MigrateUsersFriendsToRelationshipTable")]
+    partial class MigrateUsersFriendsToRelationshipTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,6 +306,10 @@ namespace Sunrise.Shared.Database.Migrations
                         .HasColumnType("varchar(255)")
                         .UseCollation("utf8mb4_unicode_ci");
 
+                    b.Property<string>("Friends")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("LastOnlineTime")
                         .HasColumnType("datetime(6)");
 
@@ -550,16 +557,16 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<double>("Accuracy")
                         .HasColumnType("double");
 
-                    b.Property<long?>("BestCountryRank")
+                    b.Property<long>("BestCountryRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestCountryRankDate")
+                    b.Property<DateTime>("BestCountryRankDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<long?>("BestGlobalRank")
+                    b.Property<long>("BestGlobalRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestGlobalRankDate")
+                    b.Property<DateTime>("BestGlobalRankDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<byte>("GameMode")

@@ -1,8 +1,11 @@
 ﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Sessions;
@@ -70,8 +73,12 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
 
         chatChannels.JoinChannel("#osu", session);
         chatChannels.JoinChannel("#announce", session);
-        
-        var sessionUser = await database.Users.GetUser(session.UserId);
+
+        var sessionUser = await database.Users.GetUser(session.UserId,
+            options: new QueryOptions
+            {
+                QueryModifier = q => q.Cast<User>().Include(u => u.UserInitiatedRelationships)
+            });
         if (sessionUser == null)
             return RejectLogin(response, "User for this session doesn't exist");
 
@@ -82,7 +89,9 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
             session.SendChannelAvailable(channel);
         }
 
-        session.SendFriendsList();
+        var friends = sessionUser.UserInitiatedRelationships.Where(r => r.Relation == UserRelation.Friend).Select(r => r.TargetId).ToList();
+        session.SendFriendsList(friends);
+
         await sessions.SendCurrentPlayers(session);
 
         if (sessionUser.SilencedUntil > DateTime.UtcNow)

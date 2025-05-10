@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -90,14 +91,24 @@ public class ApiUserGetFriendStatusTests : ApiTest
 
         if (isFollowedByYou)
         {
-            user.AddFriend(requestedUser.Id);
-            await Database.Users.UpdateUser(user);
+            var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, requestedUser.Id);
+            if (relationship == null)
+                return;
+
+            relationship.Relation = UserRelation.Friend;
+
+            await Database.Users.Relationship.UpdateUserRelationship(relationship);
         }
 
         if (isFollowingYou)
         {
-            requestedUser.AddFriend(user.Id);
-            await Database.Users.UpdateUser(requestedUser);
+            var relationship = await Database.Users.Relationship.GetUserRelationship( requestedUser.Id, user.Id);
+            if (relationship == null)
+                return;
+
+            relationship.Relation = UserRelation.Friend;
+
+            await Database.Users.Relationship.UpdateUserRelationship(relationship);
         }
 
         // Act

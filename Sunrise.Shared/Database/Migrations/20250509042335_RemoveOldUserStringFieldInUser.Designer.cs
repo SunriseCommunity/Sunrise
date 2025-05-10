@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -10,9 +11,11 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    partial class SunriseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250509042335_RemoveOldUserStringFieldInUser")]
+    partial class RemoveOldUserStringFieldInUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -550,16 +553,16 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<double>("Accuracy")
                         .HasColumnType("double");
 
-                    b.Property<long?>("BestCountryRank")
+                    b.Property<long>("BestCountryRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestCountryRankDate")
+                    b.Property<DateTime>("BestCountryRankDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<long?>("BestGlobalRank")
+                    b.Property<long>("BestGlobalRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestGlobalRankDate")
+                    b.Property<DateTime>("BestGlobalRankDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<byte>("GameMode")

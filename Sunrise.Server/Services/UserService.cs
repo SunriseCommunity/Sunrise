@@ -1,6 +1,9 @@
 ﻿using System.Net;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
@@ -55,11 +58,17 @@ public class UserService(DatabaseService database, SessionRepository sessions, R
 
     public async Task<string?> GetFriends(int userId, CancellationToken ct = default)
     {
-        var user = await database.Users.GetUser(userId, ct: ct);
+        var user = await database.Users.GetUser(userId,
+            options: new QueryOptions
+            {
+                QueryModifier = q => q.Cast<User>().Include(u => u.UserInitiatedRelationships)
+            },
+            ct: ct);
+
         if (user == null)
             return null;
 
-        var friends = user.FriendsList;
+        var friends = user.UserInitiatedRelationships.Where(r => r.Relation == UserRelation.Friend).Select(r => r.TargetId).ToList();
 
         return string.Join("\n", friends);
     }

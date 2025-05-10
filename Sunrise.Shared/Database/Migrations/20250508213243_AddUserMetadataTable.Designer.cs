@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -10,9 +11,11 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    partial class SunriseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250508213243_AddUserMetadataTable")]
+    partial class AddUserMetadataTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -303,6 +306,10 @@ namespace Sunrise.Shared.Database.Migrations
                         .HasColumnType("varchar(255)")
                         .UseCollation("utf8mb4_unicode_ci");
 
+                    b.Property<string>("Friends")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<DateTime>("LastOnlineTime")
                         .HasColumnType("datetime(6)");
 
@@ -517,30 +524,6 @@ namespace Sunrise.Shared.Database.Migrations
                     b.ToTable("user_metadata");
                 });
 
-            modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserRelationship", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<int>("Relation")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TargetId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TargetId");
-
-                    b.HasIndex("UserId", "TargetId");
-
-                    b.ToTable("user_relationship");
-                });
-
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserStats", b =>
                 {
                     b.Property<int>("Id")
@@ -550,16 +533,16 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<double>("Accuracy")
                         .HasColumnType("double");
 
-                    b.Property<long?>("BestCountryRank")
+                    b.Property<long>("BestCountryRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestCountryRankDate")
+                    b.Property<DateTime>("BestCountryRankDate")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<long?>("BestGlobalRank")
+                    b.Property<long>("BestGlobalRank")
                         .HasColumnType("BIGINT");
 
-                    b.Property<DateTime?>("BestGlobalRankDate")
+                    b.Property<DateTime>("BestGlobalRankDate")
                         .HasColumnType("datetime(6)");
 
                     b.Property<byte>("GameMode")
@@ -741,25 +724,6 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserRelationship", b =>
-                {
-                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "Target")
-                        .WithMany("UserReceivedRelationships")
-                        .HasForeignKey("TargetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
-                        .WithMany("UserInitiatedRelationships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Target");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserStats", b =>
                 {
                     b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
@@ -785,10 +749,6 @@ namespace Sunrise.Shared.Database.Migrations
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.User", b =>
                 {
                     b.Navigation("UserFiles");
-
-                    b.Navigation("UserInitiatedRelationships");
-
-                    b.Navigation("UserReceivedRelationships");
 
                     b.Navigation("UserStats");
 
