@@ -21,10 +21,10 @@ public class UserStatsResponse
         MaxCombo = stats.MaxCombo;
         PlayTime = stats.PlayTime;
         TotalHits = stats.TotalHits;
-        BestGlobalRank = stats.BestGlobalRank;
-        BestGlobalRankDate = stats.BestGlobalRankDate;
-        BestCountryRank = stats.BestCountryRank;
-        BestCountryRankDate = stats.BestCountryRankDate;
+        BestGlobalRank = stats.BestGlobalRank ?? globalRank;
+        BestGlobalRankDate = stats.BestGlobalRankDate ?? DateTime.UtcNow;
+        BestCountryRank = stats.BestCountryRank ?? countryRank;
+        BestCountryRankDate = stats.BestCountryRankDate ?? DateTime.UtcNow;
     }
 
     [JsonConstructor]
