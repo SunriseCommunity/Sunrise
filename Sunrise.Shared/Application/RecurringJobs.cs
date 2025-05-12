@@ -1,11 +1,13 @@
 using System.IO.Compression;
 using CSharpFunctionalExtensions;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -15,11 +17,13 @@ public class RecurringJobs
 {
     public static void Initialize()
     {
-        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(CancellationToken.None), "0 3 * * *"); // 3 AM UTC
+        RecurringJob.AddOrUpdate("Backup database", () => BackupDatabase(CancellationToken.None), "0 3 * * *"); // At 03:00 UTC
 
-        RecurringJob.AddOrUpdate("Save users stats snapshots", () => SaveUsersStatsSnapshots(CancellationToken.None), "59 23 * * *"); // 11:59 PM UTC
+        RecurringJob.AddOrUpdate("Save users stats snapshots", () => SaveUsersStatsSnapshots(CancellationToken.None), "59 23 * * *"); // At 23:59 UTC
 
-        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // 1 AM UTC
+        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
+
+        RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
     }
 
     public static async Task SaveUsersStatsSnapshots(CancellationToken ct)
@@ -82,6 +86,37 @@ public class RecurringJobs
             {
                 ct.ThrowIfCancellationRequested();
                 await database.Users.Moderation.DisableUser(user.Id);
+            }
+
+            if (users.Count < pageSize) break;
+        }
+
+    }
+    
+    public static async Task RefreshUsersHypes(CancellationToken ct)
+    {
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var pageSize = 50;
+
+        for (var i = 1;; i++)
+        {
+            var users = await database.Users.GetUsers(options: new QueryOptions(new Pagination(i, pageSize))
+                {
+                    QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
+                },
+                ct: ct);
+
+            foreach (var user in users.Where(user =>
+                     {
+                         var userHypes = user.Inventory.FirstOrDefault(x => x.ItemType == ItemType.Hype);
+                         
+                         return userHypes == null || userHypes.Quantity < Configuration.UserHypesWeekly;
+                     }))
+            {
+                ct.ThrowIfCancellationRequested();
+                await database.Users.Inventory.SetInventoryItem(user, ItemType.Hype, Configuration.UserHypesWeekly);
             }
 
             if (users.Count < pageSize) break;
