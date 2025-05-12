@@ -30,6 +30,8 @@ public class User
     public GameMode DefaultGameMode { get; set; } = GameMode.Standard;
 
     public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
+    
+    public ICollection<UserInventoryItem> Inventory { get; set; } = new List<UserInventoryItem>();
 
     public ICollection<UserRelationship> UserInitiatedRelationships { get; set; } = new List<UserRelationship>();
     public ICollection<UserRelationship> UserReceivedRelationships { get; set; } = new List<UserRelationship>();

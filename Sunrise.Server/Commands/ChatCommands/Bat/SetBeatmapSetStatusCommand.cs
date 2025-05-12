@@ -5,7 +5,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
@@ -72,7 +72,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
         {
             var oldStatus = beatmap.Status;
 
-            var customStatus = await database.CustomBeatmapStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
+            var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
 
             if (args[1] is "reset")
             {
@@ -83,7 +83,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
                     continue;
                 }
 
-                await database.CustomBeatmapStatuses.DeleteCustomBeatmapStatus(customStatus);
+                await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
                 ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to default status!");
                 continue;
             }
@@ -99,7 +99,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
                 customStatus.Status = status;
                 customStatus.UpdatedByUserId = session.UserId;
 
-                await database.CustomBeatmapStatuses.UpdateCustomBeatmapStatus(customStatus);
+                await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
             }
             else
             {
@@ -111,7 +111,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
                     BeatmapSetId = beatmapSet.Id
                 };
 
-                await database.CustomBeatmapStatuses.AddCustomBeatmapStatus(customStatus);
+                await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
             }
 
             beatmapSet.UpdateBeatmapRanking([customStatus]);
@@ -122,7 +122,5 @@ public class SetBeatmapSetStatusCommand : IChatCommand
 
             ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to {status} from {oldStatus}!");
         }
-
-
     }
 }

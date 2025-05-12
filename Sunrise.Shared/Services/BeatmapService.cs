@@ -65,7 +65,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
-        var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: linkedCts.Token);
+        var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: linkedCts.Token);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 
@@ -89,7 +89,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         foreach (var set in beatmapSets)
         {
-            var customStatuses = await database.CustomBeatmapStatuses.GetCustomBeatmapSetStatuses(set.Id, ct: ct);
+            var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(set.Id, ct: ct);
 
             set.UpdateBeatmapRanking(customStatuses);
         }

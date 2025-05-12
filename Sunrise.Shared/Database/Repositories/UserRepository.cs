@@ -22,7 +22,8 @@ public class UserRepository(
     UserMedalsService userMedalsService,
     UserFavouritesService userFavouritesService,
     UserFileService userFileService,
-    UserGradesService userGradesService)
+    UserGradesService userGradesService,
+    UserInventoryItemService userInventoryItemService)
 {
     private readonly ILogger _logger = logger;
 
@@ -34,6 +35,7 @@ public class UserRepository(
     public UserFileService Files { get; } = userFileService;
     public UserGradesService Grades { get; } = userGradesService;
     public UserMetadataService Metadata { get; } = userMetadataService;
+    public UserInventoryItemService Inventory { get; } = userInventoryItemService;
 
     public async Task<Result> AddUser(User user)
     {

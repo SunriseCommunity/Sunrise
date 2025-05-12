@@ -97,8 +97,14 @@ public static class Configuration
         Config.GetSection("General").GetValue<bool?>("IgnoreBeatmapRanking") ?? false;
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
-
-
+    
+    // Beatmap hype
+    public static int UserHypesWeekly =>
+        Config.GetSection("BeatmapHype").GetValue<int?>("UserHypesWeekly") ?? 6;
+    
+    public static int HypesToStartHypeTrain =>
+        Config.GetSection("BeatmapHype").GetValue<int?>("HypesToStartHypeTrain") ?? 3;
+    
 
     // Moderation section
     public static int BannablePpThreshold => Config.GetSection("Moderation").GetSection("BannablePPThreshold").Get<int?>() ?? 3000;

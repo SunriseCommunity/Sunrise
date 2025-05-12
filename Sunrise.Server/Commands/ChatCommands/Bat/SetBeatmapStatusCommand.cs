@@ -5,7 +5,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
@@ -76,7 +76,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
-        var customStatus = await database.CustomBeatmapStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
+        var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
 
         if (args[1] is "reset")
         {
@@ -87,7 +87,7 @@ public class SetBeatmapStatusCommand : IChatCommand
                 return;
             }
 
-            await database.CustomBeatmapStatuses.DeleteCustomBeatmapStatus(customStatus);
+            await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
             ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to default status!");
             return;
         }
@@ -103,7 +103,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             customStatus.Status = status;
             customStatus.UpdatedByUserId = session.UserId;
 
-            await database.CustomBeatmapStatuses.UpdateCustomBeatmapStatus(customStatus);
+            await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
         }
         else
         {
@@ -115,7 +115,7 @@ public class SetBeatmapStatusCommand : IChatCommand
                 BeatmapSetId = beatmapSet.Id
             };
 
-            await database.CustomBeatmapStatuses.AddCustomBeatmapStatus(customStatus);
+            await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
         }
 
         var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();

@@ -2,13 +2,18 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Utils;
 
-namespace Sunrise.Shared.Database.Repositories;
+namespace Sunrise.Shared.Database.Services.Beatmaps;
 
-public class CustomBeatmapStatusRepository(ILogger<ScoreRepository> logger, SunriseDbContext dbContext)
+public class CustomBeatmapStatusService(
+    ILogger<ScoreRepository> logger,
+    Lazy<DatabaseService> databaseService,
+    SunriseDbContext dbContext,
+    BeatmapHypeService beatmapHypeService)
 {
     public async Task<CustomBeatmapStatus?> GetCustomBeatmapStatus(string beatmapHash, QueryOptions? options = null, CancellationToken ct = default)
     {
@@ -28,8 +33,12 @@ public class CustomBeatmapStatusRepository(ILogger<ScoreRepository> logger, Sunr
 
     public async Task<Result> AddCustomBeatmapStatus(CustomBeatmapStatus status)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
+            var applyBeatmapHypesResult = await beatmapHypeService.ApplyBeatmapHypes(status.BeatmapSetId, status.Status);
+            if (applyBeatmapHypesResult.IsFailure)
+                throw new ApplicationException(applyBeatmapHypesResult.Error);
+
             dbContext.CustomBeatmapStatuses.Add(status);
             await dbContext.SaveChangesAsync();
         });

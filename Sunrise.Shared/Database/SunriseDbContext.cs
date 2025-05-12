@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 
@@ -25,6 +26,7 @@ public class SunriseDbContext : DbContext
     public DbSet<UserGrades> UserGrades { get; set; }
     public DbSet<UserStatsSnapshot> UserStatsSnapshot { get; set; }
     public DbSet<UserFile> UserFiles { get; set; }
+    public DbSet<UserInventoryItem> UserInventoryItem { get; set; }
 
 
     public DbSet<Medal> Medals { get; set; }
@@ -35,7 +37,10 @@ public class SunriseDbContext : DbContext
 
     public DbSet<Score> Scores { get; set; }
 
+    public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
+    
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

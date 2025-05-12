@@ -17,12 +17,10 @@ public sealed class DatabaseService(
     UserRepository userRepository,
     EventRepository eventRepository,
     ScoreRepository scoreRepository,
-    MedalRepository medalRepository,
-    CustomBeatmapStatusRepository beatmapStatusRepository)
+    MedalRepository medalRepository)
 {
 
     public readonly BeatmapRepository Beatmaps = beatmapRepository;
-    public readonly CustomBeatmapStatusRepository CustomBeatmapStatuses = beatmapStatusRepository;
     public readonly SunriseDbContext DbContext = dbContext;
     public readonly EventRepository Events = eventRepository;
     public readonly MedalRepository Medals = medalRepository;
