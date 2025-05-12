@@ -175,6 +175,62 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return Ok(new BeatmapSetResponse(session, beatmapSet));
     }
 
+    [Authorize]
+    [HttpPost("beatmapset/{id:int}/hype")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Hype beatmapset")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> HypeBeatmapSet(int id, CancellationToken ct = default)
+    {
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
+        var session = HttpContext.GetCurrentSession();
+
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
+
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return Unauthorized(new ErrorResponse("User not found"));
+
+        var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
+        if (hypeBeatmapSetResult.IsFailure)
+            return BadRequest(new ErrorResponse(hypeBeatmapSetResult.Error));
+
+        return new OkResult();
+    }
+
+    [HttpGet("beatmapset/{id:int}/hype")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Get beatmapset hype count")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(BeatmapSetHypeCountResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBeatmapSetHypeCounter(int id, CancellationToken ct = default)
+    {
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+
+        var session = HttpContext.GetCurrentSession();
+
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
+        if (beatmapSetResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+        var beatmapSet = beatmapSetResult.Value;
+
+        var beatmapSetHypeCount = await database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
+
+        return Ok(new BeatmapSetHypeCountResponse
+        {
+            CurrentHypes = beatmapSetHypeCount
+        });
+    }
+    
     [HttpPost("beatmapset/{id:int}/favourited")]
     [Authorize]
     [ResponseCache(Duration = 0)]
