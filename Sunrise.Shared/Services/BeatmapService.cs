@@ -1,7 +1,10 @@
 using System.Net;
 using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions;
@@ -65,7 +68,12 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
-        var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: linkedCts.Token);
+        var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
+            new QueryOptions(true)
+            {
+                QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
+            },
+            linkedCts.Token);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 
@@ -89,7 +97,12 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         foreach (var set in beatmapSets)
         {
-            var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(set.Id, ct: ct);
+            var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(set.Id,
+                new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().Include(x => x.UpdatedByUser)
+                },
+                ct);
 
             set.UpdateBeatmapRanking(customStatuses);
         }

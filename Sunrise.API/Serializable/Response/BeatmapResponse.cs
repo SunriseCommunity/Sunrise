@@ -1,15 +1,14 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Serializable.Response;
 
 public class BeatmapResponse
 {
-    public BeatmapResponse(BaseSession session, Beatmap beatmap, BeatmapSet? beatmapSet = null)
+    public BeatmapResponse(SessionRepository sessions, Beatmap beatmap, BeatmapSet? beatmapSet = null)
     {
         Id = beatmap.Id;
         BeatmapsetId = beatmap.BeatmapsetId;
@@ -62,6 +61,8 @@ public class BeatmapResponse
         Artist = beatmapSet?.Artist;
         Creator = beatmapSet?.RelatedUsers?.FirstOrDefault(u => u.Id == beatmap.UserId)?.Username ?? "Unknown";
         CreatorId = beatmap.UserId;
+        BeatmapNominatorUser = beatmap.BeatmapNominatorUser != null ? new UserResponse(sessions, beatmap.BeatmapNominatorUser) : null;
+        CanBeHyped = beatmap.CanBeHyped;
     }
 
     [JsonConstructor]
@@ -139,7 +140,7 @@ public class BeatmapResponse
 
     [JsonPropertyName("is_scoreable")]
     public bool IsScoreable { get; set; }
-    
+
     [JsonPropertyName("is_ranked")]
     public bool IsRanked { get; set; }
 
@@ -149,9 +150,9 @@ public class BeatmapResponse
 
     [JsonPropertyName("mode_int")]
     public int ModeInt { get; set; }
-    
+
     [JsonPropertyName("mode")]
-    public GameMode Mode { get; set; } 
+    public GameMode Mode { get; set; }
 
     [JsonPropertyName("ranked")]
     public int Ranked { get; set; }
@@ -170,6 +171,13 @@ public class BeatmapResponse
 
     [JsonPropertyName("creator_id")]
     public int CreatorId { get; set; }
+
+    [JsonPropertyName("beatmap_nominator_user")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public UserResponse? BeatmapNominatorUser { get; set; }
+
+    [JsonPropertyName("can_be_hyped")]
+    public bool CanBeHyped { get; set; }
 
     // TODO: Add playcount and favourite count
 }

@@ -124,7 +124,7 @@ public class SetBeatmapStatusCommand : IChatCommand
         beatmapSet.UpdateBeatmapRanking([customStatus]);
 
         if (oldStatus != status)
-            webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(session, beatmap, beatmapSet), status, oldStatus, new UserResponse(sessionRepository, batUser))));
+            webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(sessionRepository, beatmap, beatmapSet), status, oldStatus, new UserResponse(sessionRepository, batUser))));
 
         ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to {status} from {oldStatus}!");
     }

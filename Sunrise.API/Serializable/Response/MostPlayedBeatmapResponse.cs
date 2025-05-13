@@ -1,12 +1,12 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 
 namespace Sunrise.API.Serializable.Response;
 
 public class MostPlayedBeatmapResponse : BeatmapResponse
 {
-    public MostPlayedBeatmapResponse(BaseSession session, Beatmap beatmap, int playCount, BeatmapSet? beatmapSet = null) : base(session, beatmap, beatmapSet)
+    public MostPlayedBeatmapResponse(SessionRepository sessions, Beatmap beatmap, int playCount, BeatmapSet? beatmapSet = null) : base(sessions, beatmap, beatmapSet)
     {
         PlayCount = playCount;
     }

@@ -310,7 +310,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
             var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
 
-            return beatmap == null ? null : new MostPlayedBeatmapResponse(session, beatmap, count, beatmapSet);
+            return beatmap == null ? null : new MostPlayedBeatmapResponse(sessions, beatmap, count, beatmapSet);
         }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new MostPlayedResponse(parsedBeatmaps, totalIdsCount));
@@ -352,7 +352,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
             var beatmapSet = beatmapSetResult.Value;
 
-            return beatmapSet == null ? null : new BeatmapSetResponse(session, beatmapSet);
+            return beatmapSet == null ? null : new BeatmapSetResponse(sessions, beatmapSet);
         }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
@@ -528,6 +528,24 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpGet]
+    [Authorize]
+    [Route("inventory/item")]
+    [EndpointDescription("Get count of the item in your inventory")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(InventoryItemResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInventoryItemCount(ItemType type, CancellationToken ct = default)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+
+        var inventoryItem = await database.Users.Inventory.GetInventoryItem(user.Id, type, ct: ct);
+
+        return Ok(new InventoryItemResponse(type, inventoryItem?.Quantity ?? 0));
+    }
+
+    [HttpGet]
     [Route("{id:int}/friends/count")]
     [EndpointDescription("Get user friends counters")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
@@ -537,7 +555,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = await database.Users.GetValidUser(id, ct: ct);
         if (user == null)
             return NotFound(new ErrorResponse("User not found"));
-        
+
         var (_, totalFriends) = await database.Users.Relationship.GetUserFriends(id, ct: ct);
         var (_, totalFollowers) = await database.Users.Relationship.GetUserFollowers(id, ct: ct);
 

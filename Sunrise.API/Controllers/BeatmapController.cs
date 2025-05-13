@@ -52,7 +52,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         if (beatmap == null)
             return NotFound(new ErrorResponse("Beatmap not found"));
 
-        return Ok(new BeatmapResponse(session, beatmap, beatmapSet));
+        return Ok(new BeatmapResponse(sessions, beatmap, beatmapSet));
     }
 
     [HttpGet("beatmap/{id:int}/pp")]
@@ -172,7 +172,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSet = beatmapSetResult.Value;
 
-        return Ok(new BeatmapSetResponse(session, beatmapSet));
+        return Ok(new BeatmapSetResponse(sessions, beatmapSet));
     }
 
     [Authorize]
@@ -205,6 +205,43 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return new OkResult();
     }
 
+    [Authorize("RequireBat")]
+    [HttpGet("beatmapset/get-hyped-sets")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Returns beatmapsets with active hype train")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(HypedBeatmapSetsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHypedBeatmapSets(
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1,
+        CancellationToken ct = default)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var session = HttpContext.GetCurrentSession();
+
+        var (beatmapSetIdsWithHypeCount, totalCount) = await database.Beatmaps.Hypes.GetHypedBeatmaps(new QueryOptions(true, new Pagination(page, limit)), ct);
+
+        var result = beatmapSetIdsWithHypeCount.Select(async g =>
+        {
+            var (beatmapSetId, hypeCount) = g;
+
+            var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapSetId, ct: ct);
+            if (beatmapSetResult.IsFailure)
+                return null;
+
+            return new HypedBeatmapSetResponse(sessions, beatmapSetResult.Value, hypeCount);
+        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+
+        return Ok(new HypedBeatmapSetsResponse(result, totalCount));
+    }
+
     [HttpGet("beatmapset/{id:int}/hype")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset hype count")]
@@ -230,7 +267,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             CurrentHypes = beatmapSetHypeCount
         });
     }
-    
+
     [HttpPost("beatmapset/{id:int}/favourited")]
     [Authorize]
     [ResponseCache(Duration = 0)]
@@ -325,6 +362,6 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSets = beatmapSetsResult.Value;
 
-        return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(session, s)).ToList() ?? [], null));
+        return Ok(new BeatmapSetsResponse(beatmapSets?.Select(s => new BeatmapSetResponse(sessions, s)).ToList() ?? [], null));
     }
 }

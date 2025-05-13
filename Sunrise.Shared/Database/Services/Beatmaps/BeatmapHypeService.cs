@@ -1,6 +1,7 @@
 ﻿using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Users;
@@ -18,16 +19,16 @@ public class BeatmapHypeService(
     Lazy<DatabaseService> databaseService,
     SunriseDbContext dbContext,
     UserInventoryItemService userInventoryItemService
-    )
+)
 {
     public async Task<Result> AddBeatmapHypeFromUserInventory(User user, int beatmapSetId)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
             var beatmapsetCustomStatuses = await databaseService.Value.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSetId);
-            if (beatmapsetCustomStatuses.Any()) 
+            if (beatmapsetCustomStatuses.Any())
                 throw new ApplicationException("You can't hype beatmapset with custom beatmap status");
-            
+
             var inventoryHypes = await userInventoryItemService.GetInventoryItem(user.Id,
                 ItemType.Hype,
                 new QueryOptions(true)
@@ -70,6 +71,26 @@ public class BeatmapHypeService(
     public async Task<int> GetBeatmapHypeCount(int beatmapSetId)
     {
         return await dbContext.BeatmapHypes.Where(x => x.BeatmapSetId == beatmapSetId).SumAsync(x => x.Hypes);
+    }
+
+    public async Task<(List<(int, int)>, int)> GetHypedBeatmaps(QueryOptions? options = null, CancellationToken ct = default)
+    {
+        var hypesQuery = dbContext.BeatmapHypes.GroupBy(x => x.BeatmapSetId)
+            .Select(g => new
+            {
+                g.Key,
+                SUM = g.Sum(s => s.Hypes)
+            })
+            .Where(g => g.SUM >= Configuration.HypesToStartHypeTrain)
+            .OrderBy(g => g.SUM);
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await hypesQuery.CountAsync(cancellationToken: ct);
+        
+        var hypes = await hypesQuery
+            .UseQueryOptions(options)
+            .ToListAsync(cancellationToken: ct);
+
+        return (hypes.Select(g => (g.Key, g.SUM)).ToList(), totalCount);
     }
 
     private async Task<Result> AddBeatmapHype(User user, int beatmapSetId)

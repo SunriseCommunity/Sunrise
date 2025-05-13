@@ -1,3 +1,6 @@
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Keys;
@@ -63,7 +66,12 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusService
 
         if (beatmapSet == null) return null;
 
-        var customStatuses = await CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: ct);
+        var customStatuses = await CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
+            new QueryOptions(true)
+            {
+                QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
+            },
+            ct);
 
         beatmapSet.UpdateBeatmapRanking(customStatuses);
 
