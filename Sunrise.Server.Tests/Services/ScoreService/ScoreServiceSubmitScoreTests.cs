@@ -2,6 +2,7 @@
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Tests.Abstracts;
@@ -891,6 +892,73 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == oldScore.ScoreHash);
+    }
+    
+    [Fact]
+    public async Task TestIfHasTwoBestScoresInDatabaseWithNonCurrentModsAndCurrentModsShouldFetchCurrentScoreAsScoreWithCurrentMods()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        var bestScore = _mocker.Score.GetBestScoreableRandomScore();
+        bestScore.SubmissionStatus = SubmissionStatus.Best;
+        bestScore.Mods = Mods.None;
+        bestScore.GameMode = GameMode.Standard;
+        bestScore.EnrichWithSessionData(session);
+        await Database.Scores.AddScore(bestScore);
+        
+        var bestWithModsScore = _mocker.Score.GetBestScoreableRandomScore();
+        bestWithModsScore.SubmissionStatus = SubmissionStatus.Best;
+        bestWithModsScore.BeatmapId =  bestScore.BeatmapId;
+        bestWithModsScore.BeatmapHash =  bestScore.BeatmapHash;
+        bestWithModsScore.Mods = Mods.Hidden;
+        bestWithModsScore.GameMode = bestScore.GameMode;
+        bestWithModsScore.TotalScore = bestScore.TotalScore - 1;
+        bestWithModsScore.EnrichWithSessionData(session);
+        await Database.Scores.AddScore(bestWithModsScore);
+        
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = bestWithModsScore.GameMode;
+        score.Mods = bestWithModsScore.Mods;
+        score.BeatmapId = bestWithModsScore.BeatmapId;
+        score.BeatmapHash = bestWithModsScore.BeatmapHash;
+        score.TotalScore = bestWithModsScore.TotalScore + 10;
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var dbBestScore = await Database.Scores.GetScore(bestScore.Id);
+        Assert.NotNull(dbBestScore);
+        Assert.Equal(SubmissionStatus.Best, dbBestScore.SubmissionStatus);
+        
+        var dbModsPrevBestScore = await Database.Scores.GetScore(bestWithModsScore .Id);
+        Assert.NotNull(dbModsPrevBestScore);
+        Assert.Equal(SubmissionStatus.Submitted, dbModsPrevBestScore.SubmissionStatus);
+
+        var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, LeaderboardType.GlobalWithMods, mods: Mods.Hidden);
+        Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
     }
 
     [Theory]
