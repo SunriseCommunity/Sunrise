@@ -1,7 +1,10 @@
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
@@ -33,44 +36,72 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                 using var scope = ServicesProviderHolder.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                var (allScores, _) = await database.Scores.GetScores(options: new QueryOptions
-                {
-                    IgnoreCountQueryIfExists = true
-                });
-                var groupedScores = allScores.GroupBy(x => x.BeatmapId);
-
+                var pageSize = 10;
                 var scoresReviewedTotal = 0;
-
-                foreach (var group in groupedScores)
+                
+                for (var x = 1;; x++)
                 {
-                    scoresReviewedTotal += group.Count();
-
-                    var isNeedsUpdate = group.Any(s => s.SubmissionStatus == SubmissionStatus.Unknown);
-                    if (!isNeedsUpdate) continue;
-
-                    var usersScores = group.ToList().GroupScoresByUserId();
-
-                    foreach (var userScores in usersScores)
-                    {
-                        var scoresByMods = userScores.ToList().GroupBy(x => x.Mods);
-
-                        foreach (var scores in scoresByMods)
+                    var beatmapIds = await database.DbContext.Scores
+                        .FilterValidScores()
+                        .FilterPassedScoreableScores()
+                        .Select(s => new
                         {
-                            var bestScore = scores.Where(x => x.IsPassed).MaxBy(x => x.TotalScore);
-
-                            foreach (var score in scores)
-                            {
-                                score.SubmissionStatus = score == bestScore ? SubmissionStatus.Best : score.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
-                                ct.ThrowIfCancellationRequested();
-                                await database.Scores.UpdateScore(score);
-                            }
+                            s.BeatmapId
+                        })
+                        .Distinct()
+                        .OrderBy(x => x.BeatmapId)
+                        .UseQueryOptions(new QueryOptions(new Pagination(x, pageSize)))
+                        .ToListAsync(cancellationToken: ct);
+                    
+                    foreach (var beatmap in beatmapIds)
+                    {
+                        var scores = await database.DbContext.Scores
+                            .FilterValidScores()
+                            .FilterPassedScoreableScores()
+                            .Where(s => s.BeatmapId == beatmap.BeatmapId)
+                            .ToListAsync(cancellationToken: ct);
+                        
+                        var scoresGrouped = scores.GroupBy(s => new
+                        {
+                            s.BeatmapId,
+                            s.GameMode,
+                            s.Mods,
+                            s.UserId,
+                        });
+                        
+                        foreach (var group in scoresGrouped)
+                        {
+                            var scoresGroup = group.ToList();
+                    
+                            scoresReviewedTotal += group.Count();
+                            
+                            await UpdateUserBeatmapScoresSubmittedStatus(userId, database, scoresGroup, ct);
                         }
                     }
-
-                    ChatCommandRepository.TrySendMessage(userId, $"Updated {group.Count()} submitted statuses for scores {group.Key}");
+                    
                     ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
+                    if (beatmapIds.Count < pageSize) break;
                 }
             },
             message => ChatCommandRepository.TrySendMessage(userId, message));
+    }
+    
+    public async Task UpdateUserBeatmapScoresSubmittedStatus(int sendProgressMessageToUserId, DatabaseService database, List<Score> scores, CancellationToken ct)
+    {
+        var bestScore = scores.Select(x => x).ToList().SortScoresByTheirScoreValue().FirstOrDefault();
+
+        foreach (var score in scores)
+        {
+            var oldScoreStatus = score.SubmissionStatus;
+
+            score.SubmissionStatus = score == bestScore ? SubmissionStatus.Best : score.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+            ct.ThrowIfCancellationRequested();
+
+            if (oldScoreStatus != score.SubmissionStatus)
+            {
+                await database.Scores.UpdateScore(score);
+                ChatCommandRepository.TrySendMessage(sendProgressMessageToUserId, $"Updated score {score.Id} submission status from {oldScoreStatus} to {score.SubmissionStatus}");
+            }
+        }
     }
 }
