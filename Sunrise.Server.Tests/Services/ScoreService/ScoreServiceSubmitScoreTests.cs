@@ -960,6 +960,66 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode, LeaderboardType.GlobalWithMods, mods: Mods.Hidden);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
     }
+    
+    [Fact]
+    public async Task TestHaveUserGradesOnylForUsersBestPersonalBest()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+        
+        var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
+        moddedBestScore.Grade = "S";
+        moddedBestScore.SubmissionStatus = SubmissionStatus.Best;
+        moddedBestScore.Mods = Mods.None;
+        moddedBestScore.GameMode = GameMode.Standard;
+        moddedBestScore.EnrichWithSessionData(session);
+        
+        await Database.Scores.AddScore(moddedBestScore);
+        
+        var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, moddedBestScore.GameMode);
+        Assert.NotNull(userGrades);
+        
+        userGrades.CountS++;
+        await Database.Users.Grades.UpdateUserGrades(userGrades);
+        
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.Grade = "S";
+        score.BeatmapId = beatmapId;
+        score.Mods |= Mods.DoubleTime;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var newUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
+
+        Assert.NotNull(newUserGrades);
+        Assert.Equal(1, newUserGrades.CountS);
+    }
 
     [Theory]
     [MemberData(nameof(GetGameModes))]
