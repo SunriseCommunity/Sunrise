@@ -142,18 +142,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             : ([], 0);
 
         var globalScores = databaseScores.EnrichWithLeaderboardPositions();
-        
+
         var (databaseScoresWithSameMods, _) = isScoreScoreable
             ? await database.Scores.GetBeatmapScores(score.BeatmapHash,
                 score.GameMode,
                 LeaderboardType.GlobalWithMods,
-                mods: score.Mods,
+                score.Mods,
                 options: new QueryOptions
                 {
                     IgnoreCountQueryIfExists = true
                 })
             : ([], 0);
-        
+
         var scoresWithSameMods = databaseScoresWithSameMods.EnrichWithLeaderboardPositions();
 
         var userStats = await database.Users.Stats.GetUserStats(score.UserId, score.GameMode);
@@ -194,8 +194,6 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
             var prevPBestWithSameMods = scoresWithSameMods.GetPersonalBestOf(score.UserId);
-            Console.WriteLine("same mods");
-            Console.WriteLine(prevPBestWithSameMods?.Id);
             score.UpdateSubmissionStatus(prevPBestWithSameMods);
 
             await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
