@@ -178,10 +178,6 @@ public class ApiUserLeaderboardTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var data = await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine(data);
-
         var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<LeaderboardResponse>();
         Assert.NotNull(responseData);
 
