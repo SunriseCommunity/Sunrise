@@ -31,6 +31,8 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
+        // TODO: Refactor to use ChangeBeatmapCustomStatus
+
         string? beatmapHash = null;
         var isIdProvided = int.TryParse(args[0], out var beatmapId);
 

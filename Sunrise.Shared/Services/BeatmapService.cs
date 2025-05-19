@@ -5,8 +5,11 @@ using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -108,6 +111,56 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         }
 
         return beatmapSets;
+    }
+
+    public async Task<Result<CustomBeatmapStatus?>> ChangeBeatmapCustomStatus(User user, Beatmap beatmap, BeatmapStatusWeb? newStatus, bool? resetCustomStatus)
+    {
+        if (newStatus == null && resetCustomStatus == null)
+            return Result.Failure<CustomBeatmapStatus?>("No proper status arguments were specified.");
+
+        var isCanChangeBeatmapStatus = user.Privilege.HasFlag(UserPrivilege.Bat);
+
+        if (!isCanChangeBeatmapStatus)
+        {
+            return Result.Failure<CustomBeatmapStatus?>("User cannot change beatmap status.");
+        }
+
+        var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
+
+        if (resetCustomStatus.HasValue)
+        {
+            if (customStatus != null)
+            {
+                await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
+            }
+
+            return null;
+        }
+
+        if (newStatus.HasValue)
+        {
+            if (customStatus != null)
+            {
+                customStatus.Status = newStatus.Value;
+                customStatus.UpdatedByUserId = user.Id;
+
+                var updateCustomStatusResult = await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
+                return updateCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(updateCustomStatusResult.Error) : customStatus;
+            }
+
+            customStatus = new CustomBeatmapStatus
+            {
+                Status = newStatus.Value,
+                UpdatedByUserId = user.Id,
+                BeatmapHash = beatmap.Checksum!,
+                BeatmapSetId = beatmap.BeatmapsetId
+            };
+
+            var addCustomStatusResult = await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
+            return addCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(addCustomStatusResult.Error) : customStatus;
+        }
+
+        return Result.Failure<CustomBeatmapStatus?>("Unknown error occured while changing beatmap status.");
     }
 
     private bool IsValidResult(Result<BeatmapSet, ErrorMessage> result)

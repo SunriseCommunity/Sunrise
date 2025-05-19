@@ -31,6 +31,8 @@ public class SetBeatmapSetStatusCommand : IChatCommand
             return;
         }
 
+        // TODO: Refactor to use ChangeBeatmapCustomStatus
+
         if (!int.TryParse(args[0], out var beatmapSetId))
         {
             ChatCommandRepository.SendMessage(session, "Invalid beatmap set id");
