@@ -9,10 +9,10 @@ namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class BeatmapExtensions
 {
-    public static void UpdateBeatmapRanking(this Beatmap beatmap, BeatmapStatus beatmapStatus, User? beatmapNominator = null)
+    public static void UpdateBeatmapRanking(this Beatmap beatmap, BeatmapStatusWeb beatmapStatus, User? beatmapNominator = null)
     {
-        beatmap.StatusString = beatmapStatus.BeatmapStatusToString();
-        beatmap.Ranked = beatmapStatus.IsRanked() ? 1 : 0; // TODO: Should use https://osu.ppy.sh/docs/#beatmapset-rank-status
+        beatmap.StatusString = beatmapStatus.BeatmapStatusWebToString();
+        beatmap.Ranked = (int)beatmapStatus;
         beatmap.BeatmapNominatorUser = beatmapNominator;
     }
 

@@ -69,7 +69,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
 
         Assert.NotNull(beatmap);
 
-        Assert.Equal(BeatmapStatusSearch.Loved, beatmap.Status);
+        Assert.Equal(BeatmapStatusWeb.Loved, beatmap.Status);
     }
 }
 

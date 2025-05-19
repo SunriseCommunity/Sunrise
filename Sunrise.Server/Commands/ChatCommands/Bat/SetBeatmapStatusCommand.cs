@@ -27,7 +27,7 @@ public class SetBeatmapStatusCommand : IChatCommand
         {
             ChatCommandRepository.SendMessage(session,
                 $"Usage: {Configuration.BotPrefix}setbeatmapstatus <beatmapId | beatmapHash> <beatmapStatus | \"reset\">; Example: {Configuration.BotPrefix}setbeatmapstatus 13 Ranked"
-                + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatus)))}");
+                + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatusWeb)))}");
             return;
         }
 
@@ -64,7 +64,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
-        var oldStatus = beatmap.Status;
+        var oldStatus = beatmap.StatusGeneric;
 
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
@@ -92,7 +92,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
-        if (!Enum.TryParse(args[1], out BeatmapStatus status))
+        if (!Enum.TryParse(args[1], out BeatmapStatusWeb status))
         {
             ChatCommandRepository.SendMessage(session, "Invalid status.");
             return;

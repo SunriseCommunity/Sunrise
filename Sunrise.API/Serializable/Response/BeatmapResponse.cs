@@ -83,7 +83,7 @@ public class BeatmapResponse
     public string Version { get; set; }
 
     [JsonPropertyName("status")]
-    public BeatmapStatusSearch Status { get; set; }
+    public BeatmapStatusWeb Status { get; set; }
 
     [JsonPropertyName("star_rating_osu")]
     public double StarRating { get; set; }

@@ -24,7 +24,7 @@ public class Beatmap
     public string StatusString { get; set; }
 
     public BeatmapStatus Status => StatusString.StringToBeatmapStatus();
-    public BeatmapStatusSearch StatusGeneric => StatusString.StringToBeatmapStatusSearch();
+    public BeatmapStatusWeb StatusGeneric => StatusString.StringToBeatmapStatusSearch();
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; }

@@ -55,7 +55,7 @@ public class BeatmapSet
 
     public BeatmapStatus Status => StatusString.StringToBeatmapStatus();
 
-    public BeatmapStatusSearch StatusGeneric => StatusString.StringToBeatmapStatusSearch();
+    public BeatmapStatusWeb StatusGeneric => StatusString.StringToBeatmapStatusSearch();
 
     [JsonPropertyName("track_id")]
     public int? TrackId { get; set; }

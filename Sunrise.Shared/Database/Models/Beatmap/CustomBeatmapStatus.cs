@@ -18,5 +18,5 @@ public class CustomBeatmapStatus
     public User UpdatedByUser { get; set; }
 
     public required int UpdatedByUserId { get; set; }
-    public required BeatmapStatus Status { get; set; }
+    public required BeatmapStatusWeb Status { get; set; }
 }

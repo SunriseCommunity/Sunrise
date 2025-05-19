@@ -5,7 +5,7 @@ namespace Sunrise.API.Serializable.Response;
 
 public class CustomBeatmapStatusChangeResponse
 {
-    public CustomBeatmapStatusChangeResponse(BeatmapResponse beatmap, BeatmapStatus newStatus, BeatmapStatus oldStatus, UserResponse batUser)
+    public CustomBeatmapStatusChangeResponse(BeatmapResponse beatmap, BeatmapStatusWeb newStatus, BeatmapStatusWeb oldStatus, UserResponse batUser)
     {
 
 
@@ -24,10 +24,10 @@ public class CustomBeatmapStatusChangeResponse
     public BeatmapResponse Beatmap { get; set; }
 
     [JsonPropertyName("new_status")]
-    public BeatmapStatus NewStatus { get; set; }
+    public BeatmapStatusWeb NewStatus { get; set; }
 
     [JsonPropertyName("old_status")]
-    public BeatmapStatus OldStatus { get; set; }
+    public BeatmapStatusWeb OldStatus { get; set; }
 
     [JsonPropertyName("bat")]
     public UserResponse User { get; set; }

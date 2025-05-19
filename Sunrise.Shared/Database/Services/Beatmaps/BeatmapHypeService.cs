@@ -56,7 +56,7 @@ public class BeatmapHypeService(
         });
     }
 
-    public async Task<Result> ApplyBeatmapHypes(int beatmapSetId, BeatmapStatus newBeatmapStatus)
+    public async Task<Result> ApplyBeatmapHypes(int beatmapSetId, BeatmapStatusWeb newBeatmapStatus)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
@@ -85,7 +85,7 @@ public class BeatmapHypeService(
             .OrderBy(g => g.SUM);
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await hypesQuery.CountAsync(cancellationToken: ct);
-        
+
         var hypes = await hypesQuery
             .UseQueryOptions(options)
             .ToListAsync(cancellationToken: ct);

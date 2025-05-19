@@ -51,7 +51,7 @@ public class BeatmapSetResponse
     public int CreatorId { get; set; }
 
     [JsonPropertyName("status")]
-    public BeatmapStatusSearch Status { get; set; }
+    public BeatmapStatusWeb Status { get; set; }
 
     [JsonPropertyName("last_updated")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

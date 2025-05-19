@@ -20,8 +20,8 @@ public static class BeatmapSetExtensions
 
         if (customSetStatus != null)
         {
-            beatmapSet.StatusString = customSetStatus.Status.BeatmapStatusToString();
-            beatmapSet.Ranked = customSetStatus.Status.IsRanked() ? 1 : 0; // TODO: Should use https://osu.ppy.sh/docs/#beatmapset-rank-status
+            beatmapSet.StatusString = customSetStatus.Status.BeatmapStatusWebToString();
+            beatmapSet.Ranked = (int)customSetStatus.Status;
             beatmapSet.BeatmapNominatorUser = customSetStatus.UpdatedByUser;
         }
 
@@ -36,12 +36,14 @@ public static class BeatmapSetExtensions
 
     public static void IgnoreBeatmapRanking(this BeatmapSet beatmapSet)
     {
-        beatmapSet.StatusString = "ranked";
-        beatmapSet.Ranked = 1;
+        var status = BeatmapStatusWeb.Ranked;
+
+        beatmapSet.StatusString = status.BeatmapStatusWebToString();
+        beatmapSet.Ranked = (int)status;
 
         foreach (var beatmap in beatmapSet.Beatmaps)
         {
-            beatmap.UpdateBeatmapRanking(BeatmapStatus.Ranked);
+            beatmap.UpdateBeatmapRanking(status);
         }
     }
 }

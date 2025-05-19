@@ -14,16 +14,16 @@ public static class BeatmapStatusExtensions
         ["graveyard"] = BeatmapStatus.Pending,
         ["wip"] = BeatmapStatus.Pending
     };
-    
-    private static readonly Dictionary<string, BeatmapStatusSearch> _statusSearchMap = new()
+
+    private static readonly Dictionary<string, BeatmapStatusWeb> _statusSearchMap = new()
     {
-        ["loved"] = BeatmapStatusSearch.Loved,
-        ["qualified"] = BeatmapStatusSearch.Qualified,
-        ["approved"] = BeatmapStatusSearch.Approved,
-        ["ranked"] = BeatmapStatusSearch.Ranked,
-        ["pending"] = BeatmapStatusSearch.Pending,
-        ["graveyard"] = BeatmapStatusSearch.Graveyard,
-        ["wip"] = BeatmapStatusSearch.Wip
+        ["loved"] = BeatmapStatusWeb.Loved,
+        ["qualified"] = BeatmapStatusWeb.Qualified,
+        ["approved"] = BeatmapStatusWeb.Approved,
+        ["ranked"] = BeatmapStatusWeb.Ranked,
+        ["pending"] = BeatmapStatusWeb.Pending,
+        ["graveyard"] = BeatmapStatusWeb.Graveyard,
+        ["wip"] = BeatmapStatusWeb.Wip
     };
 
     private static readonly Dictionary<BeatmapStatus, string> _statusMapString = new()
@@ -35,19 +35,31 @@ public static class BeatmapStatusExtensions
         [BeatmapStatus.Pending] = "pending"
     };
 
+    private static readonly Dictionary<BeatmapStatusWeb, string> _statusWebMapString = new()
+    {
+        [BeatmapStatusWeb.Loved] = "loved",
+        [BeatmapStatusWeb.Qualified] = "qualified",
+        [BeatmapStatusWeb.Approved] = "approved",
+        [BeatmapStatusWeb.Ranked] = "ranked",
+        [BeatmapStatusWeb.Pending] = "pending",
+        [BeatmapStatusWeb.Graveyard] = "graveyard",
+        [BeatmapStatusWeb.Wip] = "wip"
+
+    };
+
     public static BeatmapStatus StringToBeatmapStatus(this string statusString)
     {
         return _statusMap.GetValueOrDefault(statusString, BeatmapStatus.Pending);
     }
-    
-    public static BeatmapStatusSearch StringToBeatmapStatusSearch(this string statusString)
+
+    public static BeatmapStatusWeb StringToBeatmapStatusSearch(this string statusString)
     {
-        return _statusSearchMap.GetValueOrDefault(statusString, BeatmapStatusSearch.Pending);
+        return _statusSearchMap.GetValueOrDefault(statusString, BeatmapStatusWeb.Pending);
     }
 
-    public static string BeatmapStatusToString(this BeatmapStatus statusString)
+    public static string BeatmapStatusWebToString(this BeatmapStatusWeb statusString)
     {
-        return _statusMapString.GetValueOrDefault(statusString, "pending");
+        return _statusWebMapString.GetValueOrDefault(statusString, "pending");
     }
 
     public static bool IsRanked(this BeatmapStatus status)
@@ -55,8 +67,18 @@ public static class BeatmapStatusExtensions
         return status is BeatmapStatus.Ranked or BeatmapStatus.Approved;
     }
 
+    public static bool IsRanked(this BeatmapStatusWeb status)
+    {
+        return status is BeatmapStatusWeb.Ranked or BeatmapStatusWeb.Approved;
+    }
+
     public static bool IsScoreable(this BeatmapStatus status)
     {
         return status is BeatmapStatus.Ranked or BeatmapStatus.Approved or BeatmapStatus.Loved or BeatmapStatus.Qualified;
+    }
+
+    public static bool IsScoreable(this BeatmapStatusWeb status)
+    {
+        return status is BeatmapStatusWeb.Ranked or BeatmapStatusWeb.Approved or BeatmapStatusWeb.Loved or BeatmapStatusWeb.Qualified;
     }
 }

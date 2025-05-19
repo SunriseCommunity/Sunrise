@@ -15,7 +15,7 @@ public static class BeatmapSetSearchExtensions
         var hasVideo = beatmapSet.HasVideo ? "1" : "0";
 
         var beatmapStatus = BeatmapStatusSearchParser.GetBeatmapSearchStatus(beatmapSet.StatusString);
-        var lastUpdatedTime = (beatmapStatus >= BeatmapStatusSearch.Ranked ? beatmapSet.RankedDate : beatmapSet.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
+        var lastUpdatedTime = (beatmapStatus >= BeatmapStatusWeb.Ranked ? beatmapSet.RankedDate : beatmapSet.LastUpdated) + TimeSpan.FromHours(session.Attributes.Timezone);
 
         return $"{beatmapSet.Id}.osz|{beatmapSet.Artist.Replace('|', 'I')}|{beatmapSet.Title.Replace('|', 'I')}|{beatmapSet.Creator.Replace('|', 'I')}|{(int)beatmapStatus}|10.0|{lastUpdatedTime}|{beatmapSet.Id}|0|{hasVideo}|0|0|0|{beatmaps}";
     }
