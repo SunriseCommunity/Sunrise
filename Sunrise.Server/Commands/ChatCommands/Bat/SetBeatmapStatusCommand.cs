@@ -30,9 +30,7 @@ public class SetBeatmapStatusCommand : IChatCommand
                 + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatusWeb)))}");
             return;
         }
-
-        // TODO: Refactor to use ChangeBeatmapCustomStatus
-
+        
         string? beatmapHash = null;
         var isIdProvided = int.TryParse(args[0], out var beatmapId);
 
@@ -40,6 +38,16 @@ public class SetBeatmapStatusCommand : IChatCommand
             beatmapHash = args[0];
 
         using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var batUser = await database.Users.GetUser(session.UserId);
+
+        if (batUser == null)
+        {
+            ChatCommandRepository.SendMessage(session, "User not found.");
+            return;
+        }
+
         var beatmapService = scope.ServiceProvider.GetRequiredService<BeatmapService>();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, beatmapId: beatmapId);
@@ -66,64 +74,57 @@ public class SetBeatmapStatusCommand : IChatCommand
             return;
         }
 
+        var resetBeatmapStatus = args[1] is "reset";
+        var isParsedCustomStatus = Enum.TryParse(args[1], out BeatmapStatusWeb status);
+
+        if (!isParsedCustomStatus && !resetBeatmapStatus)
+        {
+            ChatCommandRepository.SendMessage(session, "Invalid beatmap set status.");
+            return;
+        }
+
+        if (args.Length < 3 || args[2] != "-y")
+        {
+            ChatCommandRepository.SendMessage(session,
+                $"You are going to update {beatmap.GetBeatmapInGameChatString(beatmapSet)} " +
+                $"{(resetBeatmapStatus ? "to their default status." : $"to {status}.")}\n"
+                + "Use same command with \"-y\" flag to continue.");
+            return;
+        }
+        
         var oldStatus = beatmap.StatusGeneric;
 
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var changeBeatmapSetStatusResult = await beatmapService.ChangeBeatmapCustomStatus(
+            batUser,
+            beatmap,
+            resetBeatmapStatus ? null : status,
+            resetBeatmapStatus ? true : null
+        );
 
-        var batUser = await database.Users.GetUser(session.UserId);
-
-        if (batUser == null)
+        if (changeBeatmapSetStatusResult.IsFailure)
         {
-            ChatCommandRepository.SendMessage(session, "User not found.");
+            ChatCommandRepository.SendMessage(session, changeBeatmapSetStatusResult.Error);
             return;
         }
 
-        var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
-
-        if (args[1] is "reset")
+        if (resetBeatmapStatus)
         {
-
-            if (customStatus == null)
-            {
-                ChatCommandRepository.SendMessage(session, $"Can't reset beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} beatmap status, because it doesn't have any custom beatmap statuses.");
-                return;
-            }
-
-            await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
-            ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to default status!");
+            ChatCommandRepository.SendMessage(session, $"Beatmap {beatmap.GetBeatmapInGameChatString(beatmapSet)} status was updated to default status");
             return;
         }
 
-        if (!Enum.TryParse(args[1], out BeatmapStatusWeb status))
+        var customStatus = changeBeatmapSetStatusResult.Value;
+
+        if (customStatus == null)
         {
-            ChatCommandRepository.SendMessage(session, "Invalid status.");
+            ChatCommandRepository.SendMessage(session, "Couldn't get custom status.");
             return;
         }
-
-        if (customStatus != null)
-        {
-            customStatus.Status = status;
-            customStatus.UpdatedByUserId = session.UserId;
-
-            await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
-        }
-        else
-        {
-            customStatus = new CustomBeatmapStatus
-            {
-                Status = status,
-                UpdatedByUserId = session.UserId,
-                BeatmapHash = beatmap.Checksum!,
-                BeatmapSetId = beatmapSet.Id
-            };
-
-            await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
-        }
-
-        var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
-        var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
         beatmapSet.UpdateBeatmapRanking([customStatus]);
+        
+        var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
+        var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
         if (oldStatus != status)
             webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.CustomBeatmapStatusChanged, new CustomBeatmapStatusChangeResponse(new BeatmapResponse(sessionRepository, beatmap, beatmapSet), status, oldStatus, new UserResponse(sessionRepository, batUser))));

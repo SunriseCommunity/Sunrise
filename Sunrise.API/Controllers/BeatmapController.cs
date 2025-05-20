@@ -387,6 +387,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
     [HttpGet("/beatmapset/search")]
     [EndpointDescription("Search beatmapsets")]
+    [ResponseCache(Duration = 0)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchBeatmapsets(
