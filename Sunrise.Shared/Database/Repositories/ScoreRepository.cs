@@ -129,6 +129,11 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         if (type is LeaderboardType.GlobalWithMods && mods != null)
         {
+            scoresGrouped = scoresGrouped.Where(s => s.Mods == EF.Constant(mods));
+        }
+        
+        if (type is LeaderboardType.GlobalIncludesMods && mods != null)
+        {
             scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));
         }
 

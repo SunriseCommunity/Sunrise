@@ -145,7 +145,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var (scores, totalScores) = await database.Scores.GetBeatmapScores(beatmap.Checksum,
             mode,
-            mods is null ? LeaderboardType.Global : LeaderboardType.GlobalWithMods,
+            mods is null ? LeaderboardType.Global : LeaderboardType.GlobalIncludesMods,
             modsEnum,
             options: new QueryOptions(new Pagination(1, limit))
             {
