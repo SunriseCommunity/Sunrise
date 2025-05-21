@@ -67,11 +67,11 @@ public class BeatmapHypeService(
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
             // TODO: Send notifications to users about their hyped map status update
-            
+
             var beatmapHypes = await GetBeatmapHypeCount(beatmapSetId);
             if (beatmapHypes <= 0)
                 return;
-            
+
             var addBeatmapSetHypeClearEventResult = await beatmapEventService.AddBeatmapSetHypeClearEvent(userId, beatmapSetId);
             if (addBeatmapSetHypeClearEventResult.IsFailure)
                 throw new ApplicationException(addBeatmapSetHypeClearEventResult.Error);
@@ -114,7 +114,6 @@ public class BeatmapHypeService(
             dbContext.BeatmapHypes.Add(new BeatmapHype
             {
                 UserId = user.Id,
-                User = user,
                 BeatmapSetId = beatmapSetId,
                 Hypes = 1
             });
