@@ -1,10 +1,12 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -54,11 +56,26 @@ public class UserRepository(
                     GameMode = mode
                 };
 
-                await Stats.AddUserStats(stats, user);
+                var addUserStatsResult = await Stats.AddUserStats(stats, user);
+                if (addUserStatsResult.IsFailure)
+                    throw new Exception(addUserStatsResult.Error);
             }
+
+            var addStartItemsToUserInventoryResult = await AddStarterItemsToUserInventory(user);
+            if (addStartItemsToUserInventoryResult.IsFailure)
+                throw new Exception(addStartItemsToUserInventoryResult.Error);
 
             await dbContext.SaveChangesAsync();
         });
+    }
+
+    private async Task<Result> AddStarterItemsToUserInventory(User user)
+    {
+        var addUserHypesResult = await Inventory.SetInventoryItem(user, ItemType.Hype, Configuration.UserHypesWeekly);
+        if (addUserHypesResult.IsFailure)
+            return Result.Failure(addUserHypesResult.Error);
+
+        return Result.Success();
     }
 
     public async Task<User?> GetUser(
