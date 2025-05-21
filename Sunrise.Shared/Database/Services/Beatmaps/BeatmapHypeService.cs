@@ -93,10 +93,12 @@ public class BeatmapHypeService(
             .Select(g => new
             {
                 g.Key,
-                SUM = g.Sum(s => s.Hypes)
+                SUM = g.Sum(s => s.Hypes),
+                LastHypedId = g.Max(s => s.Id)
             })
             .Where(g => g.SUM >= Configuration.HypesToStartHypeTrain)
-            .OrderBy(g => g.SUM);
+            .OrderBy(g => g.SUM)
+            .ThenByDescending(g => g.LastHypedId);
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await hypesQuery.CountAsync(cancellationToken: ct);
 
