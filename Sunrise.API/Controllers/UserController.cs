@@ -536,6 +536,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(InventoryItemResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInventoryItemCount(ItemType type, CancellationToken ct = default)
     {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
