@@ -6,5 +6,6 @@ public enum LeaderboardType
     Global = 1,
     GlobalWithMods = 2,
     Friends = 3,
-    Country = 4
+    Country = 4,
+    GlobalIncludesMods = 5,
 }

@@ -2,6 +2,7 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
@@ -101,6 +102,8 @@ public class RecalculateUserGradesCommand : IChatCommand
         var userGrades = await database.Users.Grades.GetUserGrades(userId, mode);
         if (userGrades == null)
             throw new Exception($"User {userId} has no userGrades");
+        
+        userGrades = ClearUserGrades(userGrades);
 
         var pageSize = 100;
 
@@ -124,5 +127,19 @@ public class RecalculateUserGradesCommand : IChatCommand
         var updateUserGradesResult = await database.Users.Grades.UpdateUserGrades(userGrades);
         if (updateUserGradesResult.IsFailure)
             throw new Exception(updateUserGradesResult.Error);
+    }
+
+    private UserGrades ClearUserGrades(UserGrades grades)
+    {
+        grades.CountXH = 0;
+        grades.CountX = 0;
+        grades.CountSH = 0;
+        grades.CountS = 0;
+        grades.CountA = 0;
+        grades.CountB = 0;
+        grades.CountC = 0;
+        grades.CountD = 0;
+
+        return grades;
     }
 }

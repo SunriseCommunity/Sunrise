@@ -142,7 +142,19 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             : ([], 0);
 
         var globalScores = databaseScores.EnrichWithLeaderboardPositions();
-        var scoresWithSameMods = globalScores.FindAll(x => x.Mods == score.Mods).EnrichWithLeaderboardPositions();
+
+        var (databaseScoresWithSameMods, _) = isScoreScoreable
+            ? await database.Scores.GetBeatmapScores(score.BeatmapHash,
+                score.GameMode,
+                LeaderboardType.GlobalWithMods,
+                score.Mods,
+                options: new QueryOptions
+                {
+                    IgnoreCountQueryIfExists = true
+                })
+            : ([], 0);
+
+        var scoresWithSameMods = databaseScoresWithSameMods.EnrichWithLeaderboardPositions();
 
         var userStats = await database.Users.Stats.GetUserStats(score.UserId, score.GameMode);
 
