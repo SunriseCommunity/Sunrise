@@ -18,6 +18,8 @@ namespace Sunrise.Shared.Services;
 
 public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService database, HttpClientService client)
 {
+    private readonly SemaphoreSlim _dbSemaphore = new(1);
+
     public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
         string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, CancellationToken ct = default)
     {
@@ -71,16 +73,48 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
-        var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
-            new QueryOptions(true)
-            {
-                QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
-            },
-            linkedCts.Token);
+        try
+        {
+            await _dbSemaphore.WaitAsync(linkedCts.Token);
 
-        beatmapSet.UpdateBeatmapRanking(customStatuses);
+            var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
+                new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
+                },
+                linkedCts.Token);
+
+            beatmapSet.UpdateBeatmapRanking(customStatuses);
+        }
+        finally
+        {
+            _dbSemaphore.Release();
+        }
 
         return beatmapSet;
+    }
+
+    public async Task<Result<List<BeatmapSet>, ErrorMessage>> GetBeatmapSets(BaseSession session, List<int> beatmapSetIds, CancellationToken ct = default)
+    {
+        var beatmapSetLookup = beatmapSetIds.ToLookup(id => id);
+
+        var beatmapSetsTasks = beatmapSetLookup.Select(g =>
+        {
+            var beatmapSetId = g.Key;
+
+            return GetBeatmapSet(session, beatmapSetId, ct: ct);
+        });
+
+        var beatmapSetsResults = await Task.WhenAll(beatmapSetsTasks);
+
+        if (beatmapSetsResults.Any(b => b.IsFailure))
+        {
+            return beatmapSetsResults.First(v => v.IsFailure).Error;
+        }
+
+        var beatmapSets = beatmapSetsResults.Select(v => v.Value);
+
+        return beatmapSets.ToList();
     }
 
     public async Task<Result<List<BeatmapSet>, ErrorMessage>> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,

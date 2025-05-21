@@ -32,6 +32,7 @@ public class SunriseDbContext : DbContext
     public DbSet<Medal> Medals { get; set; }
     public DbSet<MedalFile> MedalFiles { get; set; }
 
+    public DbSet<EventBeatmap> EventBeatmaps { get; set; }
     public DbSet<EventUser> EventUsers { get; set; }
     public DbSet<Restriction> Restrictions { get; set; }
 
@@ -39,7 +40,7 @@ public class SunriseDbContext : DbContext
 
     public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
-    
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

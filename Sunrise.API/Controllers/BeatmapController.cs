@@ -12,6 +12,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -254,7 +255,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     public async Task<IActionResult> GetBeatmapSetHypeCounter(int id, CancellationToken ct = default)
     {
         if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
+            return BadRequest(new ErrorResponse("Invalid beatmap set id"));
 
         var session = HttpContext.GetCurrentSession();
 
@@ -270,6 +271,100 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         {
             CurrentHypes = beatmapSetHypeCount
         });
+    }
+
+    [Authorize("RequireBat")]
+    [HttpGet("beatmapset/{id:int}/events")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Get beatmapset related events")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBeatmapSetEvents(int id,
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1,
+        CancellationToken ct = default)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (id < 0)
+            return BadRequest(new ErrorResponse("Invalid beatmap set id"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var (beatmapSetEvents, totalCount) = await database.Events.Beatmaps.GetBeatmapSetEvents(id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<EventBeatmap>().IncludeExecutor()
+            },
+            ct);
+
+        var session = HttpContext.GetCurrentSession();
+
+        var beatmapSetsResult = await beatmapService.GetBeatmapSets(session, beatmapSetEvents.Select(e => e.BeatmapSetId).ToList(), ct);
+
+        if (beatmapSetsResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetsResult.Error);
+
+        var beatmapSets = beatmapSetsResult.Value;
+
+        var events = beatmapSetEvents.Select(e =>
+        {
+            var beatmapSet = beatmapSets.First(v => v.Id == e.BeatmapSetId);
+
+            return new BeatmapEventResponse(sessions, e, new BeatmapSetResponse(sessions, beatmapSet));
+        }).ToList();
+
+        return Ok(new BeatmapSetEventsResponse(events, totalCount));
+    }
+
+    [Authorize("RequireBat")]
+    [HttpGet("beatmapset/events")]
+    [ResponseCache(Duration = 0)]
+    [EndpointDescription("Get beatmapsets related events")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBeatmapSetsEvents(
+        [FromQuery(Name = "limit")] int limit = 50,
+        [FromQuery(Name = "page")] int page = 1,
+        CancellationToken ct = default)
+    {
+        if (ModelState.IsValid != true)
+            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
+
+        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
+
+        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
+
+        var (beatmapSetEvents, totalCount) = await database.Events.Beatmaps.GetBeatmapSetEvents(null,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<EventBeatmap>().IncludeExecutor()
+            },
+            ct
+        );
+
+        var session = HttpContext.GetCurrentSession();
+
+        var beatmapSetsResult = await beatmapService.GetBeatmapSets(session, beatmapSetEvents.Select(e => e.BeatmapSetId).ToList(), ct);
+
+        if (beatmapSetsResult.IsFailure)
+            return ActionResultUtil.ActionErrorResult(beatmapSetsResult.Error);
+
+        var beatmapSets = beatmapSetsResult.Value;
+
+        var events = beatmapSetEvents.Select(e =>
+        {
+            var beatmapSet = beatmapSets.First(v => v.Id == e.BeatmapSetId);
+
+            return new BeatmapEventResponse(sessions, e, new BeatmapSetResponse(sessions, beatmapSet));
+        }).ToList();
+
+        return Ok(new BeatmapSetEventsResponse(events, totalCount));
     }
 
     [HttpPost("beatmapset/{id:int}/favourited")]

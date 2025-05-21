@@ -227,6 +227,7 @@ public static class Bootstrap
 
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
+        builder.Services.AddScoped<BeatmapEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
         builder.Services.AddScoped<ScoreFileService>();

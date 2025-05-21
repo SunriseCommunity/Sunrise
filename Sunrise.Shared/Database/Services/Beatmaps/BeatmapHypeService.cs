@@ -7,6 +7,7 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Repositories;
+using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -18,7 +19,8 @@ public class BeatmapHypeService(
     ILogger<ScoreRepository> logger,
     Lazy<DatabaseService> databaseService,
     SunriseDbContext dbContext,
-    UserInventoryItemService userInventoryItemService
+    UserInventoryItemService userInventoryItemService,
+    BeatmapEventService beatmapEventService
 )
 {
     public async Task<Result> AddBeatmapHypeFromUserInventory(User user, int beatmapSetId)
@@ -53,14 +55,26 @@ public class BeatmapHypeService(
             inventoryHypes.Quantity -= 1;
 
             await userInventoryItemService.UpdateInventoryItem(inventoryHypes);
+
+            var addBeatmapSetHypeEventResult = await beatmapEventService.AddBeatmapSetHypeEvent(user.Id, beatmapSetId);
+            if (addBeatmapSetHypeEventResult.IsFailure)
+                throw new ApplicationException(addBeatmapSetHypeEventResult.Error);
         });
     }
 
-    public async Task<Result> ApplyBeatmapHypes(int beatmapSetId, BeatmapStatusWeb newBeatmapStatus)
+    public async Task<Result> ApplyBeatmapHypes(int userId, int beatmapSetId, BeatmapStatusWeb newBeatmapStatus)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
             // TODO: Send notifications to users about their hyped map status update
+            
+            var beatmapHypes = await GetBeatmapHypeCount(beatmapSetId);
+            if (beatmapHypes <= 0)
+                return;
+            
+            var addBeatmapSetHypeClearEventResult = await beatmapEventService.AddBeatmapSetHypeClearEvent(userId, beatmapSetId);
+            if (addBeatmapSetHypeClearEventResult.IsFailure)
+                throw new ApplicationException(addBeatmapSetHypeClearEventResult.Error);
 
             var removeBeatmapHypesResult = await RemoveBeatmapHypes(beatmapSetId);
             if (removeBeatmapHypesResult.IsFailure)

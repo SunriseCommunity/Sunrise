@@ -13,6 +13,7 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusService
 {
 
     private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
+    private readonly SemaphoreSlim _dbSemaphore = new(1);
     public CustomBeatmapStatusService CustomStatuses { get; } = customBeatmapStatusService;
     public BeatmapHypeService Hypes { get; } = beatmapHypeService;
 
@@ -66,14 +67,23 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusService
 
         if (beatmapSet == null) return null;
 
-        var customStatuses = await CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
-            new QueryOptions(true)
-            {
-                QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
-            },
-            ct);
+        try
+        {
+            await _dbSemaphore.WaitAsync(ct);
 
-        beatmapSet.UpdateBeatmapRanking(customStatuses);
+            var customStatuses = await CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
+                new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
+                },
+                ct);
+
+            beatmapSet.UpdateBeatmapRanking(customStatuses);
+        }
+        finally
+        {
+            _dbSemaphore.Release();
+        }
 
         return beatmapSet;
     }
