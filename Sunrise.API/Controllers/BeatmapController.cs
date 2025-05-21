@@ -437,18 +437,12 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         foreach (var id in request.Ids)
         {
             var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id);
-
             if (beatmapSetResult.IsFailure)
-            {
-                return BadRequest(new ErrorResponse(beatmapSetResult.Error.Message));
-            }
+                return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
 
             var beatmapSet = beatmapSetResult.Value;
-
             if (beatmapSet == null)
-            {
-                return BadRequest(new ErrorResponse("Beatmap set not found."));
-            }
+                return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
 
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
 
