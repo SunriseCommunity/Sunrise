@@ -45,6 +45,11 @@ public class BeatmapHypeService(
 
             if (userBeatmapHype != null)
             {
+                if (!Configuration.AllowMultipleHypeFromSameUser)
+                {
+                    throw new ApplicationException("You already hyped this beatmap set");
+                }
+                
                 userBeatmapHype.Hypes += 1;
             }
 

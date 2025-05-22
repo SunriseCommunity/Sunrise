@@ -19,8 +19,6 @@ public static class Configuration
         .AddEnvironmentVariables()
         .Build();
 
-
-
     // API section
     private static string? _webTokenSecret;
 
@@ -104,6 +102,8 @@ public static class Configuration
     
     public static int HypesToStartHypeTrain =>
         Config.GetSection("BeatmapHype").GetValue<int?>("HypesToStartHypeTrain") ?? 3;
+    public static bool AllowMultipleHypeFromSameUser =>
+        Config.GetSection("BeatmapHype").GetValue<bool?>("AllowMultipleHypeFromSameUser") ?? true;
     
 
     // Moderation section
