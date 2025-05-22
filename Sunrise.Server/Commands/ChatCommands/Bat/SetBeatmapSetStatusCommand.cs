@@ -25,7 +25,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
         if (args == null || args.Length < 2)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}setbeatmapsetstatus <beatmapSetId> <beatmapStatus | \"reset\">; Example: {Configuration.BotPrefix}setbeatmapstatus 13 Ranked"
+                $"Usage: {Configuration.BotPrefix}setbeatmapsetstatus <beatmapSetId> <beatmapStatus | \"reset\">; Example: {Configuration.BotPrefix}setbeatmapsetstatus 13 Ranked"
                 + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatusWeb)))}");
             return;
         }
@@ -79,7 +79,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
             ChatCommandRepository.SendMessage(session,
                 $"You are going to update {string.Join(", ", beatmapSet.Beatmaps.Select(b => b.GetBeatmapInGameChatString(beatmapSet)))} " +
                 $"{(resetBeatmapStatus ? "to their default status." : $"to {status}.")}\n"
-                + "Use same command with \"-y\" flag to continue.");
+                + $"Use same command with \"-y\" flag to continue. Example: \"{Configuration.BotPrefix}setbeatmapsetstatus 13 Ranked -y\"");
             return;
         }
 

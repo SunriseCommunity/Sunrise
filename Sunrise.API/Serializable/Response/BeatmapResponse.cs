@@ -62,7 +62,6 @@ public class BeatmapResponse
         Creator = beatmapSet?.RelatedUsers?.FirstOrDefault(u => u.Id == beatmap.UserId)?.Username ?? "Unknown";
         CreatorId = beatmap.UserId;
         BeatmapNominatorUser = beatmap.BeatmapNominatorUser != null ? new UserResponse(sessions, beatmap.BeatmapNominatorUser) : null;
-        CanBeHyped = beatmap.CanBeHyped;
     }
 
     [JsonConstructor]
@@ -175,9 +174,6 @@ public class BeatmapResponse
     [JsonPropertyName("beatmap_nominator_user")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public UserResponse? BeatmapNominatorUser { get; set; }
-
-    [JsonPropertyName("can_be_hyped")]
-    public bool CanBeHyped { get; set; }
 
     // TODO: Add playcount and favourite count
 }

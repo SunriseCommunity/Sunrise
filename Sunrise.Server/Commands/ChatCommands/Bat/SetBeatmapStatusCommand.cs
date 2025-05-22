@@ -88,7 +88,7 @@ public class SetBeatmapStatusCommand : IChatCommand
             ChatCommandRepository.SendMessage(session,
                 $"You are going to update {beatmap.GetBeatmapInGameChatString(beatmapSet)} " +
                 $"{(resetBeatmapStatus ? "to their default status." : $"to {status}.")}\n"
-                + "Use same command with \"-y\" flag to continue.");
+                + $"Use same command with \"-y\" flag to continue. Example: \"{Configuration.BotPrefix}setbeatmapstatus 13 Ranked -y\"");
             return;
         }
         

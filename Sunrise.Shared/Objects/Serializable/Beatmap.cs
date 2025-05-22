@@ -104,7 +104,6 @@ public class Beatmap
     public int? MaxCombo { get; set; }
 
     public User? BeatmapNominatorUser { get; set; }
-    public bool CanBeHyped => BeatmapNominatorUser == null && !IsScoreable;
 }
 
 public class FailTimes
