@@ -4,22 +4,22 @@ namespace Sunrise.Server.Utils;
 
 public class BeatmapStatusSearchParser
 {
-    public static BeatmapStatusSearch GetBeatmapSearchStatus(string status)
+    public static BeatmapStatusWeb GetBeatmapSearchStatus(string status)
     {
-        var enumValue = Enum.TryParse(status, true, out BeatmapStatusSearch result) ? result : BeatmapStatusSearch.Pending;
+        var enumValue = Enum.TryParse(status, true, out BeatmapStatusWeb result) ? result : BeatmapStatusWeb.Pending;
         return enumValue;
     }
 
-    public static BeatmapStatusSearch WebStatusToSearchStatus(int ranked)
+    public static BeatmapStatusWeb WebStatusToSearchStatus(int ranked)
     {
         return ranked switch
         {
-            0 or 7 => BeatmapStatusSearch.Ranked,
-            8 => BeatmapStatusSearch.Loved,
-            3 => BeatmapStatusSearch.Qualified,
-            2 => BeatmapStatusSearch.Pending,
-            5 => BeatmapStatusSearch.Graveyard,
-            _ => BeatmapStatusSearch.Any
+            0 or 7 => BeatmapStatusWeb.Ranked,
+            8 => BeatmapStatusWeb.Loved,
+            3 => BeatmapStatusWeb.Qualified,
+            2 => BeatmapStatusWeb.Pending,
+            5 => BeatmapStatusWeb.Graveyard,
+            _ => BeatmapStatusWeb.Unknown
         };
     }
 }

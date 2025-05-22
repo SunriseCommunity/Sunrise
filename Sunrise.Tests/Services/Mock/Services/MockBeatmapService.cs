@@ -65,6 +65,16 @@ public class MockBeatmapService(MockService service)
             beatmapSet.ConvertedBeatmaps = beatmapSet.ConvertedBeatmaps.Prepend(GetRandomBeatmap(beatmapSet, true)).ToArray();
         }
 
+        foreach (var beatmap in beatmapSet.ConvertedBeatmaps)
+        {
+            beatmap.BeatmapsetId = beatmapSet.Id;
+        }
+
+        foreach (var beatmap in beatmapSet.Beatmaps)
+        {
+            beatmap.BeatmapsetId = beatmapSet.Id;
+        }
+
         return beatmapSet;
     }
 

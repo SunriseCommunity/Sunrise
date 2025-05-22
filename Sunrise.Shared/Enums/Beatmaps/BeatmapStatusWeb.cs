@@ -1,8 +1,8 @@
 ﻿namespace Sunrise.Shared.Enums.Beatmaps;
 
-public enum BeatmapStatusSearch
+public enum BeatmapStatusWeb
 {
-    Any = -3,
+    Unknown = -3,
     Graveyard = -2,
     Wip = -1,
     Pending = 0,

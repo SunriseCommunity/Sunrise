@@ -1,6 +1,6 @@
 ﻿using System.Net;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
@@ -42,7 +42,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var randomBeatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
         randomBeatmap.Id = 1;
-        randomBeatmap.StatusString = BeatmapStatus.Pending.BeatmapStatusToString();
+        randomBeatmap.StatusString = BeatmapStatusWeb.Pending.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
@@ -51,9 +51,9 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
         var randomUser = _mocker.User.GetRandomUser();
         await Database.Users.AddUser(randomUser);
 
-        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
-            Status = BeatmapStatus.Loved,
+            Status = BeatmapStatusWeb.Loved,
             BeatmapHash = randomBeatmap.Checksum,
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = randomUser.Id
@@ -69,7 +69,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
 
         Assert.NotNull(beatmap);
 
-        Assert.Equal(BeatmapStatusSearch.Loved, beatmap.Status);
+        Assert.Equal(BeatmapStatusWeb.Loved, beatmap.Status);
     }
 }
 

@@ -1,14 +1,14 @@
 using System.Text.Json.Serialization;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils.Converters;
 
 namespace Sunrise.API.Serializable.Response;
 
 public class BeatmapSetResponse
 {
-    public BeatmapSetResponse(BaseSession session, BeatmapSet beatmapSet)
+    public BeatmapSetResponse(SessionRepository sessions, BeatmapSet beatmapSet)
     {
         Id = beatmapSet.Id;
         Artist = beatmapSet.Artist;
@@ -20,11 +20,13 @@ public class BeatmapSetResponse
         SubmittedDate = beatmapSet.SubmittedDate;
         RankedDate = beatmapSet.RankedDate;
         HasVideo = beatmapSet.HasVideo;
-        Beatmaps = beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(session, beatmap, beatmapSet)).ToList();
+        Beatmaps = beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(sessions, beatmap, beatmapSet)).ToList();
         Description = beatmapSet.Description?.description ?? "";
         Genre = beatmapSet.Genre?.Name ?? "Unknown";
         Language = beatmapSet.Language?.Name ?? "Unknown";
         Tags = beatmapSet.Tags.Split(' ');
+        BeatmapNominatorUser = beatmapSet.BeatmapNominatorUser != null ? new UserResponse(sessions, beatmapSet.BeatmapNominatorUser) : null;
+        CanBeHyped = beatmapSet.CanBeHyped;
     }
 
     [JsonConstructor]
@@ -49,7 +51,7 @@ public class BeatmapSetResponse
     public int CreatorId { get; set; }
 
     [JsonPropertyName("status")]
-    public BeatmapStatusSearch Status { get; set; }
+    public BeatmapStatusWeb Status { get; set; }
 
     [JsonPropertyName("last_updated")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
@@ -81,4 +83,11 @@ public class BeatmapSetResponse
 
     [JsonPropertyName("tags")]
     public string[] Tags { get; set; }
+
+    [JsonPropertyName("beatmap_nominator_user")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public UserResponse? BeatmapNominatorUser { get; set; }
+
+    [JsonPropertyName("can_be_hyped")]
+    public bool CanBeHyped { get; set; }
 }

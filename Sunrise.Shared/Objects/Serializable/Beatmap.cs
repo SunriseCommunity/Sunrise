@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils.Converters;
@@ -23,7 +24,7 @@ public class Beatmap
     public string StatusString { get; set; }
 
     public BeatmapStatus Status => StatusString.StringToBeatmapStatus();
-    public BeatmapStatusSearch StatusGeneric => StatusString.StringToBeatmapStatusSearch();
+    public BeatmapStatusWeb StatusGeneric => StatusString.StringToBeatmapStatusSearch();
 
     [JsonPropertyName("total_length")]
     public int TotalLength { get; set; }
@@ -70,7 +71,7 @@ public class Beatmap
 
     [JsonPropertyName("is_scoreable")]
     public bool IsScoreable => Status.IsScoreable();
-    
+
     [JsonPropertyName("is_ranked")]
     public bool IsRanked => Status.IsRanked();
 
@@ -101,6 +102,8 @@ public class Beatmap
 
     [JsonPropertyName("max_combo")]
     public int? MaxCombo { get; set; }
+
+    public User? BeatmapNominatorUser { get; set; }
 }
 
 public class FailTimes

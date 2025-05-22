@@ -16,6 +16,11 @@
       "QueueLimit": 20
     }
   },
+  "BeatmapHype": {
+    "UserHypesWeekly": 10,
+    "HypesToStartHypeTrain": 2,
+    "AllowMultipleHypeFromSameUser": false
+  },
   "Moderation": {
       "BannablePPThreshold": 2500,
       "BannedIps": []

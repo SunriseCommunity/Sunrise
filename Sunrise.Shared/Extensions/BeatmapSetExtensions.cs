@@ -1,5 +1,5 @@
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
@@ -20,8 +20,9 @@ public static class BeatmapSetExtensions
 
         if (customSetStatus != null)
         {
-            beatmapSet.StatusString = customSetStatus.Status.BeatmapStatusToString();
-            beatmapSet.Ranked = customSetStatus.Status.IsRanked() ? 1 : 0; // TODO: Should use https://osu.ppy.sh/docs/#beatmapset-rank-status
+            beatmapSet.StatusString = customSetStatus.Status.BeatmapStatusWebToString();
+            beatmapSet.Ranked = (int)customSetStatus.Status;
+            beatmapSet.BeatmapNominatorUser = customSetStatus.UpdatedByUser;
         }
 
         foreach (var beatmap in beatmapSet.Beatmaps)
@@ -29,18 +30,20 @@ public static class BeatmapSetExtensions
             var customStatus = customBeatmapStatuses.FirstOrDefault(s => s.BeatmapHash == beatmap.Checksum);
 
             if (customStatus != null)
-                beatmap.UpdateBeatmapRanking(customStatus.Status);
+                beatmap.UpdateBeatmapRanking(customStatus.Status, customStatus.UpdatedByUser);
         }
     }
 
     public static void IgnoreBeatmapRanking(this BeatmapSet beatmapSet)
     {
-        beatmapSet.StatusString = "ranked";
-        beatmapSet.Ranked = 1;
+        var status = BeatmapStatusWeb.Ranked;
+
+        beatmapSet.StatusString = status.BeatmapStatusWebToString();
+        beatmapSet.Ranked = (int)status;
 
         foreach (var beatmap in beatmapSet.Beatmaps)
         {
-            beatmap.UpdateBeatmapRanking(BeatmapStatus.Ranked);
+            beatmap.UpdateBeatmapRanking(status);
         }
     }
 }

@@ -4,6 +4,7 @@ using System.Text.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
@@ -48,6 +49,46 @@ public class ApiAuthRegisterTests : ApiTest
         var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
+    }
+
+    [Fact]
+    public async Task TestRegisterUserSetDefaultItems()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var password = _mocker.User.GetRandomPassword();
+        var username = _mocker.User.GetRandomUsername();
+        var email = _mocker.User.GetRandomEmail();
+
+        // Act
+        var response = await client.PostAsJsonAsync("auth/register",
+            new RegisterRequest
+            {
+                Username = username,
+                Password = password,
+                Email = email
+            });
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var responseTokens = JsonSerializer.Deserialize<TokenResponse>(responseString);
+
+        Assert.NotNull(responseTokens);
+
+        var user = await Database.Users.GetUser(username: username);
+
+        Assert.NotNull(user);
+        
+        var userInventoryItem = await Database.Users.Inventory.GetInventoryItem(user.Id, ItemType.Hype);
+
+        if (userInventoryItem == null)
+            throw new Exception($"Could not find {ItemType.Hype} item in user inventory upon registration");
+
+        Assert.Equal(ItemType.Hype, userInventoryItem.ItemType);
+        Assert.Equal(Configuration.UserHypesWeekly, userInventoryItem.Quantity);
     }
 
     [Fact]
@@ -267,7 +308,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         Assert.Contains("email already exists", error?.Error);
     }
-    
+
     [Fact]
     public async Task TestRegisterUserUsedEmailWithDifferentCase()
     {

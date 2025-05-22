@@ -29,7 +29,7 @@ public class DirectService(BeatmapService beatmapService)
         int ranked, CancellationToken ct = default)
     {
         var parsedStatus = BeatmapStatusSearchParser.WebStatusToSearchStatus(ranked);
-        var beatmapStatus = parsedStatus == BeatmapStatusSearch.Any ? "" : parsedStatus.ToString("D");
+        var beatmapStatus = parsedStatus == BeatmapStatusWeb.Unknown ? "" : parsedStatus.ToString("D");
 
         var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session, beatmapStatus, mode, query, new Pagination(page - 1, 100), ct);
 

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 
-namespace Sunrise.Shared.Database.Models;
+namespace Sunrise.Shared.Database.Models.Beatmap;
 
 [Table("custom_beatmap_status")]
 [Index(nameof(BeatmapHash))]
@@ -18,5 +18,5 @@ public class CustomBeatmapStatus
     public User UpdatedByUser { get; set; }
 
     public required int UpdatedByUserId { get; set; }
-    public required BeatmapStatus Status { get; set; }
+    public required BeatmapStatusWeb Status { get; set; }
 }

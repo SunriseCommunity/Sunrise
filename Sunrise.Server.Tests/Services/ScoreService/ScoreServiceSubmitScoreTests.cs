@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -94,9 +94,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
-        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
-            Status = BeatmapStatus.Ranked,
+            Status = BeatmapStatusWeb.Ranked,
             BeatmapHash = beatmap.Checksum,
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = session.UserId
@@ -150,9 +150,9 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
-        await Database.CustomBeatmapStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
-            Status = BeatmapStatus.Pending,
+            Status = BeatmapStatusWeb.Pending,
             BeatmapHash = beatmap.Checksum,
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = session.UserId

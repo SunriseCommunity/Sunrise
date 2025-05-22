@@ -20,6 +20,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Database.Services;
+using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums.Users;
@@ -212,6 +213,8 @@ public static class Bootstrap
 
         builder.Services.AddScoped<UserRelationshipService>();
 
+        builder.Services.AddScoped<UserInventoryItemService>();
+
         builder.Services.AddScoped<UserModerationService>();
         builder.Services.AddScoped<UserMedalsService>();
         builder.Services.AddScoped<UserFavouritesService>();
@@ -219,10 +222,12 @@ public static class Bootstrap
 
         builder.Services.AddScoped<UserGradesService>();
 
-        builder.Services.AddScoped<CustomBeatmapStatusRepository>();
+        builder.Services.AddScoped<BeatmapHypeService>();
+        builder.Services.AddScoped<CustomBeatmapStatusService>();
 
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
+        builder.Services.AddScoped<BeatmapEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
         builder.Services.AddScoped<ScoreFileService>();

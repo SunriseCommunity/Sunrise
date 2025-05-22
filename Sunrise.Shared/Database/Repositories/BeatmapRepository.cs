@@ -1,3 +1,7 @@
+using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
@@ -5,9 +9,13 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusRepository customBeatmapStatusRepository)
+public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusService customBeatmapStatusService, BeatmapHypeService beatmapHypeService)
 {
+
     private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
+    private readonly SemaphoreSlim _dbSemaphore = new(1);
+    public CustomBeatmapStatusService CustomStatuses { get; } = customBeatmapStatusService;
+    public BeatmapHypeService Hypes { get; } = beatmapHypeService;
 
     public async Task<BeatmapSet?> GetCachedBeatmapSet(int? beatmapSetId = null, string? beatmapHash = null, int? beatmapId = null)
     {
@@ -59,9 +67,23 @@ public class BeatmapRepository(RedisRepository redis, CustomBeatmapStatusReposit
 
         if (beatmapSet == null) return null;
 
-        var customStatuses = await customBeatmapStatusRepository.GetCustomBeatmapSetStatuses(beatmapSet.Id, ct: ct);
+        try
+        {
+            await _dbSemaphore.WaitAsync(ct);
 
-        beatmapSet.UpdateBeatmapRanking(customStatuses);
+            var customStatuses = await CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
+                new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().IncludeBeatmapNominator()
+                },
+                ct);
+
+            beatmapSet.UpdateBeatmapRanking(customStatuses);
+        }
+        finally
+        {
+            _dbSemaphore.Release();
+        }
 
         return beatmapSet;
     }

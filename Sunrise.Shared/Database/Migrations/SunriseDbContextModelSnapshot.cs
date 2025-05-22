@@ -19,7 +19,34 @@ namespace Sunrise.Shared.Database.Migrations
                 .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("Sunrise.Shared.Database.Models.CustomBeatmapStatus", b =>
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.BeatmapHype", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BeatmapSetId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Hypes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("BeatmapSetId", "Hypes");
+
+                    b.HasIndex("BeatmapSetId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("beatmap_hype");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.CustomBeatmapStatus", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -47,6 +74,36 @@ namespace Sunrise.Shared.Database.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("custom_beatmap_status");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventBeatmap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("BeatmapSetId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ExecutorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("JsonData")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("Time")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BeatmapSetId");
+
+                    b.HasIndex("ExecutorId");
+
+                    b.ToTable("event_beatmap");
                 });
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventUser", b =>
@@ -436,6 +493,29 @@ namespace Sunrise.Shared.Database.Migrations
                     b.ToTable("user_grades");
                 });
 
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserInventoryItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ItemType")
+                        .IsUnique();
+
+                    b.ToTable("user_inventory_item");
+                });
+
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserMedals", b =>
                 {
                     b.Property<int>("Id")
@@ -621,7 +701,18 @@ namespace Sunrise.Shared.Database.Migrations
                     b.ToTable("user_stats_snapshot");
                 });
 
-            modelBuilder.Entity("Sunrise.Shared.Database.Models.CustomBeatmapStatus", b =>
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.BeatmapHype", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.CustomBeatmapStatus", b =>
                 {
                     b.HasOne("Sunrise.Shared.Database.Models.Users.User", "UpdatedByUser")
                         .WithMany()
@@ -630,6 +721,17 @@ namespace Sunrise.Shared.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("UpdatedByUser");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventBeatmap", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "Executor")
+                        .WithMany()
+                        .HasForeignKey("ExecutorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Executor");
                 });
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventUser", b =>
@@ -719,6 +821,17 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserInventoryItem", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
+                        .WithMany("Inventory")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.UserMedals", b =>
                 {
                     b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
@@ -784,6 +897,8 @@ namespace Sunrise.Shared.Database.Migrations
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.User", b =>
                 {
+                    b.Navigation("Inventory");
+
                     b.Navigation("UserFiles");
 
                     b.Navigation("UserInitiatedRelationships");

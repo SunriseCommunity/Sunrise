@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils.Converters;
@@ -54,7 +55,7 @@ public class BeatmapSet
 
     public BeatmapStatus Status => StatusString.StringToBeatmapStatus();
 
-    public BeatmapStatusSearch StatusGeneric => StatusString.StringToBeatmapStatusSearch();
+    public BeatmapStatusWeb StatusGeneric => StatusString.StringToBeatmapStatusSearch();
 
     [JsonPropertyName("track_id")]
     public int? TrackId { get; set; }
@@ -122,6 +123,9 @@ public class BeatmapSet
 
     [JsonPropertyName("user")]
     public CompactUser? User { get; set; }
+
+    public User? BeatmapNominatorUser { get; set; }
+    public bool CanBeHyped => BeatmapNominatorUser == null && !IsScoreable;
 }
 
 public class Covers

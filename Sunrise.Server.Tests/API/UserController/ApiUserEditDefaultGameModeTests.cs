@@ -14,7 +14,7 @@ namespace Sunrise.Server.Tests.API.UserController;
 public class ApiUserEditDefaultGameModeTests : ApiTest
 {
     private readonly MockService _mocker = new();
-    
+
     public static IEnumerable<object[]> GetGameModes()
     {
         return Enum.GetValues(typeof(GameMode)).Cast<GameMode>().Select(mode => new object[]
@@ -127,8 +127,6 @@ public class ApiUserEditDefaultGameModeTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-
-        var newDescription = _mocker.GetRandomString();
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/default-gamemode",

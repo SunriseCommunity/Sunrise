@@ -1,7 +1,11 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
+using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -27,6 +31,51 @@ public class ApiBeatmapSetRedisTests() : ApiTest(true)
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+    
+    [Fact]
+    public async Task TestGetBeatmapSetWithCustomBeatmapStatus()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Id = 1;
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+        
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var addCustomBeatmapStatusResult = await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus()
+        {
+            Status = BeatmapStatusWeb.Loved,
+            BeatmapHash = beatmapSet.Beatmaps.First().Checksum ?? throw new InvalidOperationException(),
+            BeatmapSetId = beatmapSet.Id,
+            UpdatedByUserId = user.Id,
+        });
+        
+        if (addCustomBeatmapStatusResult.IsFailure)
+            throw new Exception(addCustomBeatmapStatusResult.Error);
+
+        // Act
+        var response = await client.GetAsync("beatmapset/1");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        
+        var beatmapSetResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetResponse>();
+        Assert.NotNull(beatmapSetResponse);
+        
+        Assert.Equal(beatmapSet.Id, beatmapSetResponse.Id);
+        Assert.Equal(BeatmapStatusWeb.Loved, beatmapSetResponse.Status);
+        
+        Assert.Equal(user.Id, beatmapSetResponse.BeatmapNominatorUser?.Id);
+        
+        Assert.False(beatmapSetResponse.CanBeHyped);
     }
 }
 
