@@ -25,13 +25,13 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        if (args[1].Length is < 3 or > 256)
+        var restrictionReason = string.Join(" ", args[1..]);
+
+        if (restrictionReason.Length is < 3 or > 256)
         {
             ChatCommandRepository.SendMessage(session, "Reason must be between 3 and 256 characters.");
             return;
         }
-
-        var reason = string.Join(" ", args[1..]);
 
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -50,7 +50,7 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        await database.Users.Moderation.RestrictPlayer(user.Id, session.UserId, reason, TimeSpan.FromDays(365 * 10));
+        await database.Users.Moderation.RestrictPlayer(user.Id, session.UserId, restrictionReason, TimeSpan.FromDays(365 * 10));
 
         var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
 
