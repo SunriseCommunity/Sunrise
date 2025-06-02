@@ -6,7 +6,7 @@ namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_stats")]
 [Index(nameof(UserId))]
-[Index(nameof(UserId), nameof(GameMode))]
+[Index(nameof(UserId), nameof(GameMode), IsUnique = true)]
 public class UserStats
 {
     public UserStats()
