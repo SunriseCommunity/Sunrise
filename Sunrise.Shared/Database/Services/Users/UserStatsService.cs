@@ -26,12 +26,12 @@ public class UserStatsService(
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
+            dbContext.UserStats.Add(stats);
+            await dbContext.SaveChangesAsync();
+            
             var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
             if (addOrUpdateUserRanksResult.IsFailure)
                 throw new ApplicationException(addOrUpdateUserRanksResult.Error);
-
-            dbContext.UserStats.Add(stats);
-            await dbContext.SaveChangesAsync();
         });
     }
 

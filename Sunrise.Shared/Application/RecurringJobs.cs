@@ -92,7 +92,7 @@ public class RecurringJobs
         }
 
     }
-    
+
     public static async Task RefreshUsersHypes(CancellationToken ct)
     {
         using var scope = ServicesProviderHolder.CreateScope();
@@ -111,7 +111,7 @@ public class RecurringJobs
             foreach (var user in users.Where(user =>
                      {
                          var userHypes = user.Inventory.FirstOrDefault(x => x.ItemType == ItemType.Hype);
-                         
+
                          return userHypes == null || userHypes.Quantity < Configuration.UserHypesWeekly;
                      }))
             {
@@ -141,6 +141,9 @@ public class RecurringJobs
             if (!Directory.Exists(backupPath)) Directory.CreateDirectory(backupPath);
 
             var files = Directory.GetFiles(backupPath);
+
+            if (Configuration.MaxDailyBackupCount == 0)
+                return;
 
             if (files.Length >= Configuration.MaxDailyBackupCount)
             {
