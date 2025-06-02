@@ -5,7 +5,7 @@
 namespace Sunrise.Shared.Database.Migrations
 {
     /// <inheritdoc />
-    public partial class MakeUserStatsUnique : Migration
+    public partial class MakeUserStatsIndexUnique : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

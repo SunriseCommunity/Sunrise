@@ -11,8 +11,8 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    [Migration("20250602140641_MakeUserStatsUnique")]
-    partial class MakeUserStatsUnique
+    [Migration("20250602141359_MakeUserStatsIndexUnique")]
+    partial class MakeUserStatsIndexUnique
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
