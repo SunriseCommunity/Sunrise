@@ -18,7 +18,6 @@ public class SpectateStartHandler : IPacketHandler
         var targetSession = sessions.GetSession(userId: target.Value);
 
         targetSession?.AddSpectator(session);
-        session.Spectating = targetSession;
 
         var chatChannels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
         chatChannels.JoinChannel($"#spectator_{targetSession?.UserId}", session, true);

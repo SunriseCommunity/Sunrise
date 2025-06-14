@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +19,7 @@ public class Session : BaseSession
     private readonly PacketHelper _helper;
     public readonly UserAttributes Attributes;
 
-    public readonly List<Session> Spectators = [];
+    public readonly ConcurrentDictionary<int, Session> Spectators = [];
 
     public readonly string Token;
 
@@ -35,7 +36,7 @@ public class Session : BaseSession
 
     public MultiplayerMatch? Match { get; set; } = null;
 
-    public Session? Spectating { get; set; } = null;
+    public Session? Spectating { get; set; }
 
     public void SendLoginResponse(LoginResponse response)
     {
@@ -193,26 +194,35 @@ public class Session : BaseSession
 
     public void AddSpectator(Session session)
     {
-        foreach (var spectator in Spectators)
+        session.Spectating?.RemoveSpectator(session);
+
+        foreach (var (_, spectator) in Spectators)
         {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, session.UserId);
+            session.WritePacket(PacketType.ServerSpectateOtherSpectatorJoined, spectator.UserId);
         }
 
-        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.UserId);
+        // TODO: Add own session in spectator chat
 
-        Spectators.Add(session);
+        _helper.WritePacket(PacketType.ServerSpectateSpectatorJoined, session.UserId);
+        session.Spectating = this;
+
+        Spectators.TryAdd(session.UserId, session);
     }
 
     public void RemoveSpectator(Session session)
     {
-        foreach (var spectator in Spectators)
+        foreach (var (_, spectator) in Spectators)
         {
             spectator.WritePacket(PacketType.ServerSpectateOtherSpectatorLeft, session.UserId);
         }
 
         _helper.WritePacket(PacketType.ServerSpectateSpectatorLeft, session.UserId);
+        session.Spectating = null;
 
-        Spectators.Remove(session);
+        // TODO: Remove own session from spectator chat if no spectators left
+
+        Spectators.TryRemove(session.UserId, out _);
     }
 
     private User? GetSessionUser()

@@ -9,7 +9,7 @@ public class SpectateDataHandler : IPacketHandler
 {
     public Task Handle(BanchoPacket packet, Session session)
     {
-        foreach (var spectator in session.Spectators)
+        foreach (var (_, spectator) in session.Spectators)
         {
             spectator.WritePacket(PacketType.ServerSpectateData, packet.Data);
         }
