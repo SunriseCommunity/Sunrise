@@ -72,7 +72,7 @@ public sealed class DatabaseService(
         }
         catch (ApplicationException ex)
         {
-            return Result.Failure(ex.Message);
+            return Result.Failure($"{ex.Message}\n{ex.InnerException?.Message}");
         }
         catch (Exception ex)
         {
@@ -81,7 +81,7 @@ public sealed class DatabaseService(
 
             logger.LogWarning(ex, "Failed to process db transaction");
 
-            return Result.Failure($"{ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
+            return Result.Failure($"{ex.Message}\n{ex.InnerException?.Message}");
         }
     }
 }

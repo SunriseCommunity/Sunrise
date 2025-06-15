@@ -14,9 +14,9 @@ public class UserAuthService(RegionService regionService, DatabaseService databa
     {
         var errors = new Dictionary<string, List<string>>
         {
-            ["username"] = [],
             ["user_email"] = [],
-            ["password"] = []
+            ["password"] = [],
+            ["username"] = []
         };
 
         if (Configuration.BannedIps.Contains(ip.ToString()))
