@@ -121,10 +121,12 @@ public class UserEventService(SunriseDbContext dbContext)
             .AnyAsync(x => x.UserId == userId && (x.EventType == UserEventType.GameLogin || x.EventType == UserEventType.WebLogin), ct);
     }
 
-    public async Task<bool> IsIpHasAnyRegisterEvents(string ip, CancellationToken ct = default)
+    public async Task<User?> IsIpHasAnyRegisteredAccounts(string ip, CancellationToken ct = default)
     {
-        return await dbContext.EventUsers
-            .AsNoTracking()
-            .AnyAsync(x => x.Ip == ip && x.EventType == UserEventType.Register, ct);
+        var userEvent = await dbContext.EventUsers
+            .AsNoTracking().Include(eventUser => eventUser.User)
+            .FirstOrDefaultAsync(x => x.Ip == ip && x.EventType == UserEventType.Register, ct);
+        
+        return userEvent?.User;
     }
 }

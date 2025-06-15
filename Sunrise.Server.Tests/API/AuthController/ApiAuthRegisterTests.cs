@@ -115,9 +115,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var isEventRegistered = await Database.Events.Users.IsIpHasAnyRegisterEvents(ip);
+        var userPrevRegistered = await Database.Events.Users.IsIpHasAnyRegisteredAccounts(ip);
 
-        Assert.True(isEventRegistered);
+        Assert.True(userPrevRegistered != null);
     }
 
     [Fact]

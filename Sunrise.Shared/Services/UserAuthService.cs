@@ -40,9 +40,9 @@ public class UserAuthService(RegionService regionService, DatabaseService databa
         var foundUserByUsername = await database.Users.GetUser(username: username);
         if (foundUserByUsername != null && foundUserByUsername.IsActive()) errors["username"].Add("User with this username already exists.");
 
-        var isIpCreatedAccountBefore = await database.Events.Users.IsIpHasAnyRegisterEvents(ip.ToString());
-        if (isIpCreatedAccountBefore && !Configuration.IsDevelopment)
-            errors["username"].Add("Please don't create multiple accounts. You have been warned.");
+        var accountCreatedFromSameIp = await database.Events.Users.IsIpHasAnyRegisteredAccounts(ip.ToString());
+        if (accountCreatedFromSameIp != null && !Configuration.IsDevelopment)
+            errors["username"].Add($"Please don't create multiple accounts. You have been warned.\nYou previously created account with name: \"{accountCreatedFromSameIp.Username}\".\nContact support if you can't for some reason use it.");
 
         if (errors.Any(x => x.Value.Count > 0))
             return (null, errors);
