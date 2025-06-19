@@ -171,14 +171,13 @@ public static class ChatCommandRepository
 
             var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0], out var id) ? id : 0;
 
-            Mods mods;
-            
+            var mods = Mods.None;
+
             if (action?.StartsWith(ChatBeatmapActions.IS_WATCHING) == true)
                 mods = session.Spectating?.Attributes.Status.CurrentMods ?? Mods.None;
-            else if (action?.StartsWith(ChatBeatmapActions.IS_PLAYING) == true)
+                
+            if (action?.StartsWith(ChatBeatmapActions.IS_PLAYING) == true)
                 mods = session.Attributes.Status.CurrentMods;
-            else
-                mods = Mods.None;
 
             return ("beatmap", [beatmapId.ToString(), mods.GetModsString() ?? string.Empty]);
         }
