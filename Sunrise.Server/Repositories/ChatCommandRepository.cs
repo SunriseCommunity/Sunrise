@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reflection;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
