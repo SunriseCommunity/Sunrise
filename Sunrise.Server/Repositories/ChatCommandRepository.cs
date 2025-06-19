@@ -8,6 +8,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Chat;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 
@@ -159,9 +160,9 @@ public static class ChatCommandRepository
 
         var beatmapsAction = new[]
         {
-            "is listening to",
-            "is watching",
-            "is playing"
+            ChatBeatmapActions.IS_LISTENING_TO,
+            ChatBeatmapActions.IS_WATCHING,
+            ChatBeatmapActions.IS_PLAYING
         };
 
         if (beatmapsAction.Any(x => action?.StartsWith(x) == true))
@@ -170,11 +171,15 @@ public static class ChatCommandRepository
 
             var beatmapId = int.TryParse(message.Split('/')[5].Split(' ')[0], out var id) ? id : 0;
 
-            var mods = action?.StartsWith("is watching") == true
-                ? session.Spectating?.Attributes.Status.CurrentMods
-                : Mods.None;
+            var mods = Mods.None;
 
-            return ("beatmap", [beatmapId.ToString(), mods?.GetModsString() ?? string.Empty]);
+            if (action?.StartsWith(ChatBeatmapActions.IS_WATCHING) == true)
+                mods = session.Spectating?.Attributes.Status.CurrentMods ?? Mods.None;
+                
+            if (action?.StartsWith(ChatBeatmapActions.IS_PLAYING) == true)
+                mods = session.Attributes.Status.CurrentMods;
+
+            return ("beatmap", [beatmapId.ToString(), mods.GetModsString() ?? string.Empty]);
         }
 
         return (null, null);
