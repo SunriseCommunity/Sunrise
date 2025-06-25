@@ -36,6 +36,9 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
 
         response.Headers["cho-token"] = session.Token;
 
+        if (request.Headers["X-Using-Old-Domain"] == "true")
+            return RejectLogin(response, $"You are using old domain name, please try to connect with:\n \"-devserver {Configuration.Domain}\".\nIf you have any problems with connection, contact staff at discord.");
+
         return await ProceedWithLogin(session, response);
     }
 
