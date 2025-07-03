@@ -44,11 +44,27 @@ website. The server is currently in development and is not yet ready for public 
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
 
-## Installation 📩
+## Standalone installation (Docker) 🐳
 
 1. Clone the repository
-2. Open the project in Visual Studio (or any other IDE)
-3. To set up development environment run:
+2. Open the project's folder in any CLI environment.
+3. Create the file `Sunrise.Server/appsettings.Production.json` and fill it following the `Sunrise.Server/appsettings.Production.json.example` example
+4. Set up the beatmap manager by following the instructions in
+   the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
+   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager.
+5. Start server by running:
+   ```bash
+   docker compose -f docker-compose.yml up -d
+   ```
+6. (Optional) If you want to connect to the server locally, please refer to
+   the [Local connection ⚙️](##local-connection)
+   section.
+
+## Development installation ⚒️
+
+1. Clone the repository
+2. Open the project's folder in any CLI environment.
+3. Set up development environment by running:
    ```bash
    docker compose -f docker-compose.dev.yml up -d
    ```
@@ -60,7 +76,7 @@ website. The server is currently in development and is not yet ready for public 
    the [Local connection ⚙️](##local-connection)
    section.
 
-## Local connection ⚙️
+### Local connection ⚙️
 
 #### If you want to connect to the server locally, follow these steps:
 
@@ -107,7 +123,7 @@ website. The server is currently in development and is not yet ready for public 
    certutil -addstore -f "ROOT" sunrise.local.crt
    ```
 
-6. Run the server and navigate to `https://sunrise.local/swagger/index.html` to check if the server is running.
+6. Run the server and navigate to `https://api.sunrise.local/docs` to check if the server is running.
 
 ## Dependencies 📦
 
