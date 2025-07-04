@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;

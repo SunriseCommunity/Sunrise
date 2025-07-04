@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;

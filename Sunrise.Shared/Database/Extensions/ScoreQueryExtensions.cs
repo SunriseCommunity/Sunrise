@@ -1,5 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;

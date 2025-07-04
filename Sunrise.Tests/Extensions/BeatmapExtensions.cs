@@ -1,4 +1,4 @@
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.Tests.Extensions;

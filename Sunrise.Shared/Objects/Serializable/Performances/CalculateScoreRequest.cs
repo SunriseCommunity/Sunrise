@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using osu.Shared;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Shared.Objects.Serializable.Performances;

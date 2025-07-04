@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;

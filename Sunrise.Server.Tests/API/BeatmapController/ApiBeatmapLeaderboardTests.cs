@@ -1,8 +1,7 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using osu.Shared;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;

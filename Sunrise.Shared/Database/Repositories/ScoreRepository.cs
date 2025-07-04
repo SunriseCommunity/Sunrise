@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using osu.Shared;
 using Sunrise.Shared.Database.Extensions;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
@@ -131,7 +131,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         {
             scoresGrouped = scoresGrouped.Where(s => s.Mods == EF.Constant(mods));
         }
-        
+
         if (type is LeaderboardType.GlobalIncludesMods && mods != null)
         {
             scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));

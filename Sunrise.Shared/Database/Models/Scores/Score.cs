@@ -7,7 +7,7 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Shared.Database.Models;
+namespace Sunrise.Shared.Database.Models.Scores;
 
 [Table("score")]
 [Index(nameof(UserId))]
@@ -30,6 +30,10 @@ public class Score
 
     public int UserId { get; set; }
     public int BeatmapId { get; set; }
+    
+    public ScoreHits? ScoreHits { get; set; }
+    public ScoreMetadata? ScoreMetadata { get; set; }
+    
     public string ScoreHash { get; set; }
     public string BeatmapHash { get; set; }
 

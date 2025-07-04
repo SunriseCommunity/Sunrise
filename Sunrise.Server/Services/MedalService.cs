@@ -2,6 +2,7 @@ using System.Linq.Dynamic.Core;
 using osu.Shared;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Seeders;
 using Sunrise.Shared.Enums;

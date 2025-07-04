@@ -1,5 +1,5 @@
 using osu.Shared;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 

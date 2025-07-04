@@ -1,6 +1,6 @@
 using CSharpFunctionalExtensions;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
