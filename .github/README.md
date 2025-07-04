@@ -51,7 +51,8 @@ website. The server is currently in development and is not yet ready for public 
 3. Create the file `Sunrise.Server/appsettings.Production.json` and fill it following the `Sunrise.Server/appsettings.Production.json.example` example
 4. Set up the beatmap manager by following the instructions in
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
-   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager.
+   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager. 
+    - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
 5. Start server by running:
    ```bash
    docker compose -f docker-compose.yml up -d
@@ -59,6 +60,9 @@ website. The server is currently in development and is not yet ready for public 
 6. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
    section.
+
+Your final docker setup should look like this:
+![image (3)](https://github.com/user-attachments/assets/998318b5-2112-4927-a040-0a8d7cc70b8b)
 
 ## Development installation ⚒️
 
@@ -71,6 +75,7 @@ website. The server is currently in development and is not yet ready for public 
 4. Set up the beatmap manager by following the instructions in
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
    you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.{Your Environment}.json` file to the address of the beatmap manager.
+    - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
 5. Run the project
 6. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
