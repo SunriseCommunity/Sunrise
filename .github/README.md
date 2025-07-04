@@ -61,8 +61,13 @@ website. The server is currently in development and is not yet ready for public 
    the [Local connection ⚙️](##local-connection)
    section.
 
-Your final docker setup should look like this:
-![image (3)](https://github.com/user-attachments/assets/998318b5-2112-4927-a040-0a8d7cc70b8b)
+> [!TIP] 
+> Your final docker setup should look like this:
+> 
+> ![image (3)](https://github.com/user-attachments/assets/998318b5-2112-4927-a040-0a8d7cc70b8b)
+
+
+
 
 ## Development installation ⚒️
 
