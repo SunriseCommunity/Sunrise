@@ -1,50 +1,89 @@
-﻿using System.Net.WebSockets;
+﻿using System.Net;
+using System.Net.WebSockets;
 using Sunrise.API.Objects;
 
 namespace Sunrise.API.Managers;
 
 public class WebSocketManager
 {
-    private readonly List<WebSocketClient> _clientConnections = [];
+    private const int CONCURRENT_CONNECTIONS_LIMIT = 4;
     
-    public async Task HandleConnection(WebSocket webSocket, CancellationToken cancellationToken)
+    private readonly Dictionary<IPAddress, HashSet<WebSocketClient>> _clientConnections = [];
+
+    public async Task HandleConnection(IPAddress ip, WebSocket webSocket, CancellationToken cancellationToken)
     {
         var connection = new WebSocketClient(webSocket);
-        AddClientConnection(connection);
+        var connectionAccepted = false;
+
+        lock (_clientConnections)
+        {
+            if (!_clientConnections.TryGetValue(ip, out var connections)
+                || connections.Count < CONCURRENT_CONNECTIONS_LIMIT)
+            {
+                connectionAccepted = true;
+            }
+        }
+
+        if (!connectionAccepted)
+        {
+            await webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "WebSocket connections limit reached", CancellationToken.None);
+            return;
+        }
+
+        AddClientConnection(ip, connection);
+
         try
         {
             await connection.ProcessWebSocketMessagesAsync(cancellationToken);
         }
         finally
         {
-            RemoveClientConnection(connection);
+            RemoveClientConnection(ip, connection);
         }
     }
 
     public void BroadcastJsonAsync(WebSocketMessage message)
     {
+        List<WebSocketClient> clients;
+
         lock (_clientConnections)
         {
-            if (_clientConnections.Count > 0)
-            {
-                Parallel.ForEach(_clientConnections, conn => conn.PushMessage(message));
-            }
+            clients = _clientConnections.Values.SelectMany(set => set).ToList();
         }
-    }
-    
-    private void AddClientConnection(WebSocketClient connection)
-    {
-        lock (_clientConnections)
+
+        if (clients.Count > 0)
         {
-            _clientConnections.Add(connection);
+            Parallel.ForEach(clients, client => { client.PushMessage(message); });
         }
     }
 
-    private void RemoveClientConnection(WebSocketClient connection)
+    private void AddClientConnection(IPAddress ip, WebSocketClient connection)
     {
         lock (_clientConnections)
         {
-            _clientConnections.Remove(connection);
+            if (!_clientConnections.TryGetValue(ip, out var connections))
+            {
+                connections = [];
+                _clientConnections[ip] = connections;
+            }
+
+            connections.Add(connection);
+        }
+    }
+
+    private void RemoveClientConnection(IPAddress ip, WebSocketClient connection)
+    {
+        lock (_clientConnections)
+        {
+            if (!_clientConnections.TryGetValue(ip, out var connections))
+                return;
+
+            connections.Remove(connection);
+
+            if (connections.Count == 0)
+            {
+                _clientConnections.Remove(ip);
+            }
         }
     }
 }

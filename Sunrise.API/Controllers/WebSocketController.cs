@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Services;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.API.Controllers;
@@ -15,7 +16,8 @@ public class WebSocketController(WebSocketManager webSocketManager) : Controller
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await webSocketManager.HandleConnection(webSocket, cancellationToken);
+            var userIp = RegionService.GetUserIpAddress(Request);
+            await webSocketManager.HandleConnection(userIp, webSocket, cancellationToken);
         }
         else
         {
