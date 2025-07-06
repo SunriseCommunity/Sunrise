@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.OpenApi.Models;
 using Prometheus;
 using Scalar.AspNetCore;
 using StackExchange.Redis;
@@ -28,6 +29,7 @@ using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Shared.Services;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using AssetService = Sunrise.API.Services.AssetService;
 using AuthService = Sunrise.API.Services.AuthService;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
@@ -62,7 +64,9 @@ public static class Bootstrap
             c.EnableAnnotations();
             c.SupportNonNullableReferenceTypes();
             c.NonNullableReferenceTypesAsRequired();
-
+            
+            c.DocumentFilter<GenerateAdditionalOpenApiSchema>();
+            
             c.AddJwtAuth();
         });
 
@@ -349,5 +353,15 @@ public static class Bootstrap
             : base(serviceProvider.GetRequiredService<T>)
         {
         }
+    }
+}
+
+public class GenerateAdditionalOpenApiSchema : IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        var schema = context.SchemaGenerator.GenerateSchema(typeof(CustomBeatmapStatusChangeResponse), context.SchemaRepository);
+        
+        swaggerDoc.Components.Schemas.TryAdd(nameof(CustomBeatmapStatusChangeResponse), schema);
     }
 }

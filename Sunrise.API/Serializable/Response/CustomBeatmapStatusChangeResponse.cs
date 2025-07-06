@@ -7,8 +7,6 @@ public class CustomBeatmapStatusChangeResponse
 {
     public CustomBeatmapStatusChangeResponse(BeatmapResponse beatmap, BeatmapStatusWeb newStatus, BeatmapStatusWeb oldStatus, UserResponse batUser)
     {
-
-
         Beatmap = beatmap;
         User = batUser;
         NewStatus = newStatus;
