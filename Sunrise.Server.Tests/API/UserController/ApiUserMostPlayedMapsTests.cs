@@ -1,7 +1,6 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
