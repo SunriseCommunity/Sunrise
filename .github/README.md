@@ -123,7 +123,7 @@ website. The server is currently in development and is not yet ready for public 
 4. Convert the certificate to the PKCS12 format (for ASP.Net) by running the following command in the terminal:
 
    ```bash
-   openssl pkcs12 -export -out sunrise.local.pfx -inkey sunrise.local.key -in sunrise.local.crt -password pass:password
+   openssl pkcs12 -export -out sunrise.pfx -inkey sunrise.local.key -in sunrise.local.crt -password pass:password
    ```
 
 5. Import the certificate to the Trusted Root Certification Authorities store by running the following command in the
