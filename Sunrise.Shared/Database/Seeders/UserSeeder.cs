@@ -148,7 +148,7 @@ public static class UserSeeder
         {
             Username = Configuration.BotUsername,
             Description = "Let your smile be the sunshine that brightens the world around you.",
-            Country = (short)CountryCode.AQ,
+            Country = CountryCode.AQ,
             Privilege = UserPrivilege.ServerBot,
             Passhash = "12345678",
             Email = "bot@mail.com"

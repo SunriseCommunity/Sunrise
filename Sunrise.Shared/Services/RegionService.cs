@@ -56,10 +56,8 @@ public class RegionService(ILogger<RegionService> logger, RedisRepository redisR
         return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
     }
 
-    public static short GetCountryCode(string cc)
+    public static CountryCode GetCountryCode(string cc)
     {
-        if (Enum.TryParse(typeof(CountryCode), cc, true, out var result)) return (short)result;
-
-        return 0;
+        return Enum.TryParse(cc, true, out CountryCode result) ? result : default;
     }
 }

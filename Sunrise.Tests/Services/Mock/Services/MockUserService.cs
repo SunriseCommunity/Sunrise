@@ -88,11 +88,11 @@ public class MockUserService(MockService service)
         };
     }
 
-    public short GetRandomCountryCode()
+    public CountryCode GetRandomCountryCode()
     {
         var random = new Random();
         var values = Enum.GetValues(typeof(CountryCode));
-        return (short)values.GetValue(random.Next(values.Length))!;
+        return (CountryCode)values.GetValue(random.Next(values.Length))!;
     }
     
     public UserPlaystyle GetRandomUserPlaystyle()

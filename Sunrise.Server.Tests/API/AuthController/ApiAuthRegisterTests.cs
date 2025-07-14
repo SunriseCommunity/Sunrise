@@ -148,7 +148,7 @@ public class ApiAuthRegisterTests : ApiTest
         var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
-        Assert.Equal((short)CountryCode.GR, user.Country);
+        Assert.Equal(CountryCode.GR, user.Country);
     }
 
     [Fact]
