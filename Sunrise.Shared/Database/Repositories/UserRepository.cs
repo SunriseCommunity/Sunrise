@@ -25,7 +25,8 @@ public class UserRepository(
     UserFavouritesService userFavouritesService,
     UserFileService userFileService,
     UserGradesService userGradesService,
-    UserInventoryItemService userInventoryItemService)
+    UserInventoryItemService userInventoryItemService,
+    UserStatsRanksService userStatsRanksService)
 {
     private readonly ILogger _logger = logger;
 
@@ -38,6 +39,7 @@ public class UserRepository(
     public UserGradesService Grades { get; } = userGradesService;
     public UserMetadataService Metadata { get; } = userMetadataService;
     public UserInventoryItemService Inventory { get; } = userInventoryItemService;
+    public UserStatsRanksService Ranks { get; } = userStatsRanksService;
 
     public async Task<Result> AddUser(User user)
     {
@@ -196,6 +198,43 @@ public class UserRepository(
             var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
             if (result.IsFailure)
                 throw new Exception(result.Error);
+        });
+    }
+
+    public async Task<Result> UpdateUserCountry(User user, CountryCode oldCountry, CountryCode newCountry,
+        int? updatedById = null, string? userIp = null)
+    {
+        return await databaseService.Value.CommitAsTransactionAsync(async () =>
+        {
+            user.Country = newCountry;
+
+            var updateUserResult = await UpdateUser(user);
+            if (updateUserResult.IsFailure)
+                throw new Exception(updateUserResult.Error);
+
+            var result =
+                await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id, oldCountry, newCountry,
+                    userIp ?? "", updatedById);
+            if (result.IsFailure)
+                throw new Exception(result.Error);
+
+            await RecalculateCountryRank(user);
+        });
+    }
+
+    private async Task<Result> RecalculateCountryRank(User user)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            await dbContext.Entry(user).Collection(u => u.UserStats).LoadAsync();
+            
+            foreach (var stats in user.UserStats)
+            {
+                stats.BestCountryRank = Int64.MaxValue;
+                await Ranks.AddOrUpdateUserRanks(stats, user);
+            }
+
+            await dbContext.SaveChangesAsync();
         });
     }
 

@@ -19,6 +19,7 @@ public static class RequestType
     // API controller
     public const string PasswordChange = "password/change";
     public const string UsernameChange = "username/change";
+    public const string CountryChange = "country/change";
 
     // Bancho controller
     public const string BanchoProcess = "/";
