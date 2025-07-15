@@ -1,21 +1,20 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using FluentAssertions;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Services;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
-
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserCountryChangeTest : ApiTest
+public class ApiUserCountryChangeTests : ApiTest
 {
     private readonly MockService _mocker = new();
 
@@ -27,7 +26,7 @@ public class ApiUserCountryChangeTest : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("user/country/change",
-            new CountryChangeRequest()
+            new CountryChangeRequest
             {
                 NewCountry = _mocker.User.GetRandomCountryCode()
             });
@@ -53,7 +52,7 @@ public class ApiUserCountryChangeTest : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("user/country/change",
-            new CountryChangeRequest()
+            new CountryChangeRequest
             {
                 NewCountry = _mocker.User.GetRandomCountryCode()
             });
@@ -87,13 +86,10 @@ public class ApiUserCountryChangeTest : ApiTest
 
     [Theory]
     [InlineData("1245")]
-    [InlineData("12388")]
+    [InlineData("-1")]
     [InlineData("01")]
-    [InlineData("433")]
-    [InlineData("253")]
     [InlineData("peppyland")]
-    [InlineData("adada 445 11 3")]
-    [InlineData("country code")]
+    [InlineData("愛")]
     public async Task TestCountryChangeWithInvalidCountry(string newCountry)
     {
         // Arrange
@@ -107,7 +103,7 @@ public class ApiUserCountryChangeTest : ApiTest
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await client.PostAsync($"user/country/change", content);
+        var response = await client.PostAsync("user/country/change", content);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -133,7 +129,7 @@ public class ApiUserCountryChangeTest : ApiTest
 
         // Act
         var response = await client.PostAsJsonAsync("user/country/change",
-            new CountryChangeRequest()
+            new CountryChangeRequest
             {
                 NewCountry = newCountry
             });
@@ -148,7 +144,7 @@ public class ApiUserCountryChangeTest : ApiTest
     }
 
     [Fact]
-    public async Task TestChangeCountryTooSoon()
+    public async Task TestChangeCountryTooFrequently()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -159,15 +155,13 @@ public class ApiUserCountryChangeTest : ApiTest
 
         var newCountry = _mocker.User.GetRandomCountryCode();
 
-        // Act
-        await client.PostAsJsonAsync("user/country/change",
-            new CountryChangeRequest()
-            {
-                NewCountry = newCountry
-            });
+        var updateCountryResult = await Database.Users.UpdateUserCountry(user, user.Country, newCountry);
+        if (updateCountryResult.IsFailure)
+            throw new Exception(updateCountryResult.Error);
 
+        // Act
         var response = await client.PostAsJsonAsync("user/country/change",
-            new CountryChangeRequest()
+            new CountryChangeRequest
             {
                 NewCountry = newCountry
             });
@@ -180,7 +174,7 @@ public class ApiUserCountryChangeTest : ApiTest
     }
 }
 
-public class CountryRankChangeAfterCountryChange() : ApiTest(true)
+public class ApiUserCountryChangeRedisTests() : ApiTest(true)
 {
     private readonly MockService _mocker = new();
 
@@ -190,61 +184,99 @@ public class CountryRankChangeAfterCountryChange() : ApiTest(true)
         // Arrange
         var client = App.CreateClient().UseClient("api");
 
-        var firstUser = _mocker.User.GetRandomUser();
-        var secondUser = _mocker.User.GetRandomUser();
-        var thirdUser = _mocker.User.GetRandomUser();
+        var firstPlaceRussiaUser = _mocker.User.GetRandomUser();
+        firstPlaceRussiaUser.Country = CountryCode.RU;
 
-        firstUser.Country = CountryCode.RU;
-        secondUser.Country = CountryCode.US;
-        thirdUser.Country = CountryCode.RU;
+        var secondPlaceRussiaUser = _mocker.User.GetRandomUser();
+        secondPlaceRussiaUser.Country = CountryCode.RU;
 
-        firstUser = await CreateTestUser(firstUser);
-        secondUser = await CreateTestUser(secondUser);
-        thirdUser = await CreateTestUser(thirdUser);
+        var firstPlaceAmericaThirdPlaceRussiaUserSelf = _mocker.User.GetRandomUser();
+        firstPlaceAmericaThirdPlaceRussiaUserSelf.Country = CountryCode.US;
 
-        var tokens = await GetUserAuthTokens(thirdUser);
+        var mockUserScoresData = new Dictionary<User, int>
+        {
+            {
+                firstPlaceRussiaUser, 3_000
+            },
+            {
+                secondPlaceRussiaUser, 2_000
+            },
+            {
+                firstPlaceAmericaThirdPlaceRussiaUserSelf, 1_000
+            }
+        };
+
+        foreach (var (user, pp) in mockUserScoresData)
+        {
+            await CreateTestUser(user);
+            await Database.DbContext.Entry(user).Collection(s => s.UserStats).LoadAsync();
+
+            var newScore = _mocker.Score.GetBestScoreableRandomScore();
+            newScore.GameMode = GameMode.Standard;
+            newScore.PerformancePoints = pp;
+            newScore.EnrichWithUserData(user);
+            await CreateTestScore(newScore);
+
+            var gamemodeUserStats = user.UserStats.First(s => s.GameMode == GameMode.Standard);
+
+            await gamemodeUserStats.UpdateWithScore(newScore, null, 0);
+            var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
+            if (updateUserStatsResult.IsFailure)
+                throw new Exception(updateUserStatsResult.Error);
+        }
+
+        var (firstPlaceRussiaUserGlobalRankBeforeUpdate, firstPlaceRussiaUserCountryRankBeforeUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(firstPlaceRussiaUser, GameMode.Standard);
+        var (secondPlaceRussiaUserGlobalRankBeforeUpdate, secondPlaceRussiaUserCountryRankBeforeUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(secondPlaceRussiaUser, GameMode.Standard);
+        var (firstPlaceAmericaThirdPlaceRussiaUserGlobalRankBeforeUpdate, firstPlaceAmericaThirdPlaceRussiaUserCountryRankBeforeUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(firstPlaceAmericaThirdPlaceRussiaUserSelf, GameMode.Standard);
+
+        var russiaCountryRanksCountBeforeUpdate = await Database.Users.Stats.Ranks.GetCountryRanksCount(GameMode.Standard, CountryCode.RU);
+        var americaCountryRanksCountBeforeUpdate = await Database.Users.Stats.Ranks.GetCountryRanksCount(GameMode.Standard, CountryCode.US);
+
+        var tokens = await GetUserAuthTokens(firstPlaceAmericaThirdPlaceRussiaUserSelf);
         client.UseUserAuthToken(tokens);
 
-
-        var firstUserScore = await CreateTestScore(firstUser);
-        firstUserScore.PerformancePoints = 1234;
-
-        var secondUserScore = await CreateTestScore(secondUser);
-        secondUserScore.PerformancePoints = 1200;
-
-        var thirdUserScore = await CreateTestScore(thirdUser);
-        thirdUserScore.PerformancePoints = 1210;
-
-        await Database.DbContext.Scores.AddAsync(firstUserScore);
-        await Database.DbContext.Scores.AddAsync(secondUserScore);
-        await Database.DbContext.Scores.AddAsync(thirdUserScore);
-        await Database.DbContext.SaveChangesAsync();
-
-        await Database.Users.Stats.Ranks.SetAllUsersRanks(GameMode.Standard);
-
-        var (firstUserGlobalRankBeforeUpdate, firstUserCountryRankBeforeUpdate) =
-            await Database.Users.Stats.Ranks.GetUserRanks(firstUser, GameMode.Standard);
-        var (secondUserGlobalRankBeforeUpdate, secondUserCountryRankBeforeUpdate) =
-            await Database.Users.Stats.Ranks.GetUserRanks(secondUser, GameMode.Standard);
-        var (thirdUserGlobalRankBeforeUpdate, thirdUserCountryRankBeforeUpdate) =
-            await Database.Users.Stats.Ranks.GetUserRanks(thirdUser, GameMode.Standard);
         // Act
-        await Database.Users.UpdateUserCountry(secondUser, secondUser.Country, CountryCode.RU);
-
-        var (firstUserGlobalRank, firstUserCountryRank) =
-            await Database.Users.Stats.Ranks.GetUserRanks(firstUser, GameMode.Standard);
-        var (secondUserGlobalRank, secondUserCountryRank) =
-            await Database.Users.Stats.Ranks.GetUserRanks(secondUser, GameMode.Standard);
-        var (thirdUserGlobalRank, thirdUserCountryRank) =
-            await Database.Users.Stats.Ranks.GetUserRanks(thirdUser, GameMode.Standard);
+        var response = await client.PostAsJsonAsync("user/country/change",
+            new CountryChangeRequest
+            {
+                NewCountry = CountryCode.RU
+            });
 
         // Assert
-        Assert.Equal(1, firstUserCountryRank);
-        Assert.Equal(2, thirdUserCountryRank);
-        Assert.Equal(3, secondUserCountryRank);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        Assert.Equal(1, firstUserCountryRankBeforeUpdate);
-        Assert.Equal(1, secondUserCountryRankBeforeUpdate);
-        Assert.Equal(2, thirdUserCountryRankBeforeUpdate);
+        await Database.DbContext.Entry(firstPlaceAmericaThirdPlaceRussiaUserSelf).ReloadAsync(); // Reload country on user
+
+        // Assert
+        var (firstPlaceRussiaUserGlobalRankAfterUpdate, firstPlaceRussiaUserCountryRankAfterUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(firstPlaceRussiaUser, GameMode.Standard);
+        var (secondPlaceRussiaUserGlobalRankAfterUpdate, secondPlaceRussiaUserCountryRankAfterUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(secondPlaceRussiaUser, GameMode.Standard);
+        var (firstPlaceAmericaThirdPlaceRussiaUserGlobalRankAfterUpdate, firstPlaceAmericaThirdPlaceRussiaUserCountryRankAfterUpdate) =
+            await Database.Users.Stats.Ranks.GetUserRanks(firstPlaceAmericaThirdPlaceRussiaUserSelf, GameMode.Standard);
+
+        Assert.Equal(firstPlaceRussiaUserGlobalRankBeforeUpdate, firstPlaceRussiaUserGlobalRankAfterUpdate);
+        Assert.Equal(secondPlaceRussiaUserGlobalRankBeforeUpdate, secondPlaceRussiaUserGlobalRankAfterUpdate);
+        Assert.Equal(firstPlaceAmericaThirdPlaceRussiaUserGlobalRankBeforeUpdate, firstPlaceAmericaThirdPlaceRussiaUserGlobalRankAfterUpdate);
+
+        Assert.Equal(1, firstPlaceRussiaUserCountryRankBeforeUpdate);
+        Assert.Equal(2, secondPlaceRussiaUserCountryRankBeforeUpdate);
+        Assert.Equal(1, firstPlaceAmericaThirdPlaceRussiaUserCountryRankBeforeUpdate);
+
+        Assert.Equal(1, firstPlaceRussiaUserCountryRankAfterUpdate);
+        Assert.Equal(2, secondPlaceRussiaUserCountryRankAfterUpdate);
+        Assert.Equal(3, firstPlaceAmericaThirdPlaceRussiaUserCountryRankAfterUpdate);
+
+        var russiaCountryRanksCountAfterUpdate = await Database.Users.Stats.Ranks.GetCountryRanksCount(GameMode.Standard, CountryCode.RU);
+        var americaCountryRanksCountAfterUpdate = await Database.Users.Stats.Ranks.GetCountryRanksCount(GameMode.Standard, CountryCode.US);
+
+        Assert.Equal(2, russiaCountryRanksCountBeforeUpdate);
+        Assert.Equal(1, americaCountryRanksCountBeforeUpdate);
+
+        Assert.Equal(3, russiaCountryRanksCountAfterUpdate);
+        Assert.Equal(0, americaCountryRanksCountAfterUpdate);
     }
 }
