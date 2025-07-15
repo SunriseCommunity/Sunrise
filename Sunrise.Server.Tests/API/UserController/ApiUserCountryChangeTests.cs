@@ -474,4 +474,28 @@ public class ApiUserCountryChangeTests : ApiTest
         var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("unable to change the country", errorResponse?.Error.ToLower());
     }
+    
+    [Fact]
+    public async Task TestChangeCountryToUnknownCountry()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        // Act
+        var response = await client.PostAsJsonAsync("user/country/change",
+            new CountryChangeRequest
+            {
+                NewCountry = CountryCode.XX
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("cant change country to the unknown", errorResponse?.Error.ToLower());
+    }
 }
