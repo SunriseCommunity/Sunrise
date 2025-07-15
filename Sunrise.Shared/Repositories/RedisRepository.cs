@@ -121,6 +121,11 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
         return null;
     }
 
+    public async Task<long> SortedSetLength(string key)
+    {
+        return await _sortedSetsDatabase.SortedSetLengthAsync(key);
+    }
+
     public async Task<bool> SortedSetRemove(string key, int value)
     {
         await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))

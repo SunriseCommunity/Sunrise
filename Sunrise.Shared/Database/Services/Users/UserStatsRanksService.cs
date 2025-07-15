@@ -18,7 +18,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
         var getUserRanksResult = await ResultUtil.TryExecuteAsync(async () =>
         {
             var globalRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), user.Id);
-            var countryRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, (CountryCode)user.Country), user.Id);
+            var countryRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardCountry(mode, user.Country), user.Id);
 
             await Task.WhenAll(globalRankTask, countryRankTask);
 
@@ -69,6 +69,26 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
             if (updateUserBestRanksResult.IsFailure)
                 throw new ApplicationException(updateUserBestRanksResult.Error);
         });
+    }
+
+    public async Task<Result> DeleteUserCountryRanks(UserStats stats, User user)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var (prevGlobalRank, prevCountryRank) = await GetUserRanks(user, stats.GameMode, false);
+
+            await SortedSetRemoveUserStats(stats, user);
+
+            var updateUserBestRanksResult = await UpdateUserBestRanks(stats, user, prevGlobalRank, prevCountryRank);
+            if (updateUserBestRanksResult.IsFailure)
+                throw new ApplicationException(updateUserBestRanksResult.Error);
+        });
+    }
+
+    public async Task<long> GetCountryRanksCount(GameMode gameMode, CountryCode countryCode)
+    {
+        return await databaseService.Value.Redis
+            .SortedSetLength(RedisKey.LeaderboardCountry(gameMode, countryCode));
     }
 
     public async Task<Result> SetAllUsersRanks(GameMode mode, int branchSize = 20)
@@ -137,7 +157,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                 key = RedisKey.LeaderboardGlobal(stats.GameMode);
                 break;
             case UserStatsRankType.Country:
-                key = RedisKey.LeaderboardCountry(stats.GameMode, (CountryCode)user.Country);
+                key = RedisKey.LeaderboardCountry(stats.GameMode, user.Country);
                 break;
         }
 
@@ -194,6 +214,15 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
             .SortedSetAdd(RedisKey.LeaderboardGlobal(stats.GameMode), stats.UserId, newSortingValue);
 
         await databaseService.Value.Redis
-            .SortedSetAdd(RedisKey.LeaderboardCountry(stats.GameMode, (CountryCode)user.Country), stats.UserId, newSortingValue);
+            .SortedSetAdd(RedisKey.LeaderboardCountry(stats.GameMode, user.Country), stats.UserId, newSortingValue);
+    }
+
+    private async Task SortedSetRemoveUserStats(UserStats stats, User user)
+    {
+        await databaseService.Value.Redis
+            .SortedSetRemove(RedisKey.LeaderboardGlobal(stats.GameMode), stats.UserId);
+
+        await databaseService.Value.Redis
+            .SortedSetRemove(RedisKey.LeaderboardCountry(stats.GameMode, user.Country), stats.UserId);
     }
 }

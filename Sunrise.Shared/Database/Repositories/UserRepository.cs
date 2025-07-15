@@ -206,35 +206,34 @@ public class UserRepository(
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
+            await dbContext.Entry(user).Collection(u => u.UserStats).LoadAsync();
+
+            foreach (var stats in user.UserStats)
+            {
+                await Ranks.DeleteUserCountryRanks(stats, user);
+            }
+
             user.Country = newCountry;
 
             var updateUserResult = await UpdateUser(user);
             if (updateUserResult.IsFailure)
                 throw new Exception(updateUserResult.Error);
 
-            var result =
-                await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id, oldCountry, newCountry,
-                    userIp ?? "", updatedById);
-            if (result.IsFailure)
-                throw new Exception(result.Error);
-
-            await RecalculateCountryRank(user);
-        });
-    }
-
-    private async Task<Result> RecalculateCountryRank(User user)
-    {
-        return await ResultUtil.TryExecuteAsync(async () =>
-        {
-            await dbContext.Entry(user).Collection(u => u.UserStats).LoadAsync();
-            
             foreach (var stats in user.UserStats)
             {
-                stats.BestCountryRank = Int64.MaxValue;
+                stats.BestCountryRank = long.MaxValue; // Reset user's best country rank
                 await Ranks.AddOrUpdateUserRanks(stats, user);
             }
 
-            await dbContext.SaveChangesAsync();
+            var addUserCountryChangeEventResult =
+                await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id,
+                    oldCountry,
+                    newCountry,
+                    userIp ?? "",
+                    updatedById);
+
+            if (addUserCountryChangeEventResult.IsFailure)
+                throw new Exception(addUserCountryChangeEventResult.Error);
         });
     }
 
