@@ -25,7 +25,7 @@ public class UserResponse
         Id = user.Id;
         Username = user.Username;
         Description = user.Description;
-        Country = ((CountryCode)user.Country).ToString();
+        Country = user.Country;
         RegisterDate = user.RegisterDate;
         UserStatus = session != null ? session.Attributes.Status.ToText() : "Offline";
         AvatarUrl = user.AvatarUrl;
@@ -47,7 +47,7 @@ public class UserResponse
     public string? Description { get; set; }
 
     [JsonPropertyName("country_code")]
-    public string Country { get; set; }
+    public CountryCode Country { get; set; }
 
     [JsonPropertyName("register_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
