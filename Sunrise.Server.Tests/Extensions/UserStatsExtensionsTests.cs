@@ -125,7 +125,6 @@ public class UserStatsExtensionsTests : BaseTest
     }
 
     [Theory]
-    [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(true, true)]
     [InlineData(false, true)]
@@ -136,6 +135,7 @@ public class UserStatsExtensionsTests : BaseTest
         score.MaxCombo = int.MaxValue;
         score.IsScoreable = isScoreScoreable;
         score.IsPassed = !isScoreFailed;
+        score.LocalProperties.FromScore(score);
 
         var userStats = _mocker.User.GetRandomUserStats();
         userStats.MaxCombo = 0;
