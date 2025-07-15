@@ -1,4 +1,6 @@
-﻿namespace Sunrise.Shared.Database.Extensions;
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace Sunrise.Shared.Database.Extensions;
 
 public static class DbContextExtensions
 {
@@ -19,13 +21,22 @@ public static class DbContextExtensions
         var existingEntry = dbContext.ChangeTracker.Entries<T>()
             .FirstOrDefault(e => keyProperty.PropertyInfo!.GetValue(e.Entity)?.Equals(keyValue) == true);
 
-        if (existingEntry == null)
+        if (existingEntry != null)
         {
-            dbContext.Update(entity);
+            existingEntry.CurrentValues.SetValues(entity);
         }
         else
         {
-            existingEntry.CurrentValues.SetValues(entity);
+            var dbEntity = dbContext.Set<T>().Find(keyValue);
+            if (dbEntity != null)
+            {
+                dbContext.Entry(dbEntity).CurrentValues.SetValues(entity);
+                dbContext.Entry(dbEntity).State = EntityState.Modified;
+            }
+            else
+            {
+                dbContext.Add(entity);
+            }
         }
     }
 }
