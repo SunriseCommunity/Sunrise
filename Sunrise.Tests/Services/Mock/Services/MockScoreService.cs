@@ -107,6 +107,8 @@ public class MockScoreService(MockService service)
 
         score.Normalize();
 
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+
         return score;
     }
 
