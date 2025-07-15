@@ -10,6 +10,7 @@
     "ObservatoryApiKey": "", 
     "ObservatoryUrl": "host.docker.internal:3333",
     "OnMaintenance": false,
+    "CountryChangeCooldownInDays": "90",
     "RateLimit": {
       "CallsPerWindow": 200,
       "Window": 10,

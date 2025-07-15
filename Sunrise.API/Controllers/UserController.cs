@@ -865,6 +865,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (!ModelState.IsValid)
             return BadRequest(new ErrorResponse("One or more required fields are missing or invalid entry."));
 
+        if (request.NewCountry == CountryCode.XX)
+            return BadRequest(new ErrorResponse("You cant change country to the unknown country."));
+
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
@@ -872,8 +875,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
         
-        if (lastUserCountryChange?.Time.AddDays(30) > DateTime.UtcNow)
-            return BadRequest(new ErrorResponse($"Unable to change the country. You'll be able to change your country on {lastUserCountryChange?.Time.AddDays(30)}. Please try again later."));
+        if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
+            return BadRequest(new ErrorResponse($"Unable to change the country. You'll be able to change your country on {lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)}. Please try again later."));
         
         var ip = RegionService.GetUserIpAddress(Request);
       

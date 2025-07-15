@@ -78,7 +78,10 @@ public static class Configuration
 
     public static int GeneralCallsPerWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("CallsPerWindow") ?? 100;
-
+    
+    public static int CountryChangeCooldownInDays =>
+        Config.GetSection("General").GetValue<int?>("CountryChangeCooldownInDays") ?? 90;
+    
     public static int GeneralWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
 
