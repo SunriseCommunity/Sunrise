@@ -872,6 +872,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
+        
+        if (user.Country == request.NewCountry)
+            return BadRequest(new ErrorResponse("You can't change country to the same one."));
 
         var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
         
