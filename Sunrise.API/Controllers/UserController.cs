@@ -883,7 +883,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         
         var ip = RegionService.GetUserIpAddress(Request);
       
-        await database.Users.UpdateUserCountry(user, user.Country, request.NewCountry);
+        await database.Users.UpdateUserCountry(user, user.Country, request.NewCountry, user.Id, ip.ToString());
 
         return Ok();
     }
