@@ -498,4 +498,54 @@ public class ApiUserCountryChangeTests : ApiTest
         var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
         Assert.Contains("can't change country to the unknown", errorResponse?.Error.ToLower());
     }
+    
+    [Fact]
+    public async Task TestChangeCountryToSameCountry()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+        var user = _mocker.User.GetRandomUser();
+        var newCountry = CountryCode.BR;
+        user.Country = newCountry;
+        
+        await CreateTestUser(user);
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+        
+        // Act
+        var response = await client.PostAsJsonAsync("user/country/change",
+            new CountryChangeRequest
+            {
+                NewCountry = newCountry
+            });
+        
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        
+        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        Assert.Contains("can't change country to the same one", errorResponse?.Error.ToLower());   
+    }
+    
+    [Fact]
+    public async Task CheckAdditionToEventsAfterCountryChange()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        // Act
+        await client.PostAsJsonAsync("user/country/change",
+             new CountryChangeRequest
+             {
+                 NewCountry = CountryCode.AL
+             });
+
+        var lastEvent = await Database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
+        
+        // Assert
+        Assert.NotNull(lastEvent);
+    }
 }
