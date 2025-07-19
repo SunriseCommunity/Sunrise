@@ -496,6 +496,6 @@ public class ApiUserCountryChangeTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("cant change country to the unknown", errorResponse?.Error.ToLower());
+        Assert.Contains("can't change country to the unknown", errorResponse?.Error.ToLower());
     }
 }

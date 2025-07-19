@@ -866,7 +866,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return BadRequest(new ErrorResponse("One or more required fields are missing or invalid entry."));
 
         if (request.NewCountry == CountryCode.XX)
-            return BadRequest(new ErrorResponse("You cant change country to the unknown country."));
+            return BadRequest(new ErrorResponse("You can't change country to the unknown one."));
 
         var user = HttpContext.GetCurrentUser();
 
