@@ -409,8 +409,7 @@ public class ApiUserCountryChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        //I hate this line with all my heart
+        
         var expectedError = "One or more required fields are missing or invalid entry.";
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
