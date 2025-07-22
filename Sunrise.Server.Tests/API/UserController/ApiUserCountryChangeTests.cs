@@ -7,6 +7,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -546,7 +547,7 @@ public class ApiUserCountryChangeTests : ApiTest
              });
 
         var lastEvent = await Database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
-        var data = lastEvent?.GetData<EventData>();
+        var data = lastEvent?.GetData<UserCountryChanged>();
         
         // Assert
         Assert.NotNull(lastEvent);
@@ -554,11 +555,4 @@ public class ApiUserCountryChangeTests : ApiTest
         Assert.Equal(CountryCode.HU, data.OldCountry);
         Assert.Equal(user!.Id, data.UpdatedById);
     }
-}
-
-file class EventData()
-{
-    public CountryCode NewCountry { get; set; }
-    public CountryCode OldCountry { get; set; }
-    public int UpdatedById { get; set; }
 }
