@@ -531,7 +531,10 @@ public class ApiUserCountryChangeTests : ApiTest
         // Arrange
         var client = App.CreateClient().UseClient("api");
 
-        var user = await CreateTestUser();
+        var user = _mocker.User.GetRandomUser();
+        user.Country = CountryCode.HU;
+        user = await CreateTestUser(user);
+        
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
@@ -543,8 +546,19 @@ public class ApiUserCountryChangeTests : ApiTest
              });
 
         var lastEvent = await Database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
+        var data = lastEvent?.GetData<EventData>();
         
         // Assert
         Assert.NotNull(lastEvent);
+        Assert.Equal(CountryCode.AL, data!.NewCountry);
+        Assert.Equal(CountryCode.HU, data.OldCountry);
+        Assert.Equal(user!.Id, data.UpdatedById);
     }
+}
+
+file class EventData()
+{
+    public CountryCode NewCountry { get; set; }
+    public CountryCode OldCountry { get; set; }
+    public int UpdatedById { get; set; }
 }
