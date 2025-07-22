@@ -130,7 +130,7 @@ public class ApiAuthRegisterTests : ApiTest
         var username = _mocker.User.GetRandomUsername();
         var email = _mocker.User.GetRandomEmail();
 
-        const string greeceIp = "102.38.248.255";
+        const string greeceIp = "46.20.111.255";
 
         // Act
         var response = await client.UseUserIp(greeceIp)
@@ -148,7 +148,7 @@ public class ApiAuthRegisterTests : ApiTest
         var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
-        Assert.Equal((short)CountryCode.GR, user.Country);
+        Assert.Equal(CountryCode.GR, user.Country);
     }
 
     [Fact]

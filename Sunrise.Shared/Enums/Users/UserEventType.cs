@@ -11,6 +11,6 @@ public enum UserEventType
     ChangePassword = 4,
     ChangeAvatar = 5,
     ChangeBanner = 6,
-    ChangeUsername = 7
-
+    ChangeUsername = 7,
+    ChangeCountry = 8
 }

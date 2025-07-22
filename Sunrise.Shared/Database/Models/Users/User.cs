@@ -21,7 +21,7 @@ public class User
     public string Email { get; set; }
     public string Passhash { get; set; }
     public string? Description { get; set; }
-    public short Country { get; set; }
+    public CountryCode Country { get; set; }
     public UserPrivilege Privilege { get; set; } = UserPrivilege.User;
     public DateTime RegisterDate { get; set; } = DateTime.UtcNow;
     public DateTime LastOnlineTime { get; set; } = DateTime.UtcNow;

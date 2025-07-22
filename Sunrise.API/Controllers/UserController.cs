@@ -855,4 +855,36 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         return new OkResult();
     }
+    
+    [HttpPost(RequestType.CountryChange)]
+    [Authorize]
+    [EndpointDescription("Change current country")]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new ErrorResponse("One or more required fields are missing or invalid entry."));
+
+        if (request.NewCountry == CountryCode.XX)
+            return BadRequest(new ErrorResponse("You can't change country to the unknown one."));
+
+        var user = HttpContext.GetCurrentUser();
+
+        if (user == null)
+            return BadRequest(new ErrorResponse("Invalid session"));
+        
+        if (user.Country == request.NewCountry)
+            return BadRequest(new ErrorResponse("You can't change country to the same one."));
+
+        var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
+        
+        if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
+            return BadRequest(new ErrorResponse($"Unable to change the country. You'll be able to change your country on {lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)}. Please try again later."));
+        
+        var ip = RegionService.GetUserIpAddress(Request);
+      
+        await database.Users.UpdateUserCountry(user, user.Country, request.NewCountry, user.Id, ip.ToString());
+
+        return Ok();
+    }
 }

@@ -129,4 +129,38 @@ public class UserEventService(SunriseDbContext dbContext)
         
         return userEvent?.User;
     }
+
+    public async Task<Result> AddUserChangeCountryEvent(int userId, CountryCode oldCountry, CountryCode newCountry, string ip, int? updatedById)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var changeCountryEvent = new EventUser
+            {
+                EventType = UserEventType.ChangeCountry,
+                UserId = userId,
+                Ip = ip
+            };
+
+            changeCountryEvent.SetData(new
+            {
+                NewCountry = newCountry,
+                OldCountry = oldCountry,
+                UpdatedById = updatedById
+            });
+
+            
+            dbContext.EventUsers.Add(changeCountryEvent);
+            await dbContext.SaveChangesAsync();
+        });
+    }
+
+    public async Task<EventUser?> GetLastUserCountryChangeEvent(int userId, QueryOptions? options = null,
+        CancellationToken ct = default)
+    {
+        return await dbContext.EventUsers
+            .Where(x => x.UserId == userId && x.EventType == UserEventType.ChangeCountry)
+            .OrderByDescending(x => x.Id)
+            .UseQueryOptions(options)
+            .FirstOrDefaultAsync(cancellationToken: ct);
+    }
 }

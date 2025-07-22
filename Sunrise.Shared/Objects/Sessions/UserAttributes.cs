@@ -62,7 +62,7 @@ public class UserAttributes
             Timezone = Timezone,
             Latitude = ShowUserLocation ? Latitude : 0,
             Longitude = ShowUserLocation ? Longitude : 0,
-            CountryCode = byte.Parse((Country ?? user.Country).ToString()),
+            CountryCode = byte.Parse((Country ?? (short)user.Country).ToString()),
             Permissions = user.GetPrivilegeRank(), // FIXME: Chat color doesn't work
             Rank = (int)userRank,
             PlayMode = GetCurrentGameMode().ToVanillaGameMode(),
