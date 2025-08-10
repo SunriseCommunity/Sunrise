@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.API.Controllers;
 
+[ApiController]
 [Route("/user")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
@@ -37,11 +39,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user profile")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUser(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetUser([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var isRequestingSelf = id == HttpContext.GetCurrentSession().UserId;
         var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
 
@@ -59,11 +58,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user profile with user stats")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserWithStats(int id, GameMode mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserWithStats([Range(1, int.MaxValue)] int id, GameMode mode, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = await database.Users.GetUser(id,
             options: new QueryOptions(true)
             {
@@ -125,15 +121,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("Description is required"));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-
-        if (request.Description.Length > 2000)
-            return BadRequest(new ErrorResponse("Description is too long. Max 2000 characters"));
 
         user.Description = request.Description;
 
@@ -169,11 +159,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserGraphData(int userId, [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserGraphData([Range(1, int.MaxValue)] int userId, [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = await database.Users.GetUser(userId,
             options: new QueryOptions(true)
             {
@@ -230,19 +217,16 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user scores")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserScores(int id,
-        [FromQuery(Name = "mode")] GameMode mode = 0,
-        [FromQuery(Name = "type")] ScoreTableType scoresType = 0,
-        [FromQuery(Name = "limit")] int limit = 15,
-        [FromQuery(Name = "page")] int page = 1,
+    public async Task<IActionResult> GetUserScores(
+        [Range(1, int.MaxValue)] int id,
+        [FromQuery(Name = "mode")] GameMode mode = GameMode.Standard,
+        [FromQuery(Name = "type")] ScoreTableType scoresType = ScoreTableType.Best,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 15,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var user = await database.Users.GetUser(id, ct: ct);
 
@@ -273,19 +257,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user most played beatmaps")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserMostPlayedMaps(int id,
-        [FromQuery(Name = "mode")] GameMode mode,
-        [FromQuery(Name = "limit")] int limit = 15,
-        [FromQuery(Name = "page")] int page = 1,
+    public async Task<IActionResult> GetUserMostPlayedMaps([Range(1, int.MaxValue)] int id,
+        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 15,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var session = HttpContext.GetCurrentSession();
 
         var user = await database.Users.GetUser(id, ct: ct);
@@ -321,19 +300,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user favourited beatmapsets")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserFavourites(int id,
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+    public async Task<IActionResult> GetUserFavourites([Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var session = HttpContext.GetCurrentSession();
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var user = await database.Users.GetUser(id, ct: ct);
 
@@ -364,19 +338,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(LeaderboardResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLeaderboard(
-        [FromQuery(Name = "mode")] GameMode mode,
-        [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [Required] [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var countUsers = await database.Users.CountValidUsers(ct);
 
         var stats = await database.Users.Stats.GetUsersStats(mode,
@@ -407,21 +376,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Search user by query")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchUsers(
-        [FromQuery(Name = "query")] string query,
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Required] [FromQuery(Name = "query")] string query,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default
     )
     {
-        if (string.IsNullOrEmpty(query)) return BadRequest(new ErrorResponse("Invalid query parameter"));
-
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
 
         return Ok(users.Select(x => new UserResponse(sessions, x)));
@@ -434,21 +396,17 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default
     )
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
 
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -469,21 +427,16 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFollowers(
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default
     )
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
 
         var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -504,7 +457,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendStatusResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetFriendStatus(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetFriendStatus([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
@@ -534,11 +487,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(InventoryItemResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetInventoryItemCount(ItemType type, CancellationToken ct = default)
+    public async Task<IActionResult> GetInventoryItemCount([Required] ItemType type, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -553,7 +503,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user friends counters")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserRelationsCountersResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserRelationsCounters(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserRelationsCounters([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var user = await database.Users.GetValidUser(id, ct: ct);
         if (user == null)
@@ -571,11 +521,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Change friendship status with user")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> EditFriendStatus(int id, [FromBody] EditFriendshipStatusRequest request)
+    public async Task<IActionResult> EditFriendStatus([Range(1, int.MaxValue)] int id, [FromBody] EditFriendshipStatusRequest request)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -608,12 +555,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Route("{id:int}/medals")]
     [EndpointDescription("Get user medals")]
     [ProducesResponseType(typeof(MedalsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserMedals(int id,
-        [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserMedals([Range(1, int.MaxValue)] int id,
+        [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var userMedals = await database.Users.Medals.GetUserMedals(id, mode, ct: ct);
         var modeMedals = await database.Medals.GetMedals(mode, ct: ct);
 
@@ -625,12 +569,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user grades")]
     [ProducesResponseType(typeof(GradesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetUserGrades(int id,
-        [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserGrades([Range(1, int.MaxValue)] int id,
+        [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var userGrades = await database.Users.Grades.GetUserGrades(id, mode, ct);
 
         if (userGrades is null)
@@ -651,11 +592,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user metadata")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserMetadataResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserMetadata(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserMetadata([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var userMetadata = await database.Users.Metadata.GetUserMetadata(id, ct);
 
         if (userMetadata is null)
@@ -678,9 +616,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
@@ -776,9 +711,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -809,9 +741,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
         var user = HttpContext.GetCurrentUser();
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
@@ -855,16 +784,13 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         return new OkResult();
     }
-    
+
     [HttpPost(RequestType.CountryChange)]
     [Authorize]
     [EndpointDescription("Change current country")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing or invalid entry."));
-
         if (request.NewCountry == CountryCode.XX)
             return BadRequest(new ErrorResponse("You can't change country to the unknown one."));
 
@@ -872,17 +798,17 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (user == null)
             return BadRequest(new ErrorResponse("Invalid session"));
-        
+
         if (user.Country == request.NewCountry)
             return BadRequest(new ErrorResponse("You can't change country to the same one."));
 
         var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
-        
+
         if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
             return BadRequest(new ErrorResponse($"Unable to change the country. You'll be able to change your country on {lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)}. Please try again later."));
-        
+
         var ip = RegionService.GetUserIpAddress(Request);
-      
+
         await database.Users.UpdateUserCountry(user, user.Country, request.NewCountry, user.Id, ip.ToString());
 
         return Ok();

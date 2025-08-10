@@ -12,6 +12,7 @@ using AuthService = Sunrise.API.Services.AuthService;
 
 namespace Sunrise.API.Controllers;
 
+[ApiController]
 [Route("/auth")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
@@ -28,9 +29,6 @@ public class AuthController(
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserToken([FromBody] TokenRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
         var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
 
         if (user == null)
@@ -78,9 +76,6 @@ public class AuthController(
         if (Configuration.BannedIps.Contains(location.Ip))
             return BadRequest(new ErrorResponse("Your IP address is banned."));
 
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);
         if (newTokenResult.IsFailure)
             return BadRequest(new ErrorResponse(newTokenResult.Error));
@@ -95,9 +90,6 @@ public class AuthController(
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RegisterUser([FromBody] RegisterRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are missing."));
-
         var ip = RegionService.GetUserIpAddress(Request);
 
         var (newUser, errors) = await userAuthService.RegisterUser(request.Username, request.Password, request.Email, ip);

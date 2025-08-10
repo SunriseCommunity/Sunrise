@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -14,6 +15,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.API.Controllers;
 
+[ApiController]
 [Route("score/{id:int}")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
@@ -25,7 +27,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
     [EndpointDescription("Get score")]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetScore(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetScore([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var score = await database.Scores.GetScore(id,
             new QueryOptions(true)
@@ -49,7 +51,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetScoreReplay(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetScoreReplay([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var session = HttpContext.GetCurrentSession();
 
@@ -73,17 +75,14 @@ public class ScoreController(DatabaseService database, SessionRepository session
     [ResponseCache(Duration = 30)]
     [EndpointDescription("Get best scores on the server")]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTopScores([FromQuery(Name = "mode")] GameMode mode,
-        [FromQuery(Name = "limit")] int? limit = 15,
-        [FromQuery(Name = "page")] int? page = 1,
+    public async Task<IActionResult> GetTopScores(
+        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int? limit = 15,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int? page = 1,
         CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-        if (page is <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var (scores, totalCount) = await database.Scores.GetBestScoresByGameMode(mode,
             new QueryOptions(true, new Pagination(page!.Value, limit!.Value))
             {

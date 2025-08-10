@@ -8,5 +8,6 @@ public class CountryChangeRequest
 {
     [JsonPropertyName("new_country")]
     [EnumDataType(typeof(CountryCode))]
+    [Required]
     public required CountryCode NewCountry { get; set; }
 }
