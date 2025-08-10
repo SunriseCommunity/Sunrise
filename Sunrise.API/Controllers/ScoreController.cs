@@ -37,7 +37,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
             ct);
 
         if (score == null)
-            return NotFound(new ErrorResponse("Score not found"));
+            return Problem(title: "Score not found", statusCode: StatusCodes.Status404NotFound);
 
         score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score], ct)).First();
 
@@ -56,12 +56,16 @@ public class ScoreController(DatabaseService database, SessionRepository session
         var session = HttpContext.GetCurrentSession();
 
         var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
-        if (score?.ReplayFileId == null)
-            return NotFound(new ErrorResponse("Score or replay not found"));
+
+        if (score == null)
+            return Problem(title: "Score not found", statusCode: StatusCodes.Status404NotFound);
+
+        if (score.ReplayFileId == null)
+            return Problem(title: "Replay not found", statusCode: StatusCodes.Status404NotFound);
 
         var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
         if (replay == null)
-            return NotFound(new ErrorResponse("Replay not found"));
+            return Problem(title: "Replay not found", statusCode: StatusCodes.Status404NotFound);
 
         var replayFile = new ReplayFile(score, replay);
         var replayStream = await replayFile.ReadReplay();

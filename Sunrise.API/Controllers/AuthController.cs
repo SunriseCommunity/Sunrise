@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Attributes;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Users;
@@ -32,24 +31,22 @@ public class AuthController(
         var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
 
         if (user == null)
-            return BadRequest(new ErrorResponse("Invalid credentials"));
+            return Problem(title: "Invalid credentials", statusCode: StatusCodes.Status401Unauthorized);
 
         if (user.IsUserSunriseBot())
-            return BadRequest(new ErrorResponse("You can't login as sunrise bot"));
+            return Problem(title: "You can't perform this action as a bot", statusCode: StatusCodes.Status401Unauthorized);
 
         if (user.IsRestricted())
         {
             var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id, ct);
-            return BadRequest(new ErrorResponse($"Your account is restricted, reason: {restriction}"));
+            return Problem(title: "Your account is restricted", detail: restriction, statusCode: StatusCodes.Status403Forbidden);
         }
 
         var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request), ct);
-        if (Configuration.BannedIps.Contains(location.Ip))
-            return BadRequest(new ErrorResponse("Your IP address is banned."));
 
         var tokenResult = await authService.GenerateTokens(user.Id);
         if (tokenResult.IsFailure)
-            return BadRequest(new ErrorResponse(tokenResult.Error));
+            return Problem(tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var token = tokenResult.Value;
 
@@ -72,13 +69,9 @@ public class AuthController(
     [ProducesResponseType(typeof(RefreshTokenResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
     {
-        var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request));
-        if (Configuration.BannedIps.Contains(location.Ip))
-            return BadRequest(new ErrorResponse("Your IP address is banned."));
-
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);
         if (newTokenResult.IsFailure)
-            return BadRequest(new ErrorResponse(newTokenResult.Error));
+            return Problem(newTokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var newToken = newTokenResult.Value;
 
@@ -97,12 +90,12 @@ public class AuthController(
         if (newUser == null)
         {
             var errorString = errors?.FirstOrDefault(x => x.Value.Count != 0).Value.FirstOrDefault() ?? "Unknown error occured.";
-            return BadRequest(new ErrorResponse(errorString));
+            return Problem(errorString, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var tokenResult = await authService.GenerateTokens(newUser.Id);
         if (tokenResult.IsFailure)
-            return BadRequest(new ErrorResponse(tokenResult.Error));
+            return Problem(tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var token = tokenResult.Value;
 

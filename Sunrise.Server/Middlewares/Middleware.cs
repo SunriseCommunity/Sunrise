@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
@@ -54,6 +55,10 @@ public sealed class Middleware(
             await next(context);
             return;
         }
+
+        var isBannedIp = await ShouldStopBannedIps(context);
+        if (isBannedIp)
+            return;
 
         var isRateLimited = await FillRateLimitHeadersAndGetIsRateLimited(context);
         if (isRateLimited)
@@ -156,6 +161,30 @@ public sealed class Middleware(
         }
     }
 
+    private async Task<bool> ShouldStopBannedIps(HttpContext context)
+    {
+        var ip = RegionService.GetUserIpAddress(context.Request);
+
+        if (Configuration.BannedIps.Contains(ip.ToString()))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/problem+json; charset=utf-8";
+
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Detail = "You have been banned. Please contact servers support for unban."
+            };
+
+            var jsonResponse = JsonSerializer.Serialize(problemDetails);
+            await context.Response.WriteAsync(jsonResponse);
+            return true;
+        }
+
+        return false;
+    }
+
+
     private async Task<bool> ShouldStopUnauthorizedApiRequestIfOnMaintenance(HttpContext context)
     {
         var isApiRequest = context.Request.Host.Host.StartsWith("api.");
@@ -179,14 +208,15 @@ public sealed class Middleware(
         if (isApiRequest && Configuration.OnMaintenance)
         {
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            context.Response.ContentType = "application/json; charset=utf-8";
+            context.Response.ContentType = "application/problem+json; charset=utf-8";
 
-            var responseMessage = new
+            var problemDetails = new ProblemDetails
             {
-                error = "Service is currently unavailable due to maintenance. Please try again later."
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "Service is currently unavailable due to maintenance. Please try again later."
             };
 
-            var jsonResponse = JsonSerializer.Serialize(responseMessage);
+            var jsonResponse = JsonSerializer.Serialize(problemDetails);
             await context.Response.WriteAsync(jsonResponse);
             return true;
         }

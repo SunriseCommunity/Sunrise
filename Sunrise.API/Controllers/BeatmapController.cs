@@ -53,7 +53,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return NotFound(new ErrorResponse("Beatmap not found"));
+            return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new BeatmapResponse(sessions, beatmap, beatmapSet));
     }
@@ -87,14 +87,14 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return NotFound(new ErrorResponse("Beatmap not found"));
+            return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
 
         var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
 
         var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? (GameMode)beatmap.ModeInt, modsEnum, combo, misses, accuracy);
 
         if (performance.IsFailure)
-            return BadRequest(new ErrorResponse(performance.Error.Message));
+            return Problem(performance.Error.Message, statusCode: StatusCodes.Status400BadRequest);
 
         return Ok(performance.Value);
     }
@@ -180,11 +180,11 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Unauthorized(new ErrorResponse("User not found"));
+            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
 
         var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
         if (hypeBeatmapSetResult.IsFailure)
-            return BadRequest(new ErrorResponse(hypeBeatmapSetResult.Error));
+            return Problem(hypeBeatmapSetResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         return new OkResult();
     }
@@ -358,7 +358,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return BadRequest(new ErrorResponse("Invalid session"));
+            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
 
         var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(user.Id, id, ct);
 
@@ -379,7 +379,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
-            return BadRequest(new ErrorResponse("Invalid session"));
+            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
 
         foreach (var id in request.Ids)
         {
@@ -394,9 +394,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
 
             if (beatmap == null)
-            {
-                return BadRequest(new ErrorResponse("Beatmap not found."));
-            }
+                return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
 
             var resetBeatmapStatus = request.Status == BeatmapStatusWeb.Unknown;
             var changeBeatmapSetStatusResult = await beatmapService.ChangeBeatmapCustomStatus(
@@ -407,7 +405,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             );
 
             if (changeBeatmapSetStatusResult.IsFailure)
-                return BadRequest(new ErrorResponse(changeBeatmapSetStatusResult.Error));
+                return Problem(changeBeatmapSetStatusResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
             var oldStatus = beatmap.StatusGeneric;
 
@@ -429,7 +427,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     public async Task<IActionResult> SearchBeatmapsets(
         [FromQuery(Name = "query")] string? query,
         [FromQuery(Name = "status")] BeatmapStatusWeb[]? status,
-        [FromQuery(Name = "mode")] GameMode? mode,
+        [Range((int)GameMode.Standard, (int)GameMode.Mania)] [FromQuery(Name = "mode")]
+        GameMode? mode,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int limit = 50,
         [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
@@ -441,9 +440,6 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;
-
-        if (mode is > GameMode.Mania)
-            return BadRequest(new ErrorResponse("Invalid game mode"));
 
         var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session,
             beatmapSetStatus,

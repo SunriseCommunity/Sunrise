@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.API.Utils;
@@ -8,9 +7,15 @@ public static class ActionResultUtil
 {
     public static IActionResult ActionErrorResult(ErrorMessage error)
     {
-        return new ObjectResult(new ErrorResponse(error.Message))
+        var problemDetails = new ProblemDetails
         {
-            StatusCode = (int)error.Status
+            Title = error.Message,
+            Status = (int)error.Status
+        };
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = problemDetails.Status
         };
     }
 }
