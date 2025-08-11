@@ -14,6 +14,12 @@ website. The server is currently in development and is not yet ready for public 
 > [!NOTE]
 > Want to help? Have a question? :shipit: Feel free then to join our [Discord server](https://discord.gg/BjV7c9VRfn), there you can ask any question to maintainers of this project!
 
+## 📦 How to Set Up
+
+If you are planning to host your own instance of Sunrise, please follow the [official documentation](https://docs.sunrize.uk) for instructions on how to do so. 
+
+They are more in depth and cover various aspects of the setup process in comparison to this README.
+
 ## Features 🌟
 
 ### Core features
@@ -53,11 +59,12 @@ website. The server is currently in development and is not yet ready for public 
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
    you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager. 
     - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
-5. Start server by running:
+5. ⚠️ **Please create `sunrise.pfx` file and move it to `Sunrise/sunrise.pfx` folder, for more instructions follow** [Local connection ⚙️](##local-connection).
+6. Start server by running:
    ```bash
    docker compose -f docker-compose.yml up -d
    ```
-6. (Optional) If you want to connect to the server locally, please refer to
+7. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
    section.
 
@@ -65,9 +72,6 @@ website. The server is currently in development and is not yet ready for public 
 > Your final docker setup should look like this:
 > 
 > ![image (3)](https://github.com/user-attachments/assets/998318b5-2112-4927-a040-0a8d7cc70b8b)
-
-
-
 
 ## Development installation ⚒️
 
@@ -81,8 +85,9 @@ website. The server is currently in development and is not yet ready for public 
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
    you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.{Your Environment}.json` file to the address of the beatmap manager.
     - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
-5. Run the project
-6. (Optional) If you want to connect to the server locally, please refer to
+5. ⚠️ **Please create `sunrise.pfx` file and move it to `Sunrise/sunrise.pfx` folder, for more instructions follow** [Local connection ⚙️](##local-connection).
+6. Run the project
+7. (Optional) If you want to connect to the server locally, please refer to
    the [Local connection ⚙️](##local-connection)
    section.
 
@@ -133,7 +138,9 @@ website. The server is currently in development and is not yet ready for public 
    certutil -addstore -f "ROOT" sunrise.local.crt
    ```
 
-6. Run the server and navigate to `https://api.sunrise.local/docs` to check if the server is running.
+6. Move the generated `sunrise.pfx` file to the `Sunrise` directory.
+
+7. Run the server and navigate to `https://api.sunrise.local/docs` to check if the server is running.
 
 ## Dependencies 📦
 
