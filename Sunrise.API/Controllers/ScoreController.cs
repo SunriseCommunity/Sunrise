@@ -6,7 +6,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;

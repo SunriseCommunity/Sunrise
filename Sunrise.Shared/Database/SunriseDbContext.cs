@@ -3,6 +3,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 
 namespace Sunrise.Shared.Database;
@@ -37,6 +38,8 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
+    public DbSet<ScoreMetadata> ScoresMetadata { get; set; }
+    public DbSet<ScoreHits> ScoresHits { get; set; }
 
     public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
@@ -52,6 +55,16 @@ public class SunriseDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(u => u.Email)
             .UseCollation("utf8mb4_unicode_ci");
+        
+        modelBuilder.Entity<Score>()
+            .HasOne(s => s.ScoreMetadata)
+            .WithOne(sm => sm.Score)
+            .OnDelete(DeleteBehavior.Cascade);
+        
+        modelBuilder.Entity<Score>()
+            .HasOne(s => s.ScoreHits)
+            .WithOne(sm => sm.Score)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<UserRelationship>()
             .HasOne(ur => ur.User)

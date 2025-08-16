@@ -1,4 +1,4 @@
-using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Mods = osu.Shared.Mods;
