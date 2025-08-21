@@ -20,13 +20,13 @@ namespace Sunrise.API.Controllers;
 [Route("score/{id:int}")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]
 public class ScoreController(DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet("")]
     [ResponseCache(Duration = 300)]
     [EndpointDescription("Get score")]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoreResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScore([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -49,8 +49,8 @@ public class ScoreController(DatabaseService database, SessionRepository session
     [Authorize]
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [EndpointDescription("Get score replay file")]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetScoreReplay([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {

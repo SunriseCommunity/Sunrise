@@ -16,7 +16,7 @@ namespace Sunrise.API.Controllers;
 [Route("/auth")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]
 public class AuthController(
     UserAuthService userAuthService,
     RegionService regionService,
