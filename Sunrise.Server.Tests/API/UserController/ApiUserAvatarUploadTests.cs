@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
@@ -26,9 +28,6 @@ public class ApiUserAvatarUploadTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -48,9 +47,6 @@ public class ApiUserAvatarUploadTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -73,8 +69,8 @@ public class ApiUserAvatarUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("No files", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.NoFilesWereUploaded, responseError?.Detail);
     }
 
     [Fact]
@@ -94,8 +90,8 @@ public class ApiUserAvatarUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("content type", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InvalidContentType, responseError?.Detail);
     }
 
     [Fact]
@@ -126,8 +122,8 @@ public class ApiUserAvatarUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("size", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains("size", responseError?.Detail);
     }
 
     [Fact]
@@ -191,7 +187,7 @@ public class ApiUserAvatarUploadTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("image format", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains("image format", responseError?.Detail);
     }
 }

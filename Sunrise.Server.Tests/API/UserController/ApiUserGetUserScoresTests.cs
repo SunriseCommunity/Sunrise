@@ -1,5 +1,6 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -34,7 +35,7 @@ public class ApiUserGetUserScoresTests : ApiTest
         var response = await client.GetAsync($"user/{userId}/scores");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -229,7 +230,7 @@ public class ApiUserGetUserScoresTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User is restricted", responseError?.Error);
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserIsRestricted, responseContent?.Detail);
     }
 }

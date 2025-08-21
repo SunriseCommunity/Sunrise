@@ -1,9 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Tests.Abstracts;
@@ -22,15 +22,12 @@ public class ApiUserEditUserMetadataTests : ApiTest
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
-        
+
         // Act
-        var response = await client.PostAsync($"user/edit/metadata", new StringContent(""));
+        var response = await client.PostAsync("user/edit/metadata", new StringContent(""));
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseContent?.Error);
     }
 
     [Fact]
@@ -42,20 +39,20 @@ public class ApiUserEditUserMetadataTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var json = "{{\"string\":\"123\"}}";
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
-        var response = await client.PostAsync($"user/edit/metadata", content);
+        var response = await client.PostAsync("user/edit/metadata", content);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are invalid", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
-    
+
     [Fact]
     public async Task TestEditMetadataWithInvalidLocationLength()
     {
@@ -72,16 +69,16 @@ public class ApiUserEditUserMetadataTests : ApiTest
         var response = await client.PostAsJsonAsync("user/edit/metadata",
             new EditUserMetadataRequest
             {
-                Location = newLocation,
+                Location = newLocation
             });
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are invalid", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
-    
+
     [Fact]
     public async Task TestEditUserMetadata()
     {
@@ -91,7 +88,7 @@ public class ApiUserEditUserMetadataTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var userMetadata = await Database.Users.Metadata.GetUserMetadata(user.Id);
         if (userMetadata is null)
             throw new Exception("User metadata not found");
@@ -110,21 +107,21 @@ public class ApiUserEditUserMetadataTests : ApiTest
                 Telegram = userMetadata.Telegram,
                 Twitch = userMetadata.Twitch,
                 Twitter = userMetadata.Twitter,
-                Website = userMetadata.Website,
+                Website = userMetadata.Website
             });
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
+
         var newUserMetadata = await Database.Users.Metadata.GetUserMetadata(user.Id);
         if (newUserMetadata is null)
             throw new Exception("User metadata not found");
 
         userMetadata.User = null!; // Ignore for comparison
-        
+
         Assert.Equivalent(newUserMetadata, userMetadata);
     }
-    
+
     [Fact]
     public async Task TestEditUserMetadataPartly()
     {
@@ -134,7 +131,7 @@ public class ApiUserEditUserMetadataTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var userMetadata = await Database.Users.Metadata.GetUserMetadata(user.Id);
         if (userMetadata is null)
             throw new Exception("User metadata not found");
@@ -142,7 +139,7 @@ public class ApiUserEditUserMetadataTests : ApiTest
         userMetadata.Playstyle = UserPlaystyle.Tablet & UserPlaystyle.Mouse;
         userMetadata.Occupation = "Testing 123";
         userMetadata.Interest = "Testing 123";
-        
+
         await Database.Users.Metadata.UpdateUserMetadata(userMetadata);
 
         // Act
@@ -150,16 +147,16 @@ public class ApiUserEditUserMetadataTests : ApiTest
             new EditUserMetadataRequest
             {
                 Playstyle = JsonStringFlagEnumHelper.SplitFlags(UserPlaystyle.None),
-                Occupation = "",
+                Occupation = ""
             });
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
+
         var newUserMetadata = await Database.Users.Metadata.GetUserMetadata(user.Id);
         if (newUserMetadata is null)
             throw new Exception("User metadata not found");
-        
+
         Assert.Equivalent(newUserMetadata.Playstyle, UserPlaystyle.None);
         Assert.Equivalent(newUserMetadata.Occupation, "");
         Assert.Equivalent(newUserMetadata.Interest, "Testing 123");
@@ -175,13 +172,13 @@ public class ApiUserEditUserMetadataTests : ApiTest
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         var userMetadata = await Database.Users.Metadata.GetUserMetadata(user.Id);
         if (userMetadata is null)
             throw new Exception("User metadata not found");
 
         userMetadata = _mocker.User.SetRandomUserMetadata(userMetadata);
-        
+
         var result = await Database.Users.Moderation.RestrictPlayer(user.Id, null, "Test");
         if (result.IsFailure)
             throw new Exception(result.Error);
@@ -198,13 +195,10 @@ public class ApiUserEditUserMetadataTests : ApiTest
                 Telegram = userMetadata.Telegram,
                 Twitch = userMetadata.Twitch,
                 Twitter = userMetadata.Twitter,
-                Website = userMetadata.Website,
+                Website = userMetadata.Website
             });
-        
+
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 }

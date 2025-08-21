@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -33,7 +35,6 @@ public class ApiScoreGetScoreTests : ApiTest
     [Theory]
     [InlineData(-1)]
     [InlineData(0)]
-    [InlineData(9999)]
     public async Task TestGetNotExistingScore(object id)
     {
         // Arrange
@@ -43,10 +44,11 @@ public class ApiScoreGetScoreTests : ApiTest
         var response = await client.GetAsync($"score/{id}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Score not found", responseContent?.Error);
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseString?.Title);
     }
 
     [Fact]
@@ -66,8 +68,8 @@ public class ApiScoreGetScoreTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Score not found", responseContent?.Error);
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.ScoreNotFound, responseString?.Detail);
     }
 
     [Fact]

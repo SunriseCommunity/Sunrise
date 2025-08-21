@@ -50,7 +50,7 @@ public class AuthService(DatabaseService database)
 
         var newTokenResult = await GenerateJwtToken(userId, TokenExpires);
         if (newTokenResult.IsFailure)
-            return Result.Failure<(string, int)>("Error occured while refreshing token.");
+            return Result.Failure<(string, int)>("Error occurred while refreshing token.");
 
         var newToken = newTokenResult.Value;
 

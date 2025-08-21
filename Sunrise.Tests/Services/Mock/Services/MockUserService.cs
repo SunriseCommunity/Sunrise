@@ -43,13 +43,13 @@ public class MockUserService(MockService service)
 
         return grades;
     }
-    
+
     public UserMetadata SetRandomUserMetadata(UserMetadata metadata)
     {
         metadata.Location = service.GetRandomString(32);
         metadata.Occupation = service.GetRandomString(32);
         metadata.Interest = service.GetRandomString(32);
-        
+
         metadata.Discord = service.GetRandomString(32);
         metadata.Telegram = service.GetRandomString(32);
         metadata.Twitch = service.GetRandomString(32);
@@ -91,10 +91,13 @@ public class MockUserService(MockService service)
     public CountryCode GetRandomCountryCode()
     {
         var random = new Random();
-        var values = Enum.GetValues(typeof(CountryCode));
+        var values = Enum.GetValues(typeof(CountryCode))
+            .Cast<CountryCode>()
+            .Where(v => v != 0)
+            .ToArray();
         return (CountryCode)values.GetValue(random.Next(values.Length))!;
     }
-    
+
     public UserPlaystyle GetRandomUserPlaystyle()
     {
         var random = new Random();

@@ -1,7 +1,8 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -28,9 +29,6 @@ public class ApiUserEditDescriptionTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -56,9 +54,6 @@ public class ApiUserEditDescriptionTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -77,8 +72,8 @@ public class ApiUserEditDescriptionTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Description is required", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]
@@ -103,8 +98,8 @@ public class ApiUserEditDescriptionTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Description is too long", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]

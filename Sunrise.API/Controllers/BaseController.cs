@@ -18,7 +18,7 @@ namespace Sunrise.API.Controllers;
 [ApiController]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]
 public class BaseController(IMemoryCache cache, DatabaseService database, SessionRepository sessions) : ControllerBase
 {
     [HttpGet]

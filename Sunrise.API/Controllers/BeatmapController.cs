@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.API.Utils;
@@ -25,25 +27,21 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.API.Controllers;
 
+[ApiController]
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]
 public class BeatmapController(DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions, WebSocketManager webSocketManager) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
     [EndpointDescription("Get beatmap")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmap(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetBeatmap(
+        [Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
@@ -55,7 +53,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return NotFound(new ErrorResponse("Beatmap not found"));
+            return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new BeatmapResponse(sessions, beatmap, beatmapSet));
     }
@@ -63,28 +61,21 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmap/{id:int}/pp")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/pp")]
     [EndpointDescription("Get beatmap performance")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(PerformanceAttributes), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapPerformance(int id,
+    public async Task<IActionResult> GetBeatmapPerformance(
+        [Range(1, int.MaxValue)] int id,
         [FromQuery(Name = "mods")] IEnumerable<Mods>? mods = null,
-        [FromQuery(Name = "mode")] GameMode? gameMode = null,
-        [FromQuery(Name = "combo")] int? combo = null,
-        [FromQuery(Name = "misses")] int? misses = null,
-        [FromQuery(Name = "accuracy")] float? accuracy = null,
+        [Range((int)GameMode.Standard, (int)GameMode.Mania)] [FromQuery(Name = "mode")]
+        GameMode? gameMode = null,
+        [Range(0, int.MaxValue)] [FromQuery(Name = "combo")]
+        int? combo = null,
+        [Range(0, int.MaxValue)] [FromQuery(Name = "misses")]
+        int? misses = null,
+        [Range(0, 100)] [FromQuery(Name = "accuracy")]
+        float? accuracy = null,
         CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
-        if (gameMode is < GameMode.Standard or > GameMode.Mania)
-            return BadRequest(new ErrorResponse("Invalid game mode"));
-
-        if (accuracy is < 0 or > 100)
-            return BadRequest(new ErrorResponse("Invalid accuracy"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
@@ -96,14 +87,14 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return NotFound(new ErrorResponse("Beatmap not found"));
+            return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
 
         var performance = await calculatorService.CalculateBeatmapPerformance(session, id, gameMode ?? (GameMode)beatmap.ModeInt, modsEnum, combo, misses, accuracy);
 
         if (performance.IsFailure)
-            return BadRequest(new ErrorResponse(performance.Error.Message));
+            return Problem(performance.Error.Message, statusCode: StatusCodes.Status400BadRequest);
 
         return Ok(performance.Value);
     }
@@ -112,23 +103,17 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
     [ResponseCache(Duration = 10)]
     [EndpointDescription("Get beatmap leaderboard")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapLeaderboard(int id,
-        [FromQuery(Name = "mode")] GameMode mode,
+    public async Task<IActionResult> GetBeatmapLeaderboard(
+        [Range(1, int.MaxValue)] int id,
+        [Required] [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "mods")] IEnumerable<Mods>? mods = null,
-        [FromQuery(Name = "limit")] int limit = 50,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
         CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
         var session = HttpContext.GetCurrentSession();
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id, ct: ct);
         if (beatmapSetResult.IsFailure)
@@ -162,13 +147,10 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapSet(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetBeatmapSet([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
@@ -184,13 +166,10 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpPost("beatmapset/{id:int}/hype")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Hype beatmapset")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> HypeBeatmapSet(int id, CancellationToken ct = default)
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> HypeBeatmapSet([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
@@ -199,13 +178,11 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSet = beatmapSetResult.Value;
 
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Unauthorized(new ErrorResponse("User not found"));
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
         if (hypeBeatmapSetResult.IsFailure)
-            return BadRequest(new ErrorResponse(hypeBeatmapSetResult.Error));
+            return Problem(hypeBeatmapSetResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         return new OkResult();
     }
@@ -214,21 +191,16 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/get-hyped-sets")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Returns beatmapsets with active hype train")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(HypedBeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHypedBeatmapSets(
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var session = HttpContext.GetCurrentSession();
 
         var (beatmapSetIdsWithHypeCount, totalCount) = await database.Beatmaps.Hypes.GetHypedBeatmaps(new QueryOptions(true, new Pagination(page, limit)), ct);
@@ -250,13 +222,10 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}/hype")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset hype count")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetHypeCountResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapSetHypeCounter(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetBeatmapSetHypeCounter([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap set id"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id, ct: ct);
@@ -277,24 +246,17 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset related events")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetBeatmapSetEvents(int id,
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+    public async Task<IActionResult> GetBeatmapSetEvents(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap set id"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var (beatmapSetEvents, totalCount) = await database.Events.Beatmaps.GetBeatmapSetEvents(id,
             new QueryOptions(true, new Pagination(page, limit))
             {
@@ -325,21 +287,16 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapsets related events")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSetsEvents(
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var (beatmapSetEvents, totalCount) = await database.Events.Beatmaps.GetBeatmapSetEvents(null,
             new QueryOptions(true, new Pagination(page, limit))
             {
@@ -371,16 +328,10 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Add/remove beatmapset from users favourites")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> UpdateBeatmapsetFavouriteStatus(int id, [FromBody] EditBeatmapsetFavouriteStatusRequest request)
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateBeatmapsetFavouriteStatus([Range(1, int.MaxValue)] int id, [FromBody] EditBeatmapsetFavouriteStatusRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, id);
@@ -399,16 +350,11 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Check if beatmapset is favourited by current user")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetFavourited(int id, CancellationToken ct = default)
+    public async Task<IActionResult> GetFavourited([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        if (id < 0)
-            return BadRequest(new ErrorResponse("Invalid beatmap id"));
-
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return BadRequest(new ErrorResponse("Invalid session"));
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(user.Id, id, ct);
 
@@ -421,18 +367,12 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize("RequireBat")]
     [HttpPost("beatmap/update-custom-status")]
     [EndpointDescription("Updates beatmap custom status. Use \'Unknown\' to reset beatmap custom status")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateBeatmapStatus([FromBody] UpdateBeatmapsCustomStatusRequest request)
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
         var session = HttpContext.GetCurrentSession();
-        var user = HttpContext.GetCurrentUser();
-
-        if (user == null)
-            return BadRequest(new ErrorResponse("Invalid session"));
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         foreach (var id in request.Ids)
         {
@@ -447,9 +387,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
 
             if (beatmap == null)
-            {
-                return BadRequest(new ErrorResponse("Beatmap not found."));
-            }
+                return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
             var resetBeatmapStatus = request.Status == BeatmapStatusWeb.Unknown;
             var changeBeatmapSetStatusResult = await beatmapService.ChangeBeatmapCustomStatus(
@@ -460,7 +398,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             );
 
             if (changeBeatmapSetStatusResult.IsFailure)
-                return BadRequest(new ErrorResponse(changeBeatmapSetStatusResult.Error));
+                return Problem(changeBeatmapSetStatusResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
             var oldStatus = beatmap.StatusGeneric;
 
@@ -477,31 +415,24 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("/beatmapset/search")]
     [EndpointDescription("Search beatmapsets")]
     [ResponseCache(Duration = 0)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchBeatmapsets(
         [FromQuery(Name = "query")] string? query,
         [FromQuery(Name = "status")] BeatmapStatusWeb[]? status,
-        [FromQuery(Name = "mode")] GameMode? mode,
-        [FromQuery(Name = "limit")] int limit = 50,
-        [FromQuery(Name = "page")] int page = 1,
+        [Range((int)GameMode.Standard, (int)GameMode.Mania)] [FromQuery(Name = "mode")]
+        GameMode? mode,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
         CancellationToken ct = default
     )
     {
-        if (ModelState.IsValid != true)
-            return BadRequest(new ErrorResponse("One or more required fields are invalid"));
-
-        if (limit is < 1 or > 100) return BadRequest(new ErrorResponse("Invalid limit parameter"));
-
-        if (page <= 0) return BadRequest(new ErrorResponse("Invalid page parameter"));
-
         var session = HttpContext.GetCurrentSession();
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;
-
-        if (mode is > GameMode.Mania)
-            return BadRequest(new ErrorResponse("Invalid game mode"));
 
         var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session,
             beatmapSetStatus,

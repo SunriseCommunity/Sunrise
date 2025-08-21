@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -8,6 +10,7 @@ using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
@@ -81,7 +84,7 @@ public class ApiAuthRegisterTests : ApiTest
         var user = await Database.Users.GetUser(username: username);
 
         Assert.NotNull(user);
-        
+
         var userInventoryItem = await Database.Users.Inventory.GetInventoryItem(user.Id, ItemType.Hype);
 
         if (userInventoryItem == null)
@@ -130,7 +133,7 @@ public class ApiAuthRegisterTests : ApiTest
         var username = _mocker.User.GetRandomUsername();
         var email = _mocker.User.GetRandomEmail();
 
-        const string greeceIp = "46.20.111.255";
+        const string greeceIp = "2.86.4.24";
 
         // Act
         var response = await client.UseUserIp(greeceIp)
@@ -173,10 +176,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Username length", error?.Error);
+        Assert.Contains("Username length", responseError?.Detail);
     }
 
     [Theory]
@@ -209,12 +211,11 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var responseError = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
         var (_, expectedError) = username.IsValidUsername();
 
-        Assert.Equal(expectedError, responseError?.Error);
+        Assert.Equal(username == "" ? ApiErrorResponse.Title.ValidationError : expectedError, username == "" ? responseError?.Title : responseError?.Detail);
     }
 
     [Fact]
@@ -241,10 +242,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("username already exists", error?.Error);
+        Assert.Contains("username already exists", responseError?.Detail);
     }
 
     [Fact]
@@ -273,10 +273,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("username already exists", error?.Error);
+        Assert.Contains("username already exists", responseError?.Detail);
     }
 
     [Fact]
@@ -303,10 +302,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("email already exists", error?.Error);
+        Assert.Contains("email already exists", responseError?.Detail);
     }
 
     [Fact]
@@ -335,10 +333,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("email already exists", error?.Error);
+        Assert.Contains("email already exists", responseError?.Detail);
     }
 
     [Fact]
@@ -363,10 +360,9 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Invalid email", error?.Error);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]
@@ -389,12 +385,11 @@ public class ApiAuthRegisterTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Your IP address is banned", error?.Error);
+        Assert.Contains(ApiErrorResponse.Detail.YouHaveBeenBanned, responseError?.Detail);
     }
 
     [Fact]
@@ -424,9 +419,8 @@ public class ApiAuthRegisterTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Please don't create multiple accounts", error?.Error);
+        Assert.Contains("Please don't create multiple accounts", responseError?.Detail);
     }
 }

@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -103,8 +105,8 @@ public class ApiAuthTokenTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("One or more required fields are missing", responseTokens?.Error);
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseTokens?.Title);
     }
 
     [Fact]
@@ -122,10 +124,10 @@ public class ApiAuthTokenTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Invalid credentials", responseTokens?.Error);
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InvalidCredentialsProvided, responseTokens?.Detail);
     }
 
     [Fact]
@@ -145,10 +147,10 @@ public class ApiAuthTokenTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
 
-        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("Invalid credentials", responseTokens?.Error);
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InvalidCredentialsProvided, responseTokens?.Detail);
     }
 
     [Fact]
@@ -177,11 +179,11 @@ public class ApiAuthTokenTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
-        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Your account is restricted", responseTokens?.Error);
+        Assert.Contains(ApiErrorResponse.Detail.YourAccountIsRestricted("Test"), responseTokens?.Detail);
     }
 
     [Fact]
@@ -208,10 +210,10 @@ public class ApiAuthTokenTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
-        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
+        var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Your IP address is banned", responseTokens?.Error);
+        Assert.Contains(ApiErrorResponse.Detail.YouHaveBeenBanned, responseTokens?.Detail);
     }
 }

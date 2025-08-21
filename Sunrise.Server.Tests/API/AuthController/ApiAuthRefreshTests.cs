@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
@@ -55,10 +56,9 @@ public class ApiAuthRefreshTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("One or more required fields are missing", error?.Error);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]
@@ -79,10 +79,9 @@ public class ApiAuthRefreshTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Invalid refresh_token", error?.Error);
+        Assert.Contains("Invalid refresh_token", responseError?.Detail);
     }
 
     [Fact]
@@ -107,10 +106,9 @@ public class ApiAuthRefreshTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("is restricted", error?.Error);
+        Assert.Contains("is restricted", responseError?.Detail);
     }
 
     [Fact]
@@ -130,11 +128,11 @@ public class ApiAuthRefreshTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var error = JsonSerializer.Deserialize<ErrorResponse>(responseString);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains("Your IP address is banned", error?.Error);
+
+        Assert.Contains(ApiErrorResponse.Detail.YouHaveBeenBanned, responseError?.Detail);
     }
 }

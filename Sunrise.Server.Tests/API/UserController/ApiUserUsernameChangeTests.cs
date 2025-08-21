@@ -1,7 +1,8 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
@@ -30,9 +31,6 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -56,9 +54,6 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -77,12 +72,11 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are missing", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]
-    [InlineData("")]
     [InlineData("1")]
     [InlineData("peppy")]
     [InlineData("テスト")]
@@ -112,8 +106,8 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         var (_, expectedError) = newUsername.IsValidUsername();
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Equal(expectedError, responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Equal(expectedError, responseError?.Detail);
     }
 
     [Fact]
@@ -142,6 +136,40 @@ public class ApiUserUsernameChangeTests : ApiTest
         Assert.NotNull(updatedUser);
 
         Assert.Equal(updatedUser.Username, newUsername);
+    }
+
+    [Fact]
+    public async Task TestUsernameChangeTooFrequently()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var usernameChangeResult = await Database.Users.UpdateUserUsername(user, user.Username, "test");
+        if (usernameChangeResult.IsFailure)
+            throw new Exception(usernameChangeResult.Error);
+
+        var lastUsernameChange = await Database.Events.Users.GetLastUsernameChangeEvent(user.Id);
+        Assert.NotNull(lastUsernameChange);
+
+        var newUsername = _mocker.User.GetRandomUsername();
+
+        // Act
+        var response = await client.PostAsJsonAsync("user/username/change",
+            new UsernameChangeRequest
+            {
+                NewUsername = newUsername
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddHours(1)), responseError?.Detail);
     }
 
     [Theory]
@@ -183,8 +211,8 @@ public class ApiUserUsernameChangeTests : ApiTest
         }
         else
         {
-            var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-            Assert.Contains("Username is already taken", responseError?.Error);
+            var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+            Assert.Contains(ApiErrorResponse.Detail.UsernameAlreadyTaken, responseError?.Detail);
         }
     }
 }

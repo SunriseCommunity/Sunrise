@@ -1,11 +1,15 @@
-using System.Text.Json;
+using System.Security.Authentication;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
@@ -64,9 +68,9 @@ public static class Bootstrap
             c.EnableAnnotations();
             c.SupportNonNullableReferenceTypes();
             c.NonNullableReferenceTypesAsRequired();
-            
+
             c.DocumentFilter<GenerateAdditionalOpenApiSchema>();
-            
+
             c.AddJwtAuth();
         });
 
@@ -132,16 +136,14 @@ public static class Bootstrap
             {
                 Timeout = TimeSpan.FromSeconds(30),
                 TimeoutStatusCode = StatusCodes.Status408RequestTimeout,
-                WriteTimeoutResponse = async context =>
+                WriteTimeoutResponse = context =>
                 {
                     if (!context.Response.HasStarted)
                     {
-                        context.Response.ContentType = "application/json";
-
-                        var errorResponse = new ErrorResponse("Request timed out.");
-                        var json = JsonSerializer.Serialize(errorResponse);
-                        await context.Response.WriteAsync(json);
+                        throw new TimeoutException();
                     }
+
+                    return Task.CompletedTask;
                 }
             };
         });
@@ -180,6 +182,26 @@ public static class Bootstrap
 
         builder.Services.AddSingleton(ConnectionMultiplexer.Connect($"{Configuration.RedisConnection},allowAdmin=true"));
 
+    }
+
+
+
+    public static void AddProblemDetails(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddProblemDetails(options =>
+        {
+            options.CustomizeProblemDetails = context =>
+            {
+                context.ProblemDetails.Instance =
+                    $"{context.HttpContext.Request.Method} {context.HttpContext.Request.Path}";
+                context.ProblemDetails.Extensions.TryAdd("requestId", context.HttpContext.TraceIdentifier);
+
+                var activity = context.HttpContext.Features.Get<IHttpActivityFeature>()?.Activity;
+                context.ProblemDetails.Extensions.TryAdd("traceId", activity?.Id);
+            };
+        });
+
+        builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
     }
 
     public static void AddApiEndpoints(this WebApplicationBuilder builder)
@@ -361,7 +383,46 @@ public class GenerateAdditionalOpenApiSchema : IDocumentFilter
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {
         var schema = context.SchemaGenerator.GenerateSchema(typeof(CustomBeatmapStatusChangeResponse), context.SchemaRepository);
-        
+
         swaggerDoc.Components.Schemas.TryAdd(nameof(CustomBeatmapStatusChangeResponse), schema);
+    }
+}
+
+public class ProblemDetailsExceptionHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        var status = exception switch
+        {
+            ArgumentException => StatusCodes.Status400BadRequest,
+            BadHttpRequestException => StatusCodes.Status400BadRequest,
+            AuthenticationException => StatusCodes.Status403Forbidden,
+            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            TimeoutException => StatusCodes.Status408RequestTimeout,
+            _ => StatusCodes.Status500InternalServerError
+        };
+        httpContext.Response.StatusCode = status;
+
+        var title = ReasonPhrases.GetReasonPhrase(status);
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Detail = exception.Message,
+            Instance = $"{httpContext.Request.Method} {httpContext.Request.Path}"
+        };
+
+        problemDetails.Extensions.TryAdd("requestId", httpContext.TraceIdentifier);
+
+        var activity = httpContext.Features.Get<IHttpActivityFeature>()?.Activity;
+        problemDetails.Extensions.TryAdd("traceId", activity?.Id);
+
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+
+        return true;
     }
 }

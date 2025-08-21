@@ -1,8 +1,10 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
@@ -336,9 +338,6 @@ public class ApiUserCountryChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -362,9 +361,6 @@ public class ApiUserCountryChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -383,8 +379,8 @@ public class ApiUserCountryChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are missing", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]
@@ -410,11 +406,9 @@ public class ApiUserCountryChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        
-        var expectedError = "One or more required fields are missing or invalid entry.";
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Equal(expectedError, responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]
@@ -455,11 +449,14 @@ public class ApiUserCountryChangeTests : ApiTest
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var newCountry = _mocker.User.GetRandomCountryCode();
+        var newCountry = CountryCode.AD;
 
-        var updateCountryResult = await Database.Users.UpdateUserCountry(user, user.Country, newCountry);
+        var updateCountryResult = await Database.Users.UpdateUserCountry(user, user.Country, CountryCode.AL);
         if (updateCountryResult.IsFailure)
             throw new Exception(updateCountryResult.Error);
+
+        var lastUserCountryChange = await Database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
+        Assert.NotNull(lastUserCountryChange);
 
         // Act
         var response = await client.PostAsJsonAsync("user/country/change",
@@ -471,10 +468,10 @@ public class ApiUserCountryChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("you can't change country", errorResponse?.Error.ToLower());
+        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.ChangeCountryOnCooldown(lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)), errorResponse?.Detail);
     }
-    
+
     [Fact]
     public async Task TestChangeCountryToUnknownCountry()
     {
@@ -495,10 +492,10 @@ public class ApiUserCountryChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("can't change country to the unknown", errorResponse?.Error.ToLower());
+        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.CantChangeCountryToUnknown, errorResponse?.Detail);
     }
-    
+
     [Fact]
     public async Task TestChangeCountryToSameCountry()
     {
@@ -507,25 +504,25 @@ public class ApiUserCountryChangeTests : ApiTest
         var user = _mocker.User.GetRandomUser();
         var newCountry = CountryCode.BR;
         user.Country = newCountry;
-        
+
         await CreateTestUser(user);
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
-        
+
         // Act
         var response = await client.PostAsJsonAsync("user/country/change",
             new CountryChangeRequest
             {
                 NewCountry = newCountry
             });
-        
+
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        
-        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("can't change country to the same one", errorResponse?.Error.ToLower());   
+
+        var errorResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.CantChangeCountryToTheSameOne, errorResponse?.Detail);
     }
-    
+
     [Fact]
     public async Task CheckAdditionToEventsAfterCountryChange()
     {
@@ -535,20 +532,20 @@ public class ApiUserCountryChangeTests : ApiTest
         var user = _mocker.User.GetRandomUser();
         user.Country = CountryCode.HU;
         user = await CreateTestUser(user);
-        
+
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
         // Act
         await client.PostAsJsonAsync("user/country/change",
-             new CountryChangeRequest
-             {
-                 NewCountry = CountryCode.AL
-             });
+            new CountryChangeRequest
+            {
+                NewCountry = CountryCode.AL
+            });
 
         var lastEvent = await Database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
         var data = lastEvent?.GetData<UserCountryChanged>();
-        
+
         // Assert
         Assert.NotNull(lastEvent);
         Assert.Equal(CountryCode.AL, data!.NewCountry);

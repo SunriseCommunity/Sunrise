@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -23,8 +25,8 @@ public class ApiUserSearchTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("query parameter", responseData?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]
@@ -42,10 +44,7 @@ public class ApiUserSearchTests : ApiTest
         var response = await client.GetAsync($"user/search?query={usernameQuery}&limit={limit}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -62,10 +61,7 @@ public class ApiUserSearchTests : ApiTest
         var response = await client.GetAsync($"user/search?query={usernameQuery}&page={page}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

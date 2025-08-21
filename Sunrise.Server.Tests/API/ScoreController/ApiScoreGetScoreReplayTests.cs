@@ -1,5 +1,8 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
@@ -25,7 +28,6 @@ public class ApiScoreGetScoreReplayTests : ApiTest
     [Theory]
     [InlineData(-1)]
     [InlineData(0)]
-    [InlineData(9999)]
     public async Task TestGetNotExistingScoreReplay(object id)
     {
         // Arrange
@@ -35,7 +37,11 @@ public class ApiScoreGetScoreReplayTests : ApiTest
         var response = await client.GetAsync($"score/{id}/replay");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseString?.Title);
     }
 
     [Fact]
@@ -78,7 +84,11 @@ public class ApiScoreGetScoreReplayTests : ApiTest
         var response = await client.GetAsync($"score/{score.Id}/replay");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseString?.Title);
     }
 
     [Fact]

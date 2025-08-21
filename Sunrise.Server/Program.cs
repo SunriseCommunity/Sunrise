@@ -17,6 +17,7 @@ builder.AddSingletons();
 builder.AddMiddlewares();
 builder.AddApiEndpoints();
 builder.AddApiDocs();
+builder.AddProblemDetails();
 
 builder.AddAuthorizationPolicies();
 
@@ -39,6 +40,9 @@ app.UseScalarApiReference();
 
 app.ApplyDatabaseBootstrapping();
 app.UseStaticBackgrounds();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 app.UseWebSockets();
 app.Configure();

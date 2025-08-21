@@ -273,7 +273,7 @@ public class HttpClientService
                         {
                             return Result.Failure<T, ErrorMessage>(JsonSerializer.Deserialize<ErrorMessage>(content) ?? new ErrorMessage
                             {
-                                Message = "Exception occured while deserializing error message",
+                                Message = "Exception occurred while deserializing error message",
                                 Status = HttpStatusCode.BadRequest
                             });
                         }
@@ -291,7 +291,7 @@ public class HttpClientService
 
                     return JsonSerializer.Deserialize<T>(content) ?? Result.Failure<T, ErrorMessage>(new ErrorMessage
                     {
-                        Message = "Exception occured while deserializing data",
+                        Message = "Exception occurred while deserializing data",
                         Status = HttpStatusCode.BadRequest
                     });
             }

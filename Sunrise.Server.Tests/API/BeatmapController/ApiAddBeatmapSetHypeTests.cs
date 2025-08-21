@@ -1,5 +1,5 @@
 ﻿using System.Net;
-using Sunrise.API.Serializable.Response;
+using Microsoft.AspNetCore.Mvc;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums;
@@ -58,7 +58,7 @@ public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
         Assert.NotNull(userHypes);
         Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly - 1);
     }
-    
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -75,29 +75,29 @@ public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
         beatmapSet.Id = 1;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         EnvManager.Set("BeatmapHype:AllowMultipleHypeFromSameUser", isMultipleHypeEnabled ? "true" : "false");
-        
+
         var addBeatmapHypeBeforeResult = await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
         if (addBeatmapHypeBeforeResult.IsFailure)
             throw new Exception(addBeatmapHypeBeforeResult.Error);
-        
+
         // Act
         var response = await client.PostAsync("beatmapset/1/hype", new StringContent(string.Empty));
 
         // Assert
-        Assert.Equal( isMultipleHypeEnabled ? HttpStatusCode.OK : HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(isMultipleHypeEnabled ? HttpStatusCode.OK : HttpStatusCode.BadRequest, response.StatusCode);
 
 
         if (!isMultipleHypeEnabled)
         {
-            var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-            Assert.Contains("already hyped", responseString?.Error.ToLower());
+            var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+            Assert.Contains("already hyped", responseString?.Detail.ToLower());
         }
-        
+
         var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
         Assert.Equal(isMultipleHypeEnabled ? 2 : 1, beatmapHypeCount);
-        
+
         var (beatmapEvents, _) = await Database.Events.Beatmaps.GetBeatmapSetEvents(beatmapSet.Id);
         Assert.Equal(isMultipleHypeEnabled ? 2 : 1, beatmapEvents.Count);
 
@@ -131,8 +131,8 @@ public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("not enough hypes", responseString?.Error.ToLower());
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains("not enough hypes", responseString?.Detail.ToLower());
 
         var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
         Assert.Equal(0, beatmapHypeCount);
@@ -167,8 +167,8 @@ public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("beatmapset with custom beatmap status", responseString?.Error.ToLower());
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains("beatmapset with custom beatmap status", responseString?.Detail?.ToLower());
 
         var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
         Assert.Equal(0, beatmapHypeCount);
