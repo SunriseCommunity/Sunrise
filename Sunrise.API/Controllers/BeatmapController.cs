@@ -6,6 +6,7 @@ using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.API.Utils;
@@ -39,8 +40,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmap(
-        [Range(1, int.MaxValue, ErrorMessage = "Invalid Beatmap Id")]
-        int id, CancellationToken ct = default)
+        [Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var session = HttpContext.GetCurrentSession();
 
@@ -53,7 +53,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new BeatmapResponse(sessions, beatmap, beatmapSet));
     }
@@ -87,7 +87,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == id);
 
         if (beatmap == null)
-            return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
 
@@ -180,7 +180,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
         if (hypeBeatmapSetResult.IsFailure)
@@ -358,7 +358,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(user.Id, id, ct);
 
@@ -379,7 +379,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         foreach (var id in request.Ids)
         {
@@ -394,7 +394,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
 
             if (beatmap == null)
-                return Problem(title: "Beatmap not found", statusCode: StatusCodes.Status404NotFound);
+                return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 
             var resetBeatmapStatus = request.Status == BeatmapStatusWeb.Unknown;
             var changeBeatmapSetStatusResult = await beatmapService.ChangeBeatmapCustomStatus(

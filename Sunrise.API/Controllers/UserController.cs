@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.API.Services;
@@ -45,10 +46,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new UserResponse(sessions, user));
     }
@@ -68,10 +69,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         var userStats = user.UserStats.FirstOrDefault(m => m.GameMode == mode);
 
@@ -80,7 +81,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             userStats = await database.Users.Stats.GetUserStats(id, mode, ct);
 
             if (userStats == null)
-                return Problem("User stats not found", statusCode: StatusCodes.Status404NotFound);
+                return Problem(ApiErrorResponse.Detail.UserStatsNotFound, statusCode: StatusCodes.Status404NotFound);
         }
 
         var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, mode, ct: ct);
@@ -123,7 +124,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         user.Description = request.Description;
 
@@ -141,7 +142,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         user.DefaultGameMode = request.DefaultGameMode;
 
@@ -169,10 +170,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         var userStats = user.UserStats.FirstOrDefault(m => m.GameMode == mode);
 
@@ -181,7 +182,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             userStats = await database.Users.Stats.GetUserStats(userId, mode, ct);
 
             if (userStats == null)
-                return Problem("User stats not found", statusCode: StatusCodes.Status404NotFound);
+                return Problem(ApiErrorResponse.Detail.UserStatsNotFound, statusCode: StatusCodes.Status404NotFound);
         }
 
         var userSnapshots = user.UserStatsSnapshots.FirstOrDefault(m => m.GameMode == mode);
@@ -228,10 +229,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = await database.Users.GetUser(id, ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         var (scores, totalScores) = await database.Scores.GetUserScores(id,
             mode,
@@ -268,10 +269,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = await database.Users.GetUser(id, ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page, limit)), ct);
 
@@ -311,10 +312,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = await database.Users.GetUser(id, ct: ct);
 
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         var (favourites, favouritesCount) = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)), ct);
 
@@ -356,7 +357,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             },
             ct: ct);
 
-        if (stats.Count <= 0) return Problem("User stats not found", statusCode: StatusCodes.Status404NotFound);
+        if (stats.Count <= 0) return Problem(ApiErrorResponse.Detail.UserStatsNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var usersWithStatsTask = stats.Select(async userStats =>
         {
@@ -405,7 +406,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -435,7 +436,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -460,18 +461,18 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         if (id == user.Id)
-            return Problem("You can't check your own friendship status", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(ApiErrorResponse.Detail.CantCheckSelfFriendshipStatus, statusCode: StatusCodes.Status400BadRequest);
 
         var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id, ct);
         if (relationship == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var targetRelationship = await database.Users.Relationship.GetUserRelationship(id, user.Id, ct);
         if (targetRelationship == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var isFollowing = targetRelationship.Relation == UserRelation.Friend;
         var isFollowed = relationship.Relation == UserRelation.Friend;
@@ -490,7 +491,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var inventoryItem = await database.Users.Inventory.GetInventoryItem(user.Id, type, ct: ct);
 
@@ -506,7 +507,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = await database.Users.GetValidUser(id, ct: ct);
         if (user == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var (_, totalFriends) = await database.Users.Relationship.GetUserFriends(id, ct: ct);
         var (_, totalFollowers) = await database.Users.Relationship.GetUserFollowers(id, ct: ct);
@@ -524,11 +525,11 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id);
         if (relationship == null)
-            return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         switch (request.Action)
         {
@@ -574,14 +575,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var userGrades = await database.Users.Grades.GetUserGrades(id, mode, ct);
 
         if (userGrades is null)
-            return Problem("User grades not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserGradesNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var user = await database.Users.GetUser(userGrades.UserId, ct: ct);
 
-        if (user == null) return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+        if (user == null) return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new GradesResponse(userGrades));
     }
@@ -596,14 +597,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var userMetadata = await database.Users.Metadata.GetUserMetadata(id, ct);
 
         if (userMetadata is null)
-            return Problem("User metadata not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserMetadataNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var user = await database.Users.GetUser(userMetadata.UserId, ct: ct);
 
-        if (user == null) return Problem("User not found", statusCode: StatusCodes.Status404NotFound);
+        if (user == null) return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (user.IsRestricted())
-            return Problem("User is restricted", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new UserMetadataResponse(userMetadata));
     }
@@ -618,12 +619,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var userMetadata = await database.Users.Metadata.GetUserMetadata(user.Id, ct);
 
         if (userMetadata is null)
-            return Problem("User metadata not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.UserMetadataNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var playstyleEnum = JsonStringFlagEnumHelper.CombineFlags(request.Playstyle);
 
@@ -652,13 +653,13 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         if (Request.HasFormContentType == false)
-            return Problem("Invalid content type", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
-            return Problem("No files were uploaded", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
         await using var stream = file.OpenReadStream();
@@ -668,7 +669,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (!isSet || error != null)
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
-            return Problem(error ?? "Failed to set avatar", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         return new OkResult();
@@ -682,13 +683,13 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         if (Request.HasFormContentType == false)
-            return Problem("Invalid content type", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
-            return Problem("No files were uploaded", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
         await using var stream = file.OpenReadStream();
@@ -698,7 +699,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (!isSet || error != null)
         {
             SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
-            return Problem(error ?? "Failed to set avatar", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: error, statusCode: StatusCodes.Status400BadRequest);
         }
 
         return new OkResult();
@@ -712,17 +713,17 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var userByCurrentPassword = await database.Users.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: user.Username);
 
         if (userByCurrentPassword == null)
-            return Problem("Current password is incorrect", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangePassword, detail: ApiErrorResponse.Detail.InvalidCurrentPasswordProvided, statusCode: StatusCodes.Status400BadRequest);
 
         var (isPasswordValid, error) = request.NewPassword.IsValidPassword();
 
         if (!isPasswordValid)
-            return Problem(title: "Invalid new password provided", detail: error, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangePassword, detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         user.Passhash = request.NewPassword.GetPassHash();
 
@@ -742,19 +743,19 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUser();
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
         if (!isUsernameValid)
-            return Problem(title: "Invalid new username provided", detail: error, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(user.Id);
         if (lastUsernameChange != null && lastUsernameChange.Time.AddHours(1) > DateTime.UtcNow)
-            return Problem("You can change your username only once per hour. Please try again later.", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.ChangeCountryOnCooldown(lastUsernameChange.Time.AddHours(1)), statusCode: StatusCodes.Status400BadRequest);
 
         var foundUserByUsername = await database.Users.GetUser(username: request.NewUsername);
         if (foundUserByUsername != null && foundUserByUsername.IsActive())
-            return Problem("Username is already taken", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.UsernameAlreadyTaken, statusCode: StatusCodes.Status400BadRequest);
 
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
@@ -779,7 +780,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         });
 
         if (transactionResult.IsFailure)
-            return Problem(detail: transactionResult.Error);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: transactionResult.Error);
 
         return new OkResult();
     }
@@ -791,20 +792,20 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
     {
         if (request.NewCountry == CountryCode.XX)
-            return Problem("You can't change country to the unknown one");
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToUnknown);
 
         var user = HttpContext.GetCurrentUser();
 
         if (user == null)
-            return Problem("User with current session not found", statusCode: StatusCodes.Status401Unauthorized);
+            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
 
         if (user.Country == request.NewCountry)
-            return Problem("You can't change country to the same one", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToTheSameOne, statusCode: StatusCodes.Status400BadRequest);
 
         var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
 
         if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
-            return Problem(title: "Unable to change the country", detail: $"You'll be able to change your country on {lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)}", statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.ChangeCountryOnCooldown(lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)), statusCode: StatusCodes.Status400BadRequest);
 
         var ip = RegionService.GetUserIpAddress(Request);
 

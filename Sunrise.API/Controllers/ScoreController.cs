@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Extensions;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
@@ -37,7 +38,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
             ct);
 
         if (score == null)
-            return Problem(title: "Score not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
 
         score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score], ct)).First();
 
@@ -58,14 +59,14 @@ public class ScoreController(DatabaseService database, SessionRepository session
         var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
 
         if (score == null)
-            return Problem(title: "Score not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
 
         if (score.ReplayFileId == null)
-            return Problem(title: "Replay not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.ReplayNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var replay = await database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
         if (replay == null)
-            return Problem(title: "Replay not found", statusCode: StatusCodes.Status404NotFound);
+            return Problem(ApiErrorResponse.Detail.ReplayNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var replayFile = new ReplayFile(score, replay);
         var replayStream = await replayFile.ReadReplay();

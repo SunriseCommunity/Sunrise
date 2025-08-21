@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Attributes;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
@@ -30,23 +31,20 @@ public class AuthController(
     {
         var user = await database.Users.GetUser(username: request.Username, passhash: request.Password.GetPassHash(), ct: ct);
 
-        if (user == null)
-            return Problem(title: "Invalid credentials", statusCode: StatusCodes.Status401Unauthorized);
-
-        if (user.IsUserSunriseBot())
-            return Problem(title: "You can't perform this action as a bot", statusCode: StatusCodes.Status401Unauthorized);
+        if (user == null || user.IsUserSunriseBot())
+            return Problem(title: ApiErrorResponse.Title.UnableToAuthenticate, detail: ApiErrorResponse.Detail.InvalidCredentialsProvided, statusCode: StatusCodes.Status401Unauthorized);
 
         if (user.IsRestricted())
         {
             var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id, ct);
-            return Problem(title: "Your account is restricted", detail: restriction, statusCode: StatusCodes.Status403Forbidden);
+            return Problem(title: ApiErrorResponse.Title.UnableToAuthenticate, detail: ApiErrorResponse.Detail.YourAccountIsRestricted(restriction), statusCode: StatusCodes.Status403Forbidden);
         }
 
         var location = await regionService.GetRegion(RegionService.GetUserIpAddress(Request), ct);
 
         var tokenResult = await authService.GenerateTokens(user.Id);
         if (tokenResult.IsFailure)
-            return Problem(tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToAuthenticate, detail: tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var token = tokenResult.Value;
 
@@ -71,7 +69,7 @@ public class AuthController(
     {
         var newTokenResult = await authService.RefreshToken(request.RefreshToken);
         if (newTokenResult.IsFailure)
-            return Problem(newTokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToRefreshAuthToken, detail: newTokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var newToken = newTokenResult.Value;
 
@@ -89,13 +87,13 @@ public class AuthController(
 
         if (newUser == null)
         {
-            var errorString = errors?.FirstOrDefault(x => x.Value.Count != 0).Value.FirstOrDefault() ?? "Unknown error occured.";
-            return Problem(errorString, statusCode: StatusCodes.Status400BadRequest);
+            var errorString = errors?.FirstOrDefault(x => x.Value.Count != 0).Value.FirstOrDefault();
+            return Problem(title: ApiErrorResponse.Title.UnableToRegisterUser, detail: errorString ?? ApiErrorResponse.Detail.UnknownErrorOccured, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var tokenResult = await authService.GenerateTokens(newUser.Id);
         if (tokenResult.IsFailure)
-            return Problem(tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToRegisterUser, detail: tokenResult.Error, statusCode: StatusCodes.Status400BadRequest);
 
         var token = tokenResult.Value;
 

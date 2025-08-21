@@ -9,7 +9,7 @@ public static class ActionResultUtil
     {
         var problemDetails = new ProblemDetails
         {
-            Title = error.Message,
+            Detail = error.Message,
             Status = (int)error.Status
         };
 
