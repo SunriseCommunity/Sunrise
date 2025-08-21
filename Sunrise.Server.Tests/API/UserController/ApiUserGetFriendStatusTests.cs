@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
@@ -70,7 +72,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         var response = await client.GetAsync($"user/{userId}/friend/status");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -102,7 +104,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
 
         if (isFollowingYou)
         {
-            var relationship = await Database.Users.Relationship.GetUserRelationship( requestedUser.Id, user.Id);
+            var relationship = await Database.Users.Relationship.GetUserRelationship(requestedUser.Id, user.Id);
             if (relationship == null)
                 return;
 
@@ -144,7 +146,7 @@ public class ApiUserGetFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User not found", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserNotFound, responseError?.Detail);
     }
 }

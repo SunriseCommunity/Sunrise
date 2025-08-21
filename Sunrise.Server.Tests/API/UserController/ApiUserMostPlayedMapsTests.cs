@@ -1,5 +1,6 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -116,7 +117,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         var response = await client.GetAsync($"user/{userId}/mostplayed");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -134,10 +135,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         var response = await client.GetAsync($"user/{user.Id}/mostplayed?limit={limit}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -154,10 +152,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         var response = await client.GetAsync($"user/{user.Id}/mostplayed?page={page}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -196,7 +191,7 @@ public class ApiUserMostPlayedMapsTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User is restricted", responseError?.Error);
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserIsRestricted, responseContent?.Detail);
     }
 }

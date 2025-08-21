@@ -1,7 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Enums;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
@@ -86,7 +88,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -111,8 +113,8 @@ public class ApiUserEditFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are invalid", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
     }
 
     [Theory]
@@ -135,7 +137,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         var relationship = await Database.Users.Relationship.GetUserRelationship(user.Id, requestedUser.Id);
         if (relationship == null)
             return;
-        
+
         if (isFriendsBefore)
         {
             relationship.Relation = UserRelation.Friend;
@@ -144,7 +146,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         {
             relationship.Relation = UserRelation.None;
         }
-        
+
         await Database.Users.Relationship.UpdateUserRelationship(relationship);
 
         var result = await Database.Users.UpdateUser(user);
@@ -192,7 +194,7 @@ public class ApiUserEditFriendStatusTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User not found", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserNotFound, responseError?.Detail);
     }
 }

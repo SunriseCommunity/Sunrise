@@ -81,7 +81,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
     [EndpointDescription("Get best scores on the server")]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTopScores(
-        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [FromQuery(Name = "mode")] GameMode mode,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int? limit = 15,
         [Range(1, int.MaxValue)] [FromQuery(Name = "page")]

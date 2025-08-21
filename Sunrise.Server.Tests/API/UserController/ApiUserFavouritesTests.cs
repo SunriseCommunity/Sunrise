@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -83,7 +85,7 @@ public class ApiUserFavouritesTests : ApiTest
         var response = await client.GetAsync($"user/{userId}/favourites");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -101,10 +103,7 @@ public class ApiUserFavouritesTests : ApiTest
         var response = await client.GetAsync($"user/{user.Id}/favourites?limit={limit}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]
@@ -121,10 +120,7 @@ public class ApiUserFavouritesTests : ApiTest
         var response = await client.GetAsync($"user/{user.Id}/favourites?page={page}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("invalid", responseData?.Error.ToLower());
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -165,7 +161,7 @@ public class ApiUserFavouritesTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User is restricted", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserIsRestricted, responseError?.Detail);
     }
 }

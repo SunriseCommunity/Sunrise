@@ -11,7 +11,7 @@ public static class ApiErrorResponse
         public const string UnableToChangeBanner = "Unable to change banner.";
         public const string UnableToChangeAvatar = "Unable to change avatar.";
         public const string UnableToChangeCountry = "Unable to change country.";
-        
+
         public const string UnableToRegisterUser = "Unable to register user.";
         public const string UnableToAuthenticate = "Unable to authenticate.";
         public const string UnableToRefreshAuthToken = "Unable to refresh auth token.";
@@ -48,6 +48,7 @@ public static class ApiErrorResponse
 
         public const string InvalidCurrentPasswordProvided = "Invalid current password provided.";
 
+        public const string YouHaveBeenBanned = "You have been banned. Please contact servers support for unban.";
 
         public static string YourAccountIsRestricted(string? reason)
         {

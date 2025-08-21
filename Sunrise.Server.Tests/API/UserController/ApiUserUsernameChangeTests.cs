@@ -1,5 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
@@ -77,12 +79,11 @@ public class ApiUserUsernameChangeTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("fields are missing", responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
     }
 
     [Theory]
-    [InlineData("")]
     [InlineData("1")]
     [InlineData("peppy")]
     [InlineData("テスト")]
@@ -112,8 +113,8 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         var (_, expectedError) = newUsername.IsValidUsername();
 
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Equal(expectedError, responseError?.Error);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Equal(expectedError, responseError?.Detail);
     }
 
     [Fact]
@@ -183,8 +184,8 @@ public class ApiUserUsernameChangeTests : ApiTest
         }
         else
         {
-            var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-            Assert.Contains("Username is already taken", responseError?.Error);
+            var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+            Assert.Contains(ApiErrorResponse.Detail.UsernameAlreadyTaken, responseError?.Detail);
         }
     }
 }

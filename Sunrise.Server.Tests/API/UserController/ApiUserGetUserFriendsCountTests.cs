@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
@@ -26,8 +28,8 @@ public class ApiUserGetUserFriendsCountTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User not found", responseContent?.Error);
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserNotFound, responseContent?.Detail);
     }
 
     [Theory]
@@ -151,7 +153,7 @@ public class ApiUserGetUserFriendsCountTests : ApiTest
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("User not found", responseContent?.Error);
+        var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserNotFound, responseContent?.Detail);
     }
 }

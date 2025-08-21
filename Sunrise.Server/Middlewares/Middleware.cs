@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -173,7 +174,7 @@ public sealed class Middleware(
             var problemDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
-                Detail = "You have been banned. Please contact servers support for unban."
+                Detail = ApiErrorResponse.Detail.YouHaveBeenBanned
             };
 
             var jsonResponse = JsonSerializer.Serialize(problemDetails);

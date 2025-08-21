@@ -253,7 +253,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMostPlayedMaps([Range(1, int.MaxValue)] int id,
-        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [FromQuery(Name = "mode")] GameMode mode,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int limit = 15,
         [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
@@ -335,8 +335,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(LeaderboardResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLeaderboard(
-        [Required] [FromQuery(Name = "mode")] GameMode mode,
-        [Required] [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
+        [FromQuery(Name = "mode")] GameMode mode,
+        [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int limit = 50,
         [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
@@ -767,7 +767,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
     {
         if (request.NewCountry == CountryCode.XX)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToUnknown);
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToUnknown, statusCode: StatusCodes.Status400BadRequest);
 
         var user = HttpContext.GetCurrentUserOrThrow();
 
