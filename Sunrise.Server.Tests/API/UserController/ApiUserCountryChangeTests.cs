@@ -4,7 +4,6 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -381,7 +380,7 @@ public class ApiUserCountryChangeTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]
@@ -409,7 +408,7 @@ public class ApiUserCountryChangeTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Equal(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]

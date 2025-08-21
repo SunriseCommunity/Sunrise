@@ -742,7 +742,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
                     foundUserByUsername.Username.SetUsernameAsOld());
 
                 if (updateFoundUserUsernameResult.IsFailure)
-                    throw new ApplicationException("Unexpected error occured while trying to prepare for changing your username.");
+                    throw new ApplicationException("Unexpected error occurred while trying to prepare for changing your username.");
             }
 
             var oldUsername = user.Username;
@@ -751,7 +751,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             var ip = RegionService.GetUserIpAddress(Request);
             var updateUserUsernameResult = await database.Users.UpdateUserUsername(user, oldUsername, request.NewUsername, null, ip.ToString());
             if (updateUserUsernameResult.IsFailure)
-                throw new ApplicationException("Unexpected error occured while trying to change your username. Sorry!");
+                throw new ApplicationException("Unexpected error occurred while trying to change your username. Sorry!");
         });
 
         if (transactionResult.IsFailure)

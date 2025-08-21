@@ -215,7 +215,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         var (_, expectedError) = username.IsValidUsername();
 
-        Assert.Equal(username == "" ? ApiErrorResponse.Title.ValdiationError : expectedError, username == "" ? responseError?.Title : responseError?.Detail);
+        Assert.Equal(username == "" ? ApiErrorResponse.Title.ValidationError : expectedError, username == "" ? responseError?.Title : responseError?.Detail);
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public class ApiAuthRegisterTests : ApiTest
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]

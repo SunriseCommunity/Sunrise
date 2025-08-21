@@ -88,7 +88,7 @@ public class AuthController(
         if (newUser == null)
         {
             var errorString = errors?.FirstOrDefault(x => x.Value.Count != 0).Value.FirstOrDefault();
-            return Problem(title: ApiErrorResponse.Title.UnableToRegisterUser, detail: errorString ?? ApiErrorResponse.Detail.UnknownErrorOccured, statusCode: StatusCodes.Status400BadRequest);
+            return Problem(title: ApiErrorResponse.Title.UnableToRegisterUser, detail: errorString ?? ApiErrorResponse.Detail.UnknownErrorOccurred, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var tokenResult = await authService.GenerateTokens(newUser.Id);

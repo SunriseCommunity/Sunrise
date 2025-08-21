@@ -194,7 +194,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
             return addCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(addCustomStatusResult.Error) : customStatus;
         }
 
-        return Result.Failure<CustomBeatmapStatus?>("Unknown error occured while changing beatmap status.");
+        return Result.Failure<CustomBeatmapStatus?>("Unknown error occurred while changing beatmap status.");
     }
 
     private bool IsValidResult(Result<BeatmapSet, ErrorMessage> result)

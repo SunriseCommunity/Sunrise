@@ -26,7 +26,7 @@ public class ApiUserSearchTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]

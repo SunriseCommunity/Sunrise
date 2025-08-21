@@ -58,7 +58,7 @@ public class ApiAuthRefreshTests : ApiTest
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Fact]

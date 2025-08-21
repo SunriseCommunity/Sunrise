@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
@@ -74,7 +73,7 @@ public class ApiUserUsernameChangeTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseError?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
     }
 
     [Theory]
@@ -138,7 +137,7 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         Assert.Equal(updatedUser.Username, newUsername);
     }
-    
+
     [Fact]
     public async Task TestUsernameChangeTooFrequently()
     {
@@ -152,12 +151,12 @@ public class ApiUserUsernameChangeTests : ApiTest
         var usernameChangeResult = await Database.Users.UpdateUserUsername(user, user.Username, "test");
         if (usernameChangeResult.IsFailure)
             throw new Exception(usernameChangeResult.Error);
-        
+
         var lastUsernameChange = await Database.Events.Users.GetLastUsernameChangeEvent(user.Id);
         Assert.NotNull(lastUsernameChange);
 
         var newUsername = _mocker.User.GetRandomUsername();
-        
+
         // Act
         var response = await client.PostAsJsonAsync("user/username/change",
             new UsernameChangeRequest
@@ -167,7 +166,7 @@ public class ApiUserUsernameChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        
+
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
         Assert.Contains(ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddHours(1)), responseError?.Detail);

@@ -4,7 +4,7 @@ public static class ApiErrorResponse
 {
     public static class Title
     {
-        public const string ValdiationError = "One or more validation errors occurred.";
+        public const string ValidationError = "One or more validation errors occurred.";
 
         public const string UnableToChangeUsername = "Unable to change username.";
         public const string UnableToChangePassword = "Unable to change password.";
@@ -19,7 +19,7 @@ public static class ApiErrorResponse
 
     public static class Detail
     {
-        public const string UnknownErrorOccured = "Unknown error occured.";
+        public const string UnknownErrorOccurred = "Unknown error occurred.";
 
         public const string UserNotFound = "User not found.";
         public const string UserMetadataNotFound = "User metadata not found.";
@@ -27,7 +27,7 @@ public static class ApiErrorResponse
         public const string UserStatsNotFound = "User stats not found.";
 
         public const string CurrentUserSessionNotFound = "User with current session not found.";
-        public const string CantCheckSelfFriendshipStatus = "You can't check your own friendship status";
+        public const string CantCheckSelfFriendshipStatus = "You can't check your own friendship status.";
 
         public const string UserIsRestricted = "User is restricted.";
 
@@ -39,7 +39,7 @@ public static class ApiErrorResponse
         public const string InvalidCredentialsProvided = "Invalid credentials provided.";
 
         public const string CantChangeCountryToTheSameOne = "You can't change country to the same one.";
-        public const string CantChangeCountryToUnknown = "You can't change country to the unknown on.";
+        public const string CantChangeCountryToUnknown = "You can't change country to the unknown one.";
 
         public const string UsernameAlreadyTaken = "Username already taken.";
 
@@ -49,7 +49,7 @@ public static class ApiErrorResponse
         public const string InvalidCurrentPasswordProvided = "Invalid current password provided.";
 
         public const string YouHaveBeenBanned = "You have been banned. Please contact servers support for unban.";
-        
+
         public const string AuthorizationFailed = "Authorization failed. Please authorize to access this resource.";
 
         public static string YourAccountIsRestricted(string? reason)

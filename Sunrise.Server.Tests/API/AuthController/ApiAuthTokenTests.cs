@@ -106,7 +106,7 @@ public class ApiAuthTokenTests : ApiTest
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseTokens = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Title.ValdiationError, responseTokens?.Title);
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseTokens?.Title);
     }
 
     [Fact]

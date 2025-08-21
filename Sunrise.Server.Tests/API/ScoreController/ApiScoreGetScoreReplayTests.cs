@@ -41,7 +41,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
 
         var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Equal(ApiErrorResponse.Title.ValdiationError, responseString?.Title);
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseString?.Title);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class ApiScoreGetScoreReplayTests : ApiTest
 
         var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
 
-        Assert.Equal(ApiErrorResponse.Title.ValdiationError, responseString?.Title);
+        Assert.Equal(ApiErrorResponse.Title.ValidationError, responseString?.Title);
     }
 
     [Fact]
