@@ -54,7 +54,7 @@ public static class ApiErrorResponse
 
         public static string YourAccountIsRestricted(string? reason)
         {
-            var formattedReason = reason != null ? $"Reason: {reason}" : string.Empty;
+            var formattedReason = reason != null ? $" Reason: {reason}" : string.Empty;
             return "Your account is restricted." + formattedReason;
         }
 
