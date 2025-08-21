@@ -122,9 +122,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         user.Description = request.Description;
 
@@ -140,9 +138,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditUserDefaultGameMode([FromBody] EditDefaultGameModeRequest request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         user.DefaultGameMode = request.DefaultGameMode;
 
@@ -404,9 +400,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         CancellationToken ct = default
     )
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -434,9 +428,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         CancellationToken ct = default
     )
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -459,9 +451,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(FriendStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriendStatus([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         if (id == user.Id)
             return Problem(ApiErrorResponse.Detail.CantCheckSelfFriendshipStatus, statusCode: StatusCodes.Status400BadRequest);
@@ -489,9 +479,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(InventoryItemResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInventoryItemCount([Required] ItemType type, CancellationToken ct = default)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var inventoryItem = await database.Users.Inventory.GetInventoryItem(user.Id, type, ct: ct);
 
@@ -523,9 +511,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditFriendStatus([Range(1, int.MaxValue)] int id, [FromBody] EditFriendshipStatusRequest request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id);
         if (relationship == null)
@@ -616,10 +602,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
-        var user = HttpContext.GetCurrentUser();
-
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var userMetadata = await database.Users.Metadata.GetUserMetadata(user.Id, ct);
 
@@ -651,9 +634,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetAvatar()
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -681,9 +662,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetBanner()
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -711,9 +690,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var userByCurrentPassword = await database.Users.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: user.Username);
 
@@ -741,9 +718,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
         if (!isUsernameValid)
@@ -794,10 +769,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (request.NewCountry == CountryCode.XX)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToUnknown);
 
-        var user = HttpContext.GetCurrentUser();
-
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         if (user.Country == request.NewCountry)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToTheSameOne, statusCode: StatusCodes.Status400BadRequest);

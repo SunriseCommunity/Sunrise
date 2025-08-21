@@ -1,12 +1,16 @@
+using System.Security.Authentication;
 using System.Text.Json;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.HttpLogging;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
@@ -200,6 +204,7 @@ public static class Bootstrap
             };
         });
 
+        builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
     }
 
     public static void AddApiEndpoints(this WebApplicationBuilder builder)
@@ -383,5 +388,42 @@ public class GenerateAdditionalOpenApiSchema : IDocumentFilter
         var schema = context.SchemaGenerator.GenerateSchema(typeof(CustomBeatmapStatusChangeResponse), context.SchemaRepository);
 
         swaggerDoc.Components.Schemas.TryAdd(nameof(CustomBeatmapStatusChangeResponse), schema);
+    }
+}
+
+public class ProblemDetailsExceptionHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        var status = exception switch
+        {
+            ArgumentException => StatusCodes.Status400BadRequest,
+            AuthenticationException => StatusCodes.Status403Forbidden,
+            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            _ => StatusCodes.Status500InternalServerError
+        };
+        httpContext.Response.StatusCode = status;
+
+        var title = ReasonPhrases.GetReasonPhrase(status);
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Detail = exception.Message,
+            Instance = $"{httpContext.Request.Method} {httpContext.Request.Path}"
+        };
+
+        problemDetails.Extensions.TryAdd("requestId", httpContext.TraceIdentifier);
+
+        var activity = httpContext.Features.Get<IHttpActivityFeature>()?.Activity;
+        problemDetails.Extensions.TryAdd("traceId", activity?.Id);
+
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+
+        return true;
     }
 }

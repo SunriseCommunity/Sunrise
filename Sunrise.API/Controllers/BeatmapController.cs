@@ -178,9 +178,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var beatmapSet = beatmapSetResult.Value;
 
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
         if (hypeBeatmapSetResult.IsFailure)
@@ -356,9 +354,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFavourited([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         var favourited = await database.Users.Favourites.IsBeatmapSetFavourited(user.Id, id, ct);
 
@@ -376,10 +372,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     public async Task<IActionResult> UpdateBeatmapStatus([FromBody] UpdateBeatmapsCustomStatusRequest request)
     {
         var session = HttpContext.GetCurrentSession();
-        var user = HttpContext.GetCurrentUser();
-
-        if (user == null)
-            return Problem(ApiErrorResponse.Detail.CurrentUserSessionNotFound, statusCode: StatusCodes.Status401Unauthorized);
+        var user = HttpContext.GetCurrentUserOrThrow();
 
         foreach (var id in request.Ids)
         {
