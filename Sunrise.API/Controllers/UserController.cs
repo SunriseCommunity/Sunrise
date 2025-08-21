@@ -32,13 +32,13 @@ namespace Sunrise.API.Controllers;
 [Route("/user")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 public class UserController(BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
 {
     [HttpGet]
     [Route("{id:int}")]
     [EndpointDescription("Get user profile")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUser([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -57,7 +57,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/{mode}")]
     [EndpointDescription("Get user profile with user stats")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserWithStats([Range(1, int.MaxValue)] int id, GameMode mode, CancellationToken ct = default)
     {
@@ -93,7 +93,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("self")]
     [EndpointDescription("Same as /user/{id}, but automatically gets id of current user from token")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSelfUser(CancellationToken ct = default)
     {
@@ -106,7 +106,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("self/{mode}")]
     [EndpointDescription("Same as /user/{id}/{mode}, but automatically gets id of current user")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(UserWithStatsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSelfUserWithStats(GameMode mode, CancellationToken ct = default)
     {
@@ -119,7 +119,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("edit/description")]
     [EndpointDescription("Update current users description")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -135,7 +135,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("edit/default-gamemode")]
     [EndpointDescription("Update current users default gamemode")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditUserDefaultGameMode([FromBody] EditDefaultGameModeRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -151,7 +151,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Route("{userId:int}/graph")]
     [EndpointDescription("Get user stats graph data")]
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserGraphData([Range(1, int.MaxValue)] int userId, [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
@@ -209,7 +209,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/scores")]
     [EndpointDescription("Get user scores")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserScores(
         [Range(1, int.MaxValue)] int id,
@@ -250,7 +250,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/mostplayed")]
     [EndpointDescription("Get user most played beatmaps")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMostPlayedMaps([Range(1, int.MaxValue)] int id,
         [FromQuery(Name = "mode")] GameMode mode,
@@ -294,7 +294,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/favourites")]
     [EndpointDescription("Get user favourited beatmapsets")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFavourites([Range(1, int.MaxValue)] int id,
         [Range(1, 100)] [FromQuery(Name = "limit")]
@@ -332,7 +332,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("leaderboard")]
     [EndpointDescription("Get servers leaderboard")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(LeaderboardResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery(Name = "mode")] GameMode mode,
@@ -390,7 +390,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("friends")]
     [EndpointDescription("Get authenticated users friends")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
         [Range(1, 100)] [FromQuery(Name = "limit")]
@@ -418,7 +418,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("followers")]
     [EndpointDescription("Get authenticated users followers")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFollowers(
         [Range(1, 100)] [FromQuery(Name = "limit")]
@@ -446,8 +446,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("{id:int}/friend/status")]
     [EndpointDescription("Get user friendship status")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendStatusResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriendStatus([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -474,8 +474,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("inventory/item")]
     [EndpointDescription("Get count of the item in your inventory")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(InventoryItemResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInventoryItemCount([Required] ItemType type, CancellationToken ct = default)
     {
@@ -489,7 +489,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/friends/count")]
     [EndpointDescription("Get user friends counters")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserRelationsCountersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserRelationsCounters([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -507,8 +507,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("{id:int}/friend/status")]
     [EndpointDescription("Change friendship status with user")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditFriendStatus([Range(1, int.MaxValue)] int id, [FromBody] EditFriendshipStatusRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -554,7 +554,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Route("{id:int}/grades")]
     [EndpointDescription("Get user grades")]
     [ProducesResponseType(typeof(GradesResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUserGrades([Range(1, int.MaxValue)] int id,
         [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
@@ -576,7 +576,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpGet]
     [Route("{id:int}/metadata")]
     [EndpointDescription("Get user metadata")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(UserMetadataResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMetadata([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -599,7 +599,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [Authorize]
     [Route("edit/metadata")]
     [EndpointDescription("Update self metadata")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -631,7 +631,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost(RequestType.AvatarUpload)]
     [Authorize]
     [EndpointDescription("Upload new avatar")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetAvatar()
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -659,7 +659,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost(RequestType.BannerUpload)]
     [Authorize]
     [EndpointDescription("Upload new banner")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetBanner()
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -687,7 +687,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost(RequestType.PasswordChange)]
     [Authorize]
     [EndpointDescription("Change current password")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -715,7 +715,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost(RequestType.UsernameChange)]
     [Authorize]
     [EndpointDescription("Change current username")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
@@ -763,7 +763,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost(RequestType.CountryChange)]
     [Authorize]
     [EndpointDescription("Change current country")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
     {
         if (request.NewCountry == CountryCode.XX)

@@ -1,5 +1,4 @@
 using System.Security.Authentication;
-using System.Text.Json;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -137,16 +136,14 @@ public static class Bootstrap
             {
                 Timeout = TimeSpan.FromSeconds(30),
                 TimeoutStatusCode = StatusCodes.Status408RequestTimeout,
-                WriteTimeoutResponse = async context =>
+                WriteTimeoutResponse = context =>
                 {
                     if (!context.Response.HasStarted)
                     {
-                        context.Response.ContentType = "application/json";
-
-                        var errorResponse = new ErrorResponse("Request timed out.");
-                        var json = JsonSerializer.Serialize(errorResponse);
-                        await context.Response.WriteAsync(json);
+                        throw new TimeoutException();
                     }
+
+                    return Task.CompletedTask;
                 }
             };
         });
@@ -403,6 +400,7 @@ public class ProblemDetailsExceptionHandler : IExceptionHandler
             ArgumentException => StatusCodes.Status400BadRequest,
             AuthenticationException => StatusCodes.Status403Forbidden,
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            TimeoutException => StatusCodes.Status408RequestTimeout,
             _ => StatusCodes.Status500InternalServerError
         };
         httpContext.Response.StatusCode = status;

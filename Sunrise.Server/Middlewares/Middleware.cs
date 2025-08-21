@@ -8,7 +8,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
@@ -127,8 +126,16 @@ public sealed class Middleware(
         if (hasAuthorize && context.Items["CurrentUser"] == null)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new ErrorResponse("Authorization failed. Please authorize to access this resource."));
+            context.Response.ContentType = "application/problem+json; charset=utf-8";
+
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = ApiErrorResponse.Detail.AuthorizationFailed
+            };
+
+            var jsonResponse = JsonSerializer.Serialize(problemDetails);
+            await context.Response.WriteAsync(jsonResponse);
             return true;
         }
 

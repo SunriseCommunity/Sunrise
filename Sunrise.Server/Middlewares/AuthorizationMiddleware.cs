@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Sunrise.API.Extensions;
-using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 
 namespace Sunrise.Server.Middlewares;
@@ -52,18 +52,12 @@ public class CustomAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewa
     {
         if (authorizeResult.Forbidden)
         {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new ErrorResponse("You can't access this resource."));
-            return;
+            throw new AuthenticationException("You can't access this resource.");
         }
 
         if (!authorizeResult.Succeeded)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new ErrorResponse("Please authorize to access this resource."));
-            return;
+            throw new UnauthorizedAccessException("Please authorize to access this resource.");
         }
 
         await _defaultHandler.HandleAsync(next, context, policy, authorizeResult);

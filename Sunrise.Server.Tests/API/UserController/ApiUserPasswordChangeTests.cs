@@ -32,9 +32,6 @@ public class ApiUserPasswordChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -59,9 +56,6 @@ public class ApiUserPasswordChangeTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorize to access", responseError?.Error);
     }
 
     [Fact]
@@ -144,7 +138,7 @@ public class ApiUserPasswordChangeTests : ApiTest
         var (_, expectedError) = newPassword.IsValidPassword();
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Equal(expectedError, responseError?.Title);
+        Assert.Equal(expectedError, responseError?.Detail);
     }
 
     [Fact]

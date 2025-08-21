@@ -49,6 +49,8 @@ public static class ApiErrorResponse
         public const string InvalidCurrentPasswordProvided = "Invalid current password provided.";
 
         public const string YouHaveBeenBanned = "You have been banned. Please contact servers support for unban.";
+        
+        public const string AuthorizationFailed = "Authorization failed. Please authorize to access this resource.";
 
         public static string YourAccountIsRestricted(string? reason)
         {

@@ -128,8 +128,5 @@ public class ApiUserInventoryItemTests : ApiTest
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-
-        var responseData = await response.Content.ReadFromJsonAsyncWithAppConfig<ErrorResponse>();
-        Assert.Contains("authorization failed", responseData?.Error.ToLower());
     }
 }

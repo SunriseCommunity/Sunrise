@@ -31,13 +31,13 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]
-[ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 public class BeatmapController(DatabaseService database, BeatmapService beatmapService, CalculatorService calculatorService, SessionRepository sessions, WebSocketManager webSocketManager) : ControllerBase
 {
     [HttpGet("beatmap/{id:int}")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}")]
     [EndpointDescription("Get beatmap")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmap(
         [Range(1, int.MaxValue)] int id, CancellationToken ct = default)
@@ -61,7 +61,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmap/{id:int}/pp")]
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/pp")]
     [EndpointDescription("Get beatmap performance")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(PerformanceAttributes), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapPerformance(
         [Range(1, int.MaxValue)] int id,
@@ -103,7 +103,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{beatmapSet:int}/{id:int}/leaderboard")]
     [ResponseCache(Duration = 10)]
     [EndpointDescription("Get beatmap leaderboard")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapLeaderboard(
         [Range(1, int.MaxValue)] int id,
@@ -147,7 +147,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSet([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -166,8 +166,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpPost("beatmapset/{id:int}/hype")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Hype beatmapset")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> HypeBeatmapSet([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
         var session = HttpContext.GetCurrentSession();
@@ -191,8 +191,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/get-hyped-sets")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Returns beatmapsets with active hype train")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(HypedBeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHypedBeatmapSets(
         [Range(1, 100)] [FromQuery(Name = "limit")]
@@ -222,7 +222,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}/hype")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset hype count")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetHypeCountResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSetHypeCounter([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -246,8 +246,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/{id:int}/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset related events")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSetEvents(
         [Range(1, int.MaxValue)] int id,
@@ -287,8 +287,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("beatmapset/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapsets related events")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(BeatmapSetEventsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapSetsEvents(
         [Range(1, 100)] [FromQuery(Name = "limit")]
@@ -328,8 +328,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Add/remove beatmapset from users favourites")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateBeatmapsetFavouriteStatus([Range(1, int.MaxValue)] int id, [FromBody] EditBeatmapsetFavouriteStatusRequest request)
     {
         var session = HttpContext.GetCurrentSession();
@@ -350,7 +350,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Check if beatmapset is favourited by current user")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FavouritedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFavourited([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
     {
@@ -367,8 +367,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [Authorize("RequireBat")]
     [HttpPost("beatmap/update-custom-status")]
     [EndpointDescription("Updates beatmap custom status. Use \'Unknown\' to reset beatmap custom status")]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateBeatmapStatus([FromBody] UpdateBeatmapsCustomStatusRequest request)
     {
         var session = HttpContext.GetCurrentSession();
@@ -415,7 +415,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [HttpGet("/beatmapset/search")]
     [EndpointDescription("Search beatmapsets")]
     [ResponseCache(Duration = 0)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchBeatmapsets(
         [FromQuery(Name = "query")] string? query,
