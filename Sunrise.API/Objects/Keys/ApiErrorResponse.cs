@@ -60,12 +60,12 @@ public static class ApiErrorResponse
 
         public static string ChangeUsernameOnCooldown(DateTime changePossibleAfterDateTime)
         {
-            return $"You'll be able to change your username on {changePossibleAfterDateTime}";
+            return $"You'll be able to change your username on {changePossibleAfterDateTime} UTC+0";
         }
 
         public static string ChangeCountryOnCooldown(DateTime changePossibleAfterDateTime)
         {
-            return $"You'll be able to change your country on {changePossibleAfterDateTime}";
+            return $"You'll be able to change your country on {changePossibleAfterDateTime} UTC+0";
         }
     }
 }
