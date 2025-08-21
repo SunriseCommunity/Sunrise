@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using System.Security.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Sunrise.Shared.Objects.Serializable;
 
 namespace Sunrise.API.Utils;
@@ -7,15 +10,15 @@ public static class ActionResultUtil
 {
     public static IActionResult ActionErrorResult(ErrorMessage error)
     {
-        var problemDetails = new ProblemDetails
+        var exception = error.Status switch
         {
-            Detail = error.Message,
-            Status = (int)error.Status
+            HttpStatusCode.BadRequest => new BadHttpRequestException(error.Message),
+            HttpStatusCode.Forbidden => new AuthenticationException(error.Message),
+            HttpStatusCode.Unauthorized => new UnauthorizedAccessException(error.Message),
+            HttpStatusCode.RequestTimeout => new TimeoutException(error.Message),
+            _ => new Exception(error.Message)
         };
 
-        return new ObjectResult(problemDetails)
-        {
-            StatusCode = problemDetails.Status
-        };
+        throw exception;
     }
 }

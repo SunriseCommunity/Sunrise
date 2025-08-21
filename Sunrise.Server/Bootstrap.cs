@@ -398,6 +398,7 @@ public class ProblemDetailsExceptionHandler : IExceptionHandler
         var status = exception switch
         {
             ArgumentException => StatusCodes.Status400BadRequest,
+            BadHttpRequestException => StatusCodes.Status400BadRequest,
             AuthenticationException => StatusCodes.Status403Forbidden,
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
             TimeoutException => StatusCodes.Status408RequestTimeout,
