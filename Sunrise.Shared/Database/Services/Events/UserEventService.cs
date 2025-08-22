@@ -91,6 +91,15 @@ public class UserEventService(SunriseDbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
+    public async Task<List<EventUser>> GetUserPreviousUsernameChangeEvents(int userId, QueryOptions? options = null, CancellationToken ct = default)
+    {
+        return await dbContext.EventUsers
+            .Where(x => x.UserId == userId && x.EventType == UserEventType.ChangeUsername)
+            .OrderByDescending(x => x.Id)
+            .UseQueryOptions(options)
+            .ToListAsync(cancellationToken: ct);
+    }
+
     public async Task<Result> AddUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername, int? updatedById = null)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
@@ -126,7 +135,7 @@ public class UserEventService(SunriseDbContext dbContext)
         var userEvent = await dbContext.EventUsers
             .AsNoTracking().Include(eventUser => eventUser.User)
             .FirstOrDefaultAsync(x => x.Ip == ip && x.EventType == UserEventType.Register, ct);
-        
+
         return userEvent?.User;
     }
 
@@ -148,7 +157,7 @@ public class UserEventService(SunriseDbContext dbContext)
                 UpdatedById = updatedById
             });
 
-            
+
             dbContext.EventUsers.Add(changeCountryEvent);
             await dbContext.SaveChangesAsync();
         });

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
@@ -169,7 +170,7 @@ public class ApiUserUsernameChangeTests : ApiTest
 
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddHours(1)), responseError?.Detail);
+        Assert.Contains(ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays)), responseError?.Detail);
     }
 
     [Theory]

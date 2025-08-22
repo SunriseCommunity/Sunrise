@@ -11,6 +11,7 @@
     "ObservatoryUrl": "host.docker.internal:3333",
     "OnMaintenance": false,
     "CountryChangeCooldownInDays": 90,
+    "UsernameChangeCooldownInDays": 30,
     "RateLimit": {
       "CallsPerWindow": 200,
       "Window": 10,
