@@ -725,8 +725,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: error, statusCode: StatusCodes.Status400BadRequest);
 
         var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(user.Id);
-        if (lastUsernameChange != null && lastUsernameChange.Time.AddHours(1) > DateTime.UtcNow)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddHours(1)), statusCode: StatusCodes.Status400BadRequest);
+        if (lastUsernameChange != null && lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays) > DateTime.UtcNow)
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays)), statusCode: StatusCodes.Status400BadRequest);
 
         var foundUserByUsername = await database.Users.GetUser(username: request.NewUsername);
         if (foundUserByUsername != null && foundUserByUsername.IsActive())
