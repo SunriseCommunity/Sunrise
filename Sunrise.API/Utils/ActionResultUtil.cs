@@ -16,6 +16,7 @@ public static class ActionResultUtil
             HttpStatusCode.Forbidden => new AuthenticationException(error.Message),
             HttpStatusCode.Unauthorized => new UnauthorizedAccessException(error.Message),
             HttpStatusCode.RequestTimeout => new TimeoutException(error.Message),
+            HttpStatusCode.NotFound => new KeyNotFoundException(error.Message),
             _ => new Exception(error.Message)
         };
 

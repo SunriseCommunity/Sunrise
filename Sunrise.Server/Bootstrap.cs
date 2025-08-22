@@ -402,6 +402,7 @@ public class ProblemDetailsExceptionHandler : IExceptionHandler
             AuthenticationException => StatusCodes.Status403Forbidden,
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
             TimeoutException => StatusCodes.Status408RequestTimeout,
+            KeyNotFoundException => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status500InternalServerError
         };
         httpContext.Response.StatusCode = status;
