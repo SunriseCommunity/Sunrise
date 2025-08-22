@@ -14,6 +14,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
@@ -22,6 +23,7 @@ using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -327,6 +329,34 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
+    }
+
+    [HttpGet(RequestType.UserPreviousUsernames)]
+    [EndpointDescription("Get previous usernames of the user")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(PreviousUsernamesResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserPreviousUsernames([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        if (user.IsRestricted())
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
+
+        var previousUsernames = await database.Events.Users.GetUserPreviousUsernameChangeEvents(user.Id,
+            new QueryOptions(true, new Pagination(1, 3))
+            {
+                QueryModifier = query => query.Cast<EventUser>().OrderByDescending(e => e.Id)
+            },
+            ct);
+
+        var usernames = previousUsernames.Select(e => e.GetData<UserUsernameChanged>())
+            .Where(data => data != null && !data.NewUsername.Contains("filtered"))
+            .Select(data => data?.OldUsername ?? "Unknown").ToList();
+
+        return Ok(new PreviousUsernamesResponse(usernames));
     }
 
     [HttpGet]
