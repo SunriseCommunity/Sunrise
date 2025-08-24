@@ -353,7 +353,15 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             ct);
 
         var usernames = previousUsernames.Select(e => e.GetData<UserUsernameChanged>())
-            .Where(data => data != null && !data.NewUsername.Contains("filtered"))
+            .Where(data =>
+            {
+                if (data == null) return false;
+
+                var isUsernameFiltered = data.NewUsername.Contains("filtered");
+                var isUsernameHidden = data.IsHiddenFromPreviousUsernames != null && data.IsHiddenFromPreviousUsernames.Value;
+
+                return !isUsernameFiltered && !isUsernameHidden;
+            })
             .Select(data => data?.OldUsername ?? "Unknown").ToList();
 
         return Ok(new PreviousUsernamesResponse(usernames));

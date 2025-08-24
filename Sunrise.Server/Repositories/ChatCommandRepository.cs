@@ -51,9 +51,16 @@ public static class ChatCommandRepository
             case null or { IsGlobal: false } when message.Channel != Configuration.BotUsername:
                 return;
             case null:
+            {
+                var possibleCommands = GetAvailableCommands(session)
+                    .Where(x => x.Contains(command))
+                    .ToArray();
+                
                 SendMessage(session,
-                    $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+                    possibleCommands.Length > 0 ? $"Did you mean: !{string.Join(", !", possibleCommands)}? Type {Configuration.BotPrefix}help for a list of available commands." : $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+
                 return;
+            }
         }
 
         using var scope = ServicesProviderHolder.CreateScope();
@@ -175,7 +182,7 @@ public static class ChatCommandRepository
 
             if (action?.StartsWith(ChatBeatmapActions.IS_WATCHING) == true)
                 mods = session.Spectating?.Attributes.Status.CurrentMods ?? Mods.None;
-                
+
             if (action?.StartsWith(ChatBeatmapActions.IS_PLAYING) == true)
                 mods = session.Attributes.Status.CurrentMods;
 
