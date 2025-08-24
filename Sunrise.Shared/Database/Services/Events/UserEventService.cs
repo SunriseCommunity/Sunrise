@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Utils;
 
 namespace Sunrise.Shared.Database.Services.Events;
@@ -120,6 +121,30 @@ public class UserEventService(SunriseDbContext dbContext)
 
             dbContext.EventUsers.Add(changeUsernameEvent);
             await dbContext.SaveChangesAsync();
+        });
+    }
+
+    public async Task<Result> SetUserChangeUsernameEventVisibility(int id, bool hidden, CancellationToken ct = default)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var changeUsernameEvent = await dbContext.EventUsers
+                .FirstOrDefaultAsync(x => x.Id == id && x.EventType == UserEventType.ChangeUsername, ct);
+
+            if (changeUsernameEvent == null)
+                throw new Exception("Username change event not found");
+
+            var previousData = changeUsernameEvent.GetData<UserUsernameChanged>();
+
+            changeUsernameEvent.SetData(new
+            {
+                previousData?.OldUsername,
+                previousData?.NewUsername,
+                previousData?.UpdatedById,
+                IsHiddenFromPreviousUsernames = hidden
+            });
+
+            await dbContext.SaveChangesAsync(ct);
         });
     }
 

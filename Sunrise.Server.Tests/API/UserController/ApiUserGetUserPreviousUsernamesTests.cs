@@ -98,7 +98,7 @@ public class ApiUserGetUserPreviousUsernamesTests : ApiTest
 
         Assert.Equal(responsePreviousUsernames.Usernames, ["8", "7", "6"]);
     }
-    
+
     [Fact]
     public async Task TestGetUserPreviousUsernamesIgnoreFilteredUsernames()
     {
@@ -106,9 +106,9 @@ public class ApiUserGetUserPreviousUsernamesTests : ApiTest
         var client = App.CreateClient().UseClient("api");
 
         var user = await CreateTestUser();
-        
+
         var badUsername = "badUsername";
-        
+
         var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, badUsername);
         if (arrangeUserChangeToBadUsernameResult.IsFailure)
             throw new Exception(arrangeUserChangeToBadUsernameResult.Error);
@@ -127,6 +127,44 @@ public class ApiUserGetUserPreviousUsernamesTests : ApiTest
         Assert.NotNull(responsePreviousUsernames);
 
         Assert.DoesNotContain(badUsername, responsePreviousUsernames.Usernames);
+    }
+
+    [Fact]
+    public async Task TestGetUserPreviousUsernamesIgnoreHiddenUsernames()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+
+        var oldUsername = "oldUsername";
+
+        var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, oldUsername);
+        if (arrangeUserChangeToBadUsernameResult.IsFailure)
+            throw new Exception(arrangeUserChangeToBadUsernameResult.Error);
+
+        var arrangeUserFilterUsernameResult = await Database.Users.UpdateUserUsername(user, oldUsername, "newUsername");
+        if (arrangeUserFilterUsernameResult.IsFailure)
+            throw new Exception(arrangeUserFilterUsernameResult.Error);
+
+        var lastUsernameChange = await Database.Events.Users.GetLastUsernameChangeEvent(user.Id);
+        if (lastUsernameChange is null)
+            throw new Exception("Last username change event is null");
+
+        var changeUsernameEventVisibilityResult = await Database.Events.Users.SetUserChangeUsernameEventVisibility(lastUsernameChange.Id, true);
+        if (changeUsernameEventVisibilityResult.IsFailure)
+            throw new Exception(changeUsernameEventVisibilityResult.Error);
+
+        // Act
+        var response = await client.GetAsync($"user/{user.Id}/previous-usernames");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responsePreviousUsernames = await response.Content.ReadFromJsonAsyncWithAppConfig<PreviousUsernamesResponse>();
+        Assert.NotNull(responsePreviousUsernames);
+
+        Assert.DoesNotContain(oldUsername, responsePreviousUsernames.Usernames);
     }
 
     [Fact]
