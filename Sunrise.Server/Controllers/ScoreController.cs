@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.Services;
+using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -35,7 +36,13 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         var username = scoreSerialized.Split(':')[1].Trim();
 
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session,
+                scoreSerialized,
+                "SubmitScore: Invalid session or passhash mismatch");
+
             return Ok("error: pass");
+        }
 
         var result = await scoreService.SubmitScore(session,
             scoreSerialized,
