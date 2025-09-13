@@ -80,19 +80,23 @@ public class UserAttributes
             throw new ApplicationException($"User with id {UserId} not found");
 
         var userStats = IsBot ? new UserStats() : await database.Users.Stats.GetUserStats(user.Id, GetCurrentGameMode());
+        if (userStats == null)
+            throw new ApplicationException($"User stats for user with id {UserId} not found");
 
         var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
         var userRank = IsBot ? 0 : globalRank;
+        
+        var isPerformanceOverClientLimit = userStats.PerformancePoints > short.MaxValue;
 
         return new BanchoUserData
         {
             UserId = user.Id,
             Status = Status,
             Rank = (int)userRank,
-            Performance = (short)userStats.PerformancePoints,
+            Performance = (short)(isPerformanceOverClientLimit ? 0 : userStats.PerformancePoints),
             Accuracy = (float)(userStats.Accuracy / 100f),
             Playcount = userStats.PlayCount,
-            RankedScore = userStats.RankedScore,
+            RankedScore = isPerformanceOverClientLimit ? (long)userStats.PerformancePoints : userStats.RankedScore,
             TotalScore = userStats.TotalScore
         };
     }
