@@ -31,6 +31,12 @@ public class MockService
         return new Random().Next(0, 2) == 1;
     }
 
+    public double GetRandomDouble(bool? negative = null)
+    {
+        var random = new Random();
+        return random.NextDouble() * (negative != null ? negative.Value ? -1 : 1 : GetRandomBoolean() ? -1 : 1);
+    }
+
     public string GetRandomString(int length = 16)
     {
         var baseString = $"{Guid.NewGuid():N}";
