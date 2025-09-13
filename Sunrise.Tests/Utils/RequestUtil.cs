@@ -18,6 +18,13 @@ public static class RequestUtil
         return client;
     }
 
+    public static HttpClient UseUserAuthOsuToken(this HttpClient client, string token)
+    {
+        client.DefaultRequestHeaders.Add("osu-token", token);
+
+        return client;
+    }
+
     public static HttpClient UseUserIp(this HttpClient client, string ip)
     {
         client.DefaultRequestHeaders.Add("X-Forwarded-For", ip);

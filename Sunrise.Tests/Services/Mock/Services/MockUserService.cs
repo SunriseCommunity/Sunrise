@@ -1,6 +1,7 @@
 ﻿using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Tests.Services.Mock.Services;
 
@@ -119,5 +120,10 @@ public class MockUserService(MockService service)
     public string GetRandomEmail(string? username = null)
     {
         return $"{username ?? service.GetRandomString()}@mail.com";
+    }
+    
+    public LoginRequest GetUserLoginRequest(User user)
+    {
+        return new LoginRequest(user.Username, user.Passhash, "version", 0, true, "", false);
     }
 }
