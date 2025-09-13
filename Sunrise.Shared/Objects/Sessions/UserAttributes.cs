@@ -85,7 +85,8 @@ public class UserAttributes
 
         var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
         var userRank = IsBot ? 0 : globalRank;
-        
+
+        // Note: osu! client expects short integer for performance points. So to avoid this limitation, we will send pp as ranked score if it's over the limit.
         var isPerformanceOverClientLimit = userStats.PerformancePoints > short.MaxValue;
 
         return new BanchoUserData
