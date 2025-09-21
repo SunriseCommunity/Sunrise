@@ -6,5 +6,5 @@ namespace Sunrise.Shared.Objects;
 public class UserPersonalBestScores(Score bestScoreBasedByTotalScore, Score? bestScoreBasedByPerformancePoints = null)
 {
     public Score BestScoreBasedByTotalScore { get; } = bestScoreBasedByTotalScore;
-    public Score BestScoreForPerformanceCalculation { get; } = Configuration.UseNewPerformanceCalculationAlgorithm ? bestScoreBasedByPerformancePoints ?? throw new Exception("UserPersonalBestScores requires bestScoreBasedByPerformancePoints when Configuration.UseNewPerformanceCalculationAlgorithm is true.") : bestScoreBasedByTotalScore;
+    public Score BestScoreForPerformanceCalculation { get; } = Configuration.UseNewPerformanceCalculationAlgorithm ? bestScoreBasedByPerformancePoints ?? bestScoreBasedByTotalScore : bestScoreBasedByTotalScore;
 }
