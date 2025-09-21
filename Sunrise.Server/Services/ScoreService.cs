@@ -166,7 +166,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         var prevUserStats = userStats.Clone();
-        var prevPBest = globalScores.GetPersonalBestOf(score.UserId);
+        var prevUserPersonalBestScores = globalScores.GetUserPersonalBestScores(score.UserId);
 
         var user = await database.Users.GetUser(session.UserId);
 
@@ -193,17 +193,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
-            var prevPBestWithSameMods = scoresWithSameMods.GetPersonalBestOf(score.UserId);
-            score.UpdateSubmissionStatus(prevPBestWithSameMods);
+            var prevUserPersonalBestScoresWithSameMods = scoresWithSameMods.GetUserPersonalBestScores(score.UserId);
 
-            await userStats.UpdateWithScore(score, prevPBest, timeElapsed);
-            userGrades.UpdateWithScore(score, prevPBest);
+            score.UpdateSubmissionStatus(prevUserPersonalBestScoresWithSameMods?.BestScoreBasedByTotalScore);
 
-            if (prevPBestWithSameMods != null && score.SubmissionStatus == SubmissionStatus.Best)
+            await userStats.UpdateWithScore(score, prevUserPersonalBestScores, timeElapsed);
+            userGrades.UpdateWithScore(score, prevUserPersonalBestScores?.BestScoreBasedByTotalScore);
+
+            if (prevUserPersonalBestScores?.BestScoreBasedByTotalScore != null && score.SubmissionStatus == SubmissionStatus.Best)
             {
                 // Best score shouldn't be failed, but adding this check just in case
-                prevPBestWithSameMods.SubmissionStatus = prevPBestWithSameMods.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
-                await database.Scores.UpdateScore(prevPBestWithSameMods);
+                prevUserPersonalBestScores.BestScoreBasedByTotalScore.SubmissionStatus = prevUserPersonalBestScores.BestScoreBasedByTotalScore.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+                await database.Scores.UpdateScore(prevUserPersonalBestScores.BestScoreBasedByTotalScore);
             }
 
             await database.Scores.AddScore(score);
@@ -213,7 +214,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (transactionResult.IsFailure)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Failed to execute transaction for score submission");
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Failed to execute transaction for score submission, reason: " + transactionResult.Error);
             return "error: no";
         }
 
@@ -240,21 +241,21 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
-        var newPBest = updatedScores.GetPersonalBestOf(score.UserId) ?? score;
+        score = updatedScores.First(s => s.ScoreHash == score.ScoreHash);
 
         var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode);
         userStats.LocalProperties.Rank = newUserRank;
 
-        if (newPBest.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
+        if (score.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
             var channels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
             channels.GetChannel(session, "#announce")
-                ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, newPBest, beatmapSet, beatmap));
+                ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, score, beatmapSet, beatmap));
         }
 
-        var newAchievements = await medalService.UnlockAndGetNewMedals(newPBest, beatmap, userStats);
+        var newAchievements = await medalService.UnlockAndGetNewMedals(score, beatmap, userStats);
 
-        return await SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newPBest, prevPBest, newAchievements);
+        return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, score, prevUserPersonalBestScores, newAchievements);
     }
 
     public async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
@@ -306,7 +307,9 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         if (scores.Count == 0)
             return string.Join("\n", responses);
 
-        var personalBest = scores.GetPersonalBestOf(session.UserId);
+        var userPersonalBestScores = scores.GetUserPersonalBestScores(session.UserId);
+
+        var personalBest = userPersonalBestScores?.BestScoreBasedByTotalScore;
         responses.Add(personalBest != null ? personalBest.GetString() : "");
 
         var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);

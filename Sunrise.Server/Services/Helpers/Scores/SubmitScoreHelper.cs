@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -96,9 +97,9 @@ public static class SubmitScoreHelper
         return false;
     }
 
-    public static async Task<string> GetScoreSubmitResponse(Beatmap beatmap, UserStats userStats, UserStats prevUserStats,
+    public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats userStats, UserStats prevUserStats,
         Score newScore,
-        Score? prevScore, string? newAchievements = null)
+        UserPersonalBestScores? prevUserPersonalBestScores, string? newAchievements = null)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{userStats.UserId}";
         var dontShowPp = beatmap.Status != BeatmapStatus.Ranked && beatmap.Status != BeatmapStatus.Approved;
@@ -106,9 +107,9 @@ public static class SubmitScoreHelper
         var beatmapInfo =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
-        var scoreInfo = string.Join("|", GetChart(prevScore, newScore, dontShowPp));
+        var scoreInfo = string.Join("|", GetChart(prevUserPersonalBestScores?.BestScoreBasedByTotalScore, prevUserPersonalBestScores?.BestScoreForPerformanceCalculation, newScore, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
-                         string.Join("|", GetChart(prevUserStats, userStats));
+                         string.Join("|", GetChart(prevUserStats, null, userStats));
 
         return
             $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
@@ -134,7 +135,7 @@ public static class SubmitScoreHelper
         return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
     }
 
-    private static List<string> GetChart<T>(T before, T after, bool dontShowPp = false)
+    private static List<string> GetChart<T>(T before, T? alternativeBeforeForPpEntry, T after, bool dontShowPp = false)
     {
         string[] chartEntries =
         [
@@ -160,7 +161,7 @@ public static class SubmitScoreHelper
                 _ => entry
             };
 
-            var beforeValue = GetPropertyValue(before, obj);
+            var beforeValue = entry == "Pp" && alternativeBeforeForPpEntry != null ? GetPropertyValue(alternativeBeforeForPpEntry, obj) : GetPropertyValue(before, obj);
             var afterValue = GetPropertyValue(after, obj);
 
             if (dontShowPp && entry == "Pp")

@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using osu.Shared;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models;
@@ -42,6 +41,49 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
         Assert.NotNull(content);
 
         Assert.Contains(content.Scores, s => s.Id == score.Id);
+    }
+
+    [Fact]
+    public async Task TestGetBeatmapLeaderboardShowBestByScore()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
+
+        var user = await CreateTestUser();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        var scoreBestByPerformance = _mocker.Score.GetBestScoreableRandomScore();
+        scoreBestByPerformance.UserId = user.Id;
+        scoreBestByPerformance.PerformancePoints = 1000;
+        scoreBestByPerformance.TotalScore = 1;
+        scoreBestByPerformance.EnrichWithBeatmapData(beatmap);
+
+        await Database.Scores.AddScore(scoreBestByPerformance);
+
+        var scoreBestByTotalScore = _mocker.Score.GetBestScoreableRandomScore();
+        scoreBestByTotalScore.UserId = user.Id;
+        scoreBestByTotalScore.PerformancePoints = 1;
+        scoreBestByTotalScore.TotalScore = 1000;
+        scoreBestByTotalScore.EnrichWithBeatmapData(beatmap);
+        scoreBestByTotalScore.GameMode = scoreBestByPerformance.GameMode;
+        await Database.Scores.AddScore(scoreBestByTotalScore);
+
+        // Act
+        var response = await client.GetAsync($"beatmap/{beatmap.Id}/leaderboard?mode={scoreBestByPerformance.GameMode}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var content = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
+        Assert.NotNull(content);
+
+        Assert.Contains(content.Scores, s => s.Id == scoreBestByTotalScore.Id); // Even using new performance calculation algorithm, leaderboard should show best by total score
     }
 
     [Theory]
