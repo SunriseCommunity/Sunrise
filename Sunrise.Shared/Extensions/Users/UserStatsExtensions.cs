@@ -4,6 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -12,10 +13,13 @@ namespace Sunrise.Shared.Extensions.Users;
 
 public static class UserStatsExtensions
 {
-    public static async Task UpdateWithScore(this UserStats userStats, Score score, Score? prevScore, int timeElapsed)
+    public static async Task UpdateWithScore(this UserStats userStats, Score score, UserPersonalBestScores? personalBestScores, int timeElapsed)
     {
-        var isNewScore = prevScore == null;
-        var isBetterScore = !isNewScore && score.TotalScore > prevScore!.TotalScore;
+        var isNewScore = personalBestScores == null;
+        var isBetterTotalScoreValue = !isNewScore && score.TotalScore > personalBestScores?.BestScoreBasedByTotalScore.TotalScore;
+        var isBetterPerformanceValue = Configuration.UseNewPerformanceCalculationAlgorithm
+            ? !isNewScore && score.PerformancePoints > personalBestScores?.BestScoreForPerformanceCalculation.PerformancePoints
+            : isBetterTotalScoreValue;
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
         userStats.IncreaseTotalScore(score.TotalScore);
@@ -28,11 +32,14 @@ public static class UserStatsExtensions
 
         userStats.UpdateMaxCombo(score.MaxCombo);
 
-        if ((isNewScore || isBetterScore) && score.LocalProperties.IsRanked)
+        if ((isNewScore || isBetterTotalScoreValue) && score.LocalProperties.IsRanked)
         {
             // If new score, add it to the ranked score. If a better score, add the difference between the new and the previous score.
-            userStats.RankedScore += isNewScore ? score.TotalScore : score.TotalScore - prevScore!.TotalScore;
+            userStats.RankedScore += isNewScore ? score.TotalScore : score.TotalScore - personalBestScores!.BestScoreBasedByTotalScore.TotalScore;
+        }
 
+        if ((isNewScore || isBetterPerformanceValue) && score.LocalProperties.IsRanked)
+        {
             using var scope = ServicesProviderHolder.CreateScope();
             var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 

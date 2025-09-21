@@ -50,12 +50,12 @@ public static class ScoreQueryableExtensions
                 ).First());
     }
 
-    public static IQueryable<Score> SelectUsersPersonalBestScores(this IQueryable<Score> queryable)
+    public static IQueryable<Score> SelectUsersPersonalBestScores(this IQueryable<Score> queryable, bool rankByPerformancePoints = false)
     {
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
 
         return queryable
-            .Where(x => x.SubmissionStatus == SubmissionStatus.Best)
+            .Where(x => rankByPerformancePoints || x.SubmissionStatus == SubmissionStatus.Best) // Ignore submission status when ranking by pp
             .GroupBy(x => new
             {
                 x.UserId,
@@ -63,7 +63,7 @@ public static class ScoreQueryableExtensions
             })
             .Select(g =>
                 g.OrderByDescending(x =>
-                    EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore
+                    rankByPerformancePoints == true || EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore
                 ).First());
     }
 

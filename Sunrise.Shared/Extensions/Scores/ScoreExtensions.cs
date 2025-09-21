@@ -3,6 +3,7 @@ using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -15,17 +16,24 @@ namespace Sunrise.Shared.Extensions.Scores;
 
 public static class ScoreExtensions
 {
-    public static T? GetPersonalBestOf<T>(this List<T> scores, int userId) where T : Score
+    public static UserPersonalBestScores? GetUserPersonalBestScores(this List<Score> scores, int userId)
     {
-        return scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
+        var personalBestByTotalScore = scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
+        if (personalBestByTotalScore == null)
+            return null;
+
+        var personalBestByPerformancePoints =
+            Configuration.UseNewPerformanceCalculationAlgorithm ? scores.GetScoresGroupedByUsersBest(basedByPerformance: true).Find(x => x.UserId == userId) : null;
+
+        return new UserPersonalBestScores(personalBestByTotalScore, personalBestByPerformancePoints);
     }
 
-    public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores) where T : Score
+    public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores, bool? basedByPerformance = null) where T : Score
     {
         return GroupScoresByUserId(scores)
             .Select(x => x.ToList()
                 .GroupScoresByBeatmapId()
-                .Select(y => y.OrderByDescending(z => z.GameMode.IsGameModeWithoutScoreMultiplier() ? z.PerformancePoints : z.TotalScore)
+                .Select(y => y.OrderByDescending(z => basedByPerformance == true || z.GameMode.IsGameModeWithoutScoreMultiplier() ? z.PerformancePoints : z.TotalScore)
                     .First()))
             .SelectMany(x => x)
             .ToList();

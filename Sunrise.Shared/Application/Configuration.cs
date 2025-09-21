@@ -30,15 +30,7 @@ public static class Configuration
         }
     };
 
-    public static bool IsDevelopment => Env == "Development";
-    public static bool IsTestingEnv => Env == "Tests";
-
-    public static string WebTokenSecret
-    {
-        get { return _webTokenSecret ??= GetApiToken().ToHash(); }
-    }
-
-    public static TokenValidationParameters WebTokenValidationParameters = new TokenValidationParameters
+    public static TokenValidationParameters WebTokenValidationParameters = new()
     {
         ValidIssuer = "Sunrise",
         ValidAudience = "Sunrise",
@@ -49,6 +41,14 @@ public static class Configuration
         ValidateIssuerSigningKey = true,
         ClockSkew = TimeSpan.Zero
     };
+
+    public static bool IsDevelopment => Env == "Development";
+    public static bool IsTestingEnv => Env == "Tests";
+
+    public static string WebTokenSecret
+    {
+        get { return _webTokenSecret ??= GetApiToken().ToHash(); }
+    }
 
     public static TimeSpan WebTokenExpiration =>
         TimeSpan.FromSeconds(Config.GetSection("API").GetValue<int?>("TokenExpiresIn") ?? 3600);
@@ -78,13 +78,13 @@ public static class Configuration
 
     public static int GeneralCallsPerWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("CallsPerWindow") ?? 100;
-    
+
     public static int CountryChangeCooldownInDays =>
         Config.GetSection("General").GetValue<int?>("CountryChangeCooldownInDays") ?? 90;
-    
+
     public static int UsernameChangeCooldownInDays =>
         Config.GetSection("General").GetValue<int?>("UsernameChangeCooldownInDays") ?? 30;
-    
+
     public static int GeneralWindow =>
         Config.GetSection("General").GetSection("RateLimit").GetValue<int?>("Window") ?? 10;
 
@@ -101,16 +101,22 @@ public static class Configuration
         Config.GetSection("General").GetValue<bool?>("IgnoreBeatmapRanking") ?? false;
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
-    
+
+
+    // - Will use best scores by performance points instead of total score for performance calculation
+    public static bool UseNewPerformanceCalculationAlgorithm =>
+        Config.GetSection("General").GetValue<bool?>("UseNewPerformanceCalculationAlgorithm") ?? false;
+
     // Beatmap hype
     public static int UserHypesWeekly =>
         Config.GetSection("BeatmapHype").GetValue<int?>("UserHypesWeekly") ?? 6;
-    
+
     public static int HypesToStartHypeTrain =>
         Config.GetSection("BeatmapHype").GetValue<int?>("HypesToStartHypeTrain") ?? 3;
+
     public static bool AllowMultipleHypeFromSameUser =>
         Config.GetSection("BeatmapHype").GetValue<bool?>("AllowMultipleHypeFromSameUser") ?? true;
-    
+
 
     // Moderation section
     public static int BannablePpThreshold => Config.GetSection("Moderation").GetSection("BannablePPThreshold").Get<int?>() ?? 3000;

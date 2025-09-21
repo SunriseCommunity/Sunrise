@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using osu.Shared;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -54,7 +55,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .FilterValidScores()
             .FilterPassedRankedScores()
             .Where(x => x.GameMode == EF.Constant(mode))
-            .SelectUsersPersonalBestScores();
+            .SelectUsersPersonalBestScores(Configuration.UseNewPerformanceCalculationAlgorithm);
 
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
@@ -131,7 +132,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         {
             scoresGrouped = scoresGrouped.Where(s => s.Mods == EF.Constant(mods));
         }
-        
+
         if (type is LeaderboardType.GlobalIncludesMods && mods != null)
         {
             scoresGrouped = mods != Mods.None ? scoresGrouped.Where(s => (s.Mods & EF.Constant(mods)) == EF.Constant(mods)) : scoresGrouped.Where(s => s.Mods == EF.Constant(Mods.None));
@@ -177,7 +178,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             case ScoreTableType.Best:
                 scoresQuery = scoresQuery
                     .FilterPassedRankedScores()
-                    .SelectUsersPersonalBestScores();
+                    .SelectUsersPersonalBestScores(Configuration.UseNewPerformanceCalculationAlgorithm);
                 break;
             case ScoreTableType.Top:
                 scoresQuery = scoresQuery
