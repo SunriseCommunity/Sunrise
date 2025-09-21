@@ -200,11 +200,11 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             await userStats.UpdateWithScore(score, prevUserPersonalBestScores, timeElapsed);
             userGrades.UpdateWithScore(score, prevUserPersonalBestScores?.BestScoreBasedByTotalScore);
 
-            if (prevUserPersonalBestScores?.BestScoreBasedByTotalScore != null && score.SubmissionStatus == SubmissionStatus.Best)
+            if (prevUserPersonalBestScoresWithSameMods?.BestScoreBasedByTotalScore != null && score.SubmissionStatus == SubmissionStatus.Best)
             {
                 // Best score shouldn't be failed, but adding this check just in case
-                prevUserPersonalBestScores.BestScoreBasedByTotalScore.SubmissionStatus = prevUserPersonalBestScores.BestScoreBasedByTotalScore.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
-                await database.Scores.UpdateScore(prevUserPersonalBestScores.BestScoreBasedByTotalScore);
+                prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore.SubmissionStatus = prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
+                await database.Scores.UpdateScore(prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore);
             }
 
             await database.Scores.AddScore(score);
