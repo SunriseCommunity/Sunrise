@@ -1,5 +1,6 @@
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -59,7 +60,77 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         var prevStats = userStats.Clone();
 
         // Act
-        await userStats.UpdateWithScore(score, oldScore, 100);
+        await userStats.UpdateWithScore(score, new UserPersonalBestScores(oldScore), 100);
+
+        // Assert
+        var shouldIncludeKatuGeki = (GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania;
+        var expectedTotalHits = prevStats.TotalHits + score.Count300 + score.Count100 + score.Count50 + (shouldIncludeKatuGeki ? score.CountGeki + score.CountKatu : 0);
+
+        Assert.Equal(expectedTotalHits, userStats.TotalHits);
+        Assert.Equal(prevStats.PlayTime + 100, userStats.PlayTime);
+        Assert.Equal(prevStats.PlayCount + 1, userStats.PlayCount);
+        Assert.Equal(score.TotalScore, userStats.TotalScore);
+        Assert.Equal(score.TotalScore - oldScore.TotalScore, userStats.RankedScore);
+        Assert.Equal(score.MaxCombo, userStats.MaxCombo);
+
+        const double weightedTolerance = 0.5;
+        Assert.True(Math.Abs(prevStats.PerformancePoints + 100 - userStats.PerformancePoints) < weightedTolerance);
+        Assert.True(Math.Abs(score.Accuracy - userStats.Accuracy) < weightedTolerance);
+    }
+
+    [Fact]
+    public async Task TestUpdateWithScoreWithBetterRankedScoreUsingNewPerformanceCalculationAlgorithmUpdateRankedScoreOnly()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.LocalProperties.IsRanked = true;
+        score.PerformancePoints = 100;
+
+        var oldScore = _mocker.Score.GetBestScoreableRandomScore();
+        oldScore.TotalScore = score.TotalScore + 1;
+
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
+        var prevStats = userStats.Clone();
+
+        // Act
+        await userStats.UpdateWithScore(score, new UserPersonalBestScores(oldScore, oldScore), 100);
+
+        // Assert
+        var shouldIncludeKatuGeki = (GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania;
+        var expectedTotalHits = prevStats.TotalHits + score.Count300 + score.Count100 + score.Count50 + (shouldIncludeKatuGeki ? score.CountGeki + score.CountKatu : 0);
+
+        Assert.Equal(expectedTotalHits, userStats.TotalHits);
+        Assert.Equal(prevStats.PlayTime + 100, userStats.PlayTime);
+        Assert.Equal(prevStats.PlayCount + 1, userStats.PlayCount);
+        Assert.Equal(score.TotalScore, userStats.TotalScore);
+        Assert.Equal(0, userStats.RankedScore); // No updates
+        Assert.Equal(score.MaxCombo, userStats.MaxCombo);
+
+        Assert.Equal(prevStats.PerformancePoints, userStats.PerformancePoints);
+        Assert.Equal(prevStats.Accuracy, userStats.Accuracy);
+    }
+
+    [Fact]
+    public async Task TestUpdateWithScoreWithBetterRankedScoreUsingNewPerformanceCalculationAlgorithmUpdateOnlyPerformancePoints()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.LocalProperties.IsRanked = true;
+        score.PerformancePoints = 100;
+
+        var oldScore = _mocker.Score.GetBestScoreableRandomScore();
+        oldScore.TotalScore = score.TotalScore + 1;
+        oldScore.PerformancePoints = score.PerformancePoints - 1;
+
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
+        var prevStats = userStats.Clone();
+
+        // Act
+        await userStats.UpdateWithScore(score, new UserPersonalBestScores(oldScore, oldScore), 100);
 
         // Assert
         var shouldIncludeKatuGeki = (GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania;
@@ -94,7 +165,7 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         var prevStats = userStats.Clone();
 
         // Act
-        await userStats.UpdateWithScore(score, oldScore, 100);
+        await userStats.UpdateWithScore(score, new UserPersonalBestScores(oldScore), 100);
 
         // Assert
         var shouldIncludeKatuGeki = (GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania;
@@ -182,7 +253,7 @@ public class UserStatsExtensionsTests : BaseTest
         var prevStats = userStats.Clone();
 
         // Act
-        await userStats.UpdateWithScore(score, oldScore, 100);
+        await userStats.UpdateWithScore(score, new UserPersonalBestScores(oldScore), 100);
 
         // Assert
         var shouldIncludeKatuGeki = (GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania;
