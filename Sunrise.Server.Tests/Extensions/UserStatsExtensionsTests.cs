@@ -1,3 +1,4 @@
+using osu.Shared;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
@@ -118,13 +119,19 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         // Arrange
         var user = await CreateTestUser();
 
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
+        
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.LocalProperties.IsRanked = true;
         score.PerformancePoints = 100;
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.None;
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.TotalScore = score.TotalScore + 1;
         oldScore.PerformancePoints = score.PerformancePoints - 1;
+        oldScore.GameMode = score.GameMode;
+        oldScore.Mods = score.Mods;
 
         var userStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
         var prevStats = userStats.Clone();
@@ -140,7 +147,7 @@ public class UserStatsExtensionsDatabaseTests : DatabaseTest
         Assert.Equal(prevStats.PlayTime + 100, userStats.PlayTime);
         Assert.Equal(prevStats.PlayCount + 1, userStats.PlayCount);
         Assert.Equal(score.TotalScore, userStats.TotalScore);
-        Assert.Equal(score.TotalScore - oldScore.TotalScore, userStats.RankedScore);
+        Assert.Equal(0, userStats.RankedScore); // No updates
         Assert.Equal(score.MaxCombo, userStats.MaxCombo);
 
         const double weightedTolerance = 0.5;
