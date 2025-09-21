@@ -200,7 +200,8 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         return Redirect($"https://{Configuration.Domain}/settings");
     }
 
-    [HttpGet("/u/{id:int}")]
+    [HttpGet("/users/{id:int}")]
+    [HttpGet("/u/{id:int}")] // Seems to be deprecated after b20250815
     public IActionResult UserProfile(int id)
     {
         return Redirect($"https://{Configuration.Domain}/user/{id}");

@@ -12,4 +12,7 @@ public class UserUsernameChanged
 
     [JsonPropertyName("UpdatedById")]
     public int? UpdatedById { get; set; }
+
+    [JsonPropertyName("IsHiddenFromPreviousUsernames")]
+    public bool? IsHiddenFromPreviousUsernames { get; set; }
 }
