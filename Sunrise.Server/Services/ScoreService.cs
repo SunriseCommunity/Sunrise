@@ -166,7 +166,19 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         var prevUserStats = userStats.Clone();
-        var prevUserPersonalBestScores = globalScores.GetUserPersonalBestScores(score.UserId);
+
+        var prevUserBeatmapScores = isScoreScoreable
+            ? await database.Scores.GetUserScores(score.UserId,
+                score.GameMode,
+                ScoreTableType.Recent,
+                new QueryOptions
+                {
+                    QueryModifier = x => x.Cast<Score>().Where(x => x.BeatmapHash == score.BeatmapHash),
+                    IgnoreCountQueryIfExists = true
+                })
+            : ([], 0);
+
+        var prevUserPersonalBestScores = prevUserBeatmapScores.Scores.GetUserPersonalBestScores(score.UserId);
 
         var user = await database.Users.GetUser(session.UserId);
 
@@ -193,7 +205,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var transactionResult = await database.CommitAsTransactionAsync(async () =>
         {
-            var prevUserPersonalBestScoresWithSameMods = scoresWithSameMods.GetUserPersonalBestScores(score.UserId);
+            var prevUserPersonalBestScoresWithSameMods = prevUserBeatmapScores.Scores.Where(x => x.Mods == score.Mods).ToList().GetUserPersonalBestScores(score.UserId);
 
             score.UpdateSubmissionStatus(prevUserPersonalBestScoresWithSameMods?.BestScoreBasedByTotalScore);
 
