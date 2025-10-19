@@ -4,14 +4,19 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Services;
 using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
 
 namespace Sunrise.Tests;
 
 public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisposable
 {
+    public MockHttpClientService? MockHttpClient { get; private set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureTestServices(services =>
@@ -26,6 +31,12 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
                 options.UseMySQL(Configuration.DatabaseConnectionString);
             });
+
+            var httpClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(HttpClientService));
+            if (httpClientDescriptor != null) services.Remove(httpClientDescriptor);
+
+            MockHttpClient = new MockHttpClientService();
+            services.AddScoped<HttpClientService>(_ => MockHttpClient);
 
             using var scope = services.BuildServiceProvider().CreateScope();
 

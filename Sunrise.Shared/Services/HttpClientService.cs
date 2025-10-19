@@ -30,7 +30,7 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
-    public async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
+    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
     {
         if (session.IsRateLimited())
         {
@@ -94,7 +94,7 @@ public class HttpClientService
         });
     }
 
-    public async Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, CancellationToken ct = default)
+    public virtual async Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
         if (session.IsRateLimited())
         {
