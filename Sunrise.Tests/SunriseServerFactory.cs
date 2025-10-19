@@ -35,8 +35,12 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             var httpClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(HttpClientService));
             if (httpClientDescriptor != null) services.Remove(httpClientDescriptor);
 
-            MockHttpClient = new MockHttpClientService();
-            services.AddScoped<HttpClientService>(_ => MockHttpClient);
+            services.AddScoped<HttpClientService>(provider =>
+            {
+                var redis = provider.GetRequiredService<Sunrise.Shared.Repositories.RedisRepository>();
+                MockHttpClient = new MockHttpClientService(redis);
+                return MockHttpClient;
+            });
 
             using var scope = services.BuildServiceProvider().CreateScope();
 

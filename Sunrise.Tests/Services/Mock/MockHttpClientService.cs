@@ -5,17 +5,14 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 
 namespace Sunrise.Tests.Services.Mock;
 
-public class MockHttpClientService : HttpClientService
+public class MockHttpClientService(RedisRepository redis) : HttpClientService(redis)
 {
     private readonly Dictionary<ApiType, Func<object, object>> _mockResponses = new();
-
-    public MockHttpClientService() : base(null!)
-    {
-    }
 
     public void MockResponse<TResponse>(ApiType apiType, Func<object, TResponse> responseFactory)
     {
@@ -91,11 +88,7 @@ public class MockHttpClientService : HttpClientService
             }
         }
 
-        return Task.FromResult(Result.Failure<T, ErrorMessage>(new ErrorMessage
-        {
-            Message = $"No mock configured for {type}",
-            Status = HttpStatusCode.NotImplemented
-        }));
+        return base.PostRequestWithBody<T>(session, type, body, headers);
     }
 
     public override Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, CancellationToken ct = default)
@@ -117,11 +110,7 @@ public class MockHttpClientService : HttpClientService
             }
         }
 
-        return Task.FromResult(Result.Failure<T, ErrorMessage>(new ErrorMessage
-        {
-            Message = $"No mock configured for {type}",
-            Status = HttpStatusCode.NotImplemented
-        }));
+        return base.SendRequest<T>(session, type, args, headers, ct);
     }
 
     public void ClearMocks()
