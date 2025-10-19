@@ -27,4 +27,4 @@ jobs:
             sleep 5
           done
       - name: Test
-        run: dotnet test --no-build --verbosity normal
+        run: dotnet test --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
