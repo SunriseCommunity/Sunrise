@@ -173,7 +173,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
                 ScoreTableType.Recent,
                 new QueryOptions
                 {
-                    QueryModifier = x => x.Cast<Score>().Where(x => x.BeatmapHash == score.BeatmapHash),
+                    QueryModifier = x => x.Cast<Score>().Where(x => x.BeatmapHash == score.BeatmapHash).FilterPassedScoreableScores(),
                     IgnoreCountQueryIfExists = true
                 })
             : ([], 0);

@@ -1009,6 +1009,172 @@ public class ScoreServiceSubmitScoreRedisTests() : DatabaseTest(true)
         // Performance points shouldn't change, because even while new score pp > best score in leaderboard, it's still < previous best by pp
         Assert.Equivalent(userStatsBefore.PerformancePoints, userStats.PerformancePoints);
     }
+    
+    [Fact]
+    public async Task TestUponSubmittingBetterScoreThanPreviousOneIgnoreFailedWithGreaterScore()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var session = await CreateTestSession();
+
+        const int beatmapId = 4866852;
+        const string beatmapHash = "017478eac4eb68b38cff9d85c9822453";
+        const Mods mods = (Mods)72;
+        const GameMode gameMode = GameMode.Standard;
+        const string osuVersion = "20250815";
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.Checksum = beatmapHash;
+        beatmap.Id = beatmapId;
+        beatmap.UpdateBeatmapRanking(BeatmapStatusWeb.Ranked);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        IFormFile formFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", $"{_mocker.GetRandomString(6)}.osr");
+        var replayRecordResult = await Database.Scores.Files.AddReplayFile(session.UserId, formFile);
+
+        if (replayRecordResult.IsFailure)
+            throw new Exception(replayRecordResult.Error);
+
+        var replayRecord = replayRecordResult.Value;
+
+        var seedScores = new[]
+        {
+            new Score
+            {
+                UserId = session.UserId,
+                BeatmapId = beatmapId,
+                ScoreHash = "b4708da107c7f7f0df908c4050673190",
+                BeatmapHash = beatmapHash,
+                ReplayFileId = replayRecord.Id,
+                TotalScore = 10_000,
+                MaxCombo = 153,
+                Count300 = 115,
+                Count100 = 12,
+                Count50 = 0,
+                CountMiss = 3,
+                CountKatu = 6,
+                CountGeki = 17,
+                Perfect = false,
+                Mods = mods,
+                Grade = "B",
+                IsPassed = true,
+                IsScoreable = true,
+                SubmissionStatus = SubmissionStatus.Best,
+                GameMode = gameMode,
+                WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
+                OsuVersion = osuVersion,
+                BeatmapStatus = BeatmapStatus.Ranked,
+                ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
+                Accuracy = 91.53845977783203,
+                PerformancePoints = 426.69985159889916
+            },
+            new Score
+            {
+                UserId = session.UserId,
+                BeatmapId = beatmapId,
+                ScoreHash = "47c55c6a0762a8bceae2d2d00e65a4e7",
+                BeatmapHash = beatmapHash,
+                ReplayFileId = replayRecord.Id,
+                TotalScore = 200_000,
+                MaxCombo = 125,
+                Count300 = 126,
+                Count100 = 3,
+                Count50 = 0,
+                CountMiss = 1,
+                CountKatu = 2,
+                CountGeki = 22,
+                Perfect = false,
+                Mods = mods,
+                Grade = "A",
+                IsPassed = true,
+                IsScoreable = true,
+                SubmissionStatus = SubmissionStatus.Failed,
+                GameMode = gameMode,
+                WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
+                OsuVersion = osuVersion,
+                BeatmapStatus = BeatmapStatus.Ranked,
+                ClientTime = DateTime.Parse("2025-10-09 19:44:36"),
+                Accuracy = 97.69230651855469,
+                PerformancePoints = 554.7153705477176
+            }
+        };
+
+        foreach (var s in seedScores)
+        {
+            s.LocalProperties = s.LocalProperties.FromScore(s);
+            var addScoreResult = await Database.Scores.AddScore(s);
+
+            if (addScoreResult.IsFailure)
+                throw new Exception(addScoreResult.Error);
+        }
+
+        var recalculateUserStatsCommand = new RecalculateUserStatsCommand();
+        await recalculateUserStatsCommand.RecalculateUserStats(session.UserId, CancellationToken.None);
+
+        var userStatsBefore = await Database.Users.Stats.GetUserStats(session.UserId, gameMode);
+        if (userStatsBefore == null)
+            throw new Exception("User stats are null");
+
+        var submitScore = new Score
+        {
+            BeatmapId = beatmapId,
+            BeatmapHash = beatmapHash,
+            TotalScore = 100_000,
+            MaxCombo = 92,
+            Count300 = 121,
+            Count100 = 8,
+            Count50 = 0,
+            CountMiss = 1,
+            CountKatu = 4,
+            CountGeki = 20,
+            Perfect = false,
+            Mods = mods,
+            Grade = "A",
+            IsPassed = true,
+            IsScoreable = true,
+            GameMode = gameMode,
+            WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
+            OsuVersion = osuVersion,
+            BeatmapStatus = BeatmapStatus.Ranked,
+            ClientTime = DateTime.Parse("2025-10-09 19:45:14"),
+            Accuracy = 95.12820434570312,
+            PerformancePoints = 491.98253750654084
+        };
+
+        submitScore.EnrichWithSessionData(session);
+        submitScore.LocalProperties = submitScore.LocalProperties.FromScore(submitScore);
+
+        App.MockHttpClient?.MockPerformanceCalculation(491.98253750654084, 5.5);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            submitScore.ToScoreString(),
+            beatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            osuVersion,
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var dbSeedBest = await Database.Scores.GetScore("b4708da107c7f7f0df908c4050673190");
+        Assert.NotNull(dbSeedBest);
+        Assert.Equal(SubmissionStatus.Submitted, dbSeedBest.SubmissionStatus);
+
+        var dbNew = await Database.Scores.GetScore(submitScore.ScoreHash);
+        Assert.NotNull(dbNew);
+        Assert.Equal(SubmissionStatus.Best, dbNew.SubmissionStatus);
+
+        var userStats = await Database.Users.Stats.GetUserStats(session.UserId, gameMode);
+        Assert.NotNull(userStats);
+    }
 
     [Fact]
     public async Task TestUponSubmittingBetterScoreThanPreviousOneUpdateUserGrades()
