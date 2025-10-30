@@ -47,6 +47,15 @@ public abstract class DatabaseTest : BaseTest, IDisposable
         if (!Configuration.DataPath.IsDevelopmentFile())
             throw new InvalidOperationException("Data path is not a development directory. Are you trying to delete production data?");
 
+        try
+        {
+            App?.CleanupDatabaseAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Database cleanup failed", ex);
+        }
+
         Directory.Delete(Path.Combine(Configuration.DataPath), true);
 
         EnvManager.Dispose();
