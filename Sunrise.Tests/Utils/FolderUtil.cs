@@ -1,7 +1,14 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+
 namespace Sunrise.Tests.Utils;
 
-public static class FolderUtil
+public static partial class FolderUtil
 {
+    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CreateHardLinkW(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
     public static void Copy(string sourceDir, string entryRoot, bool withFiles = true, bool overwrite = true)
     {
         if (withFiles)
@@ -12,7 +19,17 @@ public static class FolderUtil
                 if (File.Exists(dest) && overwrite)
                     File.Delete(dest);
 
-                File.Copy(file, dest);
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    if (!CreateHardLinkW(dest, file, IntPtr.Zero))
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to create hard link.");
+                    }
+                }
+                else
+                {
+                    File.Copy(file, dest);
+                }
             }
         }
 
