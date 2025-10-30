@@ -16,7 +16,7 @@ namespace Sunrise.Tests;
 
 public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisposable
 {
-    private static readonly SemaphoreSlim DbCleanupLock = new(1, 1);
+    private static readonly SemaphoreSlim DatabaseLock = new(1, 1);
     private static bool _schemaCreated;
     private static List<string>? _cachedTableNames;
 
@@ -49,15 +49,17 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
             var isShouldCreateSchema = !_schemaCreated;
 
-            if (!isShouldCreateSchema)
-                return;
-
-            DbCleanupLock.Wait();
+            DatabaseLock.Wait();
 
             try
             {
                 if (!isShouldCreateSchema)
+                {
+                    using var tempScope = services.BuildServiceProvider().CreateScope();
+                    CleanupDatabaseInternalAsync(tempScope).GetAwaiter().GetResult();
+
                     return;
+                }
 
                 using var scope = services.BuildServiceProvider().CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
@@ -72,46 +74,13 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             }
             finally
             {
-                DbCleanupLock.Release();
+                DatabaseLock.Release();
             }
         });
     }
 
-    private async Task<List<string>> GetTableNamesAsync(SunriseDbContext db)
+    private static async Task CleanupDatabaseInternalAsync(IServiceScope scope)
     {
-        if (_cachedTableNames != null)
-            return _cachedTableNames;
-
-        var connection = db.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync();
-
-        var tableNames = new List<string>();
-
-        await using (var command = connection.CreateCommand())
-        {
-            command.CommandText = @"
-                SELECT TABLE_NAME 
-                FROM information_schema.TABLES 
-                WHERE TABLE_SCHEMA = DATABASE() 
-                AND TABLE_TYPE = 'BASE TABLE'
-                ORDER BY TABLE_NAME";
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                tableNames.Add(reader.GetString(0));
-            }
-        }
-
-        _cachedTableNames = tableNames;
-        return tableNames;
-    }
-
-    public async Task CleanupDatabaseAsync()
-    {
-        using var scope = Server.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
         if (Configuration.UseCache)
@@ -179,6 +148,38 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             await db.Database.ExecuteSqlRawAsync(batchQuery);
 #pragma warning restore EF1002
         }
+    }
+
+    private static async Task<List<string>> GetTableNamesAsync(SunriseDbContext db)
+    {
+        if (_cachedTableNames != null)
+            return _cachedTableNames;
+
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync();
+
+        var tableNames = new List<string>();
+
+        await using (var command = connection.CreateCommand())
+        {
+            command.CommandText = @"
+                SELECT TABLE_NAME 
+                FROM information_schema.TABLES 
+                WHERE TABLE_SCHEMA = DATABASE() 
+                AND TABLE_TYPE = 'BASE TABLE'
+                ORDER BY TABLE_NAME";
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                tableNames.Add(reader.GetString(0));
+            }
+        }
+
+        _cachedTableNames = tableNames;
+        return tableNames;
     }
 
     protected override void Dispose(bool disposing)

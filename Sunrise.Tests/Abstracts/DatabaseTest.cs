@@ -29,8 +29,6 @@ public abstract class DatabaseTest : BaseTest, IDisposable
             CreateFilesCopy();
 
             App = new SunriseServerFactory();
-
-            App.CleanupDatabaseAsync().GetAwaiter().GetResult();
         }
         catch
         {
