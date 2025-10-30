@@ -29,6 +29,8 @@ public abstract class DatabaseTest : BaseTest, IDisposable
             CreateFilesCopy();
 
             App = new SunriseServerFactory();
+
+            App.CleanupDatabaseAsync().GetAwaiter().GetResult();
         }
         catch
         {
@@ -49,14 +51,13 @@ public abstract class DatabaseTest : BaseTest, IDisposable
 
         try
         {
-            App?.CleanupDatabaseAsync().GetAwaiter().GetResult();
+            if (Directory.Exists(Configuration.DataPath))
+                Directory.Delete(Path.Combine(Configuration.DataPath), true);
         }
         catch (Exception ex)
         {
-            throw new Exception("Database cleanup failed", ex);
+            Console.WriteLine($"Warning: File cleanup failed: {ex.Message}");
         }
-
-        Directory.Delete(Path.Combine(Configuration.DataPath), true);
 
         EnvManager.Dispose();
 
