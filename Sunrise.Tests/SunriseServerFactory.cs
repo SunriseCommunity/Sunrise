@@ -114,6 +114,19 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
         using var scope = Server.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
+        if (Configuration.UseCache)
+        {
+            try
+            {
+                var redis = scope.ServiceProvider.GetRequiredService<RedisRepository>();
+                await redis.Flush(flushOnlyGeneralDatabase: false);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Failed to flush Redis cache.", ex);
+            }
+        }
+
         var tableNames = await GetTableNamesAsync(db);
         var nonEmptyTables = new List<string>();
 
