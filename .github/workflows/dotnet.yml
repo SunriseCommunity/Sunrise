@@ -14,26 +14,17 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Docker compose test environment
+        run: docker compose -f docker-compose.tests.yml up -d
+      - name: Wait for MySQL to be ready
+        run: |
+          while ! docker compose -f docker-compose.tests.yml ps | grep "healthy"; do
+            echo "Waiting for MySQL..."
+            sleep 5
+          done
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore
-      - name: Docker compose test environment
-        run: docker compose -f docker-compose.tests.yml up -d
-      - name: Wait for Databases to be Healthy
-        run: |
-          echo "Waiting for MySQL and PostgreSQL to become healthy..."
-          while true; do
-            MYSQL_HEALTHY=$(docker compose -f docker-compose.tests.yml ps | grep mysql | grep -c "healthy" || true)
-            POSTGRES_HEALTHY=$(docker compose -f docker-compose.tests.yml ps | grep postgres | grep -c "healthy" || true)
-
-            if [ "$MYSQL_HEALTHY" -ge 1 ] && [ "$POSTGRES_HEALTHY" -ge 1 ]; then
-              echo "✅ Both MySQL and PostgreSQL are healthy!"
-              break
-            else
-              echo "⏳ Waiting for databases to be healthy..."
-              sleep 5
-            fi
-          done
       - name: Test
         run: dotnet test --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
