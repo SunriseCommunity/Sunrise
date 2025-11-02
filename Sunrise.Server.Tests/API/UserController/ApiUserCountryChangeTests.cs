@@ -19,10 +19,10 @@ using Sunrise.Tests;
 namespace Sunrise.Server.Tests.API.UserController;
 
 [Collection("Integration tests collection")]
-public class ApiUserCountryChangeRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-
+    
     public static IEnumerable<object[]> GetGameModes()
     {
         return Enum.GetValues(typeof(GameMode)).Cast<GameMode>().Select(mode => new object[]
@@ -319,12 +319,6 @@ public class ApiUserCountryChangeRedisTests(IntegrationDatabaseFixture fixture) 
         Assert.All(firstPlaceCountryUserCountryRanksInGameModesAfter, rank => Assert.Equal(1, rank));
         Assert.All(secondPlaceCountryShouldBeFirstAfterPromotionUserCountryRanksInGameModesAfter, rank => Assert.Equal(1, rank));
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
-    private readonly MockService _mocker = new();
 
     [Fact]
     public async Task TestCountryChangeWithoutAuthToken()

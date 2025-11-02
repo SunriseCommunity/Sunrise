@@ -13,7 +13,69 @@ using Sunrise.Tests;
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
 [Collection("Integration tests collection")]
-public class ApiBeatmapSetRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiBeatmapSetFavouriteTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+{
+    private readonly MockService _mocker = new();
+
+    [Fact]
+    public async Task TestGetBeatmapSetUpdateFavouriteInvalidSession()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
+            new EditBeatmapsetFavouriteStatusRequest
+            {
+                Favourited = true
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task TestGetBeatmapSetUpdateFavourite(bool favouriteBeatmapSetBeforeAct, bool favouriteBeatmapSetAfterAct)
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        if (favouriteBeatmapSetBeforeAct)
+            await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
+            new EditBeatmapsetFavouriteStatusRequest
+            {
+                Favourited = favouriteBeatmapSetAfterAct
+            }
+        );
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var isBeatmapSetFavourited = await Database.Users.Favourites.IsBeatmapSetFavourited(user.Id, beatmapSet.Id);
+        Assert.Equal(favouriteBeatmapSetAfterAct, isBeatmapSetFavourited);
+    }
+}
+
+[Collection("Integration tests collection")]
+public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -79,73 +141,7 @@ public class ApiBeatmapSetRedisTests(IntegrationDatabaseFixture fixture) : ApiTe
         
         Assert.False(beatmapSetResponse.CanBeHyped);
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiBeatmapSetFavouriteRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
-    private readonly MockService _mocker = new();
-
-    [Fact]
-    public async Task TestGetBeatmapSetUpdateFavouriteInvalidSession()
-    {
-        // Arrange
-        var client = App.CreateClient().UseClient("api");
-
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-
-        // Act
-        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
-            new EditBeatmapsetFavouriteStatusRequest
-            {
-                Favourited = true
-            });
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(true, true)]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    public async Task TestGetBeatmapSetUpdateFavourite(bool favouriteBeatmapSetBeforeAct, bool favouriteBeatmapSetAfterAct)
-    {
-        // Arrange
-        var client = App.CreateClient().UseClient("api");
-
-        var user = await CreateTestUser();
-        var tokens = await GetUserAuthTokens(user);
-        client.UseUserAuthToken(tokens);
-
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-
-        if (favouriteBeatmapSetBeforeAct)
-            await Database.Users.Favourites.AddFavouriteBeatmap(user.Id, beatmapSet.Id);
-
-        // Act
-        var response = await client.PostAsJsonAsync($"beatmapset/{beatmapSet.Id}/favourited",
-            new EditBeatmapsetFavouriteStatusRequest
-            {
-                Favourited = favouriteBeatmapSetAfterAct
-            }
-        );
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var isBeatmapSetFavourited = await Database.Users.Favourites.IsBeatmapSetFavourited(user.Id, beatmapSet.Id);
-        Assert.Equal(favouriteBeatmapSetAfterAct, isBeatmapSetFavourited);
-    }
-}
-
-[Collection("Integration tests collection")]
-public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

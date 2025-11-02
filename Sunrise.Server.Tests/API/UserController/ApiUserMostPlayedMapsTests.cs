@@ -14,7 +14,7 @@ using Sunrise.Tests;
 namespace Sunrise.Server.Tests.API.UserController;
 
 [Collection("Integration tests collection")]
-public class ApiUserMostPlayedMapsRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiUserMostPlayedMapsTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -103,11 +103,7 @@ public class ApiUserMostPlayedMapsRedisTests(IntegrationDatabaseFixture fixture)
 
         Assert.Equal(2, responseData.TotalCount);
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiUserMostPlayedMapsTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

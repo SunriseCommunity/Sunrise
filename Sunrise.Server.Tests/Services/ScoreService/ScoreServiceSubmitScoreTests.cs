@@ -18,7 +18,7 @@ using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 namespace Sunrise.Server.Tests.Services.ScoreService;
 
 [Collection("Integration tests collection")]
-public class ScoreServiceSubmitScoreRedisTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
+public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     private readonly MockService _mocker = new();
     private readonly ReplayService _replayService = new();

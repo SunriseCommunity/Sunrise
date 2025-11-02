@@ -11,7 +11,7 @@ using Sunrise.Tests.Utils;
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
 [Collection("Integration tests collection")]
-public class ApiBeatmapLeaderboardRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -129,11 +129,7 @@ public class ApiBeatmapLeaderboardRedisTests(IntegrationDatabaseFixture fixture)
         scores = scores.Where(s => mods == null || s.Mods == mods).ToList();
         Assert.Equal(scores.Count, content.Scores.Count);
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

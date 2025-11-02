@@ -11,10 +11,10 @@ using Sunrise.Tests;
 namespace Sunrise.Server.Tests.API.UserController;
 
 [Collection("Integration tests collection")]
-public class ApiUserFavouritesRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiUserFavouritesTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-
+    
     [Fact]
     public async Task TestFavourites()
     {
@@ -69,12 +69,6 @@ public class ApiUserFavouritesRedisTests(IntegrationDatabaseFixture fixture) : A
 
         Assert.Equal(2, responseData.TotalCount);
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiUserFavouritesTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
-    private readonly MockService _mocker = new();
 
     [Theory]
     [InlineData("-1")]

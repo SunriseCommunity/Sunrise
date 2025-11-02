@@ -11,7 +11,7 @@ using Sunrise.Tests;
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
 [Collection("Integration tests collection")]
-public class ApiGetBeatmapSetEventsRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -103,11 +103,7 @@ public class ApiGetBeatmapSetEventsRedisTests(IntegrationDatabaseFixture fixture
 
         Assert.Equal(2, events.First().EventId);
     }
-}
-
-[Collection("Integration tests collection")]
-public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
-{
+    
     [Fact]
     public async Task TestGetBeatmapSetEventsUnauthorized()
     {
