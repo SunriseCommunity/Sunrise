@@ -5,10 +5,12 @@ using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.Controllers;
 
-public class BanchoControllerGetTests : DatabaseTest
+[Collection("Integration tests collection")]
+public class BanchoControllerGetTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     [Fact]
     public async Task TestOnGetRequestReturnsImage()
@@ -25,9 +27,9 @@ public class BanchoControllerGetTests : DatabaseTest
     }
 }
 
-public class BanchoControllerPostTests : BanchoTest
+[Collection("Integration tests collection")]
+public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : BanchoTest(fixture)
 {
-    
     private readonly MockService _mocker = new();
     
     [Fact]

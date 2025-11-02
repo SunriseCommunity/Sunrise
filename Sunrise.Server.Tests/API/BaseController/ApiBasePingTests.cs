@@ -1,9 +1,11 @@
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BaseController;
 
-public class ApiBasePingTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiBasePingTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestPingReturnsOk()

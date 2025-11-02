@@ -8,10 +8,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiBeatmapSetRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiBeatmapSetRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -79,7 +81,8 @@ public class ApiBeatmapSetRedisTests() : ApiTest(true)
     }
 }
 
-public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiBeatmapSetFavouriteRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -140,7 +143,8 @@ public class ApiBeatmapSetFavouriteRedisTests() : ApiTest(true)
     }
 }
 
-public class ApiBeatmapSetTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Theory]
     [InlineData("-1")]

@@ -11,59 +11,29 @@ using Sunrise.Shared.Repositories;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
-using Sunrise.Tests.Utils;
 
 namespace Sunrise.Tests.Abstracts;
 
-[Collection("Database tests collection")]
-public abstract class DatabaseTest : BaseTest, IDisposable
+public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTest, IAsyncLifetime
 {
     private readonly FileService _fileService = new();
     private readonly MockService _mocker = new();
 
-    protected DatabaseTest(bool useRedis = false)
-    {
-        try
-        {
-            UpdateRedisVariables(useRedis);
-            CreateFilesCopy();
+    protected SunriseServerFactory App => fixture.App;
 
-            App = new SunriseServerFactory();
-        }
-        catch
-        {
-            Dispose();
-            throw;
-        }
-    }
-
-    protected SunriseServerFactory App { get; }
     protected IServiceScope Scope => App.Server.Services.CreateScope();
+    
     protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
     protected SessionRepository Sessions => Scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
-    public new virtual void Dispose()
+    public async Task InitializeAsync()
     {
-        if (!Configuration.DataPath.IsDevelopmentFile())
-            throw new InvalidOperationException("Data path is not a development directory. Are you trying to delete production data?");
-
-        try
-        {
-            if (Directory.Exists(Configuration.DataPath))
-                Directory.Delete(Path.Combine(Configuration.DataPath), true);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Warning: File cleanup failed: {ex.Message}");
-        }
-
-        EnvManager.Dispose();
-
-        Scope?.Dispose();
-        App?.Dispose();
-
-        base.Dispose();
-        GC.SuppressFinalize(this);
+        await fixture.ResetAsync();
+    }
+    
+    public Task DisposeAsync()
+    {
+        return Task.CompletedTask;
     }
 
     protected async Task<Session> CreateTestSession()
@@ -177,25 +147,5 @@ public abstract class DatabaseTest : BaseTest, IDisposable
         var beatmapId = _mocker.Redis.GetBeatmapIdFromHash(replay.GetScore().BeatmapHash);
 
         return (replay, beatmapId);
-    }
-
-    private void UpdateRedisVariables(bool useRedis)
-    {
-        EnvManager.Set("Redis:ClearCacheOnStartup", useRedis ? "true" : "false");
-        EnvManager.Set("Redis:UseCache", useRedis ? "true" : "false");
-    }
-
-    private void CreateFilesCopy()
-    {
-        var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), Configuration.DataPath);
-
-        EnvManager.Set("Files:DataPath", Configuration.DataPath + _mocker.GetRandomString(12) + ".tmp");
-
-        var dataPath = Path.Combine(Directory.GetCurrentDirectory(), $"{Configuration.DataPath}");
-
-        if (!Directory.Exists(dataPath))
-            Directory.CreateDirectory(dataPath);
-
-        FolderUtil.Copy(sourcePath, dataPath);
     }
 }

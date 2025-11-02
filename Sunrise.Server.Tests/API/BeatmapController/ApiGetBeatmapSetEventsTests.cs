@@ -6,10 +6,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiGetBeatmapSetEventsRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiGetBeatmapSetEventsRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -103,7 +105,8 @@ public class ApiGetBeatmapSetEventsRedisTests() : ApiTest(true)
     }
 }
 
-public class ApiGetBeatmapSetEventsTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestGetBeatmapSetEventsUnauthorized()

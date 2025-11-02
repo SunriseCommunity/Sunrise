@@ -4,10 +4,12 @@ using Sunrise.API.Objects.Keys;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
 
-public class ApiScoreGetScoreReplayTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiScoreGetScoreReplayTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestGetScoreReplay()

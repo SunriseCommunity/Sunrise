@@ -5,10 +5,12 @@ using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.Extensions;
 
-public class UserStatsExtensionsDatabaseTests : DatabaseTest
+[Collection("Integration tests collection")]
+public class UserStatsExtensionsDatabaseTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     private readonly MockService _mocker = new();
 

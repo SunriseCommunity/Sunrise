@@ -12,10 +12,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiUpdateBeatmapCustomStatusRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiUpdateBeatmapCustomStatusRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -195,7 +197,8 @@ public class ApiUpdateBeatmapCustomStatusRedisTests() : ApiTest(true)
     }
 }
 
-public class ApiUpdateBeatmapCustomStatusTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestUpdateBeatmapCustomStatusUnauthorized()

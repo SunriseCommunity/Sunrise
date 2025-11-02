@@ -6,10 +6,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserFavouritesRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiUserFavouritesRedisTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -69,7 +71,8 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
     }
 }
 
-public class ApiUserFavouritesTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiUserFavouritesTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 

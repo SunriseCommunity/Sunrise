@@ -7,10 +7,12 @@ using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserGetSelfTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiUserGetSelfTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     public static IEnumerable<object[]> GetGameModes()
     {

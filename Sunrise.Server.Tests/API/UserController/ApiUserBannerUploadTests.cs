@@ -5,13 +5,15 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
+using Sunrise.Tests;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserBannerUploadTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiUserBannerUploadTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private const int Megabyte = 1024 * 1024;
     private readonly FileService _fileService = new();

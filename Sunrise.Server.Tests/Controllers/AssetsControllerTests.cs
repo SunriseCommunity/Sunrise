@@ -1,9 +1,11 @@
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.Controllers;
 
-public class AssetsControllerTests : DatabaseTest
+[Collection("Integration tests collection")]
+public class AssetsControllerTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     [Fact]
     public async Task Get_Bot_Avatar()
