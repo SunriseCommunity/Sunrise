@@ -9,13 +9,15 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-
+    
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -177,10 +179,7 @@ public class ApiAddBeatmapSetHypeRedisTests() : ApiTest(true)
         Assert.NotNull(userHypes);
         Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly);
     }
-}
-
-public class ApiAddBeatmapSetHypeTests() : ApiTest(true)
-{
+    
     [Fact]
     public async Task TestAddBeatmapSetHypeUnauthorized()
     {

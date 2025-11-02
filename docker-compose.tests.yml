@@ -1,7 +1,7 @@
 name: osu-sunrise-tests
 services:
   redis:
-    image: redis:latest
+    image: redis:8.2.2
     restart: unless-stopped
     volumes:
       - redis:/data
@@ -11,7 +11,7 @@ services:
       - monitoring
 
   postgres:
-    image: postgres:latest
+    image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -23,9 +23,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mysql-sunrise-db:
-    image: mysql
+    image: mysql:oraclelinux9
     restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=root

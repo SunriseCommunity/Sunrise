@@ -8,10 +8,12 @@ using Sunrise.Shared.Application;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
-public class ApiAuthRefreshTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiAuthRefreshTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private static string BannedIp => Configuration.BannedIps.FirstOrDefault() ?? throw new Exception("Banned IP not found");
 

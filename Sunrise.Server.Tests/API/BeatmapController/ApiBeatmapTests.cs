@@ -7,10 +7,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiBeatmapRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiBeatmapTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -71,10 +73,7 @@ public class ApiBeatmapRedisTests() : ApiTest(true)
 
         Assert.Equal(BeatmapStatusWeb.Loved, beatmap.Status);
     }
-}
-
-public class ApiBeatmapTests : ApiTest
-{
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

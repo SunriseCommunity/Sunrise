@@ -8,7 +8,7 @@ public class FileSizeFilter
 
 public class FileService
 {
-    private static readonly string ResourcesPath = Path.Combine(Directory.GetCurrentDirectory(), "Sunrise.Tests/Resources");
+    private static string ResourcesPath => Path.Combine(Directory.GetCurrentDirectory(), "Sunrise.Tests/Resources");
 
     public string GetRandomFilePath()
     {

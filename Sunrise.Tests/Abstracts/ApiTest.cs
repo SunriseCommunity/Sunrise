@@ -6,7 +6,7 @@ using AuthService = Sunrise.API.Services.AuthService;
 
 namespace Sunrise.Tests.Abstracts;
 
-public abstract class ApiTest(bool useRedis = false) : DatabaseTest(useRedis)
+public abstract class ApiTest(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     protected async Task<TokenResponse> GetUserAuthTokens(User? user = null)
     {

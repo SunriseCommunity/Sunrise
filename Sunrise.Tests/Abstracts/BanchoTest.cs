@@ -5,7 +5,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Tests.Abstracts;
 
-public abstract class BanchoTest(bool useRedis = false) : DatabaseTest(useRedis)
+public abstract class BanchoTest(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
     protected readonly PacketHelper PacketHelper = new();
 

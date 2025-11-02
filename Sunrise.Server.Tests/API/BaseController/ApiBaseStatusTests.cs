@@ -4,10 +4,12 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Repositories;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BaseController;
 
-public class ApiBaseStatusTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiBaseStatusTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestStatusReturnsValidInfo()

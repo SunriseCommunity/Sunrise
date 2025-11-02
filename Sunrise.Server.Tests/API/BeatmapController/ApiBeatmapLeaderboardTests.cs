@@ -2,6 +2,7 @@
 using osu.Shared;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Tests;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -9,7 +10,8 @@ using Sunrise.Tests.Utils;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
-public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 
@@ -127,10 +129,7 @@ public class ApiBeatmapLeaderboardRedisTests() : ApiTest(true)
         scores = scores.Where(s => mods == null || s.Mods == mods).ToList();
         Assert.Equal(scores.Count, content.Scores.Count);
     }
-}
-
-public class ApiBeatmapLeaderboardTests : ApiTest
-{
+    
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

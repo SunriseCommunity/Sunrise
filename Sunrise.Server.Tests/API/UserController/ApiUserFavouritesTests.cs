@@ -6,13 +6,15 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserFavouritesRedisTests() : ApiTest(true)
+[Collection("Integration tests collection")]
+public class ApiUserFavouritesTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-
+    
     [Fact]
     public async Task TestFavourites()
     {
@@ -67,11 +69,6 @@ public class ApiUserFavouritesRedisTests() : ApiTest(true)
 
         Assert.Equal(2, responseData.TotalCount);
     }
-}
-
-public class ApiUserFavouritesTests : ApiTest
-{
-    private readonly MockService _mocker = new();
 
     [Theory]
     [InlineData("-1")]

@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -24,7 +24,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             var dbContextDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<SunriseDbContext>));
             if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
 
-            services.AddDbContextPool<SunriseDbContext>((container, options) =>
+            services.AddDbContextPool<SunriseDbContext>((_, options) =>
             {
                 options.EnableServiceProviderCaching(false);
                 options.EnableSensitiveDataLogging();
@@ -37,7 +37,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
             services.AddScoped<HttpClientService>(provider =>
             {
-                var redis = provider.GetRequiredService<Sunrise.Shared.Repositories.RedisRepository>();
+                var redis = provider.GetRequiredService<RedisRepository>();
                 MockHttpClient = new MockHttpClientService(redis);
                 return MockHttpClient;
             });
@@ -62,10 +62,20 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             return;
         }
 
-        var mon = JobStorage.Current.GetMonitoringApi();
-        var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);
-        var jobs = scheduledJobs.ToList();
-        jobs.ForEach(x => BackgroundJob.Delete(x.Key));
+        try
+        {
+            var mon = JobStorage.Current?.GetMonitoringApi();
+            if (mon != null)
+            {
+                var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);
+                var jobs = scheduledJobs.ToList();
+                jobs.ForEach(x => BackgroundJob.Delete(x.Key));
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Failed to clear Hangfire jobs during disposal.", ex);
+        }
 
         base.Dispose(disposing);
     }

@@ -3,10 +3,12 @@ using HOPEless.Bancho.Objects;
 using osu.Shared;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.Packets;
 
-public class PacketUserPresenceRequestTests : BanchoTest
+[Collection("Integration tests collection")]
+public class PacketUserPresenceRequestTests(IntegrationDatabaseFixture fixture) : BanchoTest(fixture)
 {
     [Fact]
     public async Task TestReturnExpectedPresence()

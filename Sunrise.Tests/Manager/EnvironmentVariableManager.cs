@@ -13,7 +13,14 @@ public class EnvironmentVariableManager : IDisposable
             Environment.SetEnvironmentVariable(key, originalValue);
         }
 
-        Configuration.GetConfig().Reload();
+        try
+        {
+            Configuration.GetConfig().Reload();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Configuration reload failed during EnvironmentVariableManager disposal.", ex);
+        }
 
         GC.SuppressFinalize(this);
     }
@@ -27,6 +34,13 @@ public class EnvironmentVariableManager : IDisposable
 
         Environment.SetEnvironmentVariable(key, value);
 
-        Configuration.GetConfig().Reload();
+        try
+        {
+            Configuration.GetConfig().Reload();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Configuration reload failed after setting environment variable '{key}'.", ex);
+        }
     }
 }

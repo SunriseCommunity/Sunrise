@@ -8,10 +8,12 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
-public class ApiUserGetUserScoresTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiUserGetUserScoresTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
 

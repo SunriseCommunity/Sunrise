@@ -5,10 +5,12 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Utils;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.ScoreController;
 
-public class ApiScoreGetScoreTests : ApiTest
+[Collection("Integration tests collection")]
+public class ApiScoreGetScoreTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     [Fact]
     public async Task TestGetValidScore()

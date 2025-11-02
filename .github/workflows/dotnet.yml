@@ -14,10 +14,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d
       - name: Wait for MySQL to be ready
@@ -26,5 +22,9 @@ jobs:
             echo "Waiting for MySQL..."
             sleep 5
           done
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
       - name: Test
         run: dotnet test --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
