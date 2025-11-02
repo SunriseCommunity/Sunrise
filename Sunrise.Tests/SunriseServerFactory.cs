@@ -190,10 +190,20 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             return;
         }
 
-        var mon = JobStorage.Current.GetMonitoringApi();
-        var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);
-        var jobs = scheduledJobs.ToList();
-        jobs.ForEach(x => BackgroundJob.Delete(x.Key));
+        try
+        {
+            var mon = JobStorage.Current?.GetMonitoringApi();
+            if (mon != null)
+            {
+                var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);
+                var jobs = scheduledJobs.ToList();
+                jobs.ForEach(x => BackgroundJob.Delete(x.Key));
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("Failed to clear Hangfire jobs during disposal.", ex);
+        }
 
         base.Dispose(disposing);
     }
