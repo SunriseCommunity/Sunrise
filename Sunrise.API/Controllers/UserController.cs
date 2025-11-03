@@ -419,9 +419,33 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         CancellationToken ct = default
     )
     {
-        var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
+        var (users, _) = await database.Users.GetValidUsersByQueryLike(query,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                IgnoreCountQueryIfExists = true
+            },
+            ct);
 
         return Ok(users.Select(x => new UserResponse(sessions, x)));
+    }
+
+    [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("search/list")]
+    [EndpointDescription("Search user by query")]
+    [ProducesResponseType(typeof(UsersSensitiveListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchUserSensitivesList(
+        [FromQuery(Name = "query")] string? query,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var (users, totalCount) = await database.Users.GetUsersBySensitiveInfoQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
+
+        return Ok(new UsersSensitiveListResponse(users.Select(x => new UserSensitiveResponse(sessions, x)).ToList(), totalCount));
     }
 
     [HttpGet]

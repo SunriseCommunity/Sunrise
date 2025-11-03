@@ -268,13 +268,37 @@ public class UserRepository(
         });
     }
 
-    public async Task<List<User>> GetValidUsersByQueryLike(string queryLike, QueryOptions? options = null, CancellationToken ct = default)
+    public async Task<(List<User>, int)> GetValidUsersByQueryLike(string queryLike, QueryOptions? options = null, CancellationToken ct = default)
     {
-        return await dbContext.Users
+        var usersQuery = dbContext.Users
             .FilterValidUsers()
-            .Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%"))
-            .IncludeUserThumbnails()
-            .UseQueryOptions(options)
-            .ToListAsync(cancellationToken: ct);
+            .Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%"));
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await usersQuery.CountAsync(cancellationToken: ct);
+        var users = await usersQuery.IncludeUserThumbnails()
+            .UseQueryOptions(options).ToListAsync(cancellationToken: ct);
+
+        return (users, totalCount);
+    }
+
+    public async Task<(List<User>, int)> GetUsersBySensitiveInfoQueryLike(string? queryLike, QueryOptions? options = null, CancellationToken ct = default)
+    {
+        var usersQuery = dbContext.Users.AsQueryable();
+
+        int? userId = null;
+        if (int.TryParse(queryLike, out var parsedId))
+            userId = parsedId;
+
+        if (queryLike != null)
+            usersQuery = usersQuery.Where(q => EF.Functions.Like(q.Username, "%" + queryLike + "%")
+                                               || EF.Functions.Like(q.Email, "%" + queryLike + "%")
+                                               || userId.HasValue && q.Id == userId.Value
+            );
+
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await usersQuery.CountAsync(cancellationToken: ct);
+        var users = await usersQuery.IncludeUserThumbnails().UseQueryOptions(options).ToListAsync(cancellationToken: ct);
+
+        return (users, totalCount);
     }
 }
