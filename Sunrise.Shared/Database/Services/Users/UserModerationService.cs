@@ -83,10 +83,10 @@ public class UserModerationService(
 
             var user = await databaseService.Value.Users.GetUser(userId);
             if (user == null)
-                return;
+                throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
             if (user.Privilege >= UserPrivilege.Admin)
-                return;
+                throw new ApplicationException("Cannot restrict an admin or higher privileged user.");
 
             user.AccountStatus = UserAccountStatus.Restricted;
 
