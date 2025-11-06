@@ -290,12 +290,10 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             });
 
         // Assert
-        // Note: There's a bug in the endpoint - it checks !isRestricted but uses UserAlreadyRestricted error message
-        // This test expects the actual behavior
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
         var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Detail.UserAlreadyRestricted, responseError?.Detail);
+        Assert.Contains(ApiErrorResponse.Detail.UserAlreadyUnrestricted, responseError?.Detail);
     }
 
     [Fact]

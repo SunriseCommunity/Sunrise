@@ -53,6 +53,23 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/sensitive")]
+    [EndpointDescription("Get user sensitive profile")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserSensitiveResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserSensitive([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
+    {
+        var isRequestingSelf = id == HttpContext.GetCurrentSession().UserId;
+        var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
+
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        return Ok(new UserSensitiveResponse(sessions, user));
+    }
+
+    [HttpGet]
     [Route("{id:int}/{mode}")]
     [EndpointDescription("Get user profile with user stats")]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
@@ -173,7 +190,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (!request.IsRestrict)
         {
             if (!isRestricted)
-                return Problem(ApiErrorResponse.Detail.UserAlreadyRestricted, statusCode: StatusCodes.Status400BadRequest);
+                return Problem(ApiErrorResponse.Detail.UserAlreadyUnrestricted, statusCode: StatusCodes.Status400BadRequest);
 
             var unrestrictUserResult = await database.Users.Moderation.UnrestrictPlayer(user.Id);
             if (unrestrictUserResult.IsFailure)
@@ -738,7 +755,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (user == null) return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        if (user.IsRestricted())
+        var currentUser = HttpContext.GetCurrentUser();
+
+        if (user.IsRestricted() && (currentUser == null || !currentUser.Privilege.HasFlag(UserPrivilege.Admin)))
             return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new UserMetadataResponse(userMetadata));
