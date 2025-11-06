@@ -125,6 +125,22 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/description")]
+    [EndpointDescription("Update users description")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditUserDescription(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditDescriptionRequest request)
+    {
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        return await userService.UpdateUserDescription(user.Id, request.Description);
+    }
+
+    [HttpPost]
     [Authorize]
     [Route("edit/default-gamemode")]
     [EndpointDescription("Update current users default gamemode")]
@@ -134,6 +150,51 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUserOrThrow();
         return await userService.UpdateUserDefaultGameMode(user.Id, request.DefaultGameMode);
     }
+
+
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/restriction")]
+    [EndpointDescription("Update users restriction status")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditUserRestriction(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditUserRestrictionRequest request)
+    {
+
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
+
+        if (!request.IsRestrict)
+        {
+            if (!isRestricted)
+                return Problem(ApiErrorResponse.Detail.UserAlreadyRestricted, statusCode: StatusCodes.Status400BadRequest);
+
+            var unrestrictUserResult = await database.Users.Moderation.UnrestrictPlayer(user.Id);
+            if (unrestrictUserResult.IsFailure)
+                return Problem(unrestrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+            return Ok();
+        }
+
+        if (isRestricted)
+            return Problem(ApiErrorResponse.Detail.UserAlreadyRestricted, statusCode: StatusCodes.Status400BadRequest);
+
+        if (string.IsNullOrWhiteSpace(request.RestrictionReason))
+            return Problem(ApiErrorResponse.Detail.RestrictionReasonMustBeProvided, statusCode: StatusCodes.Status400BadRequest);
+
+        var restrictUserResult = await database.Users.Moderation.RestrictPlayer(user.Id, currentUser.Id, request.RestrictionReason, TimeSpan.FromDays(365 * 10));
+        if (restrictUserResult.IsFailure)
+            return Problem(restrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+        return Ok();
+    }
+
 
     [HttpGet]
     [Route("{userId:int}/graph")]
@@ -463,6 +524,37 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/friends")]
+    [EndpointDescription("Get users friends")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserFriends(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.Target)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
+
+        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x.Target)).ToList(), totalCount));
+    }
+
+    [HttpGet]
     [Authorize]
     [Route("followers")]
     [EndpointDescription("Get authenticated users followers")]
@@ -477,6 +569,37 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     )
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+
+        var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.User)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
+
+        return Ok(new FollowersResponse(followers.Select(x => new UserResponse(sessions, x.User)).ToList(), totalCount));
+    }
+
+    [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/followers")]
+    [EndpointDescription("Get users followers")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserFollowers(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
             new QueryOptions(true, new Pagination(page, limit))

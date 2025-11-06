@@ -336,6 +336,8 @@ public class UserService(
         user.Description = description;
         await database.Users.UpdateUser(user);
 
+        // TODO: Add event logging about who changed the description
+
         return new OkResult();
     }
 
