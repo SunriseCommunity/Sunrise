@@ -61,7 +61,7 @@ public class UserEventService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<Result> AddUserChangePasswordEvent(int userId, string ip, string oldPassword, string newPassword)
+    public async Task<Result> AddUserChangePasswordEvent(int userId, string ip, string oldPassword, string newPassword, int? updatedById = null)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
@@ -70,12 +70,14 @@ public class UserEventService(SunriseDbContext dbContext)
                 EventType = UserEventType.ChangePassword,
                 UserId = userId,
                 Ip = ip
+
             };
 
             changePasswordEvent.SetData(new
             {
                 OldPasswordHash = oldPassword,
-                NewPasswordHash = newPassword
+                NewPasswordHash = newPassword,
+                UpdatedById = updatedById
             });
 
             dbContext.EventUsers.Add(changePasswordEvent);

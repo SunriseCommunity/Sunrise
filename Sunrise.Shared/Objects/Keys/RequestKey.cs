@@ -21,6 +21,13 @@ public static class RequestType
     public const string UsernameChange = "username/change";
     public const string CountryChange = "country/change";
 
+    // Admin endpoints
+    public const string ChangeUsersPassword = "{id:int}/password/change";
+    public const string ChangeUsersUsername = "{id:int}/username/change";
+    public const string ChangeUsersCountry = "{id:int}/country/change";
+    public const string UploadUserBanner = "{id:int}/upload/banner";
+    public const string UploadUserAvatar = "{id:int}/upload/avatar";
+
     public const string UserPreviousUsernames = "{id:int}/previous-usernames";
 
     // Bancho controller

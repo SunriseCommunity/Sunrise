@@ -1,0 +1,279 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
+using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Helpers;
+using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
+using Sunrise.Tests;
+
+namespace Sunrise.Server.Tests.API.UserController;
+
+[Collection("Integration tests collection")]
+public class ApiAdminEditUserMetadataTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
+{
+    private readonly MockService _mocker = new();
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataWithoutAuthToken()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+        var targetUser = await CreateTestUser();
+
+        // Act
+        var response = await client.PostAsync($"user/{targetUser.Id}/edit/metadata", new StringContent(""));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataWithNonAdminUser()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = await CreateTestUser();
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        // Act
+        var response = await client.PostAsync($"user/{targetUser.Id}/edit/metadata", new StringContent(""));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataWithInvalidId()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        // Act
+        var response = await client.PostAsync("user/999999/edit/metadata", new StringContent("{}", Encoding.UTF8, "application/json"));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.UserMetadataNotFound, responseError?.Detail);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataInvalidBody()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var json = "{{\"string\":\"123\"}}";
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        // Act
+        var response = await client.PostAsync($"user/{targetUser.Id}/edit/metadata", content);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataWithInvalidLocationLength()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var newLocation = _mocker.GetRandomString(33);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/metadata",
+            new EditUserMetadataRequest
+            {
+                Location = newLocation
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Title.ValidationError, responseError?.Title);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadata()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var userMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (userMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata = _mocker.User.SetRandomUserMetadata(userMetadata);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/metadata",
+            new EditUserMetadataRequest
+            {
+                Location = userMetadata.Location,
+                Discord = userMetadata.Discord,
+                Interest = userMetadata.Interest,
+                Occupation = userMetadata.Occupation,
+                Playstyle = JsonStringFlagEnumHelper.SplitFlags(userMetadata.Playstyle),
+                Telegram = userMetadata.Telegram,
+                Twitch = userMetadata.Twitch,
+                Twitter = userMetadata.Twitter,
+                Website = userMetadata.Website
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var newUserMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (newUserMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata.User = null!; // Ignore for comparison
+
+        Assert.Equivalent(newUserMetadata, userMetadata);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataPartly()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var userMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (userMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata.Playstyle = UserPlaystyle.Tablet & UserPlaystyle.Mouse;
+        userMetadata.Occupation = "Testing 123";
+        userMetadata.Interest = "Testing 123";
+
+        await Database.Users.Metadata.UpdateUserMetadata(userMetadata);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/metadata",
+            new EditUserMetadataRequest
+            {
+                Playstyle = JsonStringFlagEnumHelper.SplitFlags(UserPlaystyle.None),
+                Occupation = ""
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var newUserMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (newUserMetadata is null)
+            throw new Exception("User metadata not found");
+
+        Assert.Equivalent(newUserMetadata.Playstyle, UserPlaystyle.None);
+        Assert.Equivalent(newUserMetadata.Occupation, "");
+        Assert.Equivalent(newUserMetadata.Interest, "Testing 123");
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserMetadataForRestrictedUser()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+        await Database.Users.Moderation.RestrictPlayer(targetUser.Id, null, "Test");
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var userMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (userMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata = _mocker.User.SetRandomUserMetadata(userMetadata);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/metadata",
+            new EditUserMetadataRequest
+            {
+                Location = userMetadata.Location,
+                Discord = userMetadata.Discord,
+                Interest = userMetadata.Interest,
+                Occupation = userMetadata.Occupation,
+                Playstyle = JsonStringFlagEnumHelper.SplitFlags(userMetadata.Playstyle),
+                Telegram = userMetadata.Telegram,
+                Twitch = userMetadata.Twitch,
+                Twitter = userMetadata.Twitter,
+                Website = userMetadata.Website
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var newUserMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (newUserMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata.User = null!; // Ignore for comparison
+
+        Assert.Equivalent(newUserMetadata, userMetadata);
+    }
+}
+

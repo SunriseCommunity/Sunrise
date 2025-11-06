@@ -35,6 +35,9 @@ public static class ApiErrorResponse
         public const string ReplayNotFound = "Replay not found.";
         public const string BeatmapNotFound = "Beatmap not found.";
 
+        public const string RestrictionReasonMustBeProvided = "Restriction reason must be provided when restricting a user.";
+        public const string UserAlreadyRestricted = "User is already restricted.";
+        public const string UserAlreadyUnrestricted = "User is not restricted.";
 
         public const string InvalidCredentialsProvided = "Invalid credentials provided.";
 
