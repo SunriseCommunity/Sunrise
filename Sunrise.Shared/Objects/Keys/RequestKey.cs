@@ -2,6 +2,7 @@ using System.Reflection;
 
 namespace Sunrise.Shared.Objects.Keys;
 
+[Obsolete("Please use string literals instead. This class will be removed in future versions.")]
 public static class RequestType
 {
     // Assets controller
