@@ -1,6 +1,7 @@
 using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Helpers;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -349,7 +350,7 @@ public class ApiUserSearchUserSensitivesListTests(IntegrationDatabaseFixture fix
         // Verify sensitive data is present
         Assert.Equal(testUser.Email, foundUser.Email);
         Assert.Equal(testUser.Description, foundUser.Description);
-        Assert.Equal(testUser.Privilege, foundUser.Privilege);
+        Assert.Equal(JsonStringFlagEnumHelper.SplitFlags(testUser.Privilege), foundUser.Privilege);
         Assert.Equal(testUser.Country, foundUser.Country);
         Assert.NotNull(foundUser.AvatarUrl);
         Assert.NotNull(foundUser.BannerUrl);

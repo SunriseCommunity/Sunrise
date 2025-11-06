@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils.Converters;
 
@@ -25,7 +26,7 @@ public class UserSensitiveResponse
         Id = user.Id;
         Username = user.Username;
         Email = user.Email;
-        Privilege = user.Privilege;
+        Privilege = JsonStringFlagEnumHelper.SplitFlags(user.Privilege);
         Description = user.Description;
         Country = user.Country;
         RegisterDate = user.RegisterDate;
@@ -49,7 +50,7 @@ public class UserSensitiveResponse
     public string Email { get; set; }
 
     [JsonPropertyName("privilege")]
-    public UserPrivilege Privilege { get; set; }
+    public IEnumerable<UserPrivilege> Privilege { get; set; }
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }

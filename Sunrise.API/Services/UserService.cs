@@ -56,6 +56,45 @@ public class UserService(
         return new OkResult();
     }
 
+    public async Task<IActionResult> UpdateUserPrivilege(
+        int userId,
+        User executor,
+        EditUserPrivilegeRequest request,
+        CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(userId, ct: ct);
+
+        if (user is null)
+            return new ObjectResult(new ProblemDetails
+            {
+                Detail = ApiErrorResponse.Detail.UserNotFound,
+                Status = StatusCodes.Status404NotFound
+            })
+            {
+                StatusCode = StatusCodes.Status404NotFound
+            };
+
+        if (executor.Privilege <= user.Privilege)
+            return new ObjectResult(new ProblemDetails
+            {
+                Detail = ApiErrorResponse.Detail.InsufficientPrivileges,
+                Status = StatusCodes.Status403Forbidden
+            })
+            {
+                StatusCode = StatusCodes.Status403Forbidden
+            };
+
+        var privilegeEnum = JsonStringFlagEnumHelper.CombineFlags(request.Privilege);
+
+        user.Privilege = privilegeEnum;
+
+        await database.Users.UpdateUser(user);
+
+        // TODO: Add event logging 
+
+        return new OkResult();
+    }
+
     public async Task<IActionResult> SetUserAvatar(
         int userId,
         IFormFile file)

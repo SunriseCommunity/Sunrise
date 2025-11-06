@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Helpers;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -182,7 +182,7 @@ public class ApiAdminGetUserSensitiveTests(IntegrationDatabaseFixture fixture) :
 
         var responseUser = await response.Content.ReadFromJsonAsyncWithAppConfig<UserSensitiveResponse>();
         Assert.NotNull(responseUser);
-        Assert.Equal(UserPrivilege.Supporter, responseUser.Privilege);
+        Assert.Equal(JsonStringFlagEnumHelper.SplitFlags(UserPrivilege.Supporter), responseUser.Privilege);
     }
 
     [Fact]
@@ -295,4 +295,3 @@ public class ApiAdminGetUserSensitiveTests(IntegrationDatabaseFixture fixture) :
         Assert.Equal("Offline", responseUser.UserStatus);
     }
 }
-

@@ -776,6 +776,20 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/privilege")]
+    [EndpointDescription("Update user metadata")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditUserPrivilege(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditUserPrivilegeRequest request, CancellationToken ct = default)
+    {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+
+        return await userService.UpdateUserPrivilege(id, currentUser, request, ct);
+    }
+
+    [HttpPost]
     [Authorize]
     [Route("edit/metadata")]
     [EndpointDescription("Update self metadata")]
