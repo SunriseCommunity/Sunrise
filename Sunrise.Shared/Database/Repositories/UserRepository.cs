@@ -8,6 +8,7 @@ using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -185,10 +186,14 @@ public class UserRepository(
             .CountAsync(cancellationToken: ct);
     }
 
-    public async Task<Result> UpdateUserUsername(User user, string oldUsername, string newUsername, int? updatedById = null, string? userIp = null)
+    public async Task<Result> UpdateUserUsername(UserEventAction userEventAction, string oldUsername, string newUsername)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
+            var user = userEventAction.TargetUser ?? await databaseService.Value.Users.GetUser(id: userEventAction.TargetUserId);
+            if (user == null)
+                throw new Exception("User not found");
+
             user.Username = newUsername;
 
             var updateUserResult = await UpdateUser(user);
@@ -196,17 +201,20 @@ public class UserRepository(
                 throw new Exception(updateUserResult.Error);
 
             // TODO: Move outside
-            // var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
-            // if (result.IsFailure)
-            //     throw new Exception(result.Error);
+            var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(userEventAction, oldUsername, newUsername);
+            if (result.IsFailure)
+                throw new Exception(result.Error);
         });
     }
 
-    public async Task<Result> UpdateUserCountry(User user, CountryCode oldCountry, CountryCode newCountry,
-        int? updatedById = null, string? userIp = null)
+    public async Task<Result> UpdateUserCountry(UserEventAction userEventAction, CountryCode oldCountry, CountryCode newCountry)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
+            var user = userEventAction.TargetUser ?? await databaseService.Value.Users.GetUser(id: userEventAction.TargetUserId);
+            if (user == null)
+                throw new Exception("User not found");
+
             await dbContext.Entry(user).Collection(u => u.UserStats).LoadAsync();
 
             foreach (var stats in user.UserStats)
@@ -227,15 +235,13 @@ public class UserRepository(
             }
 
             // TODO: Move outside
-            // var addUserCountryChangeEventResult =
-            //     await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id,
-            //         oldCountry,
-            //         newCountry,
-            //         userIp ?? "",
-            //         updatedById);
-            //
-            // if (addUserCountryChangeEventResult.IsFailure)
-            //     throw new Exception(addUserCountryChangeEventResult.Error);
+            var addUserCountryChangeEventResult =
+                await databaseService.Value.Events.Users.AddUserChangeCountryEvent(userEventAction,
+                    oldCountry,
+                    newCountry);
+
+            if (addUserCountryChangeEventResult.IsFailure)
+                throw new Exception(addUserCountryChangeEventResult.Error);
         });
     }
 

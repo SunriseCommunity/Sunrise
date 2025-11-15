@@ -3,7 +3,6 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 
@@ -48,8 +47,16 @@ public class CountryCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "You cannot change their country due to their privilege level.");
             return;
         }
-        
-        await database.Users.UpdateUserCountry(user, user.Country, newCountry, session.UserId);
+
+        var currentUser = await database.Users.GetUser(session.UserId);
+
+        if (currentUser == null)
+        {
+            ChatCommandRepository.SendMessage(session, "Current user not found.");
+            return;
+        }
+
+        await database.Users.UpdateUserCountry(new UserEventAction(currentUser, session.IpAddress, user.Id, user), user.Country, newCountry);
         ChatCommandRepository.SendMessage(session, "Users country has been updated.");
     }
 }

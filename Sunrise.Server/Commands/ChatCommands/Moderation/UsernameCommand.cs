@@ -25,7 +25,7 @@ public class UsernameCommand : IChatCommand
             ChatCommandRepository.SendMessage(session, "Invalid user id.");
             return;
         }
-        
+
         var username = string.Join(" ", args[1..]);
 
         var (isUsernameValid, error) = username.IsValidUsername();
@@ -53,9 +53,17 @@ public class UsernameCommand : IChatCommand
             return;
         }
 
+        var currentUser = await database.Users.GetUser(session.UserId);
+
+        if (currentUser == null)
+        {
+            ChatCommandRepository.SendMessage(session, "Current user not found.");
+            return;
+        }
+
         if (args[1] == "filter")
         {
-            await database.Users.UpdateUserUsername(user, user.Username, $"filtered_{user.Id}", session.UserId);
+            await database.Users.UpdateUserUsername(new UserEventAction(currentUser, session.IpAddress, user.Id, user), user.Username, $"filtered_{user.Id}");
             ChatCommandRepository.SendMessage(session, "Users nickname has been filtered.");
         }
         else
@@ -69,14 +77,14 @@ public class UsernameCommand : IChatCommand
                     ChatCommandRepository.SendMessage(session, "Username is already taken.");
                     return;
                 }
-                
+
                 await database.Users.UpdateUserUsername(
-                    foundUserByUsername,
+                    new UserEventAction(currentUser, session.IpAddress, user.Id, user),
                     foundUserByUsername.Username,
                     foundUserByUsername.Username.SetUsernameAsOld());
             }
 
-            await database.Users.UpdateUserUsername(user, user.Username, username, session.UserId);
+            await database.Users.UpdateUserUsername(new UserEventAction(currentUser, session.IpAddress, user.Id, user), user.Username, username);
 
             ChatCommandRepository.SendMessage(session, "Users nickname has been updated.");
         }

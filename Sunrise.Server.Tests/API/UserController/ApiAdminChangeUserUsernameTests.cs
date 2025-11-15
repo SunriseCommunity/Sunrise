@@ -6,6 +6,7 @@ using Sunrise.API.Serializable.Request;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -197,7 +198,7 @@ public class ApiAdminChangeUserUsernameTests(IntegrationDatabaseFixture fixture)
         var targetUser = await CreateTestUser();
 
         // Change username once to trigger cooldown
-        var usernameChangeResult = await Database.Users.UpdateUserUsername(targetUser, targetUser.Username, "test");
+        var usernameChangeResult = await Database.Users.UpdateUserUsername(new UserEventAction(targetUser, "127.0.0.1", targetUser.Id), targetUser.Username, "test");
         if (usernameChangeResult.IsFailure)
             throw new Exception(usernameChangeResult.Error);
 

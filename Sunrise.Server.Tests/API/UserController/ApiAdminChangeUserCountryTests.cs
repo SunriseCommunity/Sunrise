@@ -1,17 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -134,7 +133,7 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         client.UseUserAuthToken(tokens);
 
         var json = $"{{\"new_country\":\"{newCountry}\"}}";
-        var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // Act
         var response = await client.PostAsync($"user/{targetUser.Id}/country/change", content);
@@ -163,6 +162,7 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         client.UseUserAuthToken(tokens);
 
         var newCountry = _mocker.User.GetRandomCountryCode();
+
         while (newCountry == oldCountry)
         {
             newCountry = _mocker.User.GetRandomCountryCode();
@@ -197,7 +197,7 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         var targetUser = await CreateTestUser();
 
         // Change country once to trigger cooldown
-        var updateCountryResult = await Database.Users.UpdateUserCountry(targetUser, targetUser.Country, CountryCode.AL);
+        var updateCountryResult = await Database.Users.UpdateUserCountry(new UserEventAction(targetUser, "127.0.0.1", targetUser.Id), targetUser.Country, CountryCode.AL);
         if (updateCountryResult.IsFailure)
             throw new Exception(updateCountryResult.Error);
 
@@ -303,6 +303,7 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         client.UseUserAuthToken(tokens);
 
         var newCountry = _mocker.User.GetRandomCountryCode();
+
         while (newCountry == targetUser.Country)
         {
             newCountry = _mocker.User.GetRandomCountryCode();
@@ -341,6 +342,7 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         client.UseUserAuthToken(tokens);
 
         var newCountry = _mocker.User.GetRandomCountryCode();
+
         while (newCountry == oldCountry)
         {
             newCountry = _mocker.User.GetRandomCountryCode();
@@ -365,4 +367,3 @@ public class ApiAdminChangeUserCountryTests(IntegrationDatabaseFixture fixture) 
         Assert.Equal(adminUser.Id, data.UpdatedById);
     }
 }
-

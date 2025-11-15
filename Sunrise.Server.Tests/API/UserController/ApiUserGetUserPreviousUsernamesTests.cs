@@ -2,11 +2,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -58,7 +58,7 @@ public class ApiUserGetUserPreviousUsernamesTests(IntegrationDatabaseFixture fix
 
         var originalUsername = user.Username;
 
-        var arrangeUserChangeUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, _mocker.GetRandomString());
+        var arrangeUserChangeUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), user.Username, _mocker.GetRandomString());
         if (arrangeUserChangeUsernameResult.IsFailure)
             throw new Exception(arrangeUserChangeUsernameResult.Error);
 
@@ -84,7 +84,7 @@ public class ApiUserGetUserPreviousUsernamesTests(IntegrationDatabaseFixture fix
 
         for (var i = 0; i < 10; i++)
         {
-            var arrangeUserChangeUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, i.ToString());
+            var arrangeUserChangeUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), user.Username, i.ToString());
             if (arrangeUserChangeUsernameResult.IsFailure)
                 throw new Exception(arrangeUserChangeUsernameResult.Error);
         }
@@ -111,11 +111,11 @@ public class ApiUserGetUserPreviousUsernamesTests(IntegrationDatabaseFixture fix
 
         var badUsername = "badUsername";
 
-        var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, badUsername);
+        var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), user.Username, badUsername);
         if (arrangeUserChangeToBadUsernameResult.IsFailure)
             throw new Exception(arrangeUserChangeToBadUsernameResult.Error);
 
-        var arrangeUserFilterUsernameResult = await Database.Users.UpdateUserUsername(user, badUsername, $"filtered_{user.Id}");
+        var arrangeUserFilterUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), badUsername, $"filtered_{user.Id}");
         if (arrangeUserFilterUsernameResult.IsFailure)
             throw new Exception(arrangeUserFilterUsernameResult.Error);
 
@@ -141,11 +141,11 @@ public class ApiUserGetUserPreviousUsernamesTests(IntegrationDatabaseFixture fix
 
         var oldUsername = "oldUsername";
 
-        var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(user, user.Username, oldUsername);
+        var arrangeUserChangeToBadUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), user.Username, oldUsername);
         if (arrangeUserChangeToBadUsernameResult.IsFailure)
             throw new Exception(arrangeUserChangeToBadUsernameResult.Error);
 
-        var arrangeUserFilterUsernameResult = await Database.Users.UpdateUserUsername(user, oldUsername, "newUsername");
+        var arrangeUserFilterUsernameResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), oldUsername, "newUsername");
         if (arrangeUserFilterUsernameResult.IsFailure)
             throw new Exception(arrangeUserFilterUsernameResult.Error);
 

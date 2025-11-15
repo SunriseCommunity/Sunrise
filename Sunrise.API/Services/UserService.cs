@@ -262,7 +262,7 @@ public class UserService(
             if (foundUserByUsername != null)
             {
                 var updateFoundUserUsernameResult = await database.Users.UpdateUserUsername(
-                    foundUserByUsername,
+                    eventAction,
                     foundUserByUsername.Username,
                     foundUserByUsername.Username.SetUsernameAsOld());
 
@@ -274,11 +274,9 @@ public class UserService(
             user.Username = newUsername;
 
             var updateUserUsernameResult = await database.Users.UpdateUserUsername(
-                user,
+                eventAction,
                 oldUsername,
-                newUsername,
-                eventAction.ExecutorUser.Id,
-                eventAction.ExecutorIp);
+                newUsername);
             if (updateUserUsernameResult.IsFailure)
                 throw new ApplicationException("Unexpected error occurred while trying to change username.");
         });
@@ -353,11 +351,9 @@ public class UserService(
         }
 
         await database.Users.UpdateUserCountry(
-            user,
+            eventAction,
             user.Country,
-            newCountry,
-            eventAction.ExecutorUser.Id,
-            eventAction.ExecutorIp
+            newCountry
         );
 
         return new OkResult();

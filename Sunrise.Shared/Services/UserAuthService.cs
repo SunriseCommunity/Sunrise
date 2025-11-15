@@ -54,7 +54,7 @@ public class UserAuthService(RegionService regionService, DatabaseService databa
         if (foundUserByUsername != null && foundUserByUsername.IsActive() == false)
         {
             var updateUsernameResult = await database.Users.UpdateUserUsername(
-                foundUserByUsername,
+                new UserEventAction(foundUserByUsername, ip.ToString(), foundUserByUsername.Id),
                 foundUserByUsername.Username,
                 foundUserByUsername.Username.SetUsernameAsOld());
 
