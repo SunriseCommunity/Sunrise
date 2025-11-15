@@ -37,6 +37,19 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
+        var oldMetadata = new UserMetadata
+        {
+            Playstyle = userMetadata.Playstyle,
+            Location = userMetadata.Location,
+            Interest = userMetadata.Interest,
+            Occupation = userMetadata.Occupation,
+            Telegram = userMetadata.Telegram,
+            Twitch = userMetadata.Twitch,
+            Twitter = userMetadata.Twitter,
+            Discord = userMetadata.Discord,
+            Website = userMetadata.Website
+        };
+
         var playstyleEnum = JsonStringFlagEnumHelper.CombineFlags(request.Playstyle);
 
         userMetadata.Playstyle = request.Playstyle != null ? playstyleEnum : userMetadata.Playstyle;
@@ -53,7 +66,10 @@ public class UserService(
 
         await database.Users.Metadata.UpdateUserMetadata(userMetadata);
 
-        // TODO: Add event logging 
+        await database.Events.Users.AddUserChangeMetadataEvent(
+            eventAction,
+            oldMetadata,
+            userMetadata);
 
         return new OkResult();
     }
@@ -90,11 +106,16 @@ public class UserService(
                 StatusCode = StatusCodes.Status403Forbidden
             };
 
+        var oldPrivilege = user.Privilege;
+
         user.Privilege = privilegeEnum;
 
         await database.Users.UpdateUser(user);
 
-        // TODO: Add event logging 
+        await database.Events.Users.AddUserChangePrivilegeEvent(
+            eventAction,
+            oldPrivilege,
+            user.Privilege);
 
         return new OkResult();
     }
@@ -383,10 +404,14 @@ public class UserService(
                     StatusCode = StatusCodes.Status404NotFound
                 };
 
+        var oldDescription = user.Description ?? string.Empty;
         user.Description = description;
         await database.Users.UpdateUser(user);
 
-        // TODO: Add event logging about who changed the description
+        await database.Events.Users.AddUserChangeDescriptionEvent(
+            eventAction,
+            oldDescription,
+            description);
 
         return new OkResult();
     }
@@ -404,10 +429,14 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
+        var oldGameMode = user.DefaultGameMode;
         user.DefaultGameMode = defaultGameMode;
         await database.Users.UpdateUser(user);
 
-        // TODO: Add event logging about who changed the default game mode
+        await database.Events.Users.AddUserChangeDefaultGameModeEvent(
+            eventAction,
+            oldGameMode,
+            defaultGameMode);
 
         return new OkResult();
     }
@@ -480,6 +509,8 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
+        var oldRelation = relationship.Relation;
+
         switch (action)
         {
             case UpdateFriendshipStatusAction.Add:
@@ -511,7 +542,11 @@ public class UserService(
                 StatusCode = StatusCodes.Status400BadRequest
             };
 
-        // TODO: Add event logging about who changed the friendship status
+        await database.Events.Users.AddUserChangeFriendshipStatusEvent(
+            eventAction,
+            targetFriendshipUserId,
+            oldRelation,
+            relationship.Relation);
 
         return new OkResult();
     }

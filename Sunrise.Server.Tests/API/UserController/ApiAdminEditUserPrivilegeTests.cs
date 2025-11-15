@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Tests.Abstracts;
@@ -132,6 +135,23 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
         Assert.Equal(UserPrivilege.Supporter, updatedUser.Privilege);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(targetUser.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangePrivilege)
+            });
+
+        Assert.Equal(1, totalCount);
+        var privilegeChangeEvent = events.First();
+        Assert.Equal(targetUser.Id, privilegeChangeEvent.UserId);
+        Assert.Equal(UserEventType.ChangePrivilege, privilegeChangeEvent.EventType);
+
+        var data = privilegeChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal((int)UserPrivilege.User, data.GetProperty("OldPrivilege").GetInt32());
+        Assert.Equal((int)UserPrivilege.Supporter, data.GetProperty("NewPrivilege").GetInt32());
+        Assert.Equal(adminUser.Id, data.GetProperty("UpdatedById").GetInt32());
     }
 
     [Fact]

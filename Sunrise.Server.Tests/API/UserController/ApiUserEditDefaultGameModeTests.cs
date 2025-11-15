@@ -1,10 +1,14 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -125,6 +129,8 @@ public class ApiUserEditDefaultGameModeTests(IntegrationDatabaseFixture fixture)
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
+        var oldGameMode = user.DefaultGameMode;
+
         // Act
         var response = await client.PostAsJsonAsync("user/edit/default-gamemode",
             new EditDefaultGameModeRequest
@@ -139,5 +145,22 @@ public class ApiUserEditDefaultGameModeTests(IntegrationDatabaseFixture fixture)
         Assert.NotNull(updatedUser);
 
         Assert.Equal(mode, updatedUser.DefaultGameMode);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(user.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeDefaultGameMode)
+            });
+
+        Assert.Equal(1, totalCount);
+        var gameModeChangeEvent = events.First();
+        Assert.Equal(UserEventType.ChangeDefaultGameMode, gameModeChangeEvent.EventType);
+        Assert.Equal(user.Id, gameModeChangeEvent.UserId);
+
+        var actualData = gameModeChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal((int)oldGameMode, actualData.GetProperty("OldGameMode").GetInt32());
+        Assert.Equal((int)mode, actualData.GetProperty("NewGameMode").GetInt32());
+        Assert.Equal(user.Id, actualData.GetProperty("UpdatedById").GetInt32());
     }
 }

@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Tests.Abstracts;
@@ -153,6 +156,19 @@ public class ApiAdminEditUserMetadataTests(IntegrationDatabaseFixture fixture) :
         if (userMetadata is null)
             throw new Exception("User metadata not found");
 
+        var oldMetadata = new
+        {
+            userMetadata.Playstyle,
+            userMetadata.Location,
+            userMetadata.Interest,
+            userMetadata.Occupation,
+            userMetadata.Telegram,
+            userMetadata.Twitch,
+            userMetadata.Twitter,
+            userMetadata.Discord,
+            userMetadata.Website
+        };
+
         userMetadata = _mocker.User.SetRandomUserMetadata(userMetadata);
 
         // Act
@@ -180,6 +196,25 @@ public class ApiAdminEditUserMetadataTests(IntegrationDatabaseFixture fixture) :
         userMetadata.User = null!; // Ignore for comparison
 
         Assert.Equivalent(newUserMetadata, userMetadata);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(targetUser.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeMetadata)
+            });
+
+        Assert.Equal(1, totalCount);
+        var metadataChangeEvent = events.First();
+        Assert.Equal(UserEventType.ChangeMetadata, metadataChangeEvent.EventType);
+        Assert.Equal(targetUser.Id, metadataChangeEvent.UserId);
+
+        var actualData = metadataChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal((int)oldMetadata.Playstyle, actualData.GetProperty("OldMetadata").GetProperty("Playstyle").GetInt32());
+        Assert.Equal(oldMetadata.Location, actualData.GetProperty("OldMetadata").GetProperty("Location").GetString());
+        Assert.Equal((int)userMetadata.Playstyle, actualData.GetProperty("NewMetadata").GetProperty("Playstyle").GetInt32());
+        Assert.Equal(userMetadata.Location, actualData.GetProperty("NewMetadata").GetProperty("Location").GetString());
+        Assert.Equal(adminUser.Id, actualData.GetProperty("UpdatedById").GetInt32());
     }
 
     [Fact]

@@ -1,16 +1,18 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -163,6 +165,23 @@ public class ApiUserEditFriendStatusTests(IntegrationDatabaseFixture fixture) : 
 
         Assert.NotNull(updatedUser);
         Assert.Equal(isFriendsAfter, relationship.Relation == UserRelation.Friend);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(user.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeFriendshipStatus)
+            });
+
+        Assert.Equal(1, totalCount);
+        var friendshipStatusChangeEvent = events.First();
+        Assert.Equal(user.Id, friendshipStatusChangeEvent.UserId);
+
+        var data = friendshipStatusChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal(user.Id, data.GetProperty("UpdatedById").GetInt32());
+        Assert.Equal(requestedUser.Id, data.GetProperty("TargetFriendshipUserId").GetInt32());
+        Assert.Equal(isFriendsBefore ? (int)UserRelation.Friend : (int)UserRelation.None, data.GetProperty("OldRelation").GetInt32());
+        Assert.Equal(isFriendsAfter ? (int)UserRelation.Friend : (int)UserRelation.None, data.GetProperty("NewRelation").GetInt32());
     }
 
     [Fact]

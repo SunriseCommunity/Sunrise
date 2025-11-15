@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -145,6 +148,7 @@ public class ApiAdminEditUserDescriptionTests(IntegrationDatabaseFixture fixture
         var tokens = await GetUserAuthTokens(adminUser);
         client.UseUserAuthToken(tokens);
 
+        var oldDescription = targetUser.Description ?? string.Empty;
         var newDescription = _mocker.GetRandomString();
 
         // Act
@@ -161,6 +165,23 @@ public class ApiAdminEditUserDescriptionTests(IntegrationDatabaseFixture fixture
         Assert.NotNull(updatedUser);
 
         Assert.Equal(newDescription, updatedUser.Description);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(targetUser.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeDescription)
+            });
+
+        Assert.Equal(1, totalCount);
+        var descriptionChangeEvent = events.First();
+        Assert.Equal(UserEventType.ChangeDescription, descriptionChangeEvent.EventType);
+        Assert.Equal(targetUser.Id, descriptionChangeEvent.UserId);
+
+        var actualData = descriptionChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal(oldDescription, actualData.GetProperty("OldDescription").GetString());
+        Assert.Equal(newDescription, actualData.GetProperty("NewDescription").GetString());
+        Assert.Equal(adminUser.Id, actualData.GetProperty("UpdatedById").GetInt32());
     }
 
     [Fact]

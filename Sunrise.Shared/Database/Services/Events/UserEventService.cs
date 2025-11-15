@@ -4,10 +4,12 @@ using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Utils;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Services.Events;
 
@@ -50,6 +52,19 @@ public class UserEventService(SunriseDbContext dbContext)
         };
 
         return await AddUserEvent(UserEventType.ChangePassword, userEventAction, data);
+    }
+
+
+    public async Task<Result> AddUserChangePrivilegeEvent(UserEventAction userEventAction, UserPrivilege oldPrivilege, UserPrivilege newPrivilege)
+    {
+        var data = new
+        {
+            OldPrivilege = oldPrivilege,
+            NewPrivilege = newPrivilege,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangePrivilege, userEventAction, data);
     }
 
     public async Task<Result> AddUserChangeBannerEvent(UserEventAction userEventAction, string oldBannerHash, string newBannerHash)
@@ -166,6 +181,77 @@ public class UserEventService(SunriseDbContext dbContext)
             .OrderByDescending(x => x.Id)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync(cancellationToken: ct);
+    }
+
+    public async Task<Result> AddUserChangeMetadataEvent(UserEventAction userEventAction, UserMetadata oldMetadata, UserMetadata newMetadata)
+    {
+        var data = new
+        {
+            OldMetadata = new
+            {
+                oldMetadata.Playstyle,
+                oldMetadata.Location,
+                oldMetadata.Interest,
+                oldMetadata.Occupation,
+                oldMetadata.Telegram,
+                oldMetadata.Twitch,
+                oldMetadata.Twitter,
+                oldMetadata.Discord,
+                oldMetadata.Website
+            },
+            NewMetadata = new
+            {
+                newMetadata.Playstyle,
+                newMetadata.Location,
+                newMetadata.Interest,
+                newMetadata.Occupation,
+                newMetadata.Telegram,
+                newMetadata.Twitch,
+                newMetadata.Twitter,
+                newMetadata.Discord,
+                newMetadata.Website
+            },
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeMetadata, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserChangeDescriptionEvent(UserEventAction userEventAction, string oldDescription, string newDescription)
+    {
+        var data = new
+        {
+            OldDescription = oldDescription,
+            NewDescription = newDescription,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeDescription, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserChangeDefaultGameModeEvent(UserEventAction userEventAction, GameMode oldGameMode, GameMode newGameMode)
+    {
+        var data = new
+        {
+            OldGameMode = oldGameMode,
+            NewGameMode = newGameMode,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeDefaultGameMode, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserChangeFriendshipStatusEvent(UserEventAction userEventAction, int targetFriendshipUserId, UserRelation oldRelation, UserRelation newRelation)
+    {
+        var data = new
+        {
+            TargetFriendshipUserId = targetFriendshipUserId,
+            OldRelation = oldRelation,
+            NewRelation = newRelation,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeFriendshipStatus, userEventAction, data);
     }
 
     private async Task<Result> AddUserEvent<T>(UserEventType eventType, UserEventAction userEventAction, T data)

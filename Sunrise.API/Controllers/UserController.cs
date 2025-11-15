@@ -152,13 +152,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         [Range(1, int.MaxValue)] int id,
         [FromBody] EditDescriptionRequest request)
     {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
         var user = await database.Users.GetUser(id);
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var ip = RegionService.GetUserIpAddress(Request);
 
-        return await userService.UpdateUserDescription(new UserEventAction(user, ip.ToString(), user.Id), request.Description);
+        return await userService.UpdateUserDescription(new UserEventAction(currentUser, ip.ToString(), user.Id), request.Description);
     }
 
     [HttpPost]
@@ -707,7 +708,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        
+
         return await userService.UpdateFriendshipStatus(new UserEventAction(user, ip.ToString(), user.Id), id, request.Action);
     }
 
@@ -782,7 +783,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        
+
         return await userService.UpdateUserMetadata(new UserEventAction(currentUser, ip.ToString(), id), request, ct);
     }
 
@@ -810,7 +811,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        
+
         return await userService.UpdateUserMetadata(new UserEventAction(user, ip.ToString(), user.Id), request, ct);
     }
 
@@ -821,11 +822,11 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> SetUserAvatar([Range(1, int.MaxValue)] int id)
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
-        
+
         var user = await database.Users.GetUser(id);
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
-        
+
         var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
@@ -864,11 +865,11 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> SetUserBanner([Range(1, int.MaxValue)] int id)
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
-        
+
         var user = await database.Users.GetUser(id);
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
-        
+
         var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
@@ -921,7 +922,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserPassword(new UserEventAction(user, ip.ToString(), user.Id), request.CurrentPassword, request.NewPassword );
+        return await userService.ChangeUserPassword(new UserEventAction(user, ip.ToString(), user.Id), request.CurrentPassword, request.NewPassword);
     }
 
     [HttpPost(RequestType.ChangeUsersUsername)]
@@ -934,7 +935,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserUsername(new UserEventAction(currentUser, ip.ToString(), id), request.NewUsername,  true);
+        return await userService.ChangeUserUsername(new UserEventAction(currentUser, ip.ToString(), id), request.NewUsername, true);
     }
 
     [HttpPost(RequestType.UsernameChange)]
