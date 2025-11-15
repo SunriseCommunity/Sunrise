@@ -262,7 +262,7 @@ public class UserService(
             if (foundUserByUsername != null)
             {
                 var updateFoundUserUsernameResult = await database.Users.UpdateUserUsername(
-                    eventAction,
+                    new UserEventAction(eventAction.ExecutorUser, eventAction.ExecutorIp, foundUserByUsername.Id, foundUserByUsername),
                     foundUserByUsername.Username,
                     foundUserByUsername.Username.SetUsernameAsOld());
 
@@ -274,7 +274,7 @@ public class UserService(
             user.Username = newUsername;
 
             var updateUserUsernameResult = await database.Users.UpdateUserUsername(
-                eventAction,
+                new UserEventAction(eventAction.ExecutorUser, eventAction.ExecutorIp, user.Id, user),
                 oldUsername,
                 newUsername);
             if (updateUserUsernameResult.IsFailure)
