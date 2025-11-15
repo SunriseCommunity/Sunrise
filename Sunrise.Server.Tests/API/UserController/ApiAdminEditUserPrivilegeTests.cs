@@ -10,7 +10,6 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -121,7 +120,10 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter
+                }
             });
 
         // Assert
@@ -148,13 +150,21 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         client.UseUserAuthToken(tokens);
 
         var combinedPrivilege = UserPrivilege.Supporter | UserPrivilege.Bat;
-        var expectedPrivilege = JsonStringFlagEnumHelper.CombineFlags(new[] { UserPrivilege.Supporter, UserPrivilege.Bat });
+        var expectedPrivilege = JsonStringFlagEnumHelper.CombineFlags(new[]
+        {
+            UserPrivilege.Supporter,
+            UserPrivilege.Bat
+        });
 
         // Act
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter, UserPrivilege.Bat }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter,
+                    UserPrivilege.Bat
+                }
             });
 
         // Assert
@@ -182,11 +192,14 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var tokens = await GetUserAuthTokens(adminUser);
         client.UseUserAuthToken(tokens);
 
-        // Act - Admin trying to change another Admin's privilege
+        // Act 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter
+                }
             });
 
         // Assert
@@ -213,11 +226,14 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var tokens = await GetUserAuthTokens(adminUser);
         client.UseUserAuthToken(tokens);
 
-        // Act - Admin trying to change Developer's privilege (Developer > Admin)
+        // Act 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter
+                }
             });
 
         // Assert
@@ -228,27 +244,31 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
     }
 
     [Fact]
-    public async Task TestDeveloperEditUserPrivilege()
+    public async Task TestAdminEditUserPrivilegeCanAddLowerPrivilegeForTheUserWithSamePrivilegeRank()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
 
-        var developerUser = _mocker.User.GetRandomUser();
-        developerUser.Privilege = UserPrivilege.Developer;
-        await CreateTestUser(developerUser);
+        var user = _mocker.User.GetRandomUser();
+        user.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(user);
 
         var targetUser = _mocker.User.GetRandomUser();
         targetUser.Privilege = UserPrivilege.Admin;
         await CreateTestUser(targetUser);
 
-        var tokens = await GetUserAuthTokens(developerUser);
+        var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        // Act - Developer can change Admin's privilege
+        // Act
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter,
+                    UserPrivilege.Admin
+                }
             });
 
         // Assert
@@ -256,11 +276,46 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
 
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
-        Assert.Equal(UserPrivilege.Supporter, updatedUser.Privilege);
+        Assert.Equal(UserPrivilege.Supporter | UserPrivilege.Admin, updatedUser.Privilege);
     }
 
     [Fact]
-    public async Task TestAdminEditUserPrivilegeToAdmin()
+    public async Task TestAdminEditUserPrivilegeCanRemoveLowerPrivilegeForTheUserWithSamePrivilegeRank()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var user = _mocker.User.GetRandomUser();
+        user.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(user);
+
+        var targetUser = _mocker.User.GetRandomUser();
+        targetUser.Privilege = UserPrivilege.Admin | UserPrivilege.Supporter;
+        await CreateTestUser(targetUser);
+
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        // Act
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
+            new EditUserPrivilegeRequest
+            {
+                Privilege = new[]
+                {
+                    UserPrivilege.Admin
+                }
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updatedUser = await Database.Users.GetUser(targetUser.Id);
+        Assert.NotNull(updatedUser);
+        Assert.Equal(UserPrivilege.Admin, updatedUser.Privilege);
+    }
+
+    [Fact]
+    public async Task TestAdminEditUserPrivilegeCantEditToTheSameHigherPrivilegeAsExecutor()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -279,15 +334,20 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Admin }
+                Privilege = new[]
+                {
+                    UserPrivilege.Admin
+                }
             });
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InsufficientPrivileges, responseError?.Detail);
 
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
-        Assert.Equal(UserPrivilege.Admin, updatedUser.Privilege);
+        Assert.Equal(UserPrivilege.User, updatedUser.Privilege);
     }
 
     [Fact]
@@ -311,7 +371,10 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.User }
+                Privilege = new[]
+                {
+                    UserPrivilege.User
+                }
             });
 
         // Assert
@@ -342,7 +405,10 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Supporter }
+                Privilege = new[]
+                {
+                    UserPrivilege.Supporter
+                }
             });
 
         // Assert
@@ -354,7 +420,7 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
     }
 
     [Fact]
-    public async Task TestAdminEditUserPrivilegeToDeveloper()
+    public async Task TestAdminEditUserPrivilegeToDeveloperShouldFailWhileModifyingPrivilegeOfHigherThanExecutors()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -372,17 +438,20 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
             new EditUserPrivilegeRequest
             {
-                Privilege = new[] { UserPrivilege.Developer }
+                Privilege = new[]
+                {
+                    UserPrivilege.Developer
+                }
             });
 
         // Assert
-        // This should still succeed because we're changing a User (lower privilege) to Developer
-        // The check is: executor.Privilege <= user.Privilege, so Admin > User, so it should work
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InsufficientPrivileges, responseError?.Detail);
 
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
-        Assert.Equal(UserPrivilege.Developer, updatedUser.Privilege);
+        Assert.Equal(UserPrivilege.User, updatedUser.Privilege);
     }
 
     [Fact]
@@ -415,4 +484,3 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         Assert.Equal(UserPrivilege.User, updatedUser.Privilege);
     }
 }
-

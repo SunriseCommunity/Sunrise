@@ -74,7 +74,12 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
-        if (executor.Privilege <= user.Privilege)
+
+        var privilegeEnum = JsonStringFlagEnumHelper.CombineFlags(request.Privilege);
+
+        var updatedPrivileges = user.Privilege ^ privilegeEnum;
+
+        if (executor.Privilege <= updatedPrivileges)
             return new ObjectResult(new ProblemDetails
             {
                 Detail = ApiErrorResponse.Detail.InsufficientPrivileges,
@@ -83,8 +88,6 @@ public class UserService(
             {
                 StatusCode = StatusCodes.Status403Forbidden
             };
-
-        var privilegeEnum = JsonStringFlagEnumHelper.CombineFlags(request.Privilege);
 
         user.Privilege = privilegeEnum;
 
