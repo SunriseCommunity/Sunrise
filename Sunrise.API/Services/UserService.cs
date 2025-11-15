@@ -105,7 +105,7 @@ public class UserService(
     {
         await using var stream = file.OpenReadStream();
 
-        var oldAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+        var oldAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.GetHashSHA1() ?? string.Empty;
 
         var (isSet, error) = await assetService.SetAvatar(eventAction.TargetUserId, stream);
 
@@ -123,7 +123,7 @@ public class UserService(
             };
         }
 
-        var newAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+        var newAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.GetHashSHA1() ?? string.Empty;
 
         await database.Events.Users.AddUserChangeAvatarEvent(
             eventAction,
@@ -140,7 +140,7 @@ public class UserService(
     {
         await using var stream = file.OpenReadStream();
 
-        var oldBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+        var oldBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.GetHashSHA1() ?? string.Empty;
 
         var (isSet, error) = await assetService.SetBanner(eventAction.TargetUserId, stream);
 
@@ -158,7 +158,7 @@ public class UserService(
             };
         }
 
-        var newBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+        var newBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.GetHashSHA1() ?? string.Empty;
 
         await database.Events.Users.AddUserChangeBannerEvent(
             eventAction,

@@ -154,7 +154,7 @@ public class ApiUserAvatarUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         content.Headers.ContentType!.MediaType = "multipart/form-data";
         content.Add(new StreamContent(imageBytes), "file", "image.png");
 
-        var oldAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.ToString()?.ToHash() ?? string.Empty;
+        var oldAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.GetHashSHA1() ?? string.Empty;
 
         // Act
         var response = await client.PostAsync("user/upload/avatar", content);
@@ -181,13 +181,14 @@ public class ApiUserAvatarUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         Assert.Equal(UserEventType.ChangeAvatar, avatarChangeEvent.EventType);
         Assert.Equal(user.Id, avatarChangeEvent.UserId);
 
-        var newAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.ToString()?.ToHash() ?? string.Empty;
+        var newAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.GetHashSHA1() ?? string.Empty;
 
         var actualData = avatarChangeEvent.GetData<JsonElement>();
 
         Assert.Equal(oldAvatarHash, actualData.GetProperty("OldAvatarHash").GetString());
         Assert.Equal(newAvatarHash, actualData.GetProperty("NewAvatarHash").GetString());
         Assert.Equal(user.Id, actualData.GetProperty("UpdatedById").GetInt32());
+        Assert.NotEqual(oldAvatarHash, newAvatarHash);
     }
 
     [Fact]

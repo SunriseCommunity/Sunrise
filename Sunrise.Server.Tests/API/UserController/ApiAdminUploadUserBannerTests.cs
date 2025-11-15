@@ -207,7 +207,7 @@ public class ApiAdminUploadUserBannerTests(IntegrationDatabaseFixture fixture) :
         content.Headers.ContentType!.MediaType = "multipart/form-data";
         content.Add(new StreamContent(imageBytes), "file", "image.png");
 
-        var oldBannerHash = (await Database.Users.Files.GetBanner(targetUser.Id))?.ToString()?.ToHash() ?? string.Empty;
+        var oldBannerHash = (await Database.Users.Files.GetBanner(targetUser.Id))?.GetHashSHA1() ?? string.Empty;
 
         // Act
         var response = await client.PostAsync($"user/{targetUser.Id}/upload/banner", content);
@@ -235,13 +235,14 @@ public class ApiAdminUploadUserBannerTests(IntegrationDatabaseFixture fixture) :
         Assert.Equal(UserEventType.ChangeBanner, avatarChangeEvent.EventType);
         Assert.Equal(targetUser.Id, avatarChangeEvent.UserId);
 
-        var newBannerHash = (await Database.Users.Files.GetBanner(targetUser.Id))?.ToString()?.ToHash() ?? string.Empty;
+        var newBannerHash = (await Database.Users.Files.GetBanner(targetUser.Id))?.GetHashSHA1() ?? string.Empty;
 
         var actualData = avatarChangeEvent.GetData<JsonElement>();
 
         Assert.Equal(oldBannerHash, actualData.GetProperty("OldBannerHash").GetString());
         Assert.Equal(newBannerHash, actualData.GetProperty("NewBannerHash").GetString());
         Assert.Equal(adminUser.Id, actualData.GetProperty("UpdatedById").GetInt32());
+        Assert.NotEqual(oldBannerHash, newBannerHash);
     }
 
     [Fact]
