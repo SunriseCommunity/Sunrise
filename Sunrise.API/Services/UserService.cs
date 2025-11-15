@@ -79,7 +79,7 @@ public class UserService(
 
         var updatedPrivileges = user.Privilege ^ privilegeEnum;
 
-        if (executor.Privilege <= updatedPrivileges)
+        if (executor.Privilege.GetHighestPrivilege() <= updatedPrivileges.GetHighestPrivilege())
             return new ObjectResult(new ProblemDetails
             {
                 Detail = ApiErrorResponse.Detail.InsufficientPrivileges,

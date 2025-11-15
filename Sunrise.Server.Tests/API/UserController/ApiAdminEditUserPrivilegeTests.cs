@@ -244,6 +244,40 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
     }
 
     [Fact]
+    public async Task TestAdminEditUserPrivilegeWithSameRankPrivilege()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin | UserPrivilege.Supporter;
+        await CreateTestUser(adminUser);
+
+        var targetUser = _mocker.User.GetRandomUser();
+        targetUser.Privilege = UserPrivilege.User;
+        await CreateTestUser(targetUser);
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        // Act 
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/privilege",
+            new EditUserPrivilegeRequest
+            {
+                Privilege = new[]
+                {
+                    UserPrivilege.Admin
+                }
+            });
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains(ApiErrorResponse.Detail.InsufficientPrivileges, responseError?.Detail);
+    }
+
+    [Fact]
     public async Task TestAdminEditUserPrivilegeCanAddLowerPrivilegeForTheUserWithSamePrivilegeRank()
     {
         // Arrange

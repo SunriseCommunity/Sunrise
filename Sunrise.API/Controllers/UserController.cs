@@ -778,7 +778,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [HttpPost]
     [Authorize("RequireAdmin")]
     [Route("{id:int}/edit/privilege")]
-    [EndpointDescription("Update user metadata")]
+    [EndpointDescription("Update user privilege")]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> EditUserPrivilege(
         [Range(1, int.MaxValue)] int id,
