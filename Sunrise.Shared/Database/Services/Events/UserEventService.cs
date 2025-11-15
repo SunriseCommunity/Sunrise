@@ -14,75 +14,41 @@ public class UserEventService(SunriseDbContext dbContext)
 {
     public async Task<Result> AddUserLoginEvent(int userId, string ip, bool isFromGame, object loginData)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var data = new
         {
-            var loginEvent = new EventUser
-            {
-                EventType = isFromGame ? UserEventType.GameLogin : UserEventType.WebLogin,
-                UserId = userId,
-                Ip = ip
-            };
+            LoginData = loginData
+        };
 
-            loginEvent.SetData(new
-            {
-                LoginData = loginData
-            });
-
-            dbContext.EventUsers.Add(loginEvent);
-            await dbContext.SaveChangesAsync();
-        });
+        return await AddUserEvent(isFromGame ? UserEventType.GameLogin : UserEventType.WebLogin, userId, ip, data);
     }
 
     public async Task<Result> AddUserRegisterEvent(int userId, string ip, User userData)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var data = new
         {
-            var registerEvent = new EventUser
+            RegisterData = new
             {
-                EventType = UserEventType.Register,
-                UserId = userId,
-                Ip = ip
-            };
+                userData.Username,
+                userData.Email,
+                userData.Passhash,
+                userData.Country,
+                userData.RegisterDate
+            }
+        };
 
-            registerEvent.SetData(new
-            {
-                RegisterData = new
-                {
-                    userData.Username,
-                    userData.Email,
-                    userData.Passhash,
-                    userData.Country,
-                    userData.RegisterDate
-                }
-            });
-
-            dbContext.EventUsers.Add(registerEvent);
-            await dbContext.SaveChangesAsync();
-        });
+        return await AddUserEvent(UserEventType.Register, userId, ip, data);
     }
 
     public async Task<Result> AddUserChangePasswordEvent(int userId, string ip, string oldPassword, string newPassword, int? updatedById = null)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var data = new
         {
-            var changePasswordEvent = new EventUser
-            {
-                EventType = UserEventType.ChangePassword,
-                UserId = userId,
-                Ip = ip
+            OldPasswordHash = oldPassword,
+            NewPasswordHash = newPassword,
+            UpdatedById = updatedById
+        };
 
-            };
-
-            changePasswordEvent.SetData(new
-            {
-                OldPasswordHash = oldPassword,
-                NewPasswordHash = newPassword,
-                UpdatedById = updatedById
-            });
-
-            dbContext.EventUsers.Add(changePasswordEvent);
-            await dbContext.SaveChangesAsync();
-        });
+        return await AddUserEvent(UserEventType.ChangePassword, userId, ip, data);
     }
 
     public async Task<EventUser?> GetLastUsernameChangeEvent(int userId, QueryOptions? options = null, CancellationToken ct = default)
@@ -105,25 +71,14 @@ public class UserEventService(SunriseDbContext dbContext)
 
     public async Task<Result> AddUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername, int? updatedById = null)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var data = new
         {
-            var changeUsernameEvent = new EventUser
-            {
-                EventType = UserEventType.ChangeUsername,
-                UserId = userId,
-                Ip = ip
-            };
+            OldUsername = oldUsername,
+            NewUsername = newUsername,
+            UpdatedById = updatedById
+        };
 
-            changeUsernameEvent.SetData(new
-            {
-                OldUsername = oldUsername,
-                NewUsername = newUsername,
-                UpdatedById = updatedById
-            });
-
-            dbContext.EventUsers.Add(changeUsernameEvent);
-            await dbContext.SaveChangesAsync();
-        });
+        return await AddUserEvent(UserEventType.ChangeUsername, userId, ip, data);
     }
 
     public async Task<Result> SetUserChangeUsernameEventVisibility(int id, bool hidden, CancellationToken ct = default)
@@ -168,26 +123,14 @@ public class UserEventService(SunriseDbContext dbContext)
 
     public async Task<Result> AddUserChangeCountryEvent(int userId, CountryCode oldCountry, CountryCode newCountry, string ip, int? updatedById)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var data = new
         {
-            var changeCountryEvent = new EventUser
-            {
-                EventType = UserEventType.ChangeCountry,
-                UserId = userId,
-                Ip = ip
-            };
+            NewCountry = newCountry,
+            OldCountry = oldCountry,
+            UpdatedById = updatedById
+        };
 
-            changeCountryEvent.SetData(new
-            {
-                NewCountry = newCountry,
-                OldCountry = oldCountry,
-                UpdatedById = updatedById
-            });
-
-
-            dbContext.EventUsers.Add(changeCountryEvent);
-            await dbContext.SaveChangesAsync();
-        });
+        return await AddUserEvent(UserEventType.ChangeCountry, userId, ip, data);
     }
 
     public async Task<EventUser?> GetLastUserCountryChangeEvent(int userId, QueryOptions? options = null,
@@ -198,5 +141,23 @@ public class UserEventService(SunriseDbContext dbContext)
             .OrderByDescending(x => x.Id)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync(cancellationToken: ct);
+    }
+
+    private async Task<Result> AddUserEvent<T>(UserEventType eventType, int userId, string ip, T data)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var newEvent = new EventUser
+            {
+                EventType = eventType,
+                UserId = userId,
+                Ip = ip
+            };
+
+            newEvent.SetData(data);
+
+            dbContext.EventUsers.Add(newEvent);
+            await dbContext.SaveChangesAsync();
+        });
     }
 }
