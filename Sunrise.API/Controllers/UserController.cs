@@ -3,13 +3,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.API.Services;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -20,8 +18,6 @@ using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions.Users;
-using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Repositories;
@@ -35,7 +31,7 @@ namespace Sunrise.API.Controllers;
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]
-public class UserController(BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, AssetService assetService) : ControllerBase
+public class UserController(BeatmapService beatmapService, DatabaseService database, SessionRepository sessions, UserService userService) : ControllerBase
 {
     [HttpGet]
     [Route("{id:int}")]
@@ -54,6 +50,23 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new UserResponse(sessions, user));
+    }
+
+    [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/sensitive")]
+    [EndpointDescription("Get user sensitive profile")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(UserSensitiveResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserSensitive([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
+    {
+        var isRequestingSelf = id == HttpContext.GetCurrentSession().UserId;
+        var user = isRequestingSelf ? HttpContext.GetCurrentUser() : await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
+
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        return Ok(new UserSensitiveResponse(sessions, user));
     }
 
     [HttpGet]
@@ -125,12 +138,23 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+        return await userService.UpdateUserDescription(user.Id, request.Description);
+    }
 
-        user.Description = request.Description;
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/description")]
+    [EndpointDescription("Update users description")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditUserDescription(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditDescriptionRequest request)
+    {
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        await database.Users.UpdateUser(user);
-
-        return new OkResult();
+        return await userService.UpdateUserDescription(user.Id, request.Description);
     }
 
     [HttpPost]
@@ -141,13 +165,53 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditUserDefaultGameMode([FromBody] EditDefaultGameModeRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-
-        user.DefaultGameMode = request.DefaultGameMode;
-
-        await database.Users.UpdateUser(user);
-
-        return new OkResult();
+        return await userService.UpdateUserDefaultGameMode(user.Id, request.DefaultGameMode);
     }
+
+
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/restriction")]
+    [EndpointDescription("Update users restriction status")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditUserRestriction(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditUserRestrictionRequest request)
+    {
+
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
+
+        if (!request.IsRestrict)
+        {
+            if (!isRestricted)
+                return Problem(ApiErrorResponse.Detail.UserAlreadyUnrestricted, statusCode: StatusCodes.Status400BadRequest);
+
+            var unrestrictUserResult = await database.Users.Moderation.UnrestrictPlayer(user.Id);
+            if (unrestrictUserResult.IsFailure)
+                return Problem(unrestrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+            return Ok();
+        }
+
+        if (isRestricted)
+            return Problem(ApiErrorResponse.Detail.UserAlreadyRestricted, statusCode: StatusCodes.Status400BadRequest);
+
+        if (string.IsNullOrWhiteSpace(request.RestrictionReason))
+            return Problem(ApiErrorResponse.Detail.RestrictionReasonMustBeProvided, statusCode: StatusCodes.Status400BadRequest);
+
+        var restrictUserResult = await database.Users.Moderation.RestrictPlayer(user.Id, currentUser.Id, request.RestrictionReason, TimeSpan.FromDays(365 * 10));
+        if (restrictUserResult.IsFailure)
+            return Problem(restrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+        return Ok();
+    }
+
 
     [HttpGet]
     [Route("{userId:int}/graph")]
@@ -419,9 +483,33 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         CancellationToken ct = default
     )
     {
-        var users = await database.Users.GetValidUsersByQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
+        var (users, _) = await database.Users.GetValidUsersByQueryLike(query,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                IgnoreCountQueryIfExists = true
+            },
+            ct);
 
         return Ok(users.Select(x => new UserResponse(sessions, x)));
+    }
+
+    [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("search/list")]
+    [EndpointDescription("Search user by query")]
+    [ProducesResponseType(typeof(UsersSensitiveListResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchUserSensitivesList(
+        [FromQuery(Name = "query")] string? query,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var (users, totalCount) = await database.Users.GetUsersBySensitiveInfoQueryLike(query, new QueryOptions(true, new Pagination(page, limit)), ct);
+
+        return Ok(new UsersSensitiveListResponse(users.Select(x => new UserSensitiveResponse(sessions, x)).ToList(), totalCount));
     }
 
     [HttpGet]
@@ -453,6 +541,37 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/friends")]
+    [EndpointDescription("Get users friends")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserFriends(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var (friends, totalCount) = await database.Users.Relationship.GetUserFriends(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.Target)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
+
+        return Ok(new FriendsResponse(friends.Select(x => new UserResponse(sessions, x.Target)).ToList(), totalCount));
+    }
+
+    [HttpGet]
     [Authorize]
     [Route("followers")]
     [EndpointDescription("Get authenticated users followers")]
@@ -467,6 +586,37 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     )
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+
+        var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = q => q.Cast<UserRelationship>()
+                    .Include(r => r.User)
+                    .ThenInclude(u => u.UserFiles.Where(f => f.Type == FileType.Avatar || f.Type == FileType.Banner))
+            },
+            ct);
+
+        return Ok(new FollowersResponse(followers.Select(x => new UserResponse(sessions, x.User)).ToList(), totalCount));
+    }
+
+    [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/followers")]
+    [EndpointDescription("Get users followers")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserFollowers(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default
+    )
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
         var (followers, totalCount) = await database.Users.Relationship.GetUserFollowers(user.Id,
             new QueryOptions(true, new Pagination(page, limit))
@@ -550,29 +700,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditFriendStatus([Range(1, int.MaxValue)] int id, [FromBody] EditFriendshipStatusRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-
-        var relationship = await database.Users.Relationship.GetUserRelationship(user.Id, id);
-        if (relationship == null)
-            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
-
-        switch (request.Action)
-        {
-            case UpdateFriendshipStatusAction.Add:
-                relationship.Relation = UserRelation.Friend;
-                break;
-            case UpdateFriendshipStatusAction.Remove:
-                relationship.Relation = UserRelation.None;
-                break;
-            // TODO: Add ability to block user
-            default:
-                return Problem($"Invalid action parameter. Use any of: {Enum.GetNames(typeof(UpdateFriendshipStatusAction)).Aggregate((x, y) => x + "," + y)}", statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        var result = await database.Users.Relationship.UpdateUserRelationship(relationship);
-        if (result.IsFailure)
-            return Problem(title: result.Error, statusCode: StatusCodes.Status400BadRequest);
-
-        return new OkResult();
+        return await userService.UpdateFriendshipStatus(user.Id, id, request.Action);
     }
 
     [HttpGet]
@@ -627,10 +755,38 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         if (user == null) return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        if (user.IsRestricted())
+        var currentUser = HttpContext.GetCurrentUser();
+
+        if (user.IsRestricted() && (currentUser == null || !currentUser.Privilege.HasFlag(UserPrivilege.Admin)))
             return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
         return Ok(new UserMetadataResponse(userMetadata));
+    }
+
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/metadata")]
+    [EndpointDescription("Update user metadata")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditUserMetadata(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
+    {
+        return await userService.UpdateUserMetadata(id, request, ct);
+    }
+
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/privilege")]
+    [EndpointDescription("Update user metadata")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditUserPrivilege(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditUserPrivilegeRequest request, CancellationToken ct = default)
+    {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+
+        return await userService.UpdateUserPrivilege(id, currentUser, request, ct);
     }
 
     [HttpPost]
@@ -641,29 +797,27 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+        return await userService.UpdateUserMetadata(user.Id, request, ct);
+    }
 
-        var userMetadata = await database.Users.Metadata.GetUserMetadata(user.Id, ct);
+    [HttpPost(RequestType.UploadUserAvatar)]
+    [Authorize("RequireAdmin")]
+    [EndpointDescription("Upload new avatar")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetUserAvatar([Range(1, int.MaxValue)] int id)
+    {
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        if (userMetadata is null)
-            return Problem(ApiErrorResponse.Detail.UserMetadataNotFound, statusCode: StatusCodes.Status404NotFound);
+        if (Request.HasFormContentType == false)
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
-        var playstyleEnum = JsonStringFlagEnumHelper.CombineFlags(request.Playstyle);
+        if (Request.Form.Files.Count == 0)
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
-        userMetadata.Playstyle = request.Playstyle != null ? playstyleEnum : userMetadata.Playstyle;
-
-        userMetadata.Location = request.Location ?? userMetadata.Location;
-        userMetadata.Interest = request.Interest ?? userMetadata.Interest;
-        userMetadata.Occupation = request.Occupation ?? userMetadata.Occupation;
-
-        userMetadata.Telegram = request.Telegram ?? userMetadata.Telegram;
-        userMetadata.Twitch = request.Twitch ?? userMetadata.Twitch;
-        userMetadata.Twitter = request.Twitter ?? userMetadata.Twitter;
-        userMetadata.Discord = request.Discord ?? userMetadata.Discord;
-        userMetadata.Website = request.Website ?? userMetadata.Website;
-
-        await database.Users.Metadata.UpdateUserMetadata(userMetadata);
-
-        return new OkResult();
+        var file = Request.Form.Files[0];
+        return await userService.SetUserAvatar(id, file);
     }
 
     [HttpPost(RequestType.AvatarUpload)]
@@ -681,17 +835,27 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        await using var stream = file.OpenReadStream();
+        return await userService.SetUserAvatar(user.Id, file);
+    }
 
-        var (isSet, error) = await assetService.SetAvatar(user.Id, stream);
+    [HttpPost(RequestType.UploadUserBanner)]
+    [Authorize("RequireAdmin")]
+    [EndpointDescription("Upload user banner")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> SetUserBanner([Range(1, int.MaxValue)] int id)
+    {
+        var user = await database.Users.GetUser(id);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        if (!isSet || error != null)
-        {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: error, statusCode: StatusCodes.Status400BadRequest);
-        }
+        if (Request.HasFormContentType == false)
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
-        return new OkResult();
+        if (Request.Form.Files.Count == 0)
+            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
+
+        var file = Request.Form.Files[0];
+        return await userService.SetUserBanner(id, file);
     }
 
     [HttpPost(RequestType.BannerUpload)]
@@ -709,17 +873,20 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        await using var stream = file.OpenReadStream();
+        return await userService.SetUserBanner(user.Id, file);
+    }
 
-        var (isSet, error) = await assetService.SetBanner(user.Id, stream);
-
-        if (!isSet || error != null)
-        {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: error, statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        return new OkResult();
+    [HttpPost(RequestType.ChangeUsersPassword)]
+    [Authorize("RequireAdmin")]
+    [EndpointDescription("Change users current password")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangeUsersPassword(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] ResetPasswordRequest request)
+    {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
+        return await userService.ResetUserPassword(id, request.NewPassword, ip.ToString(), currentUser.Id);
     }
 
     [HttpPost(RequestType.PasswordChange)]
@@ -729,25 +896,21 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-
-        var userByCurrentPassword = await database.Users.GetUser(passhash: request.CurrentPassword.GetPassHash(), username: user.Username);
-
-        if (userByCurrentPassword == null)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangePassword, detail: ApiErrorResponse.Detail.InvalidCurrentPasswordProvided, statusCode: StatusCodes.Status400BadRequest);
-
-        var (isPasswordValid, error) = request.NewPassword.IsValidPassword();
-
-        if (!isPasswordValid)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangePassword, detail: error, statusCode: StatusCodes.Status400BadRequest);
-
-        user.Passhash = request.NewPassword.GetPassHash();
-
-        await database.Users.UpdateUser(user);
-
         var ip = RegionService.GetUserIpAddress(Request);
-        await database.Events.Users.AddUserChangePasswordEvent(user.Id, ip.ToString(), request.CurrentPassword.GetPassHash(), request.NewPassword.GetPassHash());
+        return await userService.ChangeUserPassword(user.Id, request.CurrentPassword, request.NewPassword, ip.ToString());
+    }
 
-        return new OkResult();
+    [HttpPost(RequestType.ChangeUsersUsername)]
+    [Authorize("RequireAdmin")]
+    [EndpointDescription("Change users current username")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangeUsername(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] UsernameChangeRequest request)
+    {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
+        return await userService.ChangeUserUsername(id, request.NewUsername, ip.ToString(), currentUser.Id, true);
     }
 
     [HttpPost(RequestType.UsernameChange)]
@@ -757,45 +920,21 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> ChangeUsername([FromBody] UsernameChangeRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
+        return await userService.ChangeUserUsername(user.Id, request.NewUsername, ip.ToString(), skipCooldownCheck: false);
+    }
 
-        var (isUsernameValid, error) = request.NewUsername.IsValidUsername();
-        if (!isUsernameValid)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: error, statusCode: StatusCodes.Status400BadRequest);
-
-        var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(user.Id);
-        if (lastUsernameChange != null && lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays) > DateTime.UtcNow)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.ChangeUsernameOnCooldown(lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays)), statusCode: StatusCodes.Status400BadRequest);
-
-        var foundUserByUsername = await database.Users.GetUser(username: request.NewUsername);
-        if (foundUserByUsername != null && foundUserByUsername.IsActive())
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: ApiErrorResponse.Detail.UsernameAlreadyTaken, statusCode: StatusCodes.Status400BadRequest);
-
-        var transactionResult = await database.CommitAsTransactionAsync(async () =>
-        {
-            if (foundUserByUsername != null)
-            {
-                var updateFoundUserUsernameResult = await database.Users.UpdateUserUsername(
-                    foundUserByUsername,
-                    foundUserByUsername.Username,
-                    foundUserByUsername.Username.SetUsernameAsOld());
-
-                if (updateFoundUserUsernameResult.IsFailure)
-                    throw new ApplicationException("Unexpected error occurred while trying to prepare for changing your username.");
-            }
-
-            var oldUsername = user.Username;
-            user.Username = request.NewUsername;
-
-            var ip = RegionService.GetUserIpAddress(Request);
-            var updateUserUsernameResult = await database.Users.UpdateUserUsername(user, oldUsername, request.NewUsername, null, ip.ToString());
-            if (updateUserUsernameResult.IsFailure)
-                throw new ApplicationException("Unexpected error occurred while trying to change your username. Sorry!");
-        });
-
-        if (transactionResult.IsFailure)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeUsername, detail: transactionResult.Error);
-
-        return new OkResult();
+    [HttpPost(RequestType.ChangeUsersCountry)]
+    [Authorize("RequireAdmin")]
+    [EndpointDescription("Change users current country")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangeUsersCountry(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] CountryChangeRequest request)
+    {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
+        return await userService.ChangeUserCountry(id, request.NewCountry, ip.ToString(), currentUser.Id, true);
     }
 
     [HttpPost(RequestType.CountryChange)]
@@ -804,23 +943,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangeCountry([FromBody] CountryChangeRequest request)
     {
-        if (request.NewCountry == CountryCode.XX)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToUnknown, statusCode: StatusCodes.Status400BadRequest);
-
         var user = HttpContext.GetCurrentUserOrThrow();
-
-        if (user.Country == request.NewCountry)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.CantChangeCountryToTheSameOne, statusCode: StatusCodes.Status400BadRequest);
-
-        var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
-
-        if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
-            return Problem(title: ApiErrorResponse.Title.UnableToChangeCountry, detail: ApiErrorResponse.Detail.ChangeCountryOnCooldown(lastUserCountryChange.Time.AddDays(Configuration.CountryChangeCooldownInDays)), statusCode: StatusCodes.Status400BadRequest);
-
         var ip = RegionService.GetUserIpAddress(Request);
-
-        await database.Users.UpdateUserCountry(user, user.Country, request.NewCountry, user.Id, ip.ToString());
-
-        return Ok();
+        return await userService.ChangeUserCountry(user.Id, request.NewCountry, ip.ToString(), skipCooldownCheck: false);
     }
 }

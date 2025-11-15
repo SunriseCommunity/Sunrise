@@ -29,7 +29,7 @@ public class DatabaseAuthorizationHandler : IAuthorizationHandler
             {
                 var requiredPrivilege = privilegeRequirement.Privilege;
 
-                if (user.Privilege.HasFlag(requiredPrivilege) || user.Privilege.HasFlag(UserPrivilege.Developer))
+                if (user.Privilege.HasFlag(requiredPrivilege))
                 {
                     context.Succeed(requirement);
                 }
