@@ -266,13 +266,13 @@ public static class Bootstrap
     {
         builder.Services.AddScoped<DirectService>();
         builder.Services.AddScoped<MedalService>();
-        builder.Services.AddScoped<Services.AssetService>();
+        builder.Services.AddScoped<AssetBanchoService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
         builder.Services.AddScoped<HttpClientService>();
 
         builder.Services.AddScoped<ScoreService>();
-        builder.Services.AddScoped<Services.UserService>();
+        builder.Services.AddScoped<UserBanchoService>();
 
         builder.Services.AddScoped<Services.AuthService>();
 

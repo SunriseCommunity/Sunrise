@@ -11,7 +11,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class UserService(DatabaseService database, SessionRepository sessions, RegionService regionService)
+public class UserBanchoService(DatabaseService database, SessionRepository sessions, RegionService regionService)
 {
     public async Task<(Session?, string?, LoginResponse)> GetNewUserSession(LoginRequest loginRequest, IPAddress ip)
     {

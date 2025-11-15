@@ -15,7 +15,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserService userService)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService)
 {
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
     {
@@ -26,7 +26,7 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var (session, error, loginResponseCode) = await userService.GetNewUserSession(loginRequest, ip);
+        var (session, error, loginResponseCode) = await userBanchoService.GetNewUserSession(loginRequest, ip);
 
         if (error != null || session == null)
             return RejectLogin(response, error, loginResponseCode);

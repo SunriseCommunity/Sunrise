@@ -9,7 +9,7 @@ namespace Sunrise.Server.Controllers;
 
 [Subdomain("c", "c4", "cho")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class BanchoController(ILogger<BanchoController> logger, AuthService authService, BanchoService banchoService, AssetService assetService) : ControllerBase
+public class BanchoController(ILogger<BanchoController> logger, AuthService authService, BanchoService banchoService, AssetBanchoService assetBanchoService) : ControllerBase
 {
 
     [HttpPost(RequestType.BanchoProcess)]
@@ -36,7 +36,7 @@ public class BanchoController(ILogger<BanchoController> logger, AuthService auth
     [HttpGet(RequestType.BanchoProcess)]
     public async Task<IActionResult> Get(CancellationToken ct = default)
     {
-        var image = await assetService.GetPeppyImage(ct);
+        var image = await assetBanchoService.GetPeppyImage(ct);
         if (image == null)
             return NotFound();
 
