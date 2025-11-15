@@ -1,11 +1,14 @@
 ﻿using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
-using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
-using Sunrise.Tests;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -151,6 +154,8 @@ public class ApiUserAvatarUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         content.Headers.ContentType!.MediaType = "multipart/form-data";
         content.Add(new StreamContent(imageBytes), "file", "image.png");
 
+        var oldAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.ToString()?.ToHash() ?? string.Empty;
+
         // Act
         var response = await client.PostAsync("user/upload/avatar", content);
 
@@ -164,6 +169,25 @@ public class ApiUserAvatarUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         Assert.NotNull(newAvatar);
 
         Assert.Equal(newAvatar, resizedUploadedImage);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(user.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeAvatar)
+            });
+
+        Assert.Equal(1, totalCount);
+        var avatarChangeEvent = events.First();
+        Assert.Equal(UserEventType.ChangeAvatar, avatarChangeEvent.EventType);
+        Assert.Equal(user.Id, avatarChangeEvent.UserId);
+
+        var newAvatarHash = (await Database.Users.Files.GetAvatar(user.Id))?.ToString()?.ToHash() ?? string.Empty;
+
+        var actualData = avatarChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal(oldAvatarHash, actualData.GetProperty("OldAvatarHash").GetString());
+        Assert.Equal(newAvatarHash, actualData.GetProperty("NewAvatarHash").GetString());
+        Assert.Equal(user.Id, actualData.GetProperty("UpdatedById").GetInt32());
     }
 
     [Fact]

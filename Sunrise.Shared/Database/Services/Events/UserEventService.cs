@@ -186,4 +186,19 @@ public class UserEventService(SunriseDbContext dbContext)
             await dbContext.SaveChangesAsync();
         });
     }
+
+    public async Task<(int, List<EventUser>)> GetUserEvents(int userId, QueryOptions? options = null, CancellationToken ct = default)
+    {
+        var query = dbContext.EventUsers
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.Id);
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await query.CountAsync(cancellationToken: ct);
+
+        var result = await query
+            .UseQueryOptions(options)
+            .ToListAsync(cancellationToken: ct);
+
+        return (totalCount, result);
+    }
 }

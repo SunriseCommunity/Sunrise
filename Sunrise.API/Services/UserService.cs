@@ -105,6 +105,8 @@ public class UserService(
     {
         await using var stream = file.OpenReadStream();
 
+        var oldAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+
         var (isSet, error) = await assetService.SetAvatar(eventAction.TargetUserId, stream);
 
         if (!isSet || error != null)
@@ -120,6 +122,14 @@ public class UserService(
                 StatusCode = StatusCodes.Status400BadRequest
             };
         }
+
+        var newAvatarHash = (await database.Users.Files.GetAvatar(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+
+        await database.Events.Users.AddUserChangeAvatarEvent(
+            eventAction,
+            oldAvatarHash,
+            newAvatarHash
+        );
 
         return new OkResult();
     }
