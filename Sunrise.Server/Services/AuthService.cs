@@ -8,6 +8,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -30,7 +31,11 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         if (error != null || session == null)
             return RejectLogin(response, error, loginResponseCode);
 
-        var addEventResult = await database.Events.Users.AddUserLoginEvent(session.UserId, ip.ToString(), true, sr);
+        var user = await database.Users.GetUser(session.UserId);
+        if (user == null)
+            return RejectLogin(response, "User for this session doesn't exist");
+
+        var addEventResult = await database.Events.Users.AddUserLoginEvent(new UserEventAction(user, ip.ToString(), session.UserId), true, sr);
         if (addEventResult.IsFailure)
             return RejectLogin(response, addEventResult.Error);
 

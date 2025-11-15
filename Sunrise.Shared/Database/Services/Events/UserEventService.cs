@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Utils;
 
@@ -12,17 +13,17 @@ namespace Sunrise.Shared.Database.Services.Events;
 
 public class UserEventService(SunriseDbContext dbContext)
 {
-    public async Task<Result> AddUserLoginEvent(int userId, string ip, bool isFromGame, object loginData)
+    public async Task<Result> AddUserLoginEvent(UserEventAction userEventAction, bool isFromGame, object loginData)
     {
         var data = new
         {
             LoginData = loginData
         };
 
-        return await AddUserEvent(isFromGame ? UserEventType.GameLogin : UserEventType.WebLogin, userId, ip, data);
+        return await AddUserEvent(isFromGame ? UserEventType.GameLogin : UserEventType.WebLogin, userEventAction, data);
     }
 
-    public async Task<Result> AddUserRegisterEvent(int userId, string ip, User userData)
+    public async Task<Result> AddUserRegisterEvent(UserEventAction userEventAction, User userData)
     {
         var data = new
         {
@@ -36,19 +37,43 @@ public class UserEventService(SunriseDbContext dbContext)
             }
         };
 
-        return await AddUserEvent(UserEventType.Register, userId, ip, data);
+        return await AddUserEvent(UserEventType.Register, userEventAction, data);
     }
 
-    public async Task<Result> AddUserChangePasswordEvent(int userId, string ip, string oldPassword, string newPassword, int? updatedById = null)
+    public async Task<Result> AddUserChangePasswordEvent(UserEventAction userEventAction, string oldPassword, string newPassword)
     {
         var data = new
         {
             OldPasswordHash = oldPassword,
             NewPasswordHash = newPassword,
-            UpdatedById = updatedById
+            UpdatedById = userEventAction.ExecutorUser.Id
         };
 
-        return await AddUserEvent(UserEventType.ChangePassword, userId, ip, data);
+        return await AddUserEvent(UserEventType.ChangePassword, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserChangeBannerEvent(UserEventAction userEventAction, string oldBannerHash, string newBannerHash)
+    {
+        var data = new
+        {
+            OldBannerHash = oldBannerHash,
+            NewBannerHash = newBannerHash,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeBanner, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserChangeAvatarEvent(UserEventAction userEventAction, string oldAvatarHash, string newAvatarHash)
+    {
+        var data = new
+        {
+            OldAvatarHash = oldAvatarHash,
+            NewAvatarHash = newAvatarHash,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.ChangeAvatar, userEventAction, data);
     }
 
     public async Task<EventUser?> GetLastUsernameChangeEvent(int userId, QueryOptions? options = null, CancellationToken ct = default)
@@ -69,16 +94,16 @@ public class UserEventService(SunriseDbContext dbContext)
             .ToListAsync(cancellationToken: ct);
     }
 
-    public async Task<Result> AddUserChangeUsernameEvent(int userId, string ip, string oldUsername, string newUsername, int? updatedById = null)
+    public async Task<Result> AddUserChangeUsernameEvent(UserEventAction userEventAction, string oldUsername, string newUsername)
     {
         var data = new
         {
             OldUsername = oldUsername,
             NewUsername = newUsername,
-            UpdatedById = updatedById
+            UpdatedById = userEventAction.ExecutorUser.Id
         };
 
-        return await AddUserEvent(UserEventType.ChangeUsername, userId, ip, data);
+        return await AddUserEvent(UserEventType.ChangeUsername, userEventAction, data);
     }
 
     public async Task<Result> SetUserChangeUsernameEventVisibility(int id, bool hidden, CancellationToken ct = default)
@@ -121,16 +146,16 @@ public class UserEventService(SunriseDbContext dbContext)
         return userEvent?.User;
     }
 
-    public async Task<Result> AddUserChangeCountryEvent(int userId, CountryCode oldCountry, CountryCode newCountry, string ip, int? updatedById)
+    public async Task<Result> AddUserChangeCountryEvent(UserEventAction userEventAction, CountryCode oldCountry, CountryCode newCountry)
     {
         var data = new
         {
             NewCountry = newCountry,
             OldCountry = oldCountry,
-            UpdatedById = updatedById
+            UpdatedById = userEventAction.ExecutorUser.Id
         };
 
-        return await AddUserEvent(UserEventType.ChangeCountry, userId, ip, data);
+        return await AddUserEvent(UserEventType.ChangeCountry, userEventAction, data);
     }
 
     public async Task<EventUser?> GetLastUserCountryChangeEvent(int userId, QueryOptions? options = null,
@@ -143,15 +168,16 @@ public class UserEventService(SunriseDbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
-    private async Task<Result> AddUserEvent<T>(UserEventType eventType, int userId, string ip, T data)
+    private async Task<Result> AddUserEvent<T>(UserEventType eventType, UserEventAction userEventAction, T data)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
             var newEvent = new EventUser
             {
                 EventType = eventType,
-                UserId = userId,
-                Ip = ip
+                UserId = userEventAction.TargetUserId,
+                Ip = userEventAction.ExecutorIp
+                // TODO: Move executor ID here from data object
             };
 
             newEvent.SetData(data);

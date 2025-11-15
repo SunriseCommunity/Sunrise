@@ -7,8 +7,10 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -19,11 +21,11 @@ public class UserService(
     AssetService assetService)
 {
     public async Task<IActionResult> UpdateUserMetadata(
-        int userId,
+        UserEventAction eventAction,
         EditUserMetadataRequest request,
         CancellationToken ct = default)
     {
-        var userMetadata = await database.Users.Metadata.GetUserMetadata(userId, ct);
+        var userMetadata = await database.Users.Metadata.GetUserMetadata(eventAction.TargetUserId, ct);
 
         if (userMetadata is null)
             return new ObjectResult(new ProblemDetails
@@ -57,12 +59,11 @@ public class UserService(
     }
 
     public async Task<IActionResult> UpdateUserPrivilege(
-        int userId,
-        User executor,
+        UserEventAction eventAction,
         EditUserPrivilegeRequest request,
         CancellationToken ct = default)
     {
-        var user = await database.Users.GetUser(userId, ct: ct);
+        var user = await database.Users.GetUser(eventAction.TargetUserId, ct: ct);
 
         if (user is null)
             return new ObjectResult(new ProblemDetails
@@ -79,7 +80,7 @@ public class UserService(
 
         var updatedPrivileges = user.Privilege ^ privilegeEnum;
 
-        if (executor.Privilege.GetHighestPrivilege() <= updatedPrivileges.GetHighestPrivilege())
+        if (eventAction.ExecutorUser.Privilege.GetHighestPrivilege() <= updatedPrivileges.GetHighestPrivilege())
             return new ObjectResult(new ProblemDetails
             {
                 Detail = ApiErrorResponse.Detail.InsufficientPrivileges,
@@ -99,12 +100,12 @@ public class UserService(
     }
 
     public async Task<IActionResult> SetUserAvatar(
-        int userId,
+        UserEventAction eventAction,
         IFormFile file)
     {
         await using var stream = file.OpenReadStream();
 
-        var (isSet, error) = await assetService.SetAvatar(userId, stream);
+        var (isSet, error) = await assetService.SetAvatar(eventAction.TargetUserId, stream);
 
         if (!isSet || error != null)
         {
@@ -124,12 +125,14 @@ public class UserService(
     }
 
     public async Task<IActionResult> SetUserBanner(
-        int userId,
+        UserEventAction eventAction,
         IFormFile file)
     {
         await using var stream = file.OpenReadStream();
 
-        var (isSet, error) = await assetService.SetBanner(userId, stream);
+        var oldBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+
+        var (isSet, error) = await assetService.SetBanner(eventAction.TargetUserId, stream);
 
         if (!isSet || error != null)
         {
@@ -145,18 +148,22 @@ public class UserService(
             };
         }
 
-        // TODO: Add event logging about who changed the banner
+        var newBannerHash = (await database.Users.Files.GetBanner(eventAction.TargetUserId))?.ToString()?.ToHash() ?? string.Empty;
+
+        await database.Events.Users.AddUserChangeBannerEvent(
+            eventAction,
+            oldBannerHash,
+            newBannerHash
+        );
 
         return new OkResult();
     }
 
     public async Task<IActionResult> ResetUserPassword(
-        int userId,
-        string newPassword,
-        string ipAddress,
-        int? adminUserId = null)
+        UserEventAction eventAction,
+        string newPassword)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -186,23 +193,19 @@ public class UserService(
         await database.Users.UpdateUser(user);
 
         await database.Events.Users.AddUserChangePasswordEvent(
-            user.Id,
-            ipAddress,
+            eventAction,
             oldPasshash,
-            user.Passhash,
-            adminUserId);
+            user.Passhash);
 
         return new OkResult();
     }
 
     public async Task<IActionResult> ChangeUserUsername(
-        int userId,
+        UserEventAction eventAction,
         string newUsername,
-        string ipAddress,
-        int? adminUserId = null,
         bool skipCooldownCheck = false)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -227,7 +230,7 @@ public class UserService(
 
         if (!skipCooldownCheck)
         {
-            var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(userId);
+            var lastUsernameChange = await database.Events.Users.GetLastUsernameChangeEvent(user.Id);
             if (lastUsernameChange != null &&
                 lastUsernameChange.Time.AddDays(Configuration.UsernameChangeCooldownInDays) > DateTime.UtcNow)
                 return new ObjectResult(new ProblemDetails
@@ -274,8 +277,8 @@ public class UserService(
                 user,
                 oldUsername,
                 newUsername,
-                adminUserId,
-                ipAddress);
+                eventAction.ExecutorUser.Id,
+                eventAction.ExecutorIp);
             if (updateUserUsernameResult.IsFailure)
                 throw new ApplicationException("Unexpected error occurred while trying to change username.");
         });
@@ -295,10 +298,8 @@ public class UserService(
     }
 
     public async Task<IActionResult> ChangeUserCountry(
-        int userId,
+        UserEventAction eventAction,
         CountryCode newCountry,
-        string ipAddress,
-        int? adminUserId = null,
         bool skipCooldownCheck = false)
     {
         if (newCountry == CountryCode.XX)
@@ -312,7 +313,7 @@ public class UserService(
                 StatusCode = StatusCodes.Status400BadRequest
             };
 
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -336,7 +337,7 @@ public class UserService(
 
         if (!skipCooldownCheck)
         {
-            var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(userId);
+            var lastUserCountryChange = await database.Events.Users.GetLastUserCountryChangeEvent(user.Id);
 
             if (lastUserCountryChange?.Time.AddDays(Configuration.CountryChangeCooldownInDays) > DateTime.UtcNow)
                 return new ObjectResult(new ProblemDetails
@@ -355,15 +356,16 @@ public class UserService(
             user,
             user.Country,
             newCountry,
-            adminUserId ?? userId,
-            ipAddress);
+            eventAction.ExecutorUser.Id,
+            eventAction.ExecutorIp
+        );
 
         return new OkResult();
     }
 
-    public async Task<IActionResult> UpdateUserDescription(int userId, string description)
+    public async Task<IActionResult> UpdateUserDescription(UserEventAction eventAction, string description)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return
                 new ObjectResult(new ProblemDetails
@@ -383,9 +385,9 @@ public class UserService(
         return new OkResult();
     }
 
-    public async Task<IActionResult> UpdateUserDefaultGameMode(int userId, GameMode defaultGameMode)
+    public async Task<IActionResult> UpdateUserDefaultGameMode(UserEventAction eventAction, GameMode defaultGameMode)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -399,16 +401,17 @@ public class UserService(
         user.DefaultGameMode = defaultGameMode;
         await database.Users.UpdateUser(user);
 
+        // TODO: Add event logging about who changed the default game mode
+
         return new OkResult();
     }
 
     public async Task<IActionResult> ChangeUserPassword(
-        int userId,
+        UserEventAction eventAction,
         string currentPassword,
-        string newPassword,
-        string ipAddress)
+        string newPassword)
     {
-        var user = await database.Users.GetUser(userId);
+        var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -448,8 +451,7 @@ public class UserService(
         await database.Users.UpdateUser(user);
 
         await database.Events.Users.AddUserChangePasswordEvent(
-            user.Id,
-            ipAddress,
+            eventAction,
             oldPasshash,
             user.Passhash);
 
@@ -457,11 +459,11 @@ public class UserService(
     }
 
     public async Task<IActionResult> UpdateFriendshipStatus(
-        int userId,
-        int targetUserId,
+        UserEventAction eventAction,
+        int targetFriendshipUserId,
         UpdateFriendshipStatusAction action)
     {
-        var relationship = await database.Users.Relationship.GetUserRelationship(userId, targetUserId);
+        var relationship = await database.Users.Relationship.GetUserRelationship(eventAction.TargetUserId, targetFriendshipUserId);
         if (relationship == null)
             return new ObjectResult(new ProblemDetails
             {
@@ -502,6 +504,8 @@ public class UserService(
             {
                 StatusCode = StatusCodes.Status400BadRequest
             };
+
+        // TODO: Add event logging about who changed the friendship status
 
         return new OkResult();
     }

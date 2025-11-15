@@ -9,11 +9,11 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.AuthController;
 
@@ -403,7 +403,8 @@ public class ApiAuthRegisterTests(IntegrationDatabaseFixture fixture) : ApiTest(
         var user = await CreateTestUser();
         var ip = _mocker.User.GetRandomIp();
 
-        await Database.Events.Users.AddUserRegisterEvent(user.Id, ip, user);
+
+        await Database.Events.Users.AddUserRegisterEvent(new UserEventAction(user, ip, user.Id), user);
 
         var password = _mocker.User.GetRandomPassword();
         var username = _mocker.User.GetRandomUsername();

@@ -7,6 +7,7 @@ using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Services;
 using AuthService = Sunrise.API.Services.AuthService;
 
@@ -34,6 +35,8 @@ public class AuthController(
         if (user == null || user.IsUserSunriseBot())
             return Problem(title: ApiErrorResponse.Title.UnableToAuthenticate, detail: ApiErrorResponse.Detail.InvalidCredentialsProvided, statusCode: StatusCodes.Status401Unauthorized);
 
+        var ip = RegionService.GetUserIpAddress(Request);
+
         if (user.IsRestricted())
         {
             var restriction = await database.Users.Moderation.GetActiveRestrictionReason(user.Id, ct);
@@ -56,7 +59,7 @@ public class AuthController(
             RequestTime = DateTime.UtcNow
         };
 
-        await database.Events.Users.AddUserLoginEvent(user.Id, location.Ip, false, loginData);
+        await database.Events.Users.AddUserLoginEvent(new UserEventAction(user, ip.ToString(), user.Id), false, loginData);
 
         return Ok(new TokenResponse(token.Item1, token.Item2, token.Item3));
     }

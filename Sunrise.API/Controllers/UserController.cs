@@ -18,6 +18,7 @@ using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Repositories;
@@ -138,7 +139,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditDescription([FromBody] EditDescriptionRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-        return await userService.UpdateUserDescription(user.Id, request.Description);
+        var ip = RegionService.GetUserIpAddress(Request);
+        return await userService.UpdateUserDescription(new UserEventAction(user, ip.ToString(), user.Id), request.Description);
     }
 
     [HttpPost]
@@ -154,7 +156,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        return await userService.UpdateUserDescription(user.Id, request.Description);
+        var ip = RegionService.GetUserIpAddress(Request);
+
+        return await userService.UpdateUserDescription(new UserEventAction(user, ip.ToString(), user.Id), request.Description);
     }
 
     [HttpPost]
@@ -165,7 +169,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditUserDefaultGameMode([FromBody] EditDefaultGameModeRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-        return await userService.UpdateUserDefaultGameMode(user.Id, request.DefaultGameMode);
+        var ip = RegionService.GetUserIpAddress(Request);
+
+        return await userService.UpdateUserDefaultGameMode(new UserEventAction(user, ip.ToString(), user.Id), request.DefaultGameMode);
     }
 
 
@@ -700,7 +706,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditFriendStatus([Range(1, int.MaxValue)] int id, [FromBody] EditFriendshipStatusRequest request)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-        return await userService.UpdateFriendshipStatus(user.Id, id, request.Action);
+        var ip = RegionService.GetUserIpAddress(Request);
+        
+        return await userService.UpdateFriendshipStatus(new UserEventAction(user, ip.ToString(), user.Id), id, request.Action);
     }
 
     [HttpGet]
@@ -772,7 +780,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         [Range(1, int.MaxValue)] int id,
         [FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
-        return await userService.UpdateUserMetadata(id, request, ct);
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
+        
+        return await userService.UpdateUserMetadata(new UserEventAction(currentUser, ip.ToString(), id), request, ct);
     }
 
     [HttpPost]
@@ -785,8 +796,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         [FromBody] EditUserPrivilegeRequest request, CancellationToken ct = default)
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
 
-        return await userService.UpdateUserPrivilege(id, currentUser, request, ct);
+        return await userService.UpdateUserPrivilege(new UserEventAction(currentUser, ip.ToString(), id), request, ct);
     }
 
     [HttpPost]
@@ -797,7 +809,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> EditSelfUserMetadata([FromBody] EditUserMetadataRequest request, CancellationToken ct = default)
     {
         var user = HttpContext.GetCurrentUserOrThrow();
-        return await userService.UpdateUserMetadata(user.Id, request, ct);
+        var ip = RegionService.GetUserIpAddress(Request);
+        
+        return await userService.UpdateUserMetadata(new UserEventAction(user, ip.ToString(), user.Id), request, ct);
     }
 
     [HttpPost(RequestType.UploadUserAvatar)]
@@ -806,9 +820,13 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetUserAvatar([Range(1, int.MaxValue)] int id)
     {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        
         var user = await database.Users.GetUser(id);
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+        
+        var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -817,7 +835,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        return await userService.SetUserAvatar(id, file);
+        return await userService.SetUserAvatar(new UserEventAction(currentUser, ip.ToString(), id, user), file);
     }
 
     [HttpPost(RequestType.AvatarUpload)]
@@ -827,6 +845,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> SetAvatar()
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -835,7 +854,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        return await userService.SetUserAvatar(user.Id, file);
+        return await userService.SetUserAvatar(new UserEventAction(user, ip.ToString(), user.Id), file);
     }
 
     [HttpPost(RequestType.UploadUserBanner)]
@@ -844,9 +863,13 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> SetUserBanner([Range(1, int.MaxValue)] int id)
     {
+        var currentUser = HttpContext.GetCurrentUserOrThrow();
+        
         var user = await database.Users.GetUser(id);
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+        
+        var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -855,7 +878,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        return await userService.SetUserBanner(id, file);
+        return await userService.SetUserBanner(new UserEventAction(currentUser, ip.ToString(), id, user), file);
     }
 
     [HttpPost(RequestType.BannerUpload)]
@@ -865,6 +888,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> SetBanner()
     {
         var user = HttpContext.GetCurrentUserOrThrow();
+        var ip = RegionService.GetUserIpAddress(Request);
 
         if (Request.HasFormContentType == false)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
@@ -873,7 +897,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.NoFilesWereUploaded, statusCode: StatusCodes.Status400BadRequest);
 
         var file = Request.Form.Files[0];
-        return await userService.SetUserBanner(user.Id, file);
+        return await userService.SetUserBanner(new UserEventAction(user, ip.ToString(), user.Id), file);
     }
 
     [HttpPost(RequestType.ChangeUsersPassword)]
@@ -886,7 +910,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ResetUserPassword(id, request.NewPassword, ip.ToString(), currentUser.Id);
+        return await userService.ResetUserPassword(new UserEventAction(currentUser, ip.ToString(), id), request.NewPassword);
     }
 
     [HttpPost(RequestType.PasswordChange)]
@@ -897,7 +921,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserPassword(user.Id, request.CurrentPassword, request.NewPassword, ip.ToString());
+        return await userService.ChangeUserPassword(new UserEventAction(user, ip.ToString(), user.Id), request.CurrentPassword, request.NewPassword );
     }
 
     [HttpPost(RequestType.ChangeUsersUsername)]
@@ -910,7 +934,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserUsername(id, request.NewUsername, ip.ToString(), currentUser.Id, true);
+        return await userService.ChangeUserUsername(new UserEventAction(currentUser, ip.ToString(), id), request.NewUsername,  true);
     }
 
     [HttpPost(RequestType.UsernameChange)]
@@ -921,7 +945,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserUsername(user.Id, request.NewUsername, ip.ToString(), skipCooldownCheck: false);
+        return await userService.ChangeUserUsername(new UserEventAction(user, ip.ToString(), user.Id), request.NewUsername);
     }
 
     [HttpPost(RequestType.ChangeUsersCountry)]
@@ -934,7 +958,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserCountry(id, request.NewCountry, ip.ToString(), currentUser.Id, true);
+        return await userService.ChangeUserCountry(new UserEventAction(currentUser, ip.ToString(), id), request.NewCountry, true);
     }
 
     [HttpPost(RequestType.CountryChange)]
@@ -945,6 +969,6 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserCountry(user.Id, request.NewCountry, ip.ToString(), skipCooldownCheck: false);
+        return await userService.ChangeUserCountry(new UserEventAction(user, ip.ToString(), user.Id), request.NewCountry);
     }
 }

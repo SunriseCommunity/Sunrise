@@ -195,9 +195,10 @@ public class UserRepository(
             if (updateUserResult.IsFailure)
                 throw new Exception(updateUserResult.Error);
 
-            var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
-            if (result.IsFailure)
-                throw new Exception(result.Error);
+            // TODO: Move outside
+            // var result = await databaseService.Value.Events.Users.AddUserChangeUsernameEvent(user.Id, userIp ?? "", oldUsername, newUsername, updatedById);
+            // if (result.IsFailure)
+            //     throw new Exception(result.Error);
         });
     }
 
@@ -225,15 +226,16 @@ public class UserRepository(
                 await Ranks.AddOrUpdateUserRanks(stats, user);
             }
 
-            var addUserCountryChangeEventResult =
-                await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id,
-                    oldCountry,
-                    newCountry,
-                    userIp ?? "",
-                    updatedById);
-
-            if (addUserCountryChangeEventResult.IsFailure)
-                throw new Exception(addUserCountryChangeEventResult.Error);
+            // TODO: Move outside
+            // var addUserCountryChangeEventResult =
+            //     await databaseService.Value.Events.Users.AddUserChangeCountryEvent(user.Id,
+            //         oldCountry,
+            //         newCountry,
+            //         userIp ?? "",
+            //         updatedById);
+            //
+            // if (addUserCountryChangeEventResult.IsFailure)
+            //     throw new Exception(addUserCountryChangeEventResult.Error);
         });
     }
 
