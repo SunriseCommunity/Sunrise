@@ -4,7 +4,6 @@ using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
-using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
@@ -273,15 +272,25 @@ public class UserEventService(SunriseDbContext dbContext)
         });
     }
 
-    public async Task<(int, List<EventUser>)> GetUserEvents(int userId, QueryOptions? options = null, CancellationToken ct = default)
+    public async Task<(int, List<EventUser>)> GetUserEvents(int userId, QueryOptions? options = null, string? query = null, CancellationToken ct = default)
     {
-        var query = dbContext.EventUsers
-            .Where(x => x.UserId == userId)
-            .OrderByDescending(x => x.Id);
+        var dbQuery = dbContext.EventUsers
+            .Where(x => x.UserId == userId);
 
-        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await query.CountAsync(cancellationToken: ct);
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var isSearchQueryInt = int.TryParse(query, out var searchInt);
 
-        var result = await query
+            dbQuery = dbQuery.Where(e =>
+                isSearchQueryInt && (e.Id == searchInt || (int)e.EventType == searchInt || e.UserId == searchInt)
+                ||
+                e.JsonData.Contains(query));
+        }
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await dbQuery.CountAsync(cancellationToken: ct);
+
+        var result = await dbQuery
+            .OrderByDescending(x => x.Id)
             .UseQueryOptions(options)
             .ToListAsync(cancellationToken: ct);
 

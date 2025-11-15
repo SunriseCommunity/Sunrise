@@ -666,6 +666,26 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     }
 
     [HttpGet]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/events")]
+    [EndpointDescription("Get users events")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(EventUsersResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserEvents(
+        [Range(1, int.MaxValue)] int id,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 50,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        [FromQuery(Name = "query")] string? query = null,
+        [FromQuery(Name = "types")] List<UserEventType>? userEventType = null,
+        CancellationToken ct = default
+    )
+    {
+        return await userService.GetUserEvents(id, page, limit, query, userEventType, ct);
+    }
+
+    [HttpGet]
     [Authorize]
     [Route("inventory/item")]
     [EndpointDescription("Get count of the item in your inventory")]

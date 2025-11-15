@@ -1,24 +1,30 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Repositories;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.API.Services;
 
 public class UserService(
     DatabaseService database,
-    AssetService assetService)
+    AssetService assetService,
+    SessionRepository sessions)
 {
     public async Task<IActionResult> UpdateUserMetadata(
         UserEventAction eventAction,
@@ -549,6 +555,42 @@ public class UserService(
             relationship.Relation);
 
         return new OkResult();
+    }
+
+    public async Task<IActionResult> GetUserEvents(
+        int userId,
+        int page = 1,
+        int limit = 50,
+        string? query = null,
+        List<UserEventType>? userEventType = null,
+        CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(userId, ct: ct);
+        if (user == null)
+            return new ObjectResult(new ProblemDetails
+            {
+                Detail = ApiErrorResponse.Detail.UserNotFound,
+                Status = StatusCodes.Status404NotFound
+            })
+            {
+                StatusCode = StatusCodes.Status404NotFound
+            };
+
+        var (totalCount, events) = await database.Events.Users.GetUserEvents(user.Id,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = userEventType?.Count > 0
+                    ? q => q
+                        .Cast<EventUser>()
+                        .Where(e => userEventType.Contains(e.EventType)).Include(e => e.User)
+                    : q => q.Cast<EventUser>().Include(e => e.User)
+            },
+            query,
+            ct);
+
+        return new OkObjectResult(new EventUsersResponse(
+            events.Select(e => new EventUserResponse(sessions, e)).ToList(),
+            totalCount));
     }
 
     public static List<UserBadge> GetUserBadges(User user)
