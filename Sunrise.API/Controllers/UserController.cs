@@ -194,12 +194,14 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
 
+        var ip = RegionService.GetUserIpAddress(Request).ToString();
+
         if (!request.IsRestrict)
         {
             if (!isRestricted)
                 return Problem(ApiErrorResponse.Detail.UserAlreadyUnrestricted, statusCode: StatusCodes.Status400BadRequest);
 
-            var unrestrictUserResult = await database.Users.Moderation.UnrestrictPlayer(user.Id);
+            var unrestrictUserResult = await database.Users.Moderation.UnrestrictPlayer(user.Id, currentUser.Id, ip);
             if (unrestrictUserResult.IsFailure)
                 return Problem(unrestrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
 
@@ -212,7 +214,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (string.IsNullOrWhiteSpace(request.RestrictionReason))
             return Problem(ApiErrorResponse.Detail.RestrictionReasonMustBeProvided, statusCode: StatusCodes.Status400BadRequest);
 
-        var restrictUserResult = await database.Users.Moderation.RestrictPlayer(user.Id, currentUser.Id, request.RestrictionReason, TimeSpan.FromDays(365 * 10));
+        var restrictUserResult = await database.Users.Moderation.RestrictPlayer(user.Id, currentUser.Id, request.RestrictionReason, TimeSpan.FromDays(365 * 10), ip);
         if (restrictUserResult.IsFailure)
             return Problem(restrictUserResult.Error, statusCode: StatusCodes.Status500InternalServerError);
 

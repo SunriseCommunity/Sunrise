@@ -50,7 +50,7 @@ public class RestrictCommand : IChatCommand
             return;
         }
 
-        await database.Users.Moderation.RestrictPlayer(user.Id, session.UserId, restrictionReason, TimeSpan.FromDays(365 * 10));
+        await database.Users.Moderation.RestrictPlayer(user.Id, session.UserId, restrictionReason, TimeSpan.FromDays(365 * 10), session.IpAddress);
 
         var isRestricted = await database.Users.Moderation.IsUserRestricted(user.Id);
 

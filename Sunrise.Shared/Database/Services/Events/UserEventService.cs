@@ -253,6 +253,28 @@ public class UserEventService(SunriseDbContext dbContext)
         return await AddUserEvent(UserEventType.ChangeFriendshipStatus, userEventAction, data);
     }
 
+    public async Task<Result> AddUserRestrictEvent(UserEventAction userEventAction, string reason, DateTime expiryDate)
+    {
+        var data = new
+        {
+            Reason = reason,
+            ExpiryDate = expiryDate,
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.Restrict, userEventAction, data);
+    }
+
+    public async Task<Result> AddUserUnrestrictEvent(UserEventAction userEventAction)
+    {
+        var data = new
+        {
+            UpdatedById = userEventAction.ExecutorUser.Id
+        };
+
+        return await AddUserEvent(UserEventType.Unrestrict, userEventAction, data);
+    }
+
     private async Task<Result> AddUserEvent<T>(UserEventType eventType, UserEventAction userEventAction, T data)
     {
         return await ResultUtil.TryExecuteAsync(async () =>

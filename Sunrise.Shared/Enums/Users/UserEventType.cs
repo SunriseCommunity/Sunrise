@@ -18,5 +18,7 @@ public enum UserEventType
     ChangeMetadata = 10,
     ChangeDescription = 11,
     ChangeDefaultGameMode = 12,
-    ChangeFriendshipStatus = 13
+    ChangeFriendshipStatus = 13,
+    Restrict = 14,
+    Unrestrict = 15
 }

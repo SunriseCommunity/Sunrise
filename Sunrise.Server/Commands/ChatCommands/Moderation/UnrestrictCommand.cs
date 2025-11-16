@@ -42,7 +42,7 @@ public class UnrestrictCommand : IChatCommand
             return;
         }
 
-        await database.Users.Moderation.UnrestrictPlayer(user.Id);
+        await database.Users.Moderation.UnrestrictPlayer(user.Id, session.UserId, session.IpAddress);
 
         ChatCommandRepository.SendMessage(session, $"User {user.Username} ({user.Id}) has been unrestricted.");
     }

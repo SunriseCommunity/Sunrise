@@ -4,6 +4,8 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -193,6 +195,17 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
         Assert.Equal(UserAccountStatus.Restricted, updatedUser.AccountStatus);
+
+        var (_, restrictEvents) = await Database.Events.Users.GetUserEvents(targetUser.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.Restrict)
+            });
+        Assert.NotEmpty(restrictEvents);
+        var restrictEvent = restrictEvents.First();
+        Assert.Equal(UserEventType.Restrict, restrictEvent.EventType);
+        Assert.Contains("Test restriction reason", restrictEvent.JsonData);
+        Assert.Contains(adminUser.Id.ToString(), restrictEvent.JsonData);
     }
 
     [Fact]
@@ -262,6 +275,16 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
         var updatedUser = await Database.Users.GetUser(targetUser.Id);
         Assert.NotNull(updatedUser);
         Assert.NotEqual(UserAccountStatus.Restricted, updatedUser.AccountStatus);
+
+        var (_, unrestrictEvents) = await Database.Events.Users.GetUserEvents(targetUser.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.Unrestrict)
+            });
+        Assert.NotEmpty(unrestrictEvents);
+        var unrestrictEvent = unrestrictEvents.First();
+        Assert.Equal(UserEventType.Unrestrict, unrestrictEvent.EventType);
+        Assert.Contains(adminUser.Id.ToString(), unrestrictEvent.JsonData);
     }
 
     [Fact]

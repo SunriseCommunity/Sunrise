@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 
@@ -49,7 +50,7 @@ public class UserModerationService(
         return false;
     }
 
-    public async Task<Result> UnrestrictPlayer(int userId)
+    public async Task<Result> UnrestrictPlayer(int userId, int? executorId = null, string? executorIp = null)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
@@ -66,10 +67,23 @@ public class UserModerationService(
             await databaseService.Value.Users.UpdateUser(user);
             await RefreshUserStats(user.Id);
 
+            // TODO: Move outside, and also trigger if executed by server
+            if (executorId.HasValue)
+            {
+                var executorUser = await databaseService.Value.Users.GetUser(executorId.Value);
+
+                if (executorUser != null && !string.IsNullOrEmpty(executorIp))
+                {
+                    var userEventAction = new UserEventAction(executorUser, executorIp, userId, user);
+                    var eventResult = await databaseService.Value.Events.Users.AddUserUnrestrictEvent(userEventAction);
+                    if (eventResult.IsFailure)
+                        throw new ApplicationException(eventResult.Error);
+                }
+            }
         });
     }
 
-    public async Task<Result> RestrictPlayer(int userId, int? executorId, string reason, TimeSpan? expiresAfter = null)
+    public async Task<Result> RestrictPlayer(int userId, int? executorId, string reason, TimeSpan? expiresAfter = null, string? executorIp = null)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
@@ -101,6 +115,21 @@ public class UserModerationService(
 
             var session = sessions.GetSession(userId: userId);
             session?.SendRestriction(reason);
+
+            // TODO: Move outside
+            if (executorId.HasValue)
+            {
+                var executorUser = await databaseService.Value.Users.GetUser(executorId.Value);
+
+                if (executorUser != null)
+                {
+                    var ip = executorIp ?? "127.0.0.1";
+                    var userEventAction = new UserEventAction(executorUser, ip, userId, user);
+                    var eventResult = await databaseService.Value.Events.Users.AddUserRestrictEvent(userEventAction, reason, restriction.ExpiryDate);
+                    if (eventResult.IsFailure)
+                        throw new ApplicationException(eventResult.Error);
+                }
+            }
         });
     }
 
