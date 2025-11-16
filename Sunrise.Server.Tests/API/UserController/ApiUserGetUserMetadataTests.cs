@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -99,5 +100,42 @@ public class ApiUserGetUserMetadataTests(IntegrationDatabaseFixture fixture) : A
 
         var responseContent = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
         Assert.Contains(ApiErrorResponse.Detail.UserIsRestricted, responseContent?.Detail);
+    }
+
+    [Fact]
+    public async Task TestAdminGetUserMetadataRestrictedUser()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+        var userMetadata = await Database.Users.Metadata.GetUserMetadata(targetUser.Id);
+        if (userMetadata is null)
+            throw new Exception("User metadata not found");
+
+        userMetadata = _mocker.User.SetRandomUserMetadata(userMetadata);
+        await Database.Users.Metadata.UpdateUserMetadata(userMetadata);
+
+        await Database.Users.Moderation.RestrictPlayer(targetUser.Id, null, "Test");
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        var userMetadataData = new UserMetadataResponse(userMetadata);
+
+        // Act
+        var response = await client.GetAsync($"user/{targetUser.Id}/metadata");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseMetadata = await response.Content.ReadFromJsonAsyncWithAppConfig<UserMetadataResponse>();
+        Assert.NotNull(responseMetadata);
+
+        Assert.Equivalent(userMetadataData, responseMetadata);
     }
 }

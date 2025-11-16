@@ -9,12 +9,12 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -22,7 +22,7 @@ namespace Sunrise.Server.Tests.API.UserController;
 public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-    
+
     public static IEnumerable<object[]> GetGameModes()
     {
         return Enum.GetValues(typeof(GameMode)).Cast<GameMode>().Select(mode => new object[]
@@ -448,7 +448,7 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
 
         var newCountry = CountryCode.AD;
 
-        var updateCountryResult = await Database.Users.UpdateUserCountry(user, user.Country, CountryCode.AL);
+        var updateCountryResult = await Database.Users.UpdateUserCountry(new UserEventAction(user, "127.0.0.1", user.Id), user.Country, CountryCode.AL);
         if (updateCountryResult.IsFailure)
             throw new Exception(updateCountryResult.Error);
 

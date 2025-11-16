@@ -14,7 +14,9 @@ public static class HttpContextExtensions
         if (user == null || user.IsUserSunriseBot())
             return AuthService.GenerateIpSession(context.Request);
 
-        var session = new BaseSession(user);
+        var ip = AuthService.GetIpAddress(context.Request);
+
+        var session = new BaseSession(user, ip.ToString());
         return session;
     }
 

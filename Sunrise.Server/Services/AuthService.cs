@@ -8,13 +8,14 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserService userService)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService)
 {
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
     {
@@ -25,12 +26,16 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var (session, error, loginResponseCode) = await userService.GetNewUserSession(loginRequest, ip);
+        var (session, error, loginResponseCode) = await userBanchoService.GetNewUserSession(loginRequest, ip);
 
         if (error != null || session == null)
             return RejectLogin(response, error, loginResponseCode);
 
-        var addEventResult = await database.Events.Users.AddUserLoginEvent(session.UserId, ip.ToString(), true, sr);
+        var user = await database.Users.GetUser(session.UserId);
+        if (user == null)
+            return RejectLogin(response, "User for this session doesn't exist");
+
+        var addEventResult = await database.Events.Users.AddUserLoginEvent(new UserEventAction(user, ip.ToString(), session.UserId), true, sr);
         if (addEventResult.IsFailure)
             return RejectLogin(response, addEventResult.Error);
 

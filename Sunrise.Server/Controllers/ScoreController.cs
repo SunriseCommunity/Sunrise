@@ -14,7 +14,7 @@ namespace Sunrise.Server.Controllers;
 [Route("/web")]
 [Subdomain("osu")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class ScoreController(ScoreService scoreService, AssetService assetService, SessionRepository sessions) : ControllerBase
+public class ScoreController(ScoreService scoreService, AssetBanchoService assetBanchoService, SessionRepository sessions) : ControllerBase
 {
     [HttpPost(RequestType.OsuSubmitScore)]
     public async Task<IActionResult> Submit(
@@ -88,7 +88,7 @@ public class ScoreController(ScoreService scoreService, AssetService assetServic
         [FromQuery(Name = "c")] int scoreId, CancellationToken ct = default
     )
     {
-        var getReplayResult = await assetService.GetOsuReplayBytes(scoreId, ct);
+        var getReplayResult = await assetBanchoService.GetOsuReplayBytes(scoreId, ct);
         if (getReplayResult.IsFailure)
             return Ok("error: no-replay");
 

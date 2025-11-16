@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 
 namespace Sunrise.Shared.Services;
 
@@ -53,7 +54,7 @@ public class UserAuthService(RegionService regionService, DatabaseService databa
         if (foundUserByUsername != null && foundUserByUsername.IsActive() == false)
         {
             var updateUsernameResult = await database.Users.UpdateUserUsername(
-                foundUserByUsername,
+                new UserEventAction(foundUserByUsername, ip.ToString(), foundUserByUsername.Id),
                 foundUserByUsername.Username,
                 foundUserByUsername.Username.SetUsernameAsOld());
 
@@ -81,7 +82,7 @@ public class UserAuthService(RegionService regionService, DatabaseService databa
             return (null, errors);
         }
 
-        await database.Events.Users.AddUserRegisterEvent(newUser.Id, ip.ToString(), newUser);
+        await database.Events.Users.AddUserRegisterEvent(new UserEventAction(newUser, ip.ToString(), newUser.Id), newUser);
 
         return (newUser, null);
     }

@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using CSharpFunctionalExtensions;
@@ -6,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
@@ -119,5 +119,10 @@ public class AuthService(DatabaseService database)
         var ip = RegionService.GetUserIpAddress(request);
 
         return BaseSession.GenerateGuestSession(ip);
+    }
+
+    public static IPAddress GetIpAddress(HttpRequest request)
+    {
+        return RegionService.GetUserIpAddress(request);
     }
 }

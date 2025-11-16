@@ -14,7 +14,7 @@ namespace Sunrise.Server.Controllers;
 [Route("/web")]
 [Subdomain("osu")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class WebController(DatabaseService database, SessionRepository sessions, BeatmapService beatmapService, AuthService authService, UserService userService, AssetService assetService) : ControllerBase
+public class WebController(DatabaseService database, SessionRepository sessions, BeatmapService beatmapService, AuthService authService, UserBanchoService userBanchoService, AssetBanchoService assetBanchoService) : ControllerBase
 {
     [HttpPost(RequestType.OsuScreenshot)]
     public async Task<IActionResult> OsuScreenshot(
@@ -25,7 +25,7 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var saveScreenshotResult = await assetService.SaveScreenshot(session,
+        var saveScreenshotResult = await assetBanchoService.SaveScreenshot(session,
             screenshot,
             HttpContext.RequestAborted);
 
@@ -47,7 +47,7 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
             return Ok("error: pass");
 
-        var friends = await userService.GetFriends(session.UserId, ct);
+        var friends = await userBanchoService.GetFriends(session.UserId, ct);
         if (friends == null)
             return BadRequest("error: no");
 
@@ -134,7 +134,7 @@ public class WebController(DatabaseService database, SessionRepository sessions,
         if (!Configuration.UseCustomBackgrounds)
             return Redirect($"https://osu.ppy.sh/web/{RequestType.OsuGetSeasonalBackground}");
 
-        var result = assetService.GetSeasonalBackgrounds();
+        var result = assetBanchoService.GetSeasonalBackgrounds();
         return Ok(result);
     }
 
@@ -187,7 +187,7 @@ public class WebController(DatabaseService database, SessionRepository sessions,
     [HttpGet("/wiki/en/Do_you_really_want_to_ask_peppy")]
     public async Task<IActionResult> AskPeppy(CancellationToken ct = default)
     {
-        var image = await assetService.GetPeppyImage(ct);
+        var image = await assetBanchoService.GetPeppyImage(ct);
         if (image == null)
             return NotFound();
 

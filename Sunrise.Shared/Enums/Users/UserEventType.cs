@@ -12,5 +12,13 @@ public enum UserEventType
     ChangeAvatar = 5,
     ChangeBanner = 6,
     ChangeUsername = 7,
-    ChangeCountry = 8
+    ChangeCountry = 8,
+
+    ChangePrivilege = 9,
+    ChangeMetadata = 10,
+    ChangeDescription = 11,
+    ChangeDefaultGameMode = 12,
+    ChangeFriendshipStatus = 13,
+    Restrict = 14,
+    Unrestrict = 15
 }

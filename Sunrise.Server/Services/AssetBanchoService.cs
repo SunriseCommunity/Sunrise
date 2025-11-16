@@ -7,7 +7,7 @@ using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Server.Services;
 
-public class AssetService(DatabaseService database)
+public class AssetBanchoService(DatabaseService database)
 {
     private const int Megabyte = 1024 * 1024;
     private static string DataPath => Configuration.DataPath;

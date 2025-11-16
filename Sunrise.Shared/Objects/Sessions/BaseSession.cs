@@ -5,11 +5,12 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Objects.Sessions;
 
-public class BaseSession(User user, bool isGuest = false, bool isServer = false)
+public class BaseSession(User user, string ipAddress, bool isGuest = false, bool isServer = false)
 {
     public int UserId { get; } = user.Id;
     public bool IsGuest { get; } = isGuest;
     public bool IsServer { get; } = isServer;
+    public string IpAddress { get; } = ipAddress;
 
     public bool IsRateLimited()
     {
@@ -31,7 +32,7 @@ public class BaseSession(User user, bool isGuest = false, bool isServer = false)
             Username = "Guest"
         };
 
-        return new BaseSession(user, true);
+        return new BaseSession(user, ip.ToString(), true);
     }
 
     public static BaseSession GenerateServerSession()
@@ -42,6 +43,6 @@ public class BaseSession(User user, bool isGuest = false, bool isServer = false)
             Username = "Server"
         };
 
-        return new BaseSession(user, true, true);
+        return new BaseSession(user, IPAddress.Loopback.ToString(), true, true);
     }
 }

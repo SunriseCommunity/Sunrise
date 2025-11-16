@@ -11,13 +11,13 @@ namespace Sunrise.Server.Controllers;
 [Subdomain("a", "assets")]
 [ResponseCache(Duration = 300)]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class AssetsController(BanchoService banchoService, AssetService assetService, DatabaseService database) : ControllerBase
+public class AssetsController(BanchoService banchoService, AssetBanchoService assetBanchoService, DatabaseService database) : ControllerBase
 {
     [HttpGet(RequestType.GetAvatar)]
     [HttpGet(RequestType.GetBanchoAvatar)]
     public async Task<IActionResult> GetAvatar(int id, [FromQuery(Name = "default")] bool? fallToDefault, CancellationToken ct = default)
     {
-        var getAvatarResult = await assetService.GetAvatar(id, fallToDefault ?? true, ct);
+        var getAvatarResult = await assetBanchoService.GetAvatar(id, fallToDefault ?? true, ct);
 
         if (getAvatarResult.IsFailure)
         {
@@ -33,7 +33,7 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
     [HttpGet(RequestType.GetBanner)]
     public async Task<IActionResult> GetBanner(int id, [FromQuery(Name = "default")] bool? fallToDefault, CancellationToken ct = default)
     {
-        var getBannerResult = await assetService.GetBanner(id, fallToDefault ?? true, ct);
+        var getBannerResult = await assetBanchoService.GetBanner(id, fallToDefault ?? true, ct);
 
         if (getBannerResult.IsFailure)
         {
@@ -50,7 +50,7 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
     [Route(RequestType.GetScreenshot)]
     public async Task<IActionResult> GetScreenshot(int id, CancellationToken ct = default)
     {
-        var getScreenshotResult = await assetService.GetScreenshot(id, ct);
+        var getScreenshotResult = await assetBanchoService.GetScreenshot(id, ct);
 
         if (getScreenshotResult.IsFailure)
         {
@@ -79,7 +79,7 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
         if (!medal.FileId.HasValue)
             return NotFound();
 
-        var data = await assetService.GetMedalImage(medal.FileId.Value, isHighRes, ct);
+        var data = await assetBanchoService.GetMedalImage(medal.FileId.Value, isHighRes, ct);
         if (data == null)
             return NotFound();
 
@@ -95,7 +95,7 @@ public class AssetsController(BanchoService banchoService, AssetService assetSer
     [HttpGet(RequestType.EventBanner)]
     public async Task<IActionResult> GetEventBanner(CancellationToken ct = default)
     {
-        var data = await assetService.GetEventBanner(ct);
+        var data = await assetBanchoService.GetEventBanner(ct);
         if (data == null)
             return NotFound();
 

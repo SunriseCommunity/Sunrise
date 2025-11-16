@@ -1,11 +1,14 @@
 ﻿using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
-using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
-using Sunrise.Tests;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -151,6 +154,8 @@ public class ApiUserBannerUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         content.Headers.ContentType!.MediaType = "multipart/form-data";
         content.Add(new StreamContent(imageBytes), "file", "image.png");
 
+        var oldBannerHash = (await Database.Users.Files.GetBanner(user.Id))?.GetHashSHA1() ?? string.Empty;
+
         // Act
         var response = await client.PostAsync("user/upload/banner", content);
 
@@ -164,6 +169,26 @@ public class ApiUserBannerUploadTests(IntegrationDatabaseFixture fixture) : ApiT
         Assert.NotNull(newBanner);
 
         Assert.Equal(newBanner, resizedUploadedImage);
+
+        var (totalCount, events) = await Database.Events.Users.GetUserEvents(user.Id,
+            new QueryOptions
+            {
+                QueryModifier = q => q.Cast<EventUser>().Where(e => e.EventType == UserEventType.ChangeBanner)
+            });
+
+        Assert.Equal(1, totalCount);
+        var avatarChangeEvent = events.First();
+        Assert.Equal(UserEventType.ChangeBanner, avatarChangeEvent.EventType);
+        Assert.Equal(user.Id, avatarChangeEvent.UserId);
+
+        var newBannerHash = (await Database.Users.Files.GetBanner(user.Id))?.GetHashSHA1() ?? string.Empty;
+
+        var actualData = avatarChangeEvent.GetData<JsonElement>();
+
+        Assert.Equal(oldBannerHash, actualData.GetProperty("OldBannerHash").GetString());
+        Assert.Equal(newBannerHash, actualData.GetProperty("NewBannerHash").GetString());
+        Assert.Equal(user.Id, actualData.GetProperty("UpdatedById").GetInt32());
+        Assert.NotEqual(oldBannerHash, newBannerHash);
     }
 
     [Fact]

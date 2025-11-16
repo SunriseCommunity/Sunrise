@@ -36,6 +36,7 @@ using Sunrise.Shared.Services;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using AssetService = Sunrise.API.Services.AssetService;
 using AuthService = Sunrise.API.Services.AuthService;
+using UserService = Sunrise.API.Services.UserService;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server;
@@ -217,6 +218,7 @@ public static class Bootstrap
 
         builder.Services.AddScoped<AuthService>();
         builder.Services.AddScoped<AssetService>();
+        builder.Services.AddScoped<UserService>();
     }
 
     public static void AddDatabaseServices(this WebApplicationBuilder builder)
@@ -264,13 +266,13 @@ public static class Bootstrap
     {
         builder.Services.AddScoped<DirectService>();
         builder.Services.AddScoped<MedalService>();
-        builder.Services.AddScoped<Services.AssetService>();
+        builder.Services.AddScoped<AssetBanchoService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
         builder.Services.AddScoped<HttpClientService>();
 
         builder.Services.AddScoped<ScoreService>();
-        builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<UserBanchoService>();
 
         builder.Services.AddScoped<Services.AuthService>();
 

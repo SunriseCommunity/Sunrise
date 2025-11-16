@@ -6,11 +6,11 @@ using Sunrise.API.Serializable.Request;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -151,7 +151,7 @@ public class ApiUserUsernameChangeTests(IntegrationDatabaseFixture fixture) : Ap
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        var usernameChangeResult = await Database.Users.UpdateUserUsername(user, user.Username, "test");
+        var usernameChangeResult = await Database.Users.UpdateUserUsername(new UserEventAction(user, "127.0.0.1", user.Id), user.Username, "test");
         if (usernameChangeResult.IsFailure)
             throw new Exception(usernameChangeResult.Error);
 

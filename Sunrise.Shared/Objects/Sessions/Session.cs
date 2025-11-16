@@ -23,7 +23,7 @@ public class Session : BaseSession
 
     public readonly string Token;
 
-    public Session(User user, Location location, LoginRequest loginRequest) : base(user)
+    public Session(User user, Location location, LoginRequest loginRequest) : base(user, location.Ip)
     {
         _helper = new PacketHelper();
 
