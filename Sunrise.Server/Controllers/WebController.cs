@@ -220,4 +220,11 @@ public class WebController(DatabaseService database, SessionRepository sessions,
     {
         return Redirect($"https://{Configuration.Domain}/beatmaps/{path}");
     }
+
+    [SubdomainRoute("/", "osu")]
+    [HttpGet]
+    public IActionResult RedirectToWebsite()
+    {
+        return Redirect($"https://{Configuration.Domain}/");
+    }
 }

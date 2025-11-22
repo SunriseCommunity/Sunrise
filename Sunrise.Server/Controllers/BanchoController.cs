@@ -33,7 +33,8 @@ public class BanchoController(ILogger<BanchoController> logger, AuthService auth
         return new FileContentResult(session.GetContent(), "application/octet-stream");
     }
 
-    [HttpGet(RequestType.BanchoProcess)]
+    [SubdomainRoute(RequestType.BanchoProcess, "c", "c4", "cho")]
+    [HttpGet]
     public async Task<IActionResult> Get(CancellationToken ct = default)
     {
         var image = await assetBanchoService.GetPeppyImage(ct);
