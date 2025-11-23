@@ -178,6 +178,7 @@ public static class Configuration
             new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataByBeatmapId, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/b/{{0}}?full=true", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/md5/{{0}}?full=true", 0, 1),
+            new ExternalApi(ApiType.BeatmapSetsDataByBeatmapIds, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/beatmapsets?beatmapIds={{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetSearch,
                 ApiServer.Observatory,
                 $"http://{ObservatoryUrl}/api/v2/search?query={{0}}&limit={{1}}&offset={{2}}&status={{3}}&mode={{4}}",
