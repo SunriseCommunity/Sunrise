@@ -10,7 +10,7 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> PaginationTake<TEntity>(this IQueryable<TEntity> query, Pagination pagination) where TEntity : class
     {
         return query
-            .Skip((pagination.Page - 1) * pagination.PageSize)
+            .Skip(Math.Max(pagination.Page - 1, 0) * pagination.PageSize)
             .Take(pagination.PageSize);
     }
 

@@ -46,10 +46,15 @@ public static class ApiErrorResponse
         public const string CantChangeCountryToTheSameOne = "You can't change country to the same one.";
         public const string CantChangeCountryToUnknown = "You can't change country to the unknown one.";
 
+        public const string CantSearchWithBothCustomStatusAndGamemode = "You can't search with both custom status and gamemode.";
+        public const string CantSearchWithBothCustomStatusAndQuery = "You can't search with both custom status and query.";
+
         public const string UsernameAlreadyTaken = "Username already taken.";
 
         public const string InvalidContentType = "Invalid content type.";
         public const string NoFilesWereUploaded = "No files were uploaded.";
+
+        public const string InvalidQueryParameters = "Invalid query parameters.";
 
         public const string InvalidCurrentPasswordProvided = "Invalid current password provided.";
 

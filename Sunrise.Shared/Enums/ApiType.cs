@@ -14,6 +14,8 @@ public enum ApiType
     GetIPLocation = 6,
 
     CalculateScorePerformance = 7,
-    CalculateBeatmapPerformance = 8
+    CalculateBeatmapPerformance = 8,
+
+    BeatmapSetsDataByBeatmapIds = 9
 
 }
