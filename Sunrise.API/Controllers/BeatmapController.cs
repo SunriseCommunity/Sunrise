@@ -14,6 +14,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -422,6 +423,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         [FromQuery(Name = "status")] BeatmapStatusWeb[]? status,
         [Range((int)GameMode.Standard, (int)GameMode.Mania)] [FromQuery(Name = "mode")]
         GameMode? mode,
+        [FromQuery(Name = "searchByCustomStatus")]
+        bool searchByCustomStatus = false,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int limit = 50,
         [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
@@ -430,6 +433,32 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     )
     {
         var session = HttpContext.GetCurrentSession();
+
+        if (searchByCustomStatus)
+        {
+            if (mode != null)
+                return Problem(ApiErrorResponse.Detail.CantSearchWithBothCustomStatusAndGamemode, statusCode: StatusCodes.Status400BadRequest);
+
+            if (query != null)
+                return Problem(ApiErrorResponse.Detail.CantSearchWithBothCustomStatusAndQuery, statusCode: StatusCodes.Status400BadRequest);
+
+            // Limit to 12 results when searching by custom status to avoid abuse, since each beatmap can require a ratelimit token to fetch.
+            if (limit > 12)
+                return Problem(ApiErrorResponse.Detail.InvalidQueryParameters, statusCode: StatusCodes.Status400BadRequest);
+
+            var (customStatusBeatmapSets, totalCount) = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatusesGroupBySetId(new QueryOptions(false, new Pagination(page, limit))
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().Where(cs => status == null || status.Contains(cs.Status))
+                },
+                ct);
+
+            var beatmapSetsByBeatmapIdsResult = await beatmapService.GetBeatmapSets(session, customStatusBeatmapSets.Select(cs => cs.BeatmapSetId).ToList(), ct);
+            if (beatmapSetsByBeatmapIdsResult.IsFailure)
+                return ActionResultUtil.ActionErrorResult(beatmapSetsByBeatmapIdsResult.Error);
+
+            var beatmapSetsResponses = beatmapSetsByBeatmapIdsResult.Value.Select(bs => new BeatmapSetResponse(sessions, bs)).ToList();
+            return Ok(new BeatmapSetsResponse(beatmapSetsResponses, totalCount));
+        }
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
         var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;

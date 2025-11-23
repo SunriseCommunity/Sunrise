@@ -32,6 +32,28 @@ public class CustomBeatmapStatusService(
             .ToListAsync(cancellationToken: ct);
     }
 
+    public async Task<(List<CustomBeatmapStatus>, int)> GetCustomBeatmapSetStatusesGroupBySetId(QueryOptions? options = null, CancellationToken ct = default)
+    {
+        var query = dbContext.CustomBeatmapStatuses
+            .GroupBy(x => x.BeatmapSetId)
+            .Select(g => g.First())
+            .ToQueryString();
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true
+            ? -1
+            : await dbContext.CustomBeatmapStatuses
+                .FromSqlRaw(query)
+                .CountAsync(cancellationToken: ct);
+
+        var customBeatmapStatuses = await dbContext.CustomBeatmapStatuses
+            .FromSqlRaw(query)
+            .OrderByDescending(x => x.Id)
+            .UseQueryOptions(options)
+            .ToListAsync(cancellationToken: ct);
+
+        return (customBeatmapStatuses, totalCount);
+    }
+
     public async Task<Result> AddCustomBeatmapStatus(CustomBeatmapStatus status)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
