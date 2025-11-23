@@ -30,52 +30,54 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 Status = HttpStatusCode.BadRequest
             });
 
-        var beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
-        if (beatmapSet != null) return beatmapSet;
-
-        var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
-        {
-            Message = "Could not retrieve beatmap set.",
-            Status = HttpStatusCode.BadRequest
-        });
+        BeatmapSet? beatmapSet;
 
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
-        while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(beatmapSetTask))
-        {
-            retryCount--;
-
-            if (beatmapId != null)
-                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: linkedCts.Token);
-
-            if (beatmapHash != null && !IsValidResult(beatmapSetTask))
-                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: linkedCts.Token);
-
-            if (beatmapSetId != null && !IsValidResult(beatmapSetTask))
-                beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: linkedCts.Token);
-
-            if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
-            {
-                logger.LogWarning($"Error while getting beatmap set: {beatmapSetTask.Error.Message}, Retry count: {retryCount}");
-
-                if (retryCount > 0)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5), linkedCts.Token);
-                }
-            }
-        }
-
-        if (beatmapSetTask.IsFailure)
-            return beatmapSetTask;
-
-        beatmapSet = beatmapSetTask.Value;
-
-        await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
-
         try
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
+
+            beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
+            if (beatmapSet != null) return beatmapSet;
+
+            var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
+            {
+                Message = "Could not retrieve beatmap set.",
+                Status = HttpStatusCode.BadRequest
+            });
+
+            while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(beatmapSetTask))
+            {
+                retryCount--;
+
+                if (beatmapId != null)
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: linkedCts.Token);
+
+                if (beatmapHash != null && !IsValidResult(beatmapSetTask))
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: linkedCts.Token);
+
+                if (beatmapSetId != null && !IsValidResult(beatmapSetTask))
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: linkedCts.Token);
+
+                if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
+                {
+                    logger.LogWarning($"Error while getting beatmap set: {beatmapSetTask.Error.Message}, Retry count: {retryCount}");
+
+                    if (retryCount > 0)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), linkedCts.Token);
+                    }
+                }
+            }
+
+            if (beatmapSetTask.IsFailure)
+                return beatmapSetTask;
+
+            beatmapSet = beatmapSetTask.Value;
+
+            await database.Beatmaps.SetCachedBeatmapSet(beatmapSet);
 
             var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSet.Id,
                 new QueryOptions(true)
@@ -123,6 +125,35 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         var beatmapSetsResult = await client.SendRequest<List<BeatmapSet>>(session,
             ApiType.BeatmapSetSearch,
             [query, pagination.PageSize, pagination.Page * pagination.PageSize, rankedStatus, mode],
+            ct: ct);
+
+        if (beatmapSetsResult.IsFailure)
+            return beatmapSetsResult;
+
+        var beatmapSets = beatmapSetsResult.Value;
+
+        if (beatmapSets == null) return new List<BeatmapSet>();
+
+        foreach (var set in beatmapSets)
+        {
+            var customStatuses = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(set.Id,
+                new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().Include(x => x.UpdatedByUser)
+                },
+                ct);
+
+            set.UpdateBeatmapRanking(customStatuses);
+        }
+
+        return beatmapSets;
+    }
+
+    public async Task<Result<List<BeatmapSet>, ErrorMessage>> GetBeatmapSetsByBeatmapIds(BaseSession session, List<int> beatmapIds, CancellationToken ct = default)
+    {
+        var beatmapSetsResult = await client.SendRequest<List<BeatmapSet>>(session,
+            ApiType.BeatmapSetsDataByBeatmapIds,
+            [string.Join("&beatmapIds=", beatmapIds)],
             ct: ct);
 
         if (beatmapSetsResult.IsFailure)
