@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Database.Services.Events;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Shared.Database.Services.Beatmaps;
 
@@ -32,9 +33,10 @@ public class CustomBeatmapStatusService(
             .ToListAsync(cancellationToken: ct);
     }
 
-    public async Task<(List<CustomBeatmapStatus>, int)> GetCustomBeatmapSetStatusesGroupBySetId(QueryOptions? options = null, CancellationToken ct = default)
+    public async Task<(List<CustomBeatmapStatus>, int)> GetCustomBeatmapSetStatusesGroupBySetId(BeatmapStatusWeb[]? status = null, QueryOptions? options = null, CancellationToken ct = default)
     {
         var query = dbContext.CustomBeatmapStatuses
+            .Where(cs => status == null || status.Length == 0 || status.Contains(cs.Status))
             .GroupBy(x => x.BeatmapSetId)
             .Select(g => g.First())
             .ToQueryString();

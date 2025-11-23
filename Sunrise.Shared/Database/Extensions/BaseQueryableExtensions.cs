@@ -18,9 +18,6 @@ public static class QueryableExtensions
     {
         if (options == null) return query;
 
-        if (options.QueryModifier != null)
-            query = (IQueryable<TEntity>)options.QueryModifier(query);
-
         if (options.Pagination != null)
         {
             if (!IsOrdered(query))
@@ -28,6 +25,9 @@ public static class QueryableExtensions
 
             query = query.PaginationTake(options.Pagination);
         }
+
+        if (options.QueryModifier != null)
+            query = (IQueryable<TEntity>)options.QueryModifier(query);
 
         if (options.AsNoTracking) query = query.AsNoTracking();
 

@@ -14,7 +14,6 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -446,10 +445,8 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             if (limit > 12)
                 return Problem(ApiErrorResponse.Detail.InvalidQueryParameters, statusCode: StatusCodes.Status400BadRequest);
 
-            var (customStatusBeatmapSets, totalCount) = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatusesGroupBySetId(new QueryOptions(false, new Pagination(page, limit))
-                {
-                    QueryModifier = q => q.Cast<CustomBeatmapStatus>().Where(cs => status == null || status.Contains(cs.Status))
-                },
+            var (customStatusBeatmapSets, totalCount) = await database.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatusesGroupBySetId(status,
+                new QueryOptions(false, new Pagination(page, limit)),
                 ct);
 
             var beatmapSetsByBeatmapIdsResult = await beatmapService.GetBeatmapSets(session, customStatusBeatmapSets.Select(cs => cs.BeatmapSetId).ToList(), ct);
