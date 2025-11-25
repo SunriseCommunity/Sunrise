@@ -71,8 +71,69 @@ public class ApiSearchBeatmapsetsTests(IntegrationDatabaseFixture fixture) : Api
         var result = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetsResponse>();
 
         Assert.NotNull(result);
-        // Assert.NotEmpty(result.Sets);
-        // Assert.Equal(2, result.Sets.Count);
+        Assert.NotEmpty(result.Sets);
+        Assert.Equal(2, result.Sets.Count);
+        Assert.NotNull(result.TotalCount);
+        Assert.Equal(2, result.TotalCount.Value);
+    }
+
+    [Fact]
+    public async Task TestSearchBeatmapsetsWithCustomStatusOmitNotFoundBeatmaps()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
+        var randomUser = _mocker.User.GetRandomUser();
+        await Database.Users.AddUser(randomUser);
+
+        var beatmapSet1 = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet1.Id = 1;
+        var beatmap1 = beatmapSet1.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap1.Id = 100;
+        beatmap1.StatusString = BeatmapStatusWeb.Pending.BeatmapStatusWebToString();
+
+        var beatmapSet2 = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet2.Id = 2;
+        var beatmap2 = beatmapSet2.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap2.Id = 200;
+        beatmap2.StatusString = BeatmapStatusWeb.Pending.BeatmapStatusWebToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet1);
+
+        var addResult1 = await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        {
+            Status = BeatmapStatusWeb.Loved,
+            BeatmapHash = beatmap1.Checksum!,
+            BeatmapSetId = beatmapSet1.Id,
+            UpdatedByUserId = randomUser.Id
+        });
+
+        if (addResult1.IsFailure)
+            throw new Exception(addResult1.Error);
+
+        var addResult2 = await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
+        {
+            Status = BeatmapStatusWeb.Qualified,
+            BeatmapHash = beatmap2.Checksum!,
+            BeatmapSetId = beatmapSet2.Id,
+            UpdatedByUserId = randomUser.Id
+        });
+
+        if (addResult2.IsFailure)
+            throw new Exception(addResult2.Error);
+
+        // Act
+        var response = await client.GetAsync("beatmapset/search?searchByCustomStatus=true&limit=10");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetsResponse>();
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Sets);
+        Assert.Equal(1, result.Sets.Count);
         Assert.NotNull(result.TotalCount);
         Assert.Equal(2, result.TotalCount.Value);
     }

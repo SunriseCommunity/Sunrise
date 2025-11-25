@@ -449,7 +449,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
                 new QueryOptions(false, new Pagination(page, limit)),
                 ct);
 
-            var beatmapSetsByBeatmapIdsResult = await beatmapService.GetBeatmapSets(session, customStatusBeatmapSets.Select(cs => cs.BeatmapSetId).ToList(), ct);
+            var beatmapSetsByBeatmapIdsResult = await beatmapService.GetBeatmapSets(session, customStatusBeatmapSets.Select(cs => cs.BeatmapSetId).ToList(), ct, true);
             if (beatmapSetsByBeatmapIdsResult.IsFailure)
                 return ActionResultUtil.ActionErrorResult(beatmapSetsByBeatmapIdsResult.Error);
 
