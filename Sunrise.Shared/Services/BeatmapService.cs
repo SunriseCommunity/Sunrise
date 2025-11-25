@@ -96,7 +96,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         return beatmapSet;
     }
 
-    public async Task<Result<List<BeatmapSet>, ErrorMessage>> GetBeatmapSets(BaseSession session, List<int> beatmapSetIds, CancellationToken ct = default)
+    public async Task<Result<List<BeatmapSet>, ErrorMessage>> GetBeatmapSets(BaseSession session, List<int> beatmapSetIds, CancellationToken ct = default, bool ignoreNotFoundBeatmapSets = false)
     {
         var beatmapSetLookup = beatmapSetIds.ToLookup(id => id);
 
@@ -109,12 +109,12 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         var beatmapSetsResults = await Task.WhenAll(beatmapSetsTasks);
 
-        if (beatmapSetsResults.Any(b => b.IsFailure))
+        if (beatmapSetsResults.Any(b => b.IsFailure && (ignoreNotFoundBeatmapSets == false || b.Error.Status != HttpStatusCode.NotFound)))
         {
             return beatmapSetsResults.First(v => v.IsFailure).Error;
         }
 
-        var beatmapSets = beatmapSetsResults.Select(v => v.Value);
+        var beatmapSets = beatmapSetsResults.Where(v => v.IsSuccess).Select(v => v.Value);
 
         return beatmapSets.ToList();
     }
