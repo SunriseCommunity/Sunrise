@@ -31,8 +31,8 @@ public class Session : BaseSession
         Attributes = new UserAttributes(user, location, loginRequest);
     }
 
-    // Note: Not the best place, but I'm out of ideas.
     public int? LastBeatmapIdUsedWithCommand { get; set; }
+    public DateTime? LastRatelimitWarningMessageSentAt { get; set; }
 
     public MultiplayerMatch? Match { get; set; } = null;
 
@@ -72,8 +72,14 @@ public class Session : BaseSession
 
     public void SendRateLimitWarning()
     {
+        if (LastRatelimitWarningMessageSentAt != null &&
+            (DateTime.UtcNow - LastRatelimitWarningMessageSentAt.Value).TotalSeconds < 30)
+            return;
+
         var message =
             "Whoa there! You're sending requests a little too fast. Because of this, some data like the leaderboard might not update correctly or could appear broken. Please slow down a bit!";
+
+        LastRatelimitWarningMessageSentAt = DateTime.UtcNow;
 
         _helper.WritePacket(PacketType.ServerNotification, message);
     }
