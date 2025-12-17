@@ -124,6 +124,7 @@ Data/Backups/*
 backup_mysql*
 
 # Ignore test database files
+Data.Tests.*
 *.test
 
 # Temporary files

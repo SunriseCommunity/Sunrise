@@ -91,7 +91,7 @@ public class MockHttpClientService(RedisRepository redis) : HttpClientService(re
         return base.PostRequestWithBody<T>(session, type, body, headers);
     }
 
-    public override Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, CancellationToken ct = default)
+    public override Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
     {
         if (_mockResponses.TryGetValue(type, out var mockResponse))
         {
@@ -110,7 +110,7 @@ public class MockHttpClientService(RedisRepository redis) : HttpClientService(re
             }
         }
 
-        return base.SendRequest<T>(session, type, args, headers, ct);
+        return base.SendRequest<T>(session, type, args, headers, shouldSendRateLimitWarning, ct);
     }
 
     public void ClearMocks()

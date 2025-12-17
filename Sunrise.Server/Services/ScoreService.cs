@@ -30,17 +30,41 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
     {
-        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue);
+        var scoreSubmittedAt = DateTime.UtcNow;
+
+        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: 3, shouldSendRateLimitWarning: false);
 
         if (beatmapSetResult.IsFailure)
         {
             var isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
 
+            if (isBeatmapsetNotFound)
+            {
+                SubmitScoreHelper.ReportRejectionToMetrics(session,
+                    scoreSerialized,
+                    "Invalid request: BeatmapSet not found");
+
+                return "error: no";
+            }
+
+            session.SendNotification("One of your recent score seems to have troubles retrieving the beatmap data from. This score can be missing in your profile or leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
+
             SubmitScoreHelper.ReportRejectionToMetrics(session,
                 scoreSerialized,
-                isBeatmapsetNotFound ? "Invalid request: BeatmapSet not found" : "Beatmap set couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
+                "Initial beatmap retrieval failed, retrying...");
 
-            return "error: no";
+            beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue, shouldSendRateLimitWarning: false);
+
+            if (beatmapSetResult.IsFailure)
+            {
+                isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
+
+                SubmitScoreHelper.ReportRejectionToMetrics(session,
+                    scoreSerialized,
+                    isBeatmapsetNotFound ? "Invalid request: BeatmapSet not found" : "Beatmap set couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
+
+                return "error: no";
+            }
         }
 
         var beatmapSet = beatmapSetResult.Value;
@@ -53,7 +77,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap);
+        var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
         var dbScore = await database.Scores.GetScore(score.ScoreHash);
 
         if (dbScore != null)

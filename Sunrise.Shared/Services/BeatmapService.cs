@@ -21,7 +21,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
     private readonly SemaphoreSlim _dbSemaphore = new(1);
 
     public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, CancellationToken ct = default)
+        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
             return Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
@@ -32,7 +32,11 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         BeatmapSet? beatmapSet;
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
+        // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
+        using var timeoutCts = retryCount == int.MaxValue
+            ? new CancellationTokenSource()
+            : new CancellationTokenSource(TimeSpan.FromMinutes(10));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
         try
@@ -53,13 +57,13 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 retryCount--;
 
                 if (beatmapId != null)
-                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], ct: linkedCts.Token);
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByBeatmapId, [beatmapId], shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
 
                 if (beatmapHash != null && !IsValidResult(beatmapSetTask))
-                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], ct: linkedCts.Token);
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataByHash, [beatmapHash], shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
 
                 if (beatmapSetId != null && !IsValidResult(beatmapSetTask))
-                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], ct: linkedCts.Token);
+                    beatmapSetTask = await client.SendRequest<BeatmapSet>(session, ApiType.BeatmapSetDataById, [beatmapSetId], shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
 
                 if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
                 {
