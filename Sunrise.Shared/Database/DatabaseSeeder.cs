@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Seeders;
 
 namespace Sunrise.Shared.Database;

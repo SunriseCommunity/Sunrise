@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Server.Commands.ChatCommands.Development;
@@ -1010,7 +1010,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Performance points shouldn't change, because even while new score pp > best score in leaderboard, it's still < previous best by pp
         Assert.Equivalent(userStatsBefore.PerformancePoints, userStats.PerformancePoints);
     }
-    
+
     [Fact]
     public async Task TestUponSubmittingBetterScoreThanPreviousOneIgnoreFailedWithGreaterScore()
     {

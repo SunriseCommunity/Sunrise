@@ -77,7 +77,7 @@ public class RecalculateUserGradesCommand : IChatCommand
 
         var pageSize = 50;
 
-        for (var x = 1;; x++)
+        for (var x = 1; ; x++)
         {
             using var scope = ServicesProviderHolder.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -102,12 +102,12 @@ public class RecalculateUserGradesCommand : IChatCommand
         var userGrades = await database.Users.Grades.GetUserGrades(userId, mode);
         if (userGrades == null)
             throw new Exception($"User {userId} has no userGrades");
-        
+
         userGrades = ClearUserGrades(userGrades);
 
         var pageSize = 100;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var (pageScores, totalScores) = await database.Scores.GetUserScores(userId, mode, ScoreTableType.Best, new QueryOptions(new Pagination(i, pageSize)));
 

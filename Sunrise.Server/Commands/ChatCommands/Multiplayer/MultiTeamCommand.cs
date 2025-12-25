@@ -28,8 +28,8 @@ public class MultiTeamCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp team <username> <color>");
             return;
         }
-        
-        var teamColor = args[^1]; 
+
+        var teamColor = args[^1];
         var username = string.Join(" ", args[..^1]);
 
         if (teamColor != "red" && teamColor != "blue")
@@ -43,10 +43,10 @@ public class MultiTeamCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "This command can only be used in team vs or tag team vs mode.");
             return;
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-                
+
         var targetUser = await database.Users.GetUser(username: username);
         if (targetUser == null)
             return;

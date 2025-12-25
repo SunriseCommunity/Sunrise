@@ -33,9 +33,9 @@ public class UpdateScoresBeatmapsStatusCommand : IChatCommand
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
                 var (allScores, _) = await database.Scores.GetScores(options: new QueryOptions
-                    {
-                        IgnoreCountQueryIfExists = true
-                    },
+                {
+                    IgnoreCountQueryIfExists = true
+                },
                     ct: ct);
                 var groupedScores = allScores.GroupBy(x => x.BeatmapId);
 

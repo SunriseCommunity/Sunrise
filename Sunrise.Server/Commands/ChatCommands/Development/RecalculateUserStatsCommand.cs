@@ -77,7 +77,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
         var pageSize = 50;
 
-        for (var x = 1;; x++)
+        for (var x = 1; ; x++)
         {
             using var scope = ServicesProviderHolder.CreateScope();
             var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -107,7 +107,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
         var pageSize = 100;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var (pageScores, totalScores) = await database.Scores.GetUserScores(stats.UserId, stats.GameMode, ScoreTableType.Recent, new QueryOptions(new Pagination(i, pageSize)));
 

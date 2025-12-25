@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Beatmap;
@@ -17,7 +17,7 @@ namespace Sunrise.Server.Tests.API.BeatmapController;
 public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-    
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -179,7 +179,7 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         Assert.NotNull(userHypes);
         Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly);
     }
-    
+
     [Fact]
     public async Task TestAddBeatmapSetHypeUnauthorized()
     {

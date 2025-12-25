@@ -35,7 +35,7 @@ public class RecurringJobs
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
-            for (var x = 1;; x++)
+            for (var x = 1; ; x++)
             {
                 var usersStats = await database.Users.Stats.GetUsersStats(i, LeaderboardSortType.Pp, options: new QueryOptions(true, new Pagination(x, pageSize)), ct: ct);
 
@@ -78,7 +78,7 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)), ct: ct);
 
@@ -100,12 +100,12 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetUsers(options: new QueryOptions(new Pagination(i, pageSize))
-                {
-                    QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
-                },
+            {
+                QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
+            },
                 ct: ct);
 
             foreach (var user in users.Where(user =>

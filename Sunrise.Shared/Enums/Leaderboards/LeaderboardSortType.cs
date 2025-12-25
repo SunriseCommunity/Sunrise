@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums.Leaderboards;
+namespace Sunrise.Shared.Enums.Leaderboards;
 
 public enum LeaderboardSortType
 {

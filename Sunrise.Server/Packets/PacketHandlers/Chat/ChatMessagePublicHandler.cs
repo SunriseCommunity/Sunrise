@@ -23,7 +23,7 @@ public class ChatMessagePublicHandler : IPacketHandler
         var user = await database.Users.GetUser(id: session.UserId);
         if (user == null)
             return;
-        
+
         var message = new BanchoChatMessage(packet.Data)
         {
             Sender = user.Username,

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums;
+namespace Sunrise.Shared.Enums;
 
 public enum ApiServer
 {

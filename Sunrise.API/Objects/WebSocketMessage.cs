@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Sunrise.API.Enums;
 using Sunrise.Shared.Application;
 
@@ -12,9 +12,9 @@ public class WebSocketMessage(WebSocketEventType type, object message)
     public WebSocketEventType MessageType { get; } = type;
 
     public string Data => JsonSerializer.Serialize(new
-        {
-            type = MessageType,
-            data = _message
-        },
+    {
+        type = MessageType,
+        data = _message
+    },
         JsonSerializerOptions);
 }

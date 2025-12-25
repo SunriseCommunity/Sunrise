@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;

@@ -1,4 +1,4 @@
-﻿using System.Security.Authentication;
+using System.Security.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Sunrise.API.Extensions;

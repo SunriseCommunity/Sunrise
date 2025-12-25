@@ -107,7 +107,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
     [ProducesResponseType(typeof(ScoresResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBeatmapLeaderboard(
         [Range(1, int.MaxValue)] int id,
-        [Required] [FromQuery(Name = "mode")] GameMode mode,
+        [Required][FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "mods")] IEnumerable<Mods>? mods = null,
         [Range(1, 100)] [FromQuery(Name = "limit")]
         int limit = 50,

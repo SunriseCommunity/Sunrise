@@ -10,7 +10,7 @@ public static class GameModeExtensions
     {
         return (osu.Shared.GameMode)((int)mode % 4);
     }
-    
+
     public static bool IsVanillaGameMode(this GameMode mode)
     {
         return mode is GameMode.Taiko or GameMode.Mania or GameMode.Standard or GameMode.CatchTheBeat;

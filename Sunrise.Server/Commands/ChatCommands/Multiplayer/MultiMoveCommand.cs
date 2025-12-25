@@ -42,10 +42,10 @@ public class MultiMoveCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Slot must be between 1 and 16.");
             return;
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var userToMove = await database.Users.GetUser(username: username);
         if (userToMove == null)
         {

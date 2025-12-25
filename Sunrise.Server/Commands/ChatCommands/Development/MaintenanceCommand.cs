@@ -22,37 +22,37 @@ public class MaintenanceCommand : IChatCommand
         switch (args[0])
         {
             case "on":
-            {
-                if (Configuration.OnMaintenance)
                 {
-                    ChatCommandRepository.SendMessage(session, "Maintenance mode is already enabled.");
-                    return Task.CompletedTask;
+                    if (Configuration.OnMaintenance)
+                    {
+                        ChatCommandRepository.SendMessage(session, "Maintenance mode is already enabled.");
+                        return Task.CompletedTask;
+                    }
+
+                    Configuration.OnMaintenance = true;
+                    ChatCommandRepository.SendMessage(session, "Maintenance mode enabled.");
+
+                    var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
+
+                    foreach (var userSession in sessions.GetSessions())
+                    {
+                        userSession.SendBanchoMaintenance();
+                    }
+
+                    break;
                 }
-
-                Configuration.OnMaintenance = true;
-                ChatCommandRepository.SendMessage(session, "Maintenance mode enabled.");
-
-                var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
-
-                foreach (var userSession in sessions.GetSessions())
-                {
-                    userSession.SendBanchoMaintenance();
-                }
-
-                break;
-            }
             case "off":
-            {
-                if (!Configuration.OnMaintenance)
                 {
-                    ChatCommandRepository.SendMessage(session, "Maintenance mode is already disabled.");
-                    return Task.CompletedTask;
-                }
+                    if (!Configuration.OnMaintenance)
+                    {
+                        ChatCommandRepository.SendMessage(session, "Maintenance mode is already disabled.");
+                        return Task.CompletedTask;
+                    }
 
-                Configuration.OnMaintenance = false;
-                ChatCommandRepository.SendMessage(session, "Maintenance mode disabled.");
-                break;
-            }
+                    Configuration.OnMaintenance = false;
+                    ChatCommandRepository.SendMessage(session, "Maintenance mode disabled.");
+                    break;
+                }
             default:
                 ChatCommandRepository.SendMessage(session, $"Usage: {Configuration.BotPrefix}maintenance <on/off>");
                 break;

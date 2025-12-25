@@ -6,7 +6,7 @@ namespace Sunrise.Shared.Objects.Keys;
 
 public static class RedisKey
 {
-// @formatter:off
+    // @formatter:off
 
     // Primitives
     public static string ApiServerRateLimited(ApiServer server) { return $"api:{(int)server}:ratelimited"; }
@@ -14,7 +14,7 @@ public static class RedisKey
     // Objects
     public static string BeatmapSetBySetId(int id) { return $"beatmapset:set_id:{id}"; }
     public static string LocationFromIp(string ipAddress) { return $"location:{ipAddress}"; }
-    
+
     // Pointers
     public static string BeatmapSetIdByHash(string hash) { return $"beatmapset_id:beatmap_hash:{hash}"; }
     public static string BeatmapSetIdByBeatmapId(int id) { return $"beatmapset_id:beatmap_id:{id}"; }

@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Enums.Users;
 
 namespace Sunrise.Shared.Extensions.Users;
 

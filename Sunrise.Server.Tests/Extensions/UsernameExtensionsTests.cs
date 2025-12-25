@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions;
 using Sunrise.Tests.Services.Mock;
 
 namespace Sunrise.Server.Tests.Extensions;

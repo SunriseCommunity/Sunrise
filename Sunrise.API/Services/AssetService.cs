@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Utils.Tools;
@@ -12,7 +12,7 @@ public class AssetService(DatabaseService database)
         var (isValid, err) = ImageTools.IsHasValidImageAttributes(fileStream);
         if (!isValid || err != null)
             return (false, err);
-        
+
         var addOrUpdateBannerResult = await database.Users.Files.AddOrUpdateBanner(userId, fileStream);
 
         if (addOrUpdateBannerResult.IsFailure)

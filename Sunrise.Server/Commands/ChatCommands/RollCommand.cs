@@ -19,10 +19,10 @@ public class RollCommand : IChatCommand
         if (args?.Length > 0)
             if (TryParse(args[0], out var parsedValue) && parsedValue > 0)
                 maxNumber = parsedValue;
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-                
+
         var user = await database.Users.GetUser(session.UserId);
         if (user == null)
             return;

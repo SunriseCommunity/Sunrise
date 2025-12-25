@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Shared.Extensions.Scores;

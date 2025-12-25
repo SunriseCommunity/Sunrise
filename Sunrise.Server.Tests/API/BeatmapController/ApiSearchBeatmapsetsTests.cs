@@ -133,7 +133,7 @@ public class ApiSearchBeatmapsetsTests(IntegrationDatabaseFixture fixture) : Api
 
         Assert.NotNull(result);
         Assert.NotEmpty(result.Sets);
-        Assert.Equal(1, result.Sets.Count);
+        Assert.Single(result.Sets);
         Assert.NotNull(result.TotalCount);
         Assert.Equal(2, result.TotalCount.Value);
     }

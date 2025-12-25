@@ -16,14 +16,14 @@ public class ChatRateLimiter(int messagesLimit, TimeSpan timeWindow, bool action
     public new bool CanSend(BaseSession session)
     {
         var canSend = base.CanSend(session);
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var user = database.Users
             .GetUser(id: session.UserId, options: new QueryOptions(true))
             .ConfigureAwait(false).GetAwaiter().GetResult();
-        
+
         if (user == null)
             return false;
 
@@ -44,10 +44,10 @@ public class ChatRateLimiter(int messagesLimit, TimeSpan timeWindow, bool action
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         var user = await database.Users.GetUser(id: session.UserId);
-        
+
         if (user == null)
             return;
-        
+
         var silenceTime = TimeSpan.FromMinutes(5);
         user.SilencedUntil = DateTime.UtcNow + silenceTime;
 

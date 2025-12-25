@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;

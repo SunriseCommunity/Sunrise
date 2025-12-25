@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Enums;
+using Sunrise.Shared.Enums;
 
 namespace Sunrise.Shared.Objects;
 

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Tests.Services;
+namespace Sunrise.Tests.Services;
 
 public class FileSizeFilter
 {

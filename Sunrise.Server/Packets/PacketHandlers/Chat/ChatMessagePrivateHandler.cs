@@ -63,7 +63,7 @@ public class ChatMessagePrivateHandler : IPacketHandler
                 });
             return;
         }
-        
+
         if (receiver is { Attributes.IgnoreNonFriendPm: false })
         {
             receiver.WritePacket(PacketType.ServerChatMessage, message);

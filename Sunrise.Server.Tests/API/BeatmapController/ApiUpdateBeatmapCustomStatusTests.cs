@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Sunrise.API.Serializable.Request;
@@ -147,7 +147,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var (beatmapSetsEvents, _) = await Database.Events.Beatmaps.GetBeatmapSetEvents();
         Assert.Equal(2, beatmapSetsEvents.Count);
     }
-    
+
     [Fact]
     public async Task TestUpdateBeatmapCustomStatusToDefault()
     {
@@ -166,7 +166,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First();
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         var addCustomBeatmapStatusResult = await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
             Status = BeatmapStatusWeb.Qualified,
@@ -188,14 +188,14 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
+
         var beatmapCustomStatus = await Database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum ?? throw new InvalidOperationException());
         Assert.Null(beatmapCustomStatus);
 
         var (beatmapSetsEvents, _) = await Database.Events.Beatmaps.GetBeatmapSetEvents();
         Assert.Equal(2, beatmapSetsEvents.Count);
     }
-    
+
     [Fact]
     public async Task TestUpdateBeatmapCustomStatusUnauthorized()
     {

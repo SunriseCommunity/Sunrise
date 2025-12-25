@@ -22,7 +22,7 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
     protected SunriseServerFactory App => fixture.App;
 
     protected IServiceScope Scope => App.Server.Services.CreateScope();
-    
+
     protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
     protected SessionRepository Sessions => Scope.ServiceProvider.GetRequiredService<SessionRepository>();
 
@@ -30,7 +30,7 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
     {
         await fixture.ResetAsync();
     }
-    
+
     public Task DisposeAsync()
     {
         return Task.CompletedTask;

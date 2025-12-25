@@ -15,10 +15,10 @@ public abstract class ApiTest(IntegrationDatabaseFixture fixture) : DatabaseTest
 
         user ??= await CreateTestUser();
         var tokenResult = await authService.GenerateTokens(user.Id);
-        
+
         if (!tokenResult.IsSuccess)
             throw new Exception(tokenResult.Error);
-        
+
         var token = tokenResult.Value;
 
         return new TokenResponse(token.Item1, token.Item2, token.Item3);

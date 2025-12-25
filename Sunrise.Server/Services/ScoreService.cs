@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;

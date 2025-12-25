@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Performances;
@@ -38,7 +38,7 @@ public class PerformanceAttributesExtensionsTests
 
         // Act
         var newPp = performance.ApplyNotStandardModRecalculationsIfNeeded(_mocker.Score.GetRandomAccuracy(), mods);
-        
+
         // Assert
         if (isSupportsCustomRecalculation)
         {
@@ -49,7 +49,7 @@ public class PerformanceAttributesExtensionsTests
             Assert.Equal(newPp.PerformancePoints, oldPpValue);
         }
     }
-    
+
     [Theory]
     [MemberData(nameof(GetGameModes))]
     public void IsShouldNotRecalculateScoresWhichDoesntSupportRecalculation(GameMode gameMode)
@@ -68,7 +68,7 @@ public class PerformanceAttributesExtensionsTests
 
         // Act
         var newPp = performance.ApplyNotStandardModRecalculationsIfNeeded(score);
-        
+
         // Assert
         if (isSupportsCustomRecalculation)
         {

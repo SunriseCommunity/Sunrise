@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
@@ -103,7 +103,7 @@ public class ApiUserMostPlayedMapsTests(IntegrationDatabaseFixture fixture) : Ap
 
         Assert.Equal(2, responseData.TotalCount);
     }
-    
+
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

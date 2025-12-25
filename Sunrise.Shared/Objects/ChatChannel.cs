@@ -25,7 +25,7 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
             ServicesProviderHolder.GetRequiredService<ChatChannelRepository>().RemoveAbstractChannel(Name);
     }
 
-    public void SendToChannel(string message,  User? senderUser = null)
+    public void SendToChannel(string message, User? senderUser = null)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 

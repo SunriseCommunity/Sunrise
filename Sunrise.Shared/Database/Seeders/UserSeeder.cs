@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -80,7 +80,7 @@ public static class UserSeeder
 
         var pageSize = 50;
 
-        for (var x = 0;; x++)
+        for (var x = 0; ; x++)
         {
             var users = context.Set<User>()
                 .OrderByDescending(u => u.Username)

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;

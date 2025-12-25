@@ -1,4 +1,4 @@
-﻿using HOPEless.Bancho;
+using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using osu.Shared;
 using Sunrise.Tests.Abstracts;
@@ -39,7 +39,7 @@ public class PacketUserPresenceRequestTests(IntegrationDatabaseFixture fixture) 
 
         // Act
         var response = await client.PostAsync("/", new ByteArrayContent(requestBody));
-        
+
         // Assert
         response.EnsureSuccessStatusCode();
 

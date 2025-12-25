@@ -1,37 +1,36 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Sunrise.Shared.Database.Migrations
+namespace Sunrise.Shared.Database.Migrations;
+
+/// <inheritdoc />
+public partial class MakeUserStatsIndexUnique : Migration
 {
     /// <inheritdoc />
-    public partial class MakeUserStatsIndexUnique : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_user_stats_UserId_GameMode",
-                table: "user_stats");
+        migrationBuilder.DropIndex(
+            name: "IX_user_stats_UserId_GameMode",
+            table: "user_stats");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_user_stats_UserId_GameMode",
-                table: "user_stats",
-                columns: new[] { "UserId", "GameMode" },
-                unique: true);
-        }
+        migrationBuilder.CreateIndex(
+            name: "IX_user_stats_UserId_GameMode",
+            table: "user_stats",
+            columns: new[] { "UserId", "GameMode" },
+            unique: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_user_stats_UserId_GameMode",
-                table: "user_stats");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropIndex(
+            name: "IX_user_stats_UserId_GameMode",
+            table: "user_stats");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_user_stats_UserId_GameMode",
-                table: "user_stats",
-                columns: new[] { "UserId", "GameMode" });
-        }
+        migrationBuilder.CreateIndex(
+            name: "IX_user_stats_UserId_GameMode",
+            table: "user_stats",
+            columns: new[] { "UserId", "GameMode" });
     }
 }

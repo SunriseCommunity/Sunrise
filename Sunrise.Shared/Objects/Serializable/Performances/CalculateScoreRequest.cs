@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -149,7 +149,7 @@ public static class MedalSeeder
         new() { Id = 18, Name = "Aberration", Description = "They said it couldn't be done. They were wrong.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-skill-fc-8", Condition = FormatDifficultyRatingFullComboCondition(8) },
         new() { Id = 19, Name = "Chosen", Description = "Reign among the Prometheans, where you belong.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-skill-fc-9", Condition = FormatDifficultyRatingFullComboCondition(9) },
         new() { Id = 20, Name = "Unfathomable", Description = "You have no equal.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-skill-fc-10", Condition = FormatDifficultyRatingFullComboCondition(10) },
-        
+
         new() { Id = 21, Name = "500 Combo", Description = "500 big ones! You're moving up in the world!", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-combo-500", Condition = FormatMaxComboCondition(500) },
         new() { Id = 22, Name = "750 Combo", Description = "750 notes back to back? Woah.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-combo-750", Condition = FormatMaxComboCondition(750) },
         new() { Id = 23, Name = "1,000 Combo", Description = "A thousand reasons why you rock at this game.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-combo-1000", Condition = FormatMaxComboCondition(1000) },
@@ -159,7 +159,7 @@ public static class MedalSeeder
         new() { Id = 26, Name = "15,000 Plays", Description = "Must.. click.. circles..", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-plays-15000", Condition = FormatPlayCountCondition(15000) },
         new() { Id = 27, Name = "25,000 Plays", Description = "There's no going back.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-plays-25000", Condition = FormatPlayCountCondition(25000) },
         new() { Id = 28, Name = "50,000 Plays", Description = "You're here forever.", GameMode = GameMode.Standard, Category = MedalCategory.Skill, FileUrl = "osu-plays-50000", Condition = FormatPlayCountCondition(50000) },
-        
+
         new() { Id = 29, Name = "My First Don", Description = "Marching to the beat of your own drum. Literally.", GameMode = GameMode.Taiko,  Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-1", Condition = FormatDifficultyRatingPassCondition(1) },
         new() { Id = 30, Name = "Katsu Katsu Katsu", Description = "Hora! Ikuzo!", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-2", Condition = FormatDifficultyRatingPassCondition(2) },
         new() { Id = 31, Name = "Not Even Trying", Description = "Muzukashii? Not even.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-3", Condition = FormatDifficultyRatingPassCondition(3) },
@@ -168,7 +168,7 @@ public static class MedalSeeder
         new() { Id = 34, Name = "Drumbreaker", Description = "Too strong.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-6", Condition = FormatDifficultyRatingPassCondition(6) },
         new() { Id = 35, Name = "The Godfather", Description = "You are the Don of Dons.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-7", Condition = FormatDifficultyRatingPassCondition(7) },
         new() { Id = 36, Name = "Rhythm Incarnate", Description = "Feel the beat. Become the beat.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-pass-8", Condition = FormatDifficultyRatingPassCondition(8) },
-        
+
         new() { Id = 37, Name = "Keeping Time", Description = "Don, then katsu. Don, then katsu..", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-1", Condition = FormatDifficultyRatingFullComboCondition(1) },
         new() { Id = 38, Name = "To Your Own Beat", Description = "Straight and steady.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-2", Condition = FormatDifficultyRatingFullComboCondition(2) },
         new() { Id = 39, Name = "Big Drums", Description = "Bigger scores to match.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-3", Condition = FormatDifficultyRatingFullComboCondition(3) },
@@ -177,12 +177,12 @@ public static class MedalSeeder
         new() { Id = 42, Name = "'Rhythm's Call", Description = "Heralding true skill.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-6", Condition = FormatDifficultyRatingFullComboCondition(6) },
         new() { Id = 43, Name = "Time Everlasting", Description = "Not a single beat escapes you.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-7", Condition = FormatDifficultyRatingFullComboCondition(7) },
         new() { Id = 44, Name = "The Drummer's Throne", Description = "Percussive brilliance befitting royalty alone.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-skill-fc-8", Condition = FormatDifficultyRatingFullComboCondition(8) },
-        
+
         new() { Id = 45, Name = "30,000 Drum Hits", Description = "Did that drum have a face?", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-hits-30000", Condition = FormatTotalHitsCondition(30000) },
         new() { Id = 46, Name = "300,000 Drum Hits", Description = "The rhythm never stops.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-hits-300000", Condition = FormatTotalHitsCondition(300000) },
         new() { Id = 47, Name = "3,000,000 Drum Hits", Description = "Truly, the Don of dons.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-hits-3000000", Condition = FormatTotalHitsCondition(3000000) },
         new() { Id = 48, Name = "30,000,000 Drum Hits", Description = "Your rhythm, eternal.", GameMode = GameMode.Taiko, Category = MedalCategory.Skill, FileUrl = "taiko-hits-30000000", Condition = FormatTotalHitsCondition(30000000) },
-        
+
         new() { Id = 49, Name = "A Slice Of Life", Description = "Hey, this fruit catching business isn't bad.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-1", Condition = FormatDifficultyRatingPassCondition(1) },
         new() { Id = 50, Name = "Dashing Ever Forward", Description = "Fast is how you do it.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-2", Condition = FormatDifficultyRatingPassCondition(2) },
         new() { Id = 51, Name = "Zesty Disposition", Description = "No scurvy for you, not with that much fruit.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-3", Condition = FormatDifficultyRatingPassCondition(3) },
@@ -191,7 +191,7 @@ public static class MedalSeeder
         new() { Id = 54, Name = "Fruit Ninja", Description = "Legendary techniques.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-6", Condition = FormatDifficultyRatingPassCondition(6) },
         new() { Id = 55, Name = "Dreamcatcher", Description = "No fruit, only dreams now.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-7", Condition = FormatDifficultyRatingPassCondition(7) },
         new() { Id = 56, Name = "Lord of the Catch", Description = "Your kingdom kneels before you.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-pass-8", Condition = FormatDifficultyRatingPassCondition(8) },
-        
+
         new() { Id = 57, Name = "Sweet And Sour", Description = "Apples and oranges, literally.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-1", Condition = FormatDifficultyRatingFullComboCondition(1) },
         new() { Id = 58, Name = "Reaching The Core", Description = "The seeds of future success.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-2", Condition = FormatDifficultyRatingFullComboCondition(2) },
         new() { Id = 59, Name = "Clean Platter", Description = "Clean only of failure. It is completely full, otherwise.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-3", Condition = FormatDifficultyRatingFullComboCondition(3) },
@@ -200,12 +200,12 @@ public static class MedalSeeder
         new() { Id = 62, Name = "Quickening", Description = "A dash above normal limits.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-6", Condition = FormatDifficultyRatingFullComboCondition(6) },
         new() { Id = 63, Name = "Supersonic", Description = "Faster than is reasonably necessary.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-7", Condition = FormatDifficultyRatingFullComboCondition(7) },
         new() { Id = 64, Name = "Dashing Scarlet", Description = "Speed beyond mortal reckoning.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-skill-fc-8", Condition = FormatDifficultyRatingFullComboCondition(8) },
-        
+
         new() { Id = 65, Name = "Catch 20,000 fruits", Description = "That is a lot of dietary fiber.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-hits-20000", Condition = FormatTotalHitsCondition(20000) },
         new() { Id = 66, Name = "Catch 200,000 fruits", Description = "So, I heard you like fruit...", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-hits-200000", Condition = FormatTotalHitsCondition(200000) },
         new() { Id = 67, Name = "Catch 2,000,000 fruits", Description = "Downright healthy.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-hits-2000000", Condition = FormatTotalHitsCondition(2000000) },
         new() { Id = 68, Name = "Catch 20,000,000 fruits", Description = "Nothing left behind.", GameMode = GameMode.CatchTheBeat, Category = MedalCategory.Skill, FileUrl = "fruits-hits-20000000", Condition = FormatTotalHitsCondition(20000000) },
-        
+
         new() { Id = 69, Name = "First Steps", Description = "It isn't 9-to-4, but 1-to-9. Keys, that is.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-1", Condition = FormatDifficultyRatingPassCondition(1) },
         new() { Id = 70, Name = "No Normal Player", Description = "Not anymore, at least.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-2", Condition = FormatDifficultyRatingPassCondition(2) },
         new() { Id = 71, Name = "Impulse Drive", Description = "Not quite hyperspeed, but getting close.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-3", Condition = FormatDifficultyRatingPassCondition(3) },
@@ -214,7 +214,7 @@ public static class MedalSeeder
         new() { Id = 74, Name = "Another Surpassed", Description = "Is there no limit to your skills?", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-6", Condition = FormatDifficultyRatingPassCondition(6) },
         new() { Id = 75, Name = "Extra Credit", Description = "See me after class.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-7", Condition = FormatDifficultyRatingPassCondition(7) },
         new() { Id = 76, Name = "Maniac", Description = "There's just no stopping you.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-pass-8", Condition = FormatDifficultyRatingPassCondition(8) },
-        
+
         new() { Id = 77, Name = "Keystruck", Description = "The beginning of a new story.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-1", Condition = FormatDifficultyRatingFullComboCondition(1) },
         new() { Id = 78, Name = "Keying In", Description = "Finding your groove.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-2", Condition = FormatDifficultyRatingFullComboCondition(2) },
         new() { Id = 79, Name = "Hyperflow", Description = "You can *feel* the rhythm.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-3", Condition = FormatDifficultyRatingFullComboCondition(3) },
@@ -223,7 +223,7 @@ public static class MedalSeeder
         new() { Id = 82, Name = "Level Breaker", Description = "Finesse beyond reason.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-6", Condition = FormatDifficultyRatingFullComboCondition(6) },
         new() { Id = 83, Name = "Step Up", Description = "A precipice rarely seen.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-7", Condition = FormatDifficultyRatingFullComboCondition(7) },
         new() { Id = 84, Name = "Behind The Veil", Description = "Supernatural!", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-skill-fc-8", Condition = FormatDifficultyRatingFullComboCondition(8) },
-        
+
         new() { Id = 85, Name = "40,000 Keys", Description = "Just the start of the rainbow.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-hits-40000", Condition = FormatTotalHitsCondition(40000) },
         new() { Id = 86, Name = "400,000 Keys", Description = "Four hundred thousand and still not even close.", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-hits-400000", Condition = FormatTotalHitsCondition(400000) },
         new() { Id = 87, Name = "4,000,000 Keys", Description = "Is this the end of the rainbow?", GameMode = GameMode.Mania, Category = MedalCategory.Skill, FileUrl = "mania-hits-4000000", Condition = FormatTotalHitsCondition(4000000) },
@@ -244,14 +244,14 @@ public static class MedalSeeder
          new() { Id = 98, Name = "Slowboat", Description = "You got there. Eventually.", Category = MedalCategory.ModIntroduction, FileUrl = "all-intro-halftime", Condition = FormatModIntroductionCondition(Mods.HalfTime) },
          new() { Id = 99, Name = "Burned Out", Description = "One cannot always spin to win.", Category = MedalCategory.ModIntroduction, FileUrl = "all-intro-spunout", Condition = FormatModIntroductionCondition(Mods.SpunOut) }
     ];
-    
-     private static readonly Dictionary<Medal,string?> CustomMedals = new()
+
+    private static readonly Dictionary<Medal, string?> CustomMedals = new()
      {
-            {    
+            {
                 new Medal { Id = 100, Name = "Man this DJ is fire", Description = "Just don't listen to the original. It's not as good.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(1357624) },
                 "Files/Medals/all-secret-thisdjisfire.png"
             },
-             {    
+             {
                 new Medal { Id = 101, Name = "Heat abnormal", Description = "Is it just me, or does my head get dizzy from all the heat?", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2058976) },
                 "Files/Medals/all-secret-heat-abnormal.png"
             }

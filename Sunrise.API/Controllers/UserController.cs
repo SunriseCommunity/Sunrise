@@ -228,8 +228,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(StatsSnapshotsResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUserGraphData([Range(1, int.MaxValue)] int userId, [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+    public async Task<IActionResult> GetUserGraphData([Range(1, int.MaxValue)] int userId, [Required][FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
+
         var user = await database.Users.GetUser(userId,
             options: new QueryOptions(true)
             {
@@ -290,9 +291,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         [Range(1, int.MaxValue)] int id,
         [FromQuery(Name = "mode")] GameMode mode = GameMode.Standard,
         [FromQuery(Name = "type")] ScoreTableType scoresType = ScoreTableType.Best,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 15,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default)
     {
@@ -329,9 +330,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(MostPlayedResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMostPlayedMaps([Range(1, int.MaxValue)] int id,
         [FromQuery(Name = "mode")] GameMode mode,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 15,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default)
     {
@@ -372,9 +373,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(BeatmapSetsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFavourites([Range(1, int.MaxValue)] int id,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default)
     {
@@ -448,9 +449,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery(Name = "mode")] GameMode mode,
         [FromQuery(Name = "type")] LeaderboardSortType leaderboardType,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default)
     {
@@ -484,10 +485,10 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Search user by query")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchUsers(
-        [Required] [FromQuery(Name = "query")] string query,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Required][FromQuery(Name = "query")] string query,
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -509,9 +510,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(UsersSensitiveListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> SearchUserSensitivesList(
         [FromQuery(Name = "query")] string? query,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -528,9 +529,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFriends(
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -557,9 +558,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(FriendsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFriends(
         [Range(1, int.MaxValue)] int id,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -587,9 +588,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFollowers(
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -616,9 +617,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(FollowersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserFollowers(
         [Range(1, int.MaxValue)] int id,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         CancellationToken ct = default
     )
@@ -675,9 +676,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(EventUsersResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserEvents(
         [Range(1, int.MaxValue)] int id,
-        [Range(1, 100)] [FromQuery(Name = "limit")]
+        [Range(1, 100)][FromQuery(Name = "limit")]
         int limit = 50,
-        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        [Range(1, int.MaxValue)][FromQuery(Name = "page")]
         int page = 1,
         [FromQuery(Name = "query")] string? query = null,
         [FromQuery(Name = "types")] List<UserEventType>? userEventType = null,
@@ -739,7 +740,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [EndpointDescription("Get user medals")]
     [ProducesResponseType(typeof(MedalsResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserMedals([Range(1, int.MaxValue)] int id,
-        [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+        [Required][FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
         var userMedals = await database.Users.Medals.GetUserMedals(id, mode, ct: ct);
         var modeMedals = await database.Medals.GetMedals(mode, ct: ct);
@@ -753,7 +754,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     [ProducesResponseType(typeof(GradesResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUserGrades([Range(1, int.MaxValue)] int id,
-        [Required] [FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
+        [Required][FromQuery(Name = "mode")] GameMode mode, CancellationToken ct = default)
     {
         var userGrades = await database.Users.Grades.GetUserGrades(id, mode, ct);
 

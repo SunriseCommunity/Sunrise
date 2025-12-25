@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Objects.Sessions;

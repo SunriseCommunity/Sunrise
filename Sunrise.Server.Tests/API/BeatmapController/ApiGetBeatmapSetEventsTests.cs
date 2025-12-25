@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
@@ -63,7 +63,7 @@ public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : A
         Assert.Equal(2, events.Count(e => e.BeatmapEventType == BeatmapEventType.BeatmapStatusChanged));
         Assert.Equal(3, events.Count(e => e.BeatmapEventType == BeatmapEventType.BeatmapSetHyped));
     }
-    
+
     [Fact]
     public async Task TestGetBeatmapSetEventsTestPageAndLimit()
     {
@@ -81,7 +81,7 @@ public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : A
         beatmapSet.Id = 1;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         for (var i = 0; i < 3; i++)
         {
             await Database.Events.Beatmaps.AddBeatmapSetHypeEvent(user.Id, beatmapSet.Id);
@@ -103,7 +103,7 @@ public class ApiGetBeatmapSetEventsTests(IntegrationDatabaseFixture fixture) : A
 
         Assert.Equal(2, events.First().EventId);
     }
-    
+
     [Fact]
     public async Task TestGetBeatmapSetEventsUnauthorized()
     {

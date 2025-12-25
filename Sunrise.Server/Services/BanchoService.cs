@@ -1,4 +1,4 @@
-﻿using HOPEless.Bancho;
+using HOPEless.Bancho;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects.Keys;

@@ -51,7 +51,7 @@ public class UserAttributes
         var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
         if (user == null)
             throw new ApplicationException($"User with id {UserId} not found");
-        
+
         var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
         var userRank = IsBot ? 0 : globalRank;
 
@@ -74,7 +74,7 @@ public class UserAttributes
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
         if (user == null)
             throw new ApplicationException($"User with id {UserId} not found");

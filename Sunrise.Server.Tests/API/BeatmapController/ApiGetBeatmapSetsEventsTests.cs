@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
@@ -33,7 +33,7 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetFirst);
         await Database.Events.Beatmaps.AddBeatmapSetHypeEvent(user.Id, beatmapSetFirst.Id);
-        
+
         var beatmapSetSecond = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSetSecond.Id = 2;
 
@@ -53,10 +53,10 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
 
         Assert.NotEmpty(events);
         Assert.Equal(2, content.TotalCount);
-        
+
         Assert.Equal(2, events.Count(e => e.BeatmapEventType == BeatmapEventType.BeatmapSetHyped));
     }
-    
+
     [Fact]
     public async Task TestGetBeatmapSetsEventsTestPageAndLimit()
     {
@@ -74,12 +74,12 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
         beatmapSetFirst.Id = 1;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetFirst);
-        
+
         for (var i = 0; i < 2; i++)
         {
             await Database.Events.Beatmaps.AddBeatmapSetHypeEvent(user.Id, beatmapSetFirst.Id);
         }
-        
+
         var beatmapSetSecond = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSetSecond.Id = 2;
 
@@ -102,7 +102,7 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
 
         Assert.Equal(2, events.First().EventId);
     }
-    
+
     [Fact]
     public async Task TestGetBeatmapSetsEventsUnauthorized()
     {

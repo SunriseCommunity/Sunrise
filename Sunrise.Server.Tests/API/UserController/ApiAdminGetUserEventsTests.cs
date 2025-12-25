@@ -255,7 +255,7 @@ public class ApiAdminGetUserEventsTests(IntegrationDatabaseFixture fixture) : Ap
 
         Assert.NotEmpty(events);
         Assert.Equal(1, content.TotalCount);
-        Assert.Equal(1, events.Count);
+        Assert.Single(events);
         Assert.Equal(eventId, events.First().Id);
     }
 

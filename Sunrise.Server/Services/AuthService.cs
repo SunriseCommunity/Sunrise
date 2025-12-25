@@ -1,4 +1,4 @@
-﻿using HOPEless.Bancho;
+using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Server.Utils;

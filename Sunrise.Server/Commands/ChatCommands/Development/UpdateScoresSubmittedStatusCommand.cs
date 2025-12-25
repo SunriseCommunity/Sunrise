@@ -38,8 +38,8 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
 
                 var pageSize = 10;
                 var scoresReviewedTotal = 0;
-                
-                for (var x = 1;; x++)
+
+                for (var x = 1; ; x++)
                 {
                     var beatmapIds = await database.DbContext.Scores
                         .FilterValidScores()
@@ -52,7 +52,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                         .OrderBy(x => x.BeatmapId)
                         .UseQueryOptions(new QueryOptions(new Pagination(x, pageSize)))
                         .ToListAsync(cancellationToken: ct);
-                    
+
                     foreach (var beatmap in beatmapIds)
                     {
                         var scores = await database.DbContext.Scores
@@ -60,7 +60,7 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                             .FilterPassedScoreableScores()
                             .Where(s => s.BeatmapId == beatmap.BeatmapId)
                             .ToListAsync(cancellationToken: ct);
-                        
+
                         var scoresGrouped = scores.GroupBy(s => new
                         {
                             s.BeatmapId,
@@ -68,24 +68,24 @@ public class UpdateScoresSubmittedStatusCommand : IChatCommand
                             s.Mods,
                             s.UserId,
                         });
-                        
+
                         foreach (var group in scoresGrouped)
                         {
                             var scoresGroup = group.ToList();
-                    
+
                             scoresReviewedTotal += group.Count();
-                            
+
                             await UpdateUserBeatmapScoresSubmittedStatus(userId, database, scoresGroup, ct);
                         }
                     }
-                    
+
                     ChatCommandRepository.TrySendMessage(userId, $"Total scores reviewed: {scoresReviewedTotal}");
                     if (beatmapIds.Count < pageSize) break;
                 }
             },
             message => ChatCommandRepository.TrySendMessage(userId, message));
     }
-    
+
     public async Task UpdateUserBeatmapScoresSubmittedStatus(int sendProgressMessageToUserId, DatabaseService database, List<Score> scores, CancellationToken ct)
     {
         var bestScore = scores.Select(x => x).ToList().SortScoresByTheirScoreValue().FirstOrDefault();

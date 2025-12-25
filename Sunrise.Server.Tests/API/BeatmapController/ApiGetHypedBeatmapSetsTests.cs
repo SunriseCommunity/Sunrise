@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
@@ -120,7 +120,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
         Assert.Equal(2, content.TotalCount);
         Assert.Equal(beatmapSetFirst.Id, content.Sets.First().Id);
     }
-    
+
     [Fact]
     public async Task TestGetHypedBeatmapSetsUnauthorized()
     {

@@ -23,7 +23,7 @@ public static class ImageTools
     {
         if (!fileStream.CanSeek)
             throw new InvalidOperationException("Input stream must be seekable.");
-        
+
         fileStream.Position = 0;
 
         var imageFormat = Image.DetectFormat(fileStream);
@@ -57,9 +57,9 @@ public static class ImageTools
     {
         if (!fileStream.CanSeek)
             throw new InvalidOperationException("Input stream must be seekable.");
-        
+
         fileStream.Position = 0;
-        
+
         var maxHeaderSize = ValidImageBytes.Max(x => x.Value.Length);
         var header = new byte[maxHeaderSize];
 
@@ -67,8 +67,8 @@ public static class ImageTools
 
         fileStream.Position = 0;
 
-        return ValidImageBytes.Any(x => 
-            bytesRead >= x.Value.Length && 
+        return ValidImageBytes.Any(x =>
+            bytesRead >= x.Value.Length &&
             x.Value.SequenceEqual(header.Take(x.Value.Length)));
     }
 
@@ -77,12 +77,12 @@ public static class ImageTools
         var extension = ValidImageBytes.FirstOrDefault(x => x.Value.SequenceEqual(bytes.Take(x.Value.Length))).Key;
         return extension?[1..];
     }
-    
+
     public static string? GetImageType(Stream fileStream)
     {
         if (!fileStream.CanSeek)
             throw new InvalidOperationException("Input stream must be seekable.");
-        
+
         fileStream.Position = 0;
 
         var maxHeaderLength = ValidImageBytes.Max(x => x.Value.Length);

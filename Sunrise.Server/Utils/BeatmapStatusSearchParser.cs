@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Server.Utils;
 

@@ -1,4 +1,4 @@
-﻿using HOPEless.Bancho.Objects;
+using HOPEless.Bancho.Objects;
 
 namespace Sunrise.Shared.Extensions.Users;
 

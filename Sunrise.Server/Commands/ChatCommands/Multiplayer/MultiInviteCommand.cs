@@ -20,7 +20,7 @@ public class MultiInviteCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp invite <username>");
             return;
         }
-        
+
         var username = string.Join(" ", args[0..]);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
@@ -32,7 +32,7 @@ public class MultiInviteCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "User not found.");
             return;
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
@@ -43,7 +43,7 @@ public class MultiInviteCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Sender not found.");
             return;
         }
-        
+
         // FIXME: Should sender see the invite message? Need to investigate
 
         invitee.SendMultiInvite(session.Match.Match, selfUser);

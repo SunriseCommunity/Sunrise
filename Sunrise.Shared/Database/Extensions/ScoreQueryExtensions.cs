@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;

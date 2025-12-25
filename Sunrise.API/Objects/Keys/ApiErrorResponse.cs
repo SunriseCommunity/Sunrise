@@ -1,4 +1,4 @@
-﻿namespace Sunrise.API.Objects.Keys;
+namespace Sunrise.API.Objects.Keys;
 
 public static class ApiErrorResponse
 {

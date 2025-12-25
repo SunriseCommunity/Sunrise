@@ -1,16 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Sunrise.Shared.Database.Migrations
+namespace Sunrise.Shared.Database.Migrations;
+
+/// <inheritdoc />
+public partial class FixAllBadBestValuesForUserStats : Migration
 {
     /// <inheritdoc />
-    public partial class FixAllBadBestValuesForUserStats : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.Sql(@"
+        migrationBuilder.Sql(@"
             UPDATE user_stats
             SET BestGlobalRankDate = NULL
             WHERE BestGlobalRankDate = '0001-01-01 00:00:00';
@@ -27,12 +27,12 @@ namespace Sunrise.Shared.Database.Migrations
             SET BestCountryRank = NULL
             WHERE BestCountryRank = 0;
             ");
-        }
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.Sql(@"
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.Sql(@"
             UPDATE user_stats
             SET BestGlobalRankDate = '0001-01-01 00:00:00'
             WHERE BestGlobalRankDate IS NULL;
@@ -49,6 +49,5 @@ namespace Sunrise.Shared.Database.Migrations
             SET BestCountryRank = 0
             WHERE BestCountryRank IS NULL;
             ");
-        }
     }
 }

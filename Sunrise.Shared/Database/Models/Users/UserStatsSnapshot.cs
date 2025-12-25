@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;

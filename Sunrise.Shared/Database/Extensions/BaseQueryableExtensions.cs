@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Objects;
 

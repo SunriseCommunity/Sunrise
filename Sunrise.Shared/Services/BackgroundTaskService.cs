@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;

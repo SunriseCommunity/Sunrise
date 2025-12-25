@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;

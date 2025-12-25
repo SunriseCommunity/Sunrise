@@ -1,16 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Sunrise.Shared.Database.Migrations
+namespace Sunrise.Shared.Database.Migrations;
+
+/// <inheritdoc />
+public partial class ClearUserStatsDuplicates : Migration
 {
     /// <inheritdoc />
-    public partial class ClearUserStatsDuplicates : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.Sql(@"
+        migrationBuilder.Sql(@"
                                     WITH RankedStats AS (
                                         SELECT *,
                                                ROW_NUMBER() OVER (PARTITION BY UserId, GameMode ORDER BY TotalScore DESC) AS rn
@@ -23,12 +23,11 @@ namespace Sunrise.Shared.Database.Migrations
                                         WHERE rn > 1
                                     );
                                    ");
-        }
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
 
-        }
     }
 }

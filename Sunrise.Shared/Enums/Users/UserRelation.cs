@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums.Users;
+namespace Sunrise.Shared.Enums.Users;
 
 public enum UserRelation
 {

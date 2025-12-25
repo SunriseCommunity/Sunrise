@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.WebSockets;
 using Sunrise.API.Objects;
 
@@ -7,7 +7,7 @@ namespace Sunrise.API.Managers;
 public class WebSocketManager
 {
     private const int CONCURRENT_CONNECTIONS_LIMIT = 4;
-    
+
     private readonly Dictionary<IPAddress, HashSet<WebSocketClient>> _clientConnections = [];
 
     public async Task HandleConnection(IPAddress ip, WebSocket webSocket, CancellationToken cancellationToken)

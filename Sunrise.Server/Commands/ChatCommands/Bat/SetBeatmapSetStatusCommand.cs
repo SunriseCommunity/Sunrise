@@ -115,7 +115,7 @@ public class SetBeatmapSetStatusCommand : IChatCommand
             }
 
             beatmapSet.UpdateBeatmapRanking([customStatus]);
-            
+
             var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
             var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Helpers;
+namespace Sunrise.Shared.Helpers;
 
 public static class JsonStringFlagEnumHelper
 {

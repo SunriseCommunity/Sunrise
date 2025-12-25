@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
@@ -85,7 +85,7 @@ public class ApiUserPasswordChangeTests(IntegrationDatabaseFixture fixture) : Ap
     [Theory]
     [InlineData("password", null)]
     [InlineData(null, "password")]
-    public async Task TestPasswordChangeWithoutOneOfPassword(string currentPassword, string newPassword)
+    public async Task TestPasswordChangeWithoutOneOfPassword(string? currentPassword, string? newPassword)
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");

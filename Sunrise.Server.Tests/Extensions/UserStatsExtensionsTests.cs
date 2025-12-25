@@ -122,7 +122,7 @@ public class UserStatsExtensionsDatabaseTests(IntegrationDatabaseFixture fixture
         var user = await CreateTestUser();
 
         EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
-        
+
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.LocalProperties.IsRanked = true;
         score.PerformancePoints = 100;

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Security.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

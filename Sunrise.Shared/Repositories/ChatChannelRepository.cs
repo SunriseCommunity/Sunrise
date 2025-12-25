@@ -90,7 +90,7 @@ public class ChatChannelRepository
         {
             return _channels.Values.Where(x => x.IsPublic).ToList();
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 

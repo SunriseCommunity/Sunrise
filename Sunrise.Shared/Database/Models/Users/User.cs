@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
@@ -30,7 +30,7 @@ public class User
     public GameMode DefaultGameMode { get; set; } = GameMode.Standard;
 
     public ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
-    
+
     public ICollection<UserInventoryItem> Inventory { get; set; } = new List<UserInventoryItem>();
 
     public ICollection<UserRelationship> UserInitiatedRelationships { get; set; } = new List<UserRelationship>();
@@ -51,7 +51,7 @@ public class User
 
     [NotMapped]
     public string BannerUrl => $"https://a.{Configuration.Domain}/banner/{Id}{(BannerRecord != null ? $"?{new DateTimeOffset(BannerRecord.UpdatedAt).ToUnixTimeMilliseconds()}" : "")}";
-    
+
     public PlayerRank GetPrivilegeRank()
     {
         var privilegeRank = PlayerRank.Default;

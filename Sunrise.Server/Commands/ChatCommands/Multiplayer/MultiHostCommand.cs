@@ -25,7 +25,7 @@ public class MultiHostCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp host <username>");
             return Task.CompletedTask;
         }
-        
+
         var username = string.Join(" ", args[0..]);
 
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();

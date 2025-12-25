@@ -1,4 +1,4 @@
-﻿using Sunrise.Tests.Services.Mock.Services;
+using Sunrise.Tests.Services.Mock.Services;
 
 namespace Sunrise.Tests.Services.Mock;
 

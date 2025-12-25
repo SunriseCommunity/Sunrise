@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Sunrise.Shared.Objects;
 using Sunrise.Tests.Services.Mock;
 

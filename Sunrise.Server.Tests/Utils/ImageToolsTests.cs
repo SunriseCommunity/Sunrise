@@ -1,4 +1,4 @@
-﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp;
 using Sunrise.Shared.Utils.Tools;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services;
@@ -59,7 +59,7 @@ public class ImageToolsTests : FilesystemTest
     {
         // Arrange
         var textFilePath = _fileService.GetRandomFilePath("txt");
-        
+
         using var imageBytes = File.OpenRead(textFilePath);
         var size = new Size(100, 100);
 

@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 
 namespace Sunrise.Shared.Extensions.Performances;
 

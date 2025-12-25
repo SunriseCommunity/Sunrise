@@ -1,4 +1,4 @@
-﻿using Sunrise.Tests;
+using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests;
 

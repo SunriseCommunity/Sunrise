@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Database.Objects;
+namespace Sunrise.Shared.Database.Objects;
 
 public class Pagination(int page, int pageSize)
 {

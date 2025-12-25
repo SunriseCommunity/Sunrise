@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using osu.Shared;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models;
@@ -129,7 +129,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         scores = scores.Where(s => mods == null || s.Mods == mods).ToList();
         Assert.Equal(scores.Count, content.Scores.Count);
     }
-    
+
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

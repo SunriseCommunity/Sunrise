@@ -95,7 +95,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            for (var i = 1;; i++)
+            for (var i = 1; ; i++)
             {
                 var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
                     LeaderboardSortType.Pp,

@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Models.Users;
 
 namespace Sunrise.Shared.Objects;
 

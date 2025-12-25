@@ -62,7 +62,7 @@ public class RecalculateScoresCommand : IChatCommand
                 var pageSize = 100;
                 var scoresReviewedTotal = 0;
 
-                for (var x = 1;; x++)
+                for (var x = 1; ; x++)
                 {
                     using var scope = ServicesProviderHolder.CreateScope();
                     var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();

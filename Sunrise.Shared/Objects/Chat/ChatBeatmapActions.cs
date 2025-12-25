@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Objects.Chat;
+namespace Sunrise.Shared.Objects.Chat;
 
 public class ChatBeatmapActions
 {

@@ -20,20 +20,20 @@ public class LimitsResponse
     {
         var remainingCalls = remainingCallsValue ?? Configuration.GeneralCallsPerWindow;
         var remainingBeatmapRequests = remainingBeatmapRequestsValue ?? Configuration.ApiCallsPerWindow;
-       
+
         RateLimitsObj = new RateLimits
         {
             TotalLimit = TotalLimit,
             RemainingCalls = remainingCalls
         };
-       
-        RateLimitsBeatmap  = new RateLimits
+
+        RateLimitsBeatmap = new RateLimits
         {
             TotalLimit = BeatmapRequestLimit,
             RemainingCalls = remainingBeatmapRequests
         };
     }
-    
+
     [JsonConstructor]
     public LimitsResponse(RateLimits rateLimitsObj, RateLimits rateLimitsBeatmap, string message)
     {
@@ -50,5 +50,5 @@ public class LimitsResponse
     public RateLimits RateLimitsObj { get; set; }
 
     [JsonPropertyName("beatmap_rate_limits")]
-    public RateLimits RateLimitsBeatmap { get; set; } 
+    public RateLimits RateLimitsBeatmap { get; set; }
 }

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.Server.Services;
 using Sunrise.Server.Services.Helpers.Scores;

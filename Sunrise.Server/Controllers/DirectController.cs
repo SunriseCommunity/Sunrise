@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Objects.Keys;

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums.Beatmaps;
+namespace Sunrise.Shared.Enums.Beatmaps;
 
 public enum BeatmapStatusWeb
 {

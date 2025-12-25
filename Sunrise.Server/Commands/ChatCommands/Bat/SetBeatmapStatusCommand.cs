@@ -30,7 +30,7 @@ public class SetBeatmapStatusCommand : IChatCommand
                 + $"\nPossible beatmapStatus options: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatusWeb)))}");
             return;
         }
-        
+
         string? beatmapHash = null;
         var isIdProvided = int.TryParse(args[0], out var beatmapId);
 
@@ -91,7 +91,7 @@ public class SetBeatmapStatusCommand : IChatCommand
                 + $"Use same command with \"-y\" flag to continue. Example: \"{Configuration.BotPrefix}setbeatmapstatus 13 Ranked -y\"");
             return;
         }
-        
+
         var oldStatus = beatmap.StatusGeneric;
 
         var changeBeatmapSetStatusResult = await beatmapService.ChangeBeatmapCustomStatus(
@@ -122,7 +122,7 @@ public class SetBeatmapStatusCommand : IChatCommand
         }
 
         beatmapSet.UpdateBeatmapRanking([customStatus]);
-        
+
         var webSocketManager = scope.ServiceProvider.GetRequiredService<WebSocketManager>();
         var sessionRepository = scope.ServiceProvider.GetRequiredService<SessionRepository>();
 

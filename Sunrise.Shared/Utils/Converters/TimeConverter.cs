@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Utils.Converters;
+namespace Sunrise.Shared.Utils.Converters;
 
 public static class TimeConverter
 {

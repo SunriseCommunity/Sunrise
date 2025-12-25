@@ -1,4 +1,4 @@
-﻿namespace Sunrise.API.Enums;
+namespace Sunrise.API.Enums;
 
 public enum UserBadge
 {

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Tests.Extensions;
+namespace Sunrise.Tests.Extensions;
 
 public static class DatabaseExtensions
 {

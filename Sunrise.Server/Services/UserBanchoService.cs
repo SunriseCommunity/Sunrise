@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;

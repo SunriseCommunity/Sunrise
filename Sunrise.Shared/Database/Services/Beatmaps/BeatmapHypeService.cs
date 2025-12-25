@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
@@ -49,7 +49,7 @@ public class BeatmapHypeService(
                 {
                     throw new ApplicationException("You already hyped this beatmap set");
                 }
-                
+
                 userBeatmapHype.Hypes += 1;
             }
 

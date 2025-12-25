@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 using GameMode = osu.Shared.GameMode;

@@ -27,7 +27,7 @@ public class BeatmapEventService(SunriseDbContext dbContext)
             await dbContext.SaveChangesAsync();
         });
     }
-    
+
     public async Task<Result> AddBeatmapSetHypeClearEvent(int userId, int beatmapSetId)
     {
         return await ResultUtil.TryExecuteAsync(async () =>

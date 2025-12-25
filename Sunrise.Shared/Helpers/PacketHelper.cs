@@ -72,7 +72,7 @@ public class PacketHelper
             case ISerializable serializable: WritePacket(type, serializable); return;
             case byte[] bytes: WritePacket(type, bytes); return;
             default: throw new ArgumentException("Invalid data type: " + data?.GetType().Name);
-            // @formatter:on
+                // @formatter:on
         }
     }
 

@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Application;
+using Sunrise.Shared.Application;
 
 namespace Sunrise.Tests.Manager;
 

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
@@ -96,7 +96,7 @@ public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fi
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
-    
+
     [Fact]
     public async Task TestGetBeatmapSetWithCustomBeatmapStatus()
     {
@@ -107,9 +107,9 @@ public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fi
         beatmapSet.Id = 1;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        
+
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
-        
+
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
@@ -121,7 +121,7 @@ public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fi
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = user.Id,
         });
-        
+
         if (addCustomBeatmapStatusResult.IsFailure)
             throw new Exception(addCustomBeatmapStatusResult.Error);
 
@@ -130,18 +130,18 @@ public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fi
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
+
         var beatmapSetResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetResponse>();
         Assert.NotNull(beatmapSetResponse);
-        
+
         Assert.Equal(beatmapSet.Id, beatmapSetResponse.Id);
         Assert.Equal(BeatmapStatusWeb.Loved, beatmapSetResponse.Status);
-        
+
         Assert.Equal(user.Id, beatmapSetResponse.BeatmapNominatorUser?.Id);
-        
+
         Assert.False(beatmapSetResponse.CanBeHyped);
     }
-    
+
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]

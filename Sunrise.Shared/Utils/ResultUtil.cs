@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 
 namespace Sunrise.Shared.Utils;
 
@@ -20,7 +20,7 @@ public static class ResultUtil
             return Result.Failure<T>($"{ex.Message}\n{ex.InnerException}\n{ex.StackTrace}");
         }
     }
-    
+
     public static async Task<Result> TryExecuteAsync(Func<Task> action)
     {
         try

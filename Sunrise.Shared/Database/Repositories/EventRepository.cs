@@ -1,4 +1,4 @@
-﻿using Sunrise.Shared.Database.Services.Events;
+using Sunrise.Shared.Database.Services.Events;
 
 namespace Sunrise.Shared.Database.Repositories;
 

@@ -27,13 +27,13 @@ public class HidePreviousUsername : IChatCommand
             ChatCommandRepository.SendMessage(session, "Invalid event id.");
             return;
         }
-        
+
         if (!bool.TryParse(args[1], out var isHidden))
         {
             ChatCommandRepository.SendMessage(session, "Invalid is hidden value. Use true or false.");
             return;
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 

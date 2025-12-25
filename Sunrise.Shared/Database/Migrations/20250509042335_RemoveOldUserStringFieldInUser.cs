@@ -1,28 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Sunrise.Shared.Database.Migrations
+namespace Sunrise.Shared.Database.Migrations;
+
+/// <inheritdoc />
+public partial class RemoveOldUserStringFieldInUser : Migration
 {
     /// <inheritdoc />
-    public partial class RemoveOldUserStringFieldInUser : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "Friends",
-                table: "user");
-        }
+        migrationBuilder.DropColumn(
+            name: "Friends",
+            table: "user");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "Friends",
-                table: "user",
-                type: "longtext",
-                nullable: false);
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<string>(
+            name: "Friends",
+            table: "user",
+            type: "longtext",
+            nullable: false);
     }
 }

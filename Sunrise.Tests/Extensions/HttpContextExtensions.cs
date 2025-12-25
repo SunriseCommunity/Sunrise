@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using Sunrise.Shared.Application;
 
 namespace Sunrise.Tests.Extensions;

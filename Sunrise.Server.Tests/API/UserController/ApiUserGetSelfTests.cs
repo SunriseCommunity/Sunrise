@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;

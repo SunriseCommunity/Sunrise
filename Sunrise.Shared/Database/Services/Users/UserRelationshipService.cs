@@ -37,10 +37,10 @@ public class UserRelationshipService(
     public async Task<UserRelationship?> GetUserRelationship(int userId, int targetId, CancellationToken ct = default)
     {
         var relationship = await dbContext.UserRelationships
-            .Where(r => 
+            .Where(r =>
                 r.UserId == userId &&
                 r.User.AccountStatus != UserAccountStatus.Restricted &&
-                r.TargetId == targetId && 
+                r.TargetId == targetId &&
                 r.Target.AccountStatus != UserAccountStatus.Restricted)
             .FirstOrDefaultAsync(cancellationToken: ct);
 
@@ -48,7 +48,7 @@ public class UserRelationshipService(
         {
             var user = await databaseService.Value.Users.GetValidUser(userId, ct: ct);
             if (user == null) return null;
-            
+
             var target = await databaseService.Value.Users.GetValidUser(targetId, ct: ct);
             if (target == null) return null;
 

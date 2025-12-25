@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
 using Sunrise.Tests.Abstracts;
@@ -47,7 +47,7 @@ public class ApiGetBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         Assert.Equal(shouldHypeBefore ? 1 : 0, content.CurrentHypes);
         Assert.Equal(Configuration.HypesToStartHypeTrain, content.RequiredHypes);
     }
-    
+
     [Theory]
     [InlineData("-1")]
     public async Task TestGetBeatmapSetHypeInvalidBeatmapSetId(string beatmapSetId)

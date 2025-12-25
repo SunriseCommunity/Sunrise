@@ -28,19 +28,19 @@ public class MultiKickCommand : IChatCommand
             session.SendChannelMessage(channel.Name, "Usage: !mp kick <username>");
             return;
         }
-        
+
         var username = string.Join(" ", args[0..]);
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var userToKick = await database.Users.GetUser(username: username);
         if (userToKick == null)
         {
             session.SendChannelMessage(channel.Name, "User not found.");
             return;
         }
-        
+
         var sessionToKick = session.Match.Players.Values.FirstOrDefault(x => x.UserId == userToKick.Id);
         if (sessionToKick == null)
         {

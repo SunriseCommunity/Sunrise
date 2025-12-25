@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Database.Objects;
+namespace Sunrise.Shared.Database.Objects;
 
 public class QueryOptions(bool asNoTracking = false, Pagination? pagination = null)
 {

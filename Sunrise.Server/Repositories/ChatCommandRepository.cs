@@ -51,16 +51,16 @@ public static class ChatCommandRepository
             case null or { IsGlobal: false } when message.Channel != Configuration.BotUsername:
                 return;
             case null:
-            {
-                var possibleCommands = GetAvailableCommands(session)
-                    .Where(x => x.Contains(command))
-                    .ToArray();
-                
-                SendMessage(session,
-                    possibleCommands.Length > 0 ? $"Did you mean: !{string.Join(", !", possibleCommands)}? Type {Configuration.BotPrefix}help for a list of available commands." : $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+                {
+                    var possibleCommands = GetAvailableCommands(session)
+                        .Where(x => x.Contains(command))
+                        .ToArray();
 
-                return;
-            }
+                    SendMessage(session,
+                        possibleCommands.Length > 0 ? $"Did you mean: !{string.Join(", !", possibleCommands)}? Type {Configuration.BotPrefix}help for a list of available commands." : $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
+
+                    return;
+                }
         }
 
         using var scope = ServicesProviderHolder.CreateScope();

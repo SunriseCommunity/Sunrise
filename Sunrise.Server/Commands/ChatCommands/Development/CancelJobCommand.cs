@@ -1,4 +1,4 @@
-﻿using Hangfire;
+using Hangfire;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;

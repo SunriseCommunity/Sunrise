@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
@@ -14,7 +14,7 @@ namespace Sunrise.Server.Tests.API.UserController;
 public class ApiUserFavouritesTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-    
+
     [Fact]
     public async Task TestFavourites()
     {

@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;

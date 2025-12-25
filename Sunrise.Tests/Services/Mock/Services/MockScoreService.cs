@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable.Performances;

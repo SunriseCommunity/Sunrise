@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -73,7 +73,7 @@ public class ApiBeatmapTests(IntegrationDatabaseFixture fixture) : ApiTest(fixtu
 
         Assert.Equal(BeatmapStatusWeb.Loved, beatmap.Status);
     }
-    
+
     [Theory]
     [InlineData("-1")]
     [InlineData("test")]
