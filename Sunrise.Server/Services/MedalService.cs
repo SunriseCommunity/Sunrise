@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq.Dynamic.Core;
 using osu.Shared;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -12,6 +15,9 @@ namespace Sunrise.Server.Services;
 
 public class MedalService(DatabaseService database)
 {
+    private static readonly ActivitySource ActivitySource = new("Sunrise.MedalService");
+
+    [TraceExecution]
     public async Task<string> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
     {
         List<string> newMedals = [];
@@ -21,12 +27,33 @@ public class MedalService(DatabaseService database)
         var medals = await database.Medals.GetMedals(score.GameMode);
         var userMedals = await database.Users.Medals.GetUserMedals(userStats.UserId);
 
-        foreach (var medal in medals)
-        {
-            if (userMedals.Any(x => x.MedalId == medal.Id)) continue;
+        var unlockedMedalIds = userMedals.Select(x => x.MedalId).ToHashSet();
+        var medalsToCheck = medals.Where(m => !unlockedMedalIds.Contains(m.Id)).ToList();
 
-            var isConditionsAreMet = Evaluate(
-                new MedalConditionContext
+        var eligibleMedals = new ConcurrentBag<Medal>();
+
+        await Parallel.ForEachAsync(
+            medalsToCheck,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            },
+            (medal, _) => EvaluateMedal(medal)
+        );
+
+        foreach (var medal in eligibleMedals.OrderBy(m => m.Id))
+        {
+            await database.Users.Medals.UnlockMedal(userStats.UserId, medal.Id);
+            newMedals.Add(GetMedalString(medal));
+        }
+
+        return string.Join("/", newMedals);
+
+        ValueTask EvaluateMedal(Medal medal)
+        {
+            using var activity = ActivitySource.StartActivity($"Evaluating medal {medal.Id})");
+
+            var isConditionsAreMet = Evaluate(new MedalConditionContext
                 {
                     user = userStats,
                     score = score,
@@ -34,16 +61,18 @@ public class MedalService(DatabaseService database)
                 },
                 medal.Condition);
 
-            if (!isConditionsAreMet) continue;
+            if (!isConditionsAreMet)
+                return ValueTask.CompletedTask;
 
-            // Note: Kind of hack to not give medals for passes with NoFail on non-ModIntroduction medals.
-            if (medal.Category != MedalCategory.ModIntroduction && score.Mods.HasFlag(Mods.NoFail)) continue;
+            var isScoreWithNoFailAndNotEligible
+                = medal.Category != MedalCategory.ModIntroduction && score.Mods.HasFlag(Mods.NoFail);
 
-            await database.Users.Medals.UnlockMedal(userStats.UserId, medal.Id);
-            newMedals.Add(GetMedalString(medal));
+            if (isScoreWithNoFailAndNotEligible)
+                return ValueTask.CompletedTask;
+
+            eligibleMedals.Add(medal);
+            return ValueTask.CompletedTask;
         }
-
-        return string.Join("/", newMedals);
     }
 
     private static bool Evaluate<T>(T obj, string expression)
