@@ -256,6 +256,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
+        SunriseMetrics.ScoreSubmittedCounterInc(session, beatmap.Id, score.GameMode, score.Mods, score.PerformancePoints, score.Id);
+
         if (!isScoreScoreable)
         {
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable

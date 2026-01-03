@@ -88,21 +88,28 @@ public class SessionRepository
         _sessions.TryRemove(session.Token, out _);
     }
 
-    public bool TryGetSession(string username, string? passhash, out Session? session)
+    public async Task<Session?> TryGetSessionAsync(string username, string? passhash)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var searchedUser = database.Users.GetUser(username: username, passhash: passhash, options: new QueryOptions(true))
-            .ConfigureAwait(false).GetAwaiter().GetResult();
+        var searchedUser = await database.Users.GetUser(
+            username: username,
+            passhash: passhash,
+            options: new QueryOptions(true));
 
         if (searchedUser == null)
-        {
-            session = null;
-            return false;
-        }
+            return null;
 
-        session = _sessions.Values.FirstOrDefault(x => x.UserId == searchedUser.Id);
+        return _sessions.Values.FirstOrDefault(x => x.UserId == searchedUser.Id);
+    }
+
+    public bool TryGetSession(string username, string? passhash, out Session? session)
+    {
+        var result = TryGetSessionAsync(username, passhash)
+            .ConfigureAwait(false).GetAwaiter().GetResult();
+
+        session = result;
         return session != null;
     }
 
@@ -144,6 +151,16 @@ public class SessionRepository
     public List<Session> GetSessions()
     {
         return _sessions.Values.ToList();
+    }
+
+    public int GetSessionCount()
+    {
+        return _sessions.Count;
+    }
+
+    public int GetTotalSpectatorsCount()
+    {
+        return _sessions.Values.Sum(s => s.Spectators.Count);
     }
 
     public async Task AddBotToSession()

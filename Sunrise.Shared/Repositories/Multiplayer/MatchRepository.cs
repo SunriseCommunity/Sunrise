@@ -87,4 +87,9 @@ public class MatchRepository
             session.WritePacket(PacketType.ServerMultiMatchDelete, matchId);
         }
     }
+
+    public int GetMatchCount()
+    {
+        return _matches.Count;
+    }
 }
