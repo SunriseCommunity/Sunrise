@@ -24,6 +24,9 @@ builder.AddAuthorizationPolicies();
 builder.AddSunriseDbContextPool();
 
 builder.AddHangfire();
+builder.AddTelemetry();
+builder.AddCustomLogging();
+
 builder.Configure();
 
 var app = builder.Build();

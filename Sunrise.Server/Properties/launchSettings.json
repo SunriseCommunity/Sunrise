@@ -10,7 +10,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_Kestrel__Certificates__Default__Path": "../sunrise.local.pfx",
-        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true"
       }
     },
     "production": {
@@ -22,7 +23,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Production",
         "ASPNETCORE_Kestrel__Certificates__Default__Path": "../sunrise.pfx",
-        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password"
+        "ASPNETCORE_Kestrel__Certificates__Default__Password": "password",
+        "OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION": "true"
       }
     }
   }

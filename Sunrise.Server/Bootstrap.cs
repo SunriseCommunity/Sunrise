@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Net;
 using System.Security.Authentication;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
@@ -13,8 +15,18 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
-using Prometheus;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using Serilog.Exceptions;
+using Serilog.Exceptions.Core;
+using Serilog.Exceptions.EntityFrameworkCore.Destructurers;
+using Serilog.Sinks.Grafana.Loki;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Serializable.Response;
@@ -46,18 +58,109 @@ public static class Bootstrap
     public static void Configure(this WebApplicationBuilder builder)
     {
         builder.Services.AddEndpointsApiExplorer();
-
         builder.Services.AddProblemDetails();
-        builder.Services.AddMetrics();
+    }
 
+    public static void AddCustomLogging(this WebApplicationBuilder builder)
+    {
+        var loggerConfiguration = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.Extensions.Hosting", LogEventLevel.Information)
+            .MinimumLevel.Override("Microsoft.Hosting", LogEventLevel.Information)
+            .Enrich.WithProperty("Application", "Sunrise")
+            .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
+            .Enrich.FromLogContext()
+            .Enrich.With<TraceEnricher>()
+            .Enrich.WithExceptionDetails(new DestructuringOptionsBuilder()
+                .WithDefaultDestructurers()
+                .WithDestructurers([new DbUpdateExceptionDestructurer()]))
+            .WriteTo.Console(
+                outputTemplate: "{Timestamp:HH:mm} [{Level}] ({ThreadId}) {Message}{NewLine}{Exception}");
 
-        builder.Services.AddW3CLogging(logging =>
+        if (!string.IsNullOrEmpty(Configuration.LokiUri))
         {
-            logging.LoggingFields = W3CLoggingFields.All;
-            logging.AdditionalRequestHeaders.Add("x-forwarded-for");
-            logging.AdditionalRequestHeaders.Add("osu-version");
-            if (Configuration.IncludeUserTokenInLogs) logging.AdditionalRequestHeaders.Add("osu-token");
-        });
+            loggerConfiguration = loggerConfiguration.WriteTo.GrafanaLoki(
+                Configuration.LokiUri,
+                propertiesAsLabels: ["Application", "Environment"]);
+        }
+
+        var logger = loggerConfiguration.CreateLogger();
+
+        Log.Logger = logger;
+
+        builder.Host.UseSerilog(logger);
+        builder.Services.AddLogging(b => b.AddSerilog(logger, true));
+
+        if (Configuration.UseW3CFileLogging)
+        {
+            builder.Services.AddW3CLogging(logging =>
+            {
+                logging.LoggingFields = W3CLoggingFields.All;
+                logging.AdditionalRequestHeaders.Add("x-forwarded-for");
+                logging.AdditionalRequestHeaders.Add("osu-version");
+                if (Configuration.IncludeUserTokenInLogs) logging.AdditionalRequestHeaders.Add("osu-token");
+            });
+        }
+    }
+
+    public static void AddTelemetry(this WebApplicationBuilder builder)
+    {
+        if (string.IsNullOrEmpty(Configuration.TempoUri) && Configuration.UseMetrics == false)
+            return;
+
+        var openTelemetryBuilder = builder.Services
+            .AddOpenTelemetry()
+            .ConfigureResource(resourceBuilder => resourceBuilder.AddService("Sunrise"));
+
+        if (!string.IsNullOrEmpty(Configuration.TempoUri))
+        {
+            openTelemetryBuilder.WithTracing(tracing =>
+            {
+                tracing
+                    .AddAspNetCoreInstrumentation(options =>
+                    {
+                        void EnrichWithHttpContext(Activity activity, HttpContext context)
+                        {
+                            var endpoint = context.GetEndpoint();
+                            var path = (endpoint as RouteEndpoint)?.RoutePattern.RawText ?? context.Request.Path.Value;
+
+                            var method = context.Request.Method;
+                            var subdomain = context.Request.Host.Host.Split('.')[0];
+
+                            activity.DisplayName = $"{method} {(string.IsNullOrWhiteSpace(subdomain) ? "" : $"{subdomain} ")}{path}";
+                        }
+
+                        options.EnrichWithHttpRequest = (activity, request) => EnrichWithHttpContext(activity, request.HttpContext);
+                        options.EnrichWithHttpResponse = (activity, response) => EnrichWithHttpContext(activity, response.HttpContext);
+                    })
+                    .AddEntityFrameworkCoreInstrumentation()
+                    .AddHangfireInstrumentation()
+                    .AddRougamoSource()
+                    .AddSource("*")
+                    .AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri(Configuration.TempoUri);
+                        options.Protocol = OtlpExportProtocol.Grpc;
+                    });
+            });
+        }
+
+        if (Configuration.UseMetrics)
+        {
+            builder.Services.AddMetrics();
+
+            openTelemetryBuilder.WithMetrics(metrics =>
+            {
+                metrics
+                    .AddMeter("*")
+                    .AddAspNetCoreInstrumentation()
+                    .AddRuntimeInstrumentation()
+                    .AddPrometheusExporter();
+            });
+        }
     }
 
     public static void AddApiDocs(this WebApplicationBuilder builder)
@@ -176,10 +279,13 @@ public static class Bootstrap
 
     public static void AddSingletons(this WebApplicationBuilder builder)
     {
+        // TODO: Multiple of these repositories can be scoped instead of singleton if they don't hold state
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChatChannelRepository>();
         builder.Services.AddSingleton<RateLimitRepository>();
         builder.Services.AddSingleton<MatchRepository>();
+
+        builder.Services.AddSingleton<SunriseMetrics>();
 
         builder.Services.AddSingleton(ConnectionMultiplexer.Connect($"{Configuration.RedisConnection},allowAdmin=true"));
 
@@ -292,6 +398,7 @@ public static class Bootstrap
         app.Services.GetRequiredService<ChatChannelRepository>();
         app.Services.GetRequiredService<RateLimitRepository>();
         app.Services.GetRequiredService<MatchRepository>();
+        app.Services.GetRequiredService<SunriseMetrics>();
     }
 
     public static void UseScalarApiReference(this WebApplication app)
@@ -343,9 +450,33 @@ public static class Bootstrap
 
     public static void Configure(this WebApplication app)
     {
+        if (Configuration.UseW3CFileLogging)
+            app.UseW3CLogging();
+
+        if (Configuration.UseMetrics)
+            app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+        app.UseSerilogRequestLogging(opts =>
+        {
+            opts.MessageTemplate = "HTTP {RequestMethod} {Subdomain} {RequestPathWithQuery} responded {StatusCode} in {Elapsed:0.0000} ms";
+
+            opts.EnrichDiagnosticContext = (diag, http) =>
+            {
+                diag.Set("TraceId", http.TraceIdentifier);
+                diag.Set("RemoteIp", http.Connection.RemoteIpAddress?.ToString());
+
+                var host = http.Request.Host.Host;
+                var subdomain = host.Contains('.') ? host.Split('.')[0] : host;
+                diag.Set("Subdomain", subdomain);
+
+                diag.Set("RequestPathWithQuery",
+                    http.Request.Path + (
+                        http.Request.QueryString.HasValue ? http.Request.QueryString.Value : string.Empty)
+                );
+            };
+        });
+
         app.UseRouting();
-        app.UseW3CLogging();
-        app.UseMetricServer().UseHttpMetrics();
 
         app.UseAuthentication();
 
@@ -353,13 +484,7 @@ public static class Bootstrap
 
         app.UseAuthorization();
 
-#pragma warning disable ASP0014
-        app.UseEndpoints(endpoints =>
-        {
-            endpoints.MapControllers();
-            endpoints.MapMetrics();
-        });
-#pragma warning restore ASP0014
+        app.MapControllers();
     }
 
     public static void Setup(this WebApplication app)
@@ -427,5 +552,15 @@ public class ProblemDetailsExceptionHandler : IExceptionHandler
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
         return true;
+    }
+}
+
+internal class TraceEnricher : ILogEventEnricher
+{
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+    {
+        var activity = Activity.Current ?? null;
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("TraceId", activity?.TraceId));
+        logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("SpanId", activity?.SpanId));
     }
 }

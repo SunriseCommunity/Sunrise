@@ -47,6 +47,16 @@
       "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
       "MaxDailyBackupCount": 14
   },
+  "Telemetry": {
+    "UseMetrics": true,
+    "Tracing": {
+      "TempoUri": "http://localhost:4317"
+    },
+    "Logging": {
+      "LokiUri": "http://localhost:3100",
+      "UseW3CFileLogging": false
+    }
+  },
   "Bot": {
     "Username": "Sunshine Bot",
     "Prefix": "!"

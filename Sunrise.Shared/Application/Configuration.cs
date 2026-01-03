@@ -102,6 +102,9 @@ public static class Configuration
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
 
+    public static bool UseW3CFileLogging =>
+        Config.GetSection("General").GetValue<bool?>("UseW3CFileLogging") ?? false;
+
 
     // - Will use best scores by performance points instead of total score for performance calculation
     public static bool UseNewPerformanceCalculationAlgorithm =>
@@ -116,6 +119,17 @@ public static class Configuration
 
     public static bool AllowMultipleHypeFromSameUser =>
         Config.GetSection("BeatmapHype").GetValue<bool?>("AllowMultipleHypeFromSameUser") ?? true;
+
+
+    // Telemetry section
+    public static bool UseMetrics => Config.GetSection("Telemetry").GetValue<bool?>("UseMetrics") ?? true;
+
+    public static string TempoUri => Config.GetSection("Telemetry").GetSection("Tracing").GetValue<string?>("TempoUri") ?? "";
+
+    public static string LokiUri => Config.GetSection("Telemetry").GetSection("Logging").GetValue<string?>("LokiUri") ?? "";
+
+    public static bool UseTelemetryW3CFileLogging =>
+        Config.GetSection("Telemetry").GetSection("Logging").GetValue<bool?>("UseW3CFileLogging") ?? false;
 
 
     // Moderation section
