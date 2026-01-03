@@ -14,6 +14,7 @@ using AuthService = Sunrise.API.Services.AuthService;
 namespace Sunrise.API.Controllers;
 
 [ApiController]
+[ApiHttpTrace]
 [Route("/auth")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]

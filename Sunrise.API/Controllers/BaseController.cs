@@ -16,6 +16,7 @@ using RateLimiter = System.Threading.RateLimiting.RateLimiter;
 namespace Sunrise.API.Controllers;
 
 [ApiController]
+[ApiHttpTrace]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]
 [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status400BadRequest)]

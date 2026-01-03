@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
@@ -8,6 +9,7 @@ using Sunrise.Shared.Utils.Tools;
 
 namespace Sunrise.Server.Controllers;
 
+[ServerHttpTrace]
 [Subdomain("a", "assets")]
 [ResponseCache(Duration = 300)]
 [ApiExplorerSettings(IgnoreApi = true)]

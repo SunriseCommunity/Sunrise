@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
@@ -28,6 +29,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 namespace Sunrise.API.Controllers;
 
 [ApiController]
+[ApiHttpTrace]
 [Route("/user")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]

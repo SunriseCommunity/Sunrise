@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
@@ -7,11 +8,11 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Controllers;
 
+[ServerHttpTrace]
 [Subdomain("c", "c4", "cho")]
 [ApiExplorerSettings(IgnoreApi = true)]
 public class BanchoController(ILogger<BanchoController> logger, AuthService authService, BanchoService banchoService, AssetBanchoService assetBanchoService) : ControllerBase
 {
-
     [HttpPost(RequestType.BanchoProcess)]
     public async Task<FileContentResult> Process([FromHeader(Name = "osu-token")] string? token)
     {

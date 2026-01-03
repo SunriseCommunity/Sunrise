@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Objects.Keys;
@@ -6,6 +7,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Controllers;
 
+[ServerHttpTrace]
 [Route("/web")]
 [Subdomain("osu")]
 [ApiExplorerSettings(IgnoreApi = true)]

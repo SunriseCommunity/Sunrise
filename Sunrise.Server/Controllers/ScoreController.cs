@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
+using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Server.Utils;
@@ -11,6 +12,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Controllers;
 
+[ServerHttpTrace]
 [Route("/web")]
 [Subdomain("osu")]
 [ApiExplorerSettings(IgnoreApi = true)]

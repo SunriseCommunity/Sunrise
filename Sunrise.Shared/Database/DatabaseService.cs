@@ -1,7 +1,9 @@
-﻿using CSharpFunctionalExtensions;
+﻿using System.Diagnostics;
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Repositories;
@@ -55,6 +57,7 @@ public sealed class DatabaseService(
         logger.LogInformation("User ranks rebuilt. Sorted sets is now up to date.");
     }
 
+    [TraceExecution]
     public async Task<Result> CommitAsTransactionAsync(Func<Task> action, CancellationToken ct = default)
     {
         var isCurrentlyInOtherTransactionScope = DbContext.Database.CurrentTransaction != null;
