@@ -1,22 +1,18 @@
 using System.Reflection;
 using HOPEless.Bancho;
+using Serilog;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Packets;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Objects.Sessions;
+using ILogger = Serilog.ILogger;
 
 namespace Sunrise.Server.Repositories;
 
-public class PacketHandlerRepository
+public static class PacketHandlerRepository
 {
     private static readonly Dictionary<PacketType, PacketHandler> Handlers = new();
-    private static readonly ILogger<PacketHandlerRepository> Logger;
-
-    static PacketHandlerRepository()
-    {
-        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        Logger = loggerFactory.CreateLogger<PacketHandlerRepository>();
-    }
+    private static readonly ILogger Logger = Log.ForContext(typeof(PacketHandlerRepository));
 
     public static async Task HandlePacket(BanchoPacket packet, Session session)
     {
@@ -26,13 +22,13 @@ public class PacketHandlerRepository
 
         if (handler == null)
         {
-            Logger.LogError($"No handler found for packet {packet.Type}");
+            Logger.Error($"No handler found for packet {packet.Type}");
             return;
         }
 
         if (!handler.SuppressLogging)
-            Logger.LogInformation(
-                $"{DateTime.Now} | User (Id: {session.UserId}) send {packet.Type}");
+            Logger.Information(
+                $"User (Id: {session.UserId}) sent {packet.Type}");
 
         SunriseMetrics.PacketHandlingCounterInc(packet, session);
 

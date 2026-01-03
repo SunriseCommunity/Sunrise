@@ -20,10 +20,9 @@ public class HttpClientService
     private readonly ILogger<HttpClientService> _logger;
     private readonly RedisRepository _redis;
 
-    public HttpClientService(RedisRepository redis)
+    public HttpClientService(RedisRepository redis, ILogger<HttpClientService> logger)
     {
-        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        _logger = loggerFactory.CreateLogger<HttpClientService>();
+        _logger = logger;
         _redis = redis;
 
         _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

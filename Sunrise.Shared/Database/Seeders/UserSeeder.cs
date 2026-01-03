@@ -1,8 +1,8 @@
 ﻿using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using Serilog;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -57,18 +57,17 @@ public static class UserSeeder
 
         if (!usersWithOldUserId) return;
 
-        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        var logger = loggerFactory.CreateLogger<DbContext>();
+        var logger = Log.ForContext(typeof(UserSeeder));
 
-        logger.LogWarning("Detected old user ID format (ID < 1000). Updating to the new format.");
+        logger.Warning("Detected old user ID format (ID < 1000). Updating to the new format.");
 
-        logger.LogCritical("NB!: Do NOT shut down the server during this process to avoid database corruption.");
+        logger.Warning("NB!: Do NOT shut down the server during this process to avoid database corruption.");
 
-        logger.LogInformation("Starting database backup as a precautionary measure.");
+        logger.Information("Starting database backup as a precautionary measure.");
 
         await RecurringJobs.BackupDatabase(ct);
 
-        logger.LogInformation("Database backup completed successfully.");
+        logger.Information("Database backup completed successfully.");
 
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE `user` AUTO_INCREMENT = 1000;", ct);
 
@@ -127,14 +126,14 @@ public static class UserSeeder
 
             await context.Database.ExecuteSqlRawAsync(userUpdateSql);
 
-            logger.LogInformation($"Users updated: {x * pageSize + users.Count} / {usersCount}.");
+            logger.Information($"Users updated: {x * pageSize + users.Count} / {usersCount}.");
 
             if (users.Count < pageSize) break;
         }
 
         await context.Database.ExecuteSqlRawAsync("SET FOREIGN_KEY_CHECKS=1;");
 
-        logger.LogInformation("All user ids were updated to new ID format.");
+        logger.Information("All user ids were updated to new ID format.");
 
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -173,7 +172,7 @@ public static class UserSeeder
             {
                 foreach (var user in usersWithBotCredentials)
                 {
-                    Console.WriteLine($"User {user.Username} (id: {user.Id}) has same credential as Sunrise Bot, while not having {nameof(UserPrivilege.ServerBot)} privileges.");
+                    Log.Error($"User {user.Username} (id: {user.Id}) has same credential as Sunrise Bot, while not having {nameof(UserPrivilege.ServerBot)} privileges.");
                 }
 
                 throw new Exception("Error while creating sunrise bot in database. Remove or edit users above to continue.");

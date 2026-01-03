@@ -1,5 +1,6 @@
 using System.Net;
 using CSharpFunctionalExtensions;
+using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
@@ -10,7 +11,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Tests.Services.Mock;
 
-public class MockHttpClientService(RedisRepository redis) : HttpClientService(redis)
+public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientService> logger) : HttpClientService(redis, logger)
 {
     private readonly Dictionary<ApiType, Func<object, object>> _mockResponses = new();
 
