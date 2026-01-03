@@ -7,21 +7,32 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BouncyCastle.Cryptography" Version="2.3.1"/>
+        <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
         <PackageReference Include="CSharpFunctionalExtensions" Version="3.5.1"/>
         <PackageReference Include="EFCoreSecondLevelCacheInterceptor.StackExchange.Redis" Version="5.2.1"/>
         <PackageReference Include="Hangfire.AspNetCore" Version="1.8.18"/>
         <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.13"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.11"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.22">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.22" />
+        <PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.9" />
         <PackageReference Include="MySqlBackup.NET" Version="2.3.9"/>
-        <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0"/>
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.14.0-beta.1" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.14.0-beta.2"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Hangfire" Version="1.14.0-beta.1"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0"/>
+        <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
+        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0"/>
+        <PackageReference Include="Serilog.Exceptions.EntityFrameworkCore" Version="8.4.0"/>
+        <PackageReference Include="Serilog.Sinks.Grafana.Loki" Version="8.3.1"/>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11"/>
         <PackageReference Include="StackExchange.Redis" Version="2.8.31"/>
         <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="8.1.1"/>

@@ -11,6 +11,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
         <PackageReference Include="Scalar.AspNetCore" Version="2.2.5"/>
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="8.1.1"/>
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.5.0"/>
