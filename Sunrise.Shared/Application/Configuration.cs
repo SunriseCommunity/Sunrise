@@ -68,7 +68,7 @@ public static class Configuration
             () => string.Format("Host={0};Port={1};Database={2};Username={3};Password={4};SslMode=Required;",
                 Environment.GetEnvironmentVariable("MYSQL_HOST") ?? "localhost",
                 Environment.GetEnvironmentVariable("MYSQL_PORT") ?? "3306",
-                Environment.GetEnvironmentVariable("MYSQL_NAME") ?? "sunrise",
+                Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "sunrise",
                 Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root",
                 Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root"
             ),

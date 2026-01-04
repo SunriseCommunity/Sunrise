@@ -18,7 +18,7 @@ jobs:
       MYSQL_PORT: 3318
       MYSQL_USER: root
       MYSQL_PASSWORD: root
-      MYSQL_NAME: test
+      MYSQL_DATABASE: test
       HANGFIRE_HOST: localhost
       HANGFIRE_PORT: 3318
       HANGFIRE_USER: root
