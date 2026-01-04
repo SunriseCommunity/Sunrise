@@ -137,13 +137,13 @@ public static class Configuration
     public static bool UseMetrics => Config.GetSection("Telemetry").GetValue<bool?>("UseMetrics") ?? true;
 
     public static string TempoUri => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TEMPO_HOST"))
-        ? string.Format("{0}:{1}",
+        ? string.Format("http://{0}:{1}",
             Environment.GetEnvironmentVariable("TEMPO_HOST") ?? "localhost",
             Environment.GetEnvironmentVariable("TEMPO_PORT") ?? "4317")
         : "";
 
     public static string LokiUri => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LOKI_HOST"))
-        ? string.Format("{0}:{1}",
+        ? string.Format("http://{0}:{1}",
             Environment.GetEnvironmentVariable("LOKI_HOST") ?? "localhost",
             Environment.GetEnvironmentVariable("LOKI_PORT") ?? "3100")
         : "";
