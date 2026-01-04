@@ -29,7 +29,8 @@
       "BannedIps": []
   },
   "Database": {
-    "ConnectionString": "Host=mysql-sunrise-db;Port=3306;Database=sunrise;Username=root;Password=root;SslMode=Required;"
+    "ConnectionString": "Host=mysql-sunrise-db;Port=3306;Database=sunrise;Username=root;Password=root;SslMode=Required;",
+    "SlowQueryThresholdMilliseconds": 1000
   },
   "Files": {
     "DataPath": "./Data",

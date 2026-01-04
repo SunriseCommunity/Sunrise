@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using System.Security.Authentication;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
@@ -35,6 +34,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Interceptor;
 using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Beatmaps;
@@ -271,6 +271,9 @@ public static class Bootstrap
         {
             if (isUseSecondLevelCache)
                 optionsBuilder.AddInterceptors(serviceProvider.GetRequiredService<SecondLevelCacheInterceptor>());
+
+            optionsBuilder
+                .AddInterceptors(new SlowQueryLoggerInterceptor());
 
             optionsBuilder
                 .UseMySQL(Configuration.DatabaseConnectionString);

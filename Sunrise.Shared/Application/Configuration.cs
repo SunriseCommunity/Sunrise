@@ -65,6 +65,9 @@ public static class Configuration
     // Database section
     public static string DatabaseConnectionString => Config.GetSection("Database").GetValue<string?>("ConnectionString") ?? "";
 
+    public static int SlowQueryThresholdMilliseconds =>
+        Config.GetSection("Database").GetValue<int?>("SlowQueryThresholdMilliseconds") ?? 1_000;
+
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
     public static string DataPath => _dataPath.StartsWith('.') ? Path.Combine(Directory.GetCurrentDirectory(), _dataPath) : _dataPath;

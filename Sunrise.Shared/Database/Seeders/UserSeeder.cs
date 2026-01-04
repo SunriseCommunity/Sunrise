@@ -172,7 +172,7 @@ public static class UserSeeder
             {
                 foreach (var user in usersWithBotCredentials)
                 {
-                    Log.Error($"User {user.Username} (id: {user.Id}) has same credential as Sunrise Bot, while not having {nameof(UserPrivilege.ServerBot)} privileges.");
+                    Log.Error("User {username} (id: {userId}) has same credential as Sunrise Bot, while not having Server Bot Privilege privileges.", user.Username, user.Id);
                 }
 
                 throw new Exception("Error while creating sunrise bot in database. Remove or edit users above to continue.");
