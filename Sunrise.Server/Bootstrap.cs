@@ -216,7 +216,7 @@ public static class Bootstrap
 
             builder.Services.AddHangfire(config =>
             {
-                config.UseStorage(new MySqlStorage($"{Configuration.HangfireMysqlConnection};database=hangfire",
+                config.UseStorage(new MySqlStorage($"{Configuration.HangfireMysqlConnection};database=hangfire;Allow User Variables=true",
                     new MySqlStorageOptions
                     {
                         TablesPrefix = "Hangfire_",
