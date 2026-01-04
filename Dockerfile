@@ -19,7 +19,7 @@ RUN dotnet publish "Sunrise.Server.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 
-COPY ["sunrise.pfx", "/app/certificate.pfx"]
+COPY ["sunrise.pfx*", "/app/certificate.pfx"]
 
 COPY --from=publish /app/publish .
 
