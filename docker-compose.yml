@@ -6,6 +6,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "443:443"
+      - "5147:5147"
     volumes:
       - ./Data:/app/Data
       - ./Sunrise.Server/appsettings.Production.json:/app/appsettings.Production.json
@@ -14,6 +15,7 @@ services:
       - ASPNETCORE_URLS=https://+:443;http://+:5147
       - ASPNETCORE_Kestrel__Certificates__Default__Password=password
       - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificate.pfx
+      - OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION=true
     restart: unless-stopped
     depends_on:
       - redis
@@ -24,25 +26,6 @@ services:
     restart: unless-stopped
     volumes:
       - redis:/data
-
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - "3060:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - ./grafana:/var/lib/grafana
-    depends_on:
-      - prometheus
 
   postgres:
     image: postgres:17

@@ -10,30 +10,6 @@ services:
     networks:
       - monitoring
 
-  prometheus:
-    image: prom/prometheus:latest
-    restart: unless-stopped
-    volumes:
-      - ./prometheus.dev.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - monitoring
-
-  grafana:
-    image: grafana/grafana
-    restart: unless-stopped
-    ports:
-      - "3030:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - ./grafana:/var/lib/grafana
-    depends_on:
-      - prometheus
-    networks:
-      - monitoring
-
   postgres:
     image: postgres:17
     restart: unless-stopped
