@@ -1,4 +1,5 @@
-﻿using Sunrise.Shared.Application;
+﻿using DotNetEnv;
+using Sunrise.Shared.Application;
 
 namespace Sunrise.Tests.Manager;
 
@@ -32,6 +33,7 @@ public class EnvironmentVariableManager : IDisposable
             _originalValues[key] = Environment.GetEnvironmentVariable(key);
         }
 
+        Env.TraversePath().Load(".env.tests");
         Environment.SetEnvironmentVariable(key, value);
 
         try
