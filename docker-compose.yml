@@ -19,7 +19,6 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
-      - prometheus
 
   redis:
     image: redis:8.2.2
