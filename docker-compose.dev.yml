@@ -10,18 +10,6 @@ services:
     networks:
       - monitoring
 
-  postgres:
-    image: postgres:17
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: hangfire
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
   mysql-sunrise-db:
     image: mysql
     restart: unless-stopped
@@ -36,7 +24,6 @@ services:
 volumes:
   mysql:
   redis:
-  postgres_data:
 
 networks:
   monitoring:

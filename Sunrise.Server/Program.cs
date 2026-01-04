@@ -1,3 +1,4 @@
+using DotNetEnv;
 using Hangfire;
 using Sunrise.Server;
 using Sunrise.Server.Middlewares;
@@ -6,6 +7,8 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Env.TraversePath().Load();
 
 builder.Services.AddHealthChecks();
 

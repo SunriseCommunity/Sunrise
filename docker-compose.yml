@@ -4,50 +4,62 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "443:443"
-      - "5147:5147"
+      - 443:443
+      - 5147:5147
     volumes:
       - ./Data:/app/Data
       - ./Sunrise.Server/appsettings.Production.json:/app/appsettings.Production.json
+    env_file:
+      - ./.env
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=https://+:443;http://+:5147
-      - ASPNETCORE_Kestrel__Certificates__Default__Password=password
-      - ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certificate.pfx
-      - OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION=true
-    restart: unless-stopped
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: https://+:443;http://+:5147
+      ASPNETCORE_Kestrel__Certificates__Default__Password: password
+      ASPNETCORE_Kestrel__Certificates__Default__Path: /app/certificate.pfx
+      OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION: true
+      MYSQL_HOST: mysql-sunrise-db
+      MYSQL_PORT: ${MYSQL_PORT}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      HANGFIRE_HOST: mysql-sunrise-db
+      HANGFIRE_PORT: ${HANGFIRE_PORT}
+      HANGFIRE_USER: ${MYSQL_USER}
+      HANGFIRE_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - container_network
     depends_on:
       - redis
 
   redis:
     image: redis:8.2.2
     restart: unless-stopped
+    networks:
+      - container_network
     volumes:
       - redis:/data
-
-  postgres:
-    image: postgres:17
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: hangfire
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
   mysql-sunrise-db:
     image: mysql:oraclelinux9
     restart: unless-stopped
     environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=sunrise
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+    networks:
+      - container_network
     volumes:
       - mysql:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - ${MYSQL_PORT}:3306
 
 volumes:
   mysql:
   redis:
-  postgres_data:
+
+networks:
+  container_network:
+    driver: bridge

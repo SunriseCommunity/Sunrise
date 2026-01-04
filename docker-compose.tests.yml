@@ -10,25 +10,6 @@ services:
     networks:
       - monitoring
 
-  postgres:
-    image: postgres:17
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: hangfire
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - monitoring
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   mysql-sunrise-db:
     image: mysql:oraclelinux9
     restart: unless-stopped
@@ -48,7 +29,6 @@ services:
 volumes:
   mysql:
   redis:
-  postgres_data:
 
 networks:
   monitoring:

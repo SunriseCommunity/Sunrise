@@ -8,6 +8,23 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    env:
+      ASPNETCORE_ENVIRONMENT: Tests
+      WEB_DOMAIN: sunrise.local
+      API_TOKEN_SECRET: SilentMoonCove
+      OBSERVATORY_HOST: jsonplaceholder.typicode.com
+      OBSERVATORY_PORT: 443
+      MYSQL_HOST: localhost
+      MYSQL_PORT: 3318
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_DATABASE: test
+      HANGFIRE_HOST: localhost
+      HANGFIRE_PORT: 3318
+      HANGFIRE_USER: root
+      HANGFIRE_PASSWORD: root
+      REDIS_HOST: localhost
+      REDIS_PORT: 6339
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET

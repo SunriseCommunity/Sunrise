@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.Security.Authentication;
+using System.Transactions;
 using EFCoreSecondLevelCacheInterceptor;
 using Hangfire;
-using Hangfire.PostgreSql;
+using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
+using MySql.Data.MySqlClient;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -210,7 +212,21 @@ public static class Bootstrap
     {
         if (Configuration.UseHangfireServer)
         {
-            builder.Services.AddHangfire(config => { config.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(Configuration.HangfireConnection)); });
+            CreateHangfireDatabaseIfNotExists(Configuration.HangfireMysqlConnection);
+
+            builder.Services.AddHangfire(config =>
+            {
+                config.UseStorage(new MySqlStorage($"{Configuration.HangfireMysqlConnection};database=hangfire",
+                    new MySqlStorageOptions
+                    {
+                        TablesPrefix = "Hangfire_",
+                        TransactionIsolationLevel = IsolationLevel.ReadCommitted,
+                        QueuePollInterval = TimeSpan.FromSeconds(15),
+                        JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                        CountersAggregateInterval = TimeSpan.FromMinutes(5),
+                        PrepareSchemaIfNecessary = true
+                    }));
+            });
         }
         else
         {
@@ -218,6 +234,16 @@ public static class Bootstrap
         }
 
         builder.Services.AddHangfireServer();
+    }
+
+    private static void CreateHangfireDatabaseIfNotExists(string connectionString)
+    {
+        using var connection = new MySqlConnection(connectionString);
+        using var command = connection.CreateCommand();
+
+        connection.Open();
+        command.CommandText = "CREATE DATABASE IF NOT EXISTS `hangfire`";
+        command.ExecuteNonQuery();
     }
 
     public static void AddMiddlewares(this WebApplicationBuilder builder)
@@ -436,12 +462,13 @@ public static class Bootstrap
 
     public static void UseStaticBackgrounds(this WebApplication app)
     {
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider =
-                new PhysicalFileProvider(Path.Combine(Configuration.DataPath, "Files/SeasonalBackgrounds")),
-            RequestPath = "/static"
-        });
+        if (Configuration.UseCustomBackgrounds)
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider =
+                    new PhysicalFileProvider(Path.Combine(Configuration.DataPath, "Files/SeasonalBackgrounds")),
+                RequestPath = "/static"
+            });
     }
 
     public static void UseMiddlewares(this WebApplication app)

@@ -138,3 +138,6 @@ grafana
 
 # Ignore appsettings.Production.json
 appsettings.Production.json
+
+# Environment variables
+.env

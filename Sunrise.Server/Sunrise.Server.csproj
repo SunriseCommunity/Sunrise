@@ -9,7 +9,6 @@
 
     <ItemGroup>
         <PackageReference Include="Hangfire.InMemory" Version="1.0.0"/>
-        <PackageReference Include="Hangfire.PostgreSql" Version="1.20.9"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22"/>
         <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
         <PackageReference Include="Rijndael256" Version="3.2.0"/>
