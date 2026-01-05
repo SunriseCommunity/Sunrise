@@ -13,9 +13,16 @@ services:
   mysql-sunrise-db:
     image: mysql
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=sunrise
+      - MYSQL_USER=${MYSQL_USER}
+      - HANGFIRE_HOST=${HANGFIRE_HOST}
+      - HANGFIRE_PORT=${HANGFIRE_PORT}
+      - HANGFIRE_USER=${HANGFIRE_USER}
+      - HANGFIRE_PASSWORD=${HANGFIRE_PASSWORD}
     volumes:
       - mysql:/var/lib/mysql
     ports:

@@ -8,7 +8,7 @@ using Sunrise.Shared.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-Env.TraversePath().Load(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Tests" ? ".env.tests" : ".env");
+Env.TraversePath().Load(Bootstrap.GetEnvFilename());
 
 builder.Services.AddHealthChecks();
 

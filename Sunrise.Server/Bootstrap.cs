@@ -452,6 +452,18 @@ public static class Bootstrap
             });
     }
 
+    public static string GetEnvFilename()
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+        return env switch
+        {
+            "Development" => ".env.dev",
+            "Tests" => ".env.tests",
+            _ => ".env"
+        };
+    }
+
     public static void ApplyDatabaseBootstrapping(this WebApplication app)
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
