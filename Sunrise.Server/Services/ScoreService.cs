@@ -77,7 +77,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
+        var (score, sessionUsername) = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
         var dbScore = await database.Scores.GetScore(score.ScoreHash);
 
         if (dbScore != null)
@@ -144,7 +144,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             clientHash,
             beatmapHash,
             beatmap.Checksum,
-            storyboardHash);
+            storyboardHash,
+            sessionUsername);
 
         if (!isScoreValid)
         {

@@ -110,7 +110,7 @@ public static class ScoreExtensions
         return leaderboard.ToList();
     }
 
-    public static Score TryParseToSubmittedScore(this string scoreString, Session session, Beatmap beatmap, DateTime scoreSubmittedAt)
+    public static (Score, string) TryParseToSubmittedScore(this string scoreString, Session session, Beatmap beatmap, DateTime scoreSubmittedAt)
     {
         var split = scoreString.Split(':');
 
@@ -159,14 +159,14 @@ public static class ScoreExtensions
             score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
         }
 
-        return score;
+        return (score, split[1]);
     }
 
-    public static string ToScoreString(this Score score)
+    public static string ToScoreString(this Score score, string userUsername)
     {
         return string.Join(":",
             score.BeatmapHash,
-            score.UserId.ToString(),
+            userUsername,
             score.ScoreHash,
             score.Count300.ToString(),
             score.Count100.ToString(),
