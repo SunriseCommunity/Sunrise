@@ -37,7 +37,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -55,7 +55,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -75,12 +75,69 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
+    public async Task TestSuccessfulSubmitScoreWithUsernameOfDifferentCasing()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var usernameInLowerCase = "user";
+
+        var user = _mocker.User.GetRandomUser(usernameInLowerCase);
+        await CreateTestUser(user);
+
+        var session = CreateTestSession(user);
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var usernameInUpperCaseAndUsedInGameSession = usernameInLowerCase.ToUpperInvariant() + " "; // Client adds a trailing space
+
+        score.ScoreHash = score.ComputeOnlineHash(usernameInUpperCaseAndUsedInGameSession.Trim(), session.Attributes.UserHash, null);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(usernameInUpperCaseAndUsedInGameSession),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        var userFromDb = await Database.Users.GetUser(id: session.UserId);
+        Assert.NotNull(userFromDb);
+
+        Assert.False(userFromDb.IsRestricted());
+
+        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+    }
+
+    [Fact]
     public async Task TestSuccessfulSubmitScoreForBeatmapWithCustomStatusRanked()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -109,7 +166,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -136,7 +193,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -165,7 +222,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -192,7 +249,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -211,7 +268,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -234,7 +291,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -254,7 +311,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -279,7 +336,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (replay, beatmapId) = GetValidTestReplay();
 
@@ -297,7 +354,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -324,7 +381,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var userStatsBeforeScore = await Database.Users.Stats.GetUserStats(session.UserId, GameMode.Standard);
         if (userStatsBeforeScore == null)
@@ -346,7 +403,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -372,7 +429,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.ToVanillaScore();
@@ -390,7 +447,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -417,7 +474,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.GameMode = gameMode;
@@ -436,7 +493,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -472,7 +529,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.ToVanillaScore();
@@ -489,7 +546,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -512,7 +569,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.Mods = Mods.ScoreV2 | Mods.Relax;
@@ -529,7 +586,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -552,7 +609,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -568,7 +625,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -588,7 +645,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -602,7 +659,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -622,7 +679,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
@@ -642,7 +699,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             timeElapsed,
             timeElapsed,
@@ -678,7 +735,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithSessionData(session);
@@ -693,7 +750,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -719,7 +776,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.SubmissionStatus = SubmissionStatus.Best;
@@ -748,7 +805,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -780,7 +837,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", shouldUseNewAlgorithm.ToString());
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.SubmissionStatus = SubmissionStatus.Best;
@@ -811,7 +868,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -848,7 +905,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         const int beatmapId = 4866852;
         const string beatmapHash = "017478eac4eb68b38cff9d85c9822453";
@@ -983,7 +1040,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            submitScore.ToScoreString(),
+            submitScore.ToScoreString(user.Username),
             beatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1010,14 +1067,14 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Performance points shouldn't change, because even while new score pp > best score in leaderboard, it's still < previous best by pp
         Assert.Equivalent(userStatsBefore.PerformancePoints, userStats.PerformancePoints);
     }
-    
+
     [Fact]
     public async Task TestUponSubmittingBetterScoreThanPreviousOneIgnoreFailedWithGreaterScore()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         const int beatmapId = 4866852;
         const string beatmapHash = "017478eac4eb68b38cff9d85c9822453";
@@ -1152,7 +1209,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            submitScore.ToScoreString(),
+            submitScore.ToScoreString(user.Username),
             beatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1183,7 +1240,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.Grade = "A";
@@ -1227,7 +1284,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1257,7 +1314,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
         oldScore.SubmissionStatus = SubmissionStatus.Best;
@@ -1285,7 +1342,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1312,7 +1369,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var bestScore = _mocker.Score.GetBestScoreableRandomScore();
         bestScore.SubmissionStatus = SubmissionStatus.Best;
@@ -1348,7 +1405,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1379,7 +1436,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
         moddedBestScore.Grade = "S";
@@ -1414,7 +1471,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
@@ -1440,7 +1497,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
 
-        var session = await CreateTestSession();
+        var (session, user) = await CreateTestSession();
 
         var (scoreData, beatmapId) = GetValidTestReplay();
         var beatmapHash = scoreData.GetScore().BeatmapHash;
@@ -1478,7 +1535,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Act
         var resultString = await scoreService.SubmitScore(
             session,
-            score.ToScoreString(),
+            score.ToScoreString(user.Username),
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
