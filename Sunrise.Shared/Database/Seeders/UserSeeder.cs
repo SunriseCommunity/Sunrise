@@ -63,11 +63,20 @@ public static class UserSeeder
 
         logger.Warning("NB!: Do NOT shut down the server during this process to avoid database corruption.");
 
-        logger.Information("Starting database backup as a precautionary measure.");
+        var isPresumablyEmptyDatabase = await context.Set<User>().CountAsync(cancellationToken: ct) <= 1;
 
-        await RecurringJobs.BackupDatabase(ct);
+        if (!isPresumablyEmptyDatabase)
+        {
+            logger.Information("Starting database backup as a precautionary measure. This may take a while...");
 
-        logger.Information("Database backup completed successfully.");
+            await RecurringJobs.BackupDatabase(ct);
+
+            logger.Information("Database backup completed successfully.");
+        }
+        else
+        {
+            logger.Information("Database doesn't seem to have real users. Skipping backup.");
+        }
 
         await context.Database.ExecuteSqlRawAsync("ALTER TABLE `user` AUTO_INCREMENT = 1000;", ct);
 
