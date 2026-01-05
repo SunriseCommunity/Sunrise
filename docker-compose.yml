@@ -46,9 +46,31 @@ services:
     image: mysql:oraclelinux9
     restart: unless-stopped
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ONETIME_PASSWORD=true
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
+      - HANGFIRE_HOST=${HANGFIRE_HOST}
+      - HANGFIRE_PORT=${HANGFIRE_PORT}
+      - HANGFIRE_USER=${HANGFIRE_USER}
+      - HANGFIRE_PASSWORD=${HANGFIRE_PASSWORD}
+    entrypoint: |
+      sh -c "
+      if [ \"\$HANGFIRE_HOST\" = \"\$MYSQL_HOST\" ] && [ \"\$HANGFIRE_PORT\" = \"\$MYSQL_PORT\" ]; then
+      cat > /docker-entrypoint-initdb.d/init.sql <<EOF
+      CREATE DATABASE IF NOT EXISTS hangfire;
+
+      CREATE USER IF NOT EXISTS '\$HANGFIRE_USER'@'%' IDENTIFIED BY '\$HANGFIRE_PASSWORD';
+      GRANT ALL PRIVILEGES ON hangfire.* TO '\$HANGFIRE_USER'@'%';
+      FLUSH PRIVILEGES;
+      EOF
+      else
+      echo \"Hangfire points to a different MySQL host/port — skipping Hangfire DB and user creation.\"
+      fi
+
+      exec /usr/local/bin/docker-entrypoint.sh --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      "
     networks:
       - container_network
     volumes:

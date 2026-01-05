@@ -212,7 +212,10 @@ public static class Bootstrap
     {
         if (Configuration.UseHangfireServer)
         {
-            CreateHangfireDatabaseIfNotExists(Configuration.HangfireMysqlConnection);
+            if (Configuration.HangfireMysqlConnection.Contains("user=root;"))
+            {
+                CreateHangfireDatabaseIfNotExists(Configuration.HangfireMysqlConnection);
+            }
 
             builder.Services.AddHangfire(config =>
             {
