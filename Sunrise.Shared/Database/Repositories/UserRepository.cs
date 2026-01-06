@@ -267,7 +267,7 @@ public class UserRepository(
 
             if (isUserHasAnyLoginEvents || isUserHasAnyScore || user.IsUserSunriseBot())
             {
-                _logger.LogWarning($"User {user.Username} has login events or some active score. Deleting user with any of these conditions is not allowed.");
+                _logger.LogWarning("User {userUsername} has login events or some active score. Deleting user with any of these conditions is not allowed.", user.Username);
                 throw new ApplicationException(QueryResultError.CANT_REMOVE_REQUESTED_RECORD);
             }
 

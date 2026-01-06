@@ -16,7 +16,7 @@ public static class LocalStorageRepository
         }
         catch (Exception e)
         {
-            Logger.Error(e, $"Failed to write file to {path}");
+            Logger.Error(e, "Failed to write file to {path}", path);
             return false;
         }
     }
@@ -36,7 +36,7 @@ public static class LocalStorageRepository
         }
         catch (Exception e)
         {
-            Logger.Error(e, $"Failed to write file to {path}");
+            Logger.Error(e, "Failed to write file to {path}", path);
             return false;
         }
     }
@@ -49,7 +49,7 @@ public static class LocalStorageRepository
         }
         catch (Exception e)
         {
-            Logger.Error(e, $"Failed to read file from {path}");
+            Logger.Error(e, "Failed to read file from {path}", path);
             return null;
         }
     }

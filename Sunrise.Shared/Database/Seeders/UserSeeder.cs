@@ -135,7 +135,7 @@ public static class UserSeeder
 
             await context.Database.ExecuteSqlRawAsync(userUpdateSql);
 
-            logger.Information($"Users updated: {x * pageSize + users.Count} / {usersCount}.");
+            logger.Information("Users updated: {usersUpdated} / {usersTotal}.", x * pageSize + users.Count, usersCount);
 
             if (users.Count < pageSize) break;
         }

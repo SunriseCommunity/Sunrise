@@ -22,13 +22,15 @@ public static class PacketHandlerRepository
 
         if (handler == null)
         {
-            Logger.Error($"No handler found for packet {packet.Type}");
+            Logger.Error("No handler found for packet {packetType}", packet.Type);
             return;
         }
 
         if (!handler.SuppressLogging)
             Logger.Information(
-                $"User (Id: {session.UserId}) sent {packet.Type}");
+                "User (Id: {userId}) sent {packetType}",
+                session.UserId,
+                packet.Type);
 
         SunriseMetrics.PacketHandlingCounterInc(packet, session);
 

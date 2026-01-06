@@ -69,7 +69,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
                 if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
                 {
-                    logger.LogWarning($"Error while getting beatmap set: {beatmapSetTask.Error.Message}, Retry count: {retryCount}");
+                    logger.LogWarning("Error while getting beatmap set: {errorMessage}, Retry count: {retryCount}", beatmapSetTask.Error.Message, retryCount);
 
                     if (retryCount > 0)
                     {
