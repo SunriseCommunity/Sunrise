@@ -86,7 +86,15 @@ public static class Bootstrap
         {
             loggerConfiguration = loggerConfiguration.WriteTo.GrafanaLoki(
                 Configuration.LokiUri,
-                propertiesAsLabels: ["Application", "Environment"]);
+                [
+                    new LokiLabel
+                    {
+                        Key = "service_name",
+                        Value = "Sunrise"
+                    }
+                ],
+                ["level", "Application", "Environment"]
+            );
         }
 
         var logger = loggerConfiguration.CreateLogger();
