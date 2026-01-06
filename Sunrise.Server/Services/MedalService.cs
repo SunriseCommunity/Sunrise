@@ -51,7 +51,7 @@ public class MedalService(DatabaseService database)
 
         ValueTask EvaluateMedal(Medal medal)
         {
-            using var activity = ActivitySource.StartActivity($"Evaluating medal {medal.Id})");
+            using var activity = ActivitySource.StartActivity($"Evaluating medal {medal.Id}");
 
             var isConditionsAreMet = Evaluate(new MedalConditionContext
                 {

@@ -104,6 +104,7 @@ public class SessionRepository
         return _sessions.Values.FirstOrDefault(x => x.UserId == searchedUser.Id);
     }
 
+    [Obsolete("Use TryGetSessionAsync instead")]
     public bool TryGetSession(string username, string? passhash, out Session? session)
     {
         var result = TryGetSessionAsync(username, passhash)
