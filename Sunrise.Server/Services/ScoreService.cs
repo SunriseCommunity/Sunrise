@@ -79,7 +79,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
-        var score = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
+        var (score, sessionUsername) = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
         var dbScore = await database.Scores.GetScore(score.ScoreHash); // TODO: Score hash is not indexed, this is heavy performance downside. Consider refactoring to score uploading queue and checking if unique by inserting. (Insert score -> Process -> If in the valid request timeframe (API ratelimits can make score wait in queue), return score submission response)
 
         if (dbScore != null)
@@ -146,7 +146,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             clientHash,
             beatmapHash,
             beatmap.Checksum,
-            storyboardHash);
+            storyboardHash,
+            sessionUsername);
 
         if (!isScoreValid)
         {

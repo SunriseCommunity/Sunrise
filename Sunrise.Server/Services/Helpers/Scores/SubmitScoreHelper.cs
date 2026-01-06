@@ -1,6 +1,5 @@
 ﻿using osu.Shared;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -67,16 +66,9 @@ public static class SubmitScoreHelper
     }
 
     public static bool IsScoreValid(Session session, Score score, string clientHash,
-        string beatmapHash, string onlineBeatmapHash, string? storyboardHash)
+        string beatmapHash, string onlineBeatmapHash, string? storyboardHash, string sessionUsername)
     {
-        using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        var user = database.Users.GetUser(id: score.UserId).Result;
-        if (user == null)
-            return false;
-
-        var computedOnlineHash = score.ComputeOnlineHash(user.Username, clientHash, storyboardHash);
+        var computedOnlineHash = score.ComputeOnlineHash(sessionUsername.Trim(), clientHash, storyboardHash);
 
         var checks = new[]
         {
