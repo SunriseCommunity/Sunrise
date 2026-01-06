@@ -31,7 +31,6 @@ public static class ActivityExtensions
             {
                 activity.SetTag("session.match.id", gameSession.Match.Match.MatchId);
                 activity.SetTag("session.match.game_name", gameSession.Match.Match.GameName);
-                activity.SetTag("session.match.game_password", gameSession.Match.Match.GamePassword);
                 activity.SetTag("session.match.host_id", gameSession.Match.Match.HostId);
                 activity.SetTag("session.match.beatmap_id", gameSession.Match.Match.BeatmapId);
                 activity.SetTag("session.match.mods", gameSession.Match.Match.ActiveMods);
