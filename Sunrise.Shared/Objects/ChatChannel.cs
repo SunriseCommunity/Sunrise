@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Repositories;
@@ -10,26 +11,26 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
     public string Description { get; } = description;
     public bool IsPublic { get; } = isPublic;
     public bool IsAbstract { get; } = isAbstract;
-    private List<long> UserIds { get; } = [];
+    private ConcurrentDictionary<long, byte> UserIds { get; } = new();
 
     public void AddUser(long userId)
     {
-        UserIds.Add(userId);
+        UserIds.TryAdd(userId, 0);
     }
 
     public void RemoveUser(long userId)
     {
-        UserIds.Remove(userId);
+        UserIds.TryRemove(userId, out _);
 
-        if (UserIds.Count == 0 && IsAbstract)
+        if (UserIds.IsEmpty && IsAbstract)
             ServicesProviderHolder.GetRequiredService<ChatChannelRepository>().RemoveAbstractChannel(Name);
     }
 
-    public void SendToChannel(string message,  User? senderUser = null)
+    public void SendToChannel(string message, User? senderUser = null)
     {
         var sessions = ServicesProviderHolder.GetRequiredService<SessionRepository>();
 
-        foreach (var session in UserIds.Select(userId => sessions.GetSession(userId: userId)))
+        foreach (var session in UserIds.Keys.Select(userId => sessions.GetSession(userId: userId)))
         {
             if (session?.UserId == senderUser?.Id)
                 continue;

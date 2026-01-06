@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
+using Sunrise.API.Attributes;
 using Sunrise.API.Enums;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects;
@@ -28,6 +29,7 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 namespace Sunrise.API.Controllers;
 
 [ApiController]
+[ApiHttpTrace]
 [Subdomain("api")]
 [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
 [ProducesResponseType(StatusCodes.Status200OK)]

@@ -1,8 +1,10 @@
 ﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -17,6 +19,7 @@ namespace Sunrise.Server.Services;
 
 public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService)
 {
+    [TraceExecution]
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
     {
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
@@ -66,6 +69,8 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
             writer.WritePacket(PacketType.ServerNotification, reason);
 
         writer.WritePacket(PacketType.ServerLoginReply, code);
+
+        Log.Warning("Login rejected: {Reason}", reason ?? "No reason provided");
 
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }

@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Objects;
@@ -14,6 +15,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Services;
 
+[TraceExecution]
 public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
     public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score)

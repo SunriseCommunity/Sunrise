@@ -63,13 +63,13 @@ public static class BackgroundTaskService
         catch (OperationCanceledException)
         {
             trySendMessage?.Invoke($"{jobName} was stopped.");
-            logger.LogInformation($"{jobName} was stopped by user.");
+            logger.LogInformation("{jobName} was stopped by user.", jobName);
         }
         catch (Exception ex)
         {
             trySendMessage?.Invoke($"Error occurred while executing {jobName}. Check console for more details.");
             trySendMessage?.Invoke($"Error message: {ex.Message}");
-            logger.LogError(ex, $"Exception occurred while executing job \"{jobName}\".");
+            logger.LogError(ex, "Exception occurred while executing job \"{jobName}\".", jobName);
         }
         finally
         {

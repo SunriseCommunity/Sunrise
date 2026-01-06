@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Sunrise.Shared.Application;
@@ -31,6 +32,19 @@ public static class ServicesProviderHolder
     {
         if (_serviceProvider == null) throw new InvalidOperationException("ServiceProvider has not been set.");
 
-        return _serviceProvider.CreateScope();
+        var httpContextAccessor = _serviceProvider.GetService<IHttpContextAccessor>();
+
+        return httpContextAccessor?.HttpContext != null
+            ? new RequestScopeWrapper(httpContextAccessor.HttpContext.RequestServices)
+            : _serviceProvider.CreateScope();
+    }
+
+    private sealed class RequestScopeWrapper(IServiceProvider serviceProvider) : IServiceScope
+    {
+        public IServiceProvider ServiceProvider { get; } = serviceProvider;
+
+        public void Dispose()
+        {
+        }
     }
 }

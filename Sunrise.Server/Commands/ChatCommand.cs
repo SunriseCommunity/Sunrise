@@ -1,3 +1,4 @@
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -10,6 +11,7 @@ public class ChatCommand(IChatCommand handler, string prefix, UserPrivilege requ
     public bool IsGlobal { get; set; } = isGlobal;
     public string Prefix { get; set; } = prefix;
 
+    [TraceExecution]
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
         return handler.Handle(session, channel, args);

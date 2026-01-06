@@ -2,13 +2,10 @@
   "Note": "Don't forget to remove .example at the end of this file for it to work!",
   "General": {
     "WelcomeMessage": "Welcome to Sunrise!",
-    "WebDomain": "osu-sunrise.top",
     "MedalMirrorUrl": "https://raw.githubusercontent.com/SunriseCommunity/Server-Assets/main/medals/",
     "IgnoreBeatmapRanking": false,
     "IncludeUserTokenInLogs": false,
     "UseCustomBackgrounds": true,
-    "ObservatoryApiKey": "", 
-    "ObservatoryUrl": "host.docker.internal:3333",
     "OnMaintenance": false,
     "CountryChangeCooldownInDays": 90,
     "UsernameChangeCooldownInDays": 30,
@@ -29,14 +26,13 @@
       "BannedIps": []
   },
   "Database": {
-    "ConnectionString": "Host=mysql-sunrise-db;Port=3306;Database=sunrise;Username=root;Password=root;SslMode=Required;"
+    "SlowQueryThresholdMilliseconds": 1000
   },
   "Files": {
     "DataPath": "./Data",
     "BannedUsernamesName": "banned-usernames.txt"
   },
   "Redis": {
-    "ConnectionString": "redis",
     "CacheLifeTime": 600,
     "UseCache": true,
     "UseRedisAsSecondCachingForDatabase": true,
@@ -44,8 +40,13 @@
   },
   "Hangfire": {
       "UseHangfireServer": true,
-      "ConnectionString": "Host=postgres;Port=5432;Database=hangfire;Username=postgres;Password=postgres;",
       "MaxDailyBackupCount": 14
+  },
+  "Telemetry": {
+    "UseMetrics": true,
+    "Logging": {
+      "UseW3CFileLogging": false
+    }
   },
   "Bot": {
     "Username": "Sunshine Bot",
@@ -56,7 +57,6 @@
       "CallsPerWindow": 100,
       "Window": 30
     },
-    "TokenExpiresIn": 3600,
-    "TokenSecret": "ReplaceMeWithSomething"
+    "TokenExpiresIn": 3600
   }
 }

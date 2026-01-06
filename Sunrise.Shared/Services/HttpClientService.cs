@@ -20,10 +20,9 @@ public class HttpClientService
     private readonly ILogger<HttpClientService> _logger;
     private readonly RedisRepository _redis;
 
-    public HttpClientService(RedisRepository redis)
+    public HttpClientService(RedisRepository redis, ILogger<HttpClientService> logger)
     {
-        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        _logger = loggerFactory.CreateLogger<HttpClientService>();
+        _logger = logger;
         _redis = redis;
 
         _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -39,7 +38,7 @@ public class HttpClientService
                 gameSession.SendRateLimitWarning();
             }
 
-            _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
+            _logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -54,7 +53,7 @@ public class HttpClientService
 
         if (apis is { Count: 0 } or null)
         {
-            _logger.LogWarning($"No API servers found for {type}.");
+            _logger.LogWarning("No API servers found for {type}.", type);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"No API servers found for {type}.",
@@ -85,7 +84,8 @@ public class HttpClientService
         }
 
         _logger.LogWarning(
-            $"Failed to get response from any API server for {type}.");
+            "Failed to get response from any API server for {type}.",
+            type);
 
         return Result.Failure<T, ErrorMessage>(new ErrorMessage
         {
@@ -103,7 +103,7 @@ public class HttpClientService
                 gameSession.SendRateLimitWarning();
             }
 
-            _logger.LogWarning($"User {session.UserId} got rate limited. Ignoring request.");
+            _logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -118,7 +118,7 @@ public class HttpClientService
 
         if (apis is { Count: 0 } or null)
         {
-            _logger.LogWarning($"No API servers found for {type}.");
+            _logger.LogWarning("No API servers found for {type}.", type);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"No API servers found for {type}.",
@@ -131,7 +131,11 @@ public class HttpClientService
             if (args.Length < api.NumberOfRequiredArgs)
             {
                 _logger.LogWarning(
-                    $"Not enough arguments for {type} for {api}. Required {api.NumberOfRequiredArgs}, got {args.Length}.");
+                    "Not enough arguments for {type} for {api}. Required {numberOfRequiredArgs}, got {argsLength}.",
+                    type,
+                    api,
+                    api.NumberOfRequiredArgs,
+                    args.Length);
                 continue;
             }
 
@@ -159,7 +163,9 @@ public class HttpClientService
         }
 
         _logger.LogWarning(
-            $"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.");
+            "Failed to get response from any API server for {type} with args {args}.",
+            type,
+            string.Join(", ", args));
 
         return Result.Failure<T, ErrorMessage>(new ErrorMessage
         {
@@ -174,7 +180,7 @@ public class HttpClientService
 
         if (isServerRateLimited is true)
         {
-            _logger.LogWarning($"Server {server} is rate limited. Ignoring request.");
+            _logger.LogWarning("Server {serverName} is rate limited. Ignoring request.", server);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -217,7 +223,7 @@ public class HttpClientService
                         : "60";
                     break;
                 default:
-                    _logger.LogWarning($"Server {server} rate limit headers wasn't set. Ignoring rate limit.");
+                    _logger.LogWarning("Server {serverName} rate limit headers wasn't set. Ignoring rate limit.", server);
                     break;
             }
 
@@ -231,7 +237,9 @@ public class HttpClientService
             if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
             {
                 _logger.LogWarning(
-                    $"Request to {server} failed with status code {response.StatusCode}. Rate limiting server for 1 minute.");
+                    "Request to {serverName} failed with status code {responseStatusCode}. Rate limiting server for 1 minute.",
+                    server,
+                    response.StatusCode);
 
                 await _redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
 
@@ -280,7 +288,7 @@ public class HttpClientService
 
                         if (statusCode != 200)
                         {
-                            _logger.LogError($"Failed to process request to {server} with uri {requestUri}. Status: {status}");
+                            _logger.LogError("Failed to process request to {serverName} with uri {requestUri}. Status: {status}", server, requestUri, statusCode);
                             return Result.Failure<T, ErrorMessage>(new ErrorMessage
                             {
                                 Message = $"Failed to process request to {server} with uri {requestUri}. Status: {status}",
@@ -306,7 +314,7 @@ public class HttpClientService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, $"Failed to process request to {server} with uri {requestUri}");
+            _logger.LogError(e, "Failed to process request to {serverName} with uri {requestUri}", server, requestUri);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"Failed to process request to {server} with uri {requestUri}",

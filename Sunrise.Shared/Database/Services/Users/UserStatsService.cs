@@ -28,7 +28,7 @@ public class UserStatsService(
         {
             dbContext.UserStats.Add(stats);
             await dbContext.SaveChangesAsync();
-            
+
             var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
             if (addOrUpdateUserRanksResult.IsFailure)
                 throw new ApplicationException(addOrUpdateUserRanksResult.Error);
@@ -57,7 +57,7 @@ public class UserStatsService(
             var user = await databaseService.Value.Users.GetUser(userId, ct: ct);
             if (user == null) return null;
 
-            _logger.LogCritical($"User stats not found for user (id: {userId}) in mode {mode}. Creating new stats.");
+            _logger.LogCritical("User stats not found for user (id: {userId}) in mode {mode}. Creating new stats.", userId, mode);
 
             stats = new UserStats
             {
@@ -109,7 +109,7 @@ public class UserStatsService(
                 {
                     foreach (var user in usersWithoutStats)
                     {
-                        _logger.LogCritical($"User stats not found for user (id: {user.Id}) in mode {mode}. Creating new stats.");
+                        _logger.LogCritical("User stats not found for user (id: {userId}) in mode {mode}. Creating new stats.", user.Id, mode);
                         await AddUserStats(new UserStats
                             {
                                 UserId = user.Id,

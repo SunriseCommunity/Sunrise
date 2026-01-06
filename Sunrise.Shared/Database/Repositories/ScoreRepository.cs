@@ -286,4 +286,17 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
     {
         return await dbContext.Scores.FilterValidScores().CountAsync(cancellationToken: ct);
     }
+
+    public async Task<Dictionary<GameMode, long>> CountScoresByGameMode(CancellationToken ct = default)
+    {
+        return await dbContext.Scores
+            .FilterValidScores()
+            .GroupBy(s => s.GameMode)
+            .Select(g => new
+            {
+                GameMode = g.Key,
+                Count = g.LongCount()
+            })
+            .ToDictionaryAsync(k => k.GameMode, v => v.Count, ct);
+    }
 }

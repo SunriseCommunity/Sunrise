@@ -1,3 +1,4 @@
+using DotNetEnv;
 using Hangfire;
 using Sunrise.Server;
 using Sunrise.Server.Middlewares;
@@ -6,6 +7,8 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Env.TraversePath().Load(Bootstrap.GetEnvFilename());
 
 builder.Services.AddHealthChecks();
 
@@ -24,6 +27,9 @@ builder.AddAuthorizationPolicies();
 builder.AddSunriseDbContextPool();
 
 builder.AddHangfire();
+builder.AddTelemetry();
+builder.AddCustomLogging();
+
 builder.Configure();
 
 var app = builder.Build();

@@ -1,16 +1,11 @@
-using Microsoft.Extensions.Logging;
+using Serilog;
+using ILogger = Serilog.ILogger;
 
 namespace Sunrise.Shared.Repositories;
 
 public static class LocalStorageRepository
 {
-    private static readonly ILogger Logger;
-
-    static LocalStorageRepository()
-    {
-        using var loggerFactory = LoggerFactory.Create(builder => { builder.AddConsole(); });
-        Logger = loggerFactory.CreateLogger("LocalStorageRepository");
-    }
+    private static readonly ILogger Logger = Log.ForContext(typeof(LocalStorageRepository));
 
     public static async Task<bool> WriteFileAsync(string path, byte[] data, CancellationToken ct = default)
     {
@@ -21,11 +16,11 @@ public static class LocalStorageRepository
         }
         catch (Exception e)
         {
-            Logger.LogError(e, $"Failed to write file to {path}");
+            Logger.Error(e, "Failed to write file to {path}", path);
             return false;
         }
     }
-    
+
     public static async Task<bool> WriteFileAsync(string path, Stream dataStream, CancellationToken ct = default)
     {
         try
@@ -34,14 +29,14 @@ public static class LocalStorageRepository
             {
                 dataStream.Seek(0, SeekOrigin.Begin);
             }
-            
+
             await using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
             await dataStream.CopyToAsync(fileStream, ct);
             return true;
         }
         catch (Exception e)
         {
-            Logger.LogError(e, $"Failed to write file to {path}");
+            Logger.Error(e, "Failed to write file to {path}", path);
             return false;
         }
     }
@@ -54,7 +49,7 @@ public static class LocalStorageRepository
         }
         catch (Exception e)
         {
-            Logger.LogError(e, $"Failed to read file from {path}");
+            Logger.Error(e, "Failed to read file from {path}", path);
             return null;
         }
     }

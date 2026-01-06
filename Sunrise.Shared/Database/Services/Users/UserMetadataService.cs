@@ -41,7 +41,7 @@ public class UserMetadataService(
             var user = await databaseService.Value.Users.GetUser(userId, ct: ct);
             if (user == null) return null;
 
-            _logger.LogInformation($"User metadata not found for user (id: {userId}). Creating new metadata.");
+            _logger.LogInformation("User metadata not found for user (id: {userId}). Creating new metadata.", userId);
 
             metadata = new UserMetadata
             {

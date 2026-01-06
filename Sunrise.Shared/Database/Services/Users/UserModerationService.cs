@@ -159,7 +159,7 @@ public class UserModerationService(
 
             if (user.IsUserSunriseBot())
             {
-                _logger.LogWarning($"User {user.Username} is bot. Disabling bot user is not allowed.");
+                _logger.LogWarning("User {userUsername} is bot. Disabling bot user is not allowed.", user.Username);
                 throw new ApplicationException(QueryResultError.CANT_UPDATE_REQUESTED_RECORD);
             }
 

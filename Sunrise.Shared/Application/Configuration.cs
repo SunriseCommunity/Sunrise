@@ -63,7 +63,19 @@ public static class Configuration
         Config.GetSection("API").GetValue<string?>("DocumentationPath") ?? "/docs";
 
     // Database section
-    public static string DatabaseConnectionString => Config.GetSection("Database").GetValue<string?>("ConnectionString") ?? "";
+    public static string DatabaseConnectionString =>
+        GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("MYSQL_HOST",
+            () => string.Format("Host={0};Port={1};Database={2};Username={3};Password={4};SslMode=Required;",
+                Environment.GetEnvironmentVariable("MYSQL_HOST") ?? "localhost",
+                Environment.GetEnvironmentVariable("MYSQL_PORT") ?? "3306",
+                Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "sunrise",
+                Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root",
+                Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root"
+            ),
+            () => Config.GetSection("Database").GetValue<string?>("ConnectionString"));
+
+    public static int SlowQueryThresholdMilliseconds =>
+        Config.GetSection("Database").GetValue<int?>("SlowQueryThresholdMilliseconds") ?? 1_000;
 
     // Files section
     private static string _dataPath => Config.GetSection("Files").GetValue<string?>("DataPath") ?? "";
@@ -73,7 +85,11 @@ public static class Configuration
 
     // General section
     public static string WelcomeMessage => Config.GetSection("General").GetValue<string?>("WelcomeMessage") ?? "";
-    public static string Domain => Config.GetSection("General").GetValue<string?>("WebDomain") ?? "";
+
+    public static string Domain => GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("WEB_DOMAIN",
+        () => Environment.GetEnvironmentVariable("WEB_DOMAIN"),
+        () => Config.GetSection("General").GetValue<string?>("WebDomain"));
+
     public static string MedalMirrorUrl => Config.GetSection("General").GetValue<string?>("MedalMirrorUrl") ?? "";
 
     public static int GeneralCallsPerWindow =>
@@ -102,7 +118,6 @@ public static class Configuration
 
     public static bool UseCustomBackgrounds => Config.GetSection("General").GetValue<bool?>("UseCustomBackgrounds") ?? false;
 
-
     // - Will use best scores by performance points instead of total score for performance calculation
     public static bool UseNewPerformanceCalculationAlgorithm =>
         Config.GetSection("General").GetValue<bool?>("UseNewPerformanceCalculationAlgorithm") ?? false;
@@ -118,9 +133,27 @@ public static class Configuration
         Config.GetSection("BeatmapHype").GetValue<bool?>("AllowMultipleHypeFromSameUser") ?? true;
 
 
+    // Telemetry section
+    public static bool UseMetrics => Config.GetSection("Telemetry").GetValue<bool?>("UseMetrics") ?? true;
+
+    public static string TempoUri => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TEMPO_HOST"))
+        ? string.Format("http://{0}:{1}",
+            Environment.GetEnvironmentVariable("TEMPO_HOST") ?? "localhost",
+            Environment.GetEnvironmentVariable("TEMPO_PORT") ?? "4317")
+        : "";
+
+    public static string LokiUri => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LOKI_HOST"))
+        ? string.Format("http://{0}:{1}",
+            Environment.GetEnvironmentVariable("LOKI_HOST") ?? "localhost",
+            Environment.GetEnvironmentVariable("LOKI_PORT") ?? "3100")
+        : "";
+
+    public static bool UseW3CFileLogging =>
+        Config.GetSection("Telemetry").GetSection("Logging").GetValue<bool?>("UseW3CFileLogging") ?? false;
+
     // Moderation section
     public static int BannablePpThreshold => Config.GetSection("Moderation").GetSection("BannablePPThreshold").Get<int?>() ?? 3000;
-    public static string[] BannedIps => Config.GetSection("Moderation").GetSection("BannedIps").Get<string[]>() ?? [];
+    public static string[] BannedIps => Config.GetSection("Moderation").GetSection("BannedIps").Get<string[]>() ?? []; // TODO: Need to deprecate this later
 
 
     // Bot section
@@ -128,7 +161,13 @@ public static class Configuration
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
 
     // Redis section
-    public static string RedisConnection => Config.GetSection("Redis").GetValue<string?>("ConnectionString") ?? "";
+    public static string RedisConnection => GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("REDIS_HOST",
+        () => string.Format("{0}:{1}",
+            Environment.GetEnvironmentVariable("REDIS_HOST") ?? throw new Exception("REDIS_HOST environment variable is not set."),
+            Environment.GetEnvironmentVariable("REDIS_PORT") ?? throw new Exception("REDIS_PORT environment variable is not set.")
+        ),
+        () => Config.GetSection("Redis").GetValue<string?>("ConnectionString"));
+
     public static int RedisCacheLifeTime => Config.GetSection("Redis").GetValue<int?>("CacheLifeTime") ?? 300;
     public static bool UseCache => Config.GetSection("Redis").GetValue<bool?>("UseCache") ?? false;
     public static bool UseRedisAsSecondCachingForDatabase => Config.GetSection("Redis").GetValue<bool?>("UseRedisAsSecondCachingForDatabase") ?? true;
@@ -140,17 +179,29 @@ public static class Configuration
     public static bool UseHangfireServer =>
         Config.GetSection("Hangfire").GetValue<bool?>("UseHangfireServer") ?? false;
 
-    public static string HangfireConnection =>
-        Config.GetSection("Hangfire").GetValue<string?>("ConnectionString") ?? "";
+    public static string HangfireMysqlConnection => GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("HANGFIRE_HOST",
+        () => string.Format("server={0};port={1};user={2};password={3}",
+            Environment.GetEnvironmentVariable("HANGFIRE_HOST") ?? throw new Exception("HANGFIRE_HOST environment variable is not set."),
+            Environment.GetEnvironmentVariable("HANGFIRE_PORT") ?? throw new Exception("HANGFIRE_PORT environment variable is not set."),
+            Environment.GetEnvironmentVariable("HANGFIRE_USER") ?? throw new Exception("HANGFIRE_USER environment variable is not set."),
+            Environment.GetEnvironmentVariable("HANGFIRE_PASSWORD") ?? throw new Exception("HANGFIRE_PASSWORD environment variable is not set.")
+        ),
+        () => throw new Exception("Deprecated hangfire connection was using Postgres, which is no longer supported. Please set up Hangfire connection using environment variables."));
 
     public static int MaxDailyBackupCount =>
         Config.GetSection("Hangfire").GetValue<int?>("MaxDailyBackupCount") ?? 3;
 
     public static string ObservatoryApiKey =>
-        Config.GetSection("General").GetValue<string?>("ObservatoryApiKey") ?? "";
+        GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("OBSERVATORY_API_KEY",
+            () => Environment.GetEnvironmentVariable("OBSERVATORY_API_KEY"),
+            () => Config.GetSection("General").GetValue<string?>("ObservatoryApiKey"));
 
-    private static string ObservatoryUrl =>
-        Config.GetSection("General").GetValue<string?>("ObservatoryUrl") ?? "";
+    private static string ObservatoryUrl => GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("OBSERVATORY_HOST",
+        () => string.Format("{0}:{1}",
+            Environment.GetEnvironmentVariable("OBSERVATORY_HOST") ?? throw new Exception("OBSERVATORY_HOST environment variable is not set."),
+            Environment.GetEnvironmentVariable("OBSERVATORY_PORT") ?? throw new Exception("OBSERVATORY_PORT environment variable is not set.")
+        ),
+        () => Config.GetSection("General").GetValue<string?>("ObservatoryUrl"));
 
     public static List<ExternalApi> ExternalApis { get; } =
     [
@@ -175,9 +226,9 @@ public static class Configuration
             new ExternalApi(ApiType.CalculateBeatmapPerformance, ApiServer.Observatory, $"http://{ObservatoryUrl}/calculator/beatmap/{{0}}?acc={{1}}&mode={{2}}&mods={{3}}&combo={{4}}&misses={{5}}", 0, 1),
             new ExternalApi(ApiType.CalculateScorePerformance, ApiServer.Observatory, $"http://{ObservatoryUrl}/calculator/score", 0, 0, true),
             new ExternalApi(ApiType.BeatmapDownload, ApiServer.Observatory, $"http://{ObservatoryUrl}/osu/{{0}}", 0, 1),
-            new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}", 0, 1),
+            new ExternalApi(ApiType.BeatmapSetDataById, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/s/{{0}}?allowMissingNonBeatmapValues=true", 0, 1),
             new ExternalApi(ApiType.BeatmapSetDataByBeatmapId, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/b/{{0}}?full=true", 0, 1),
-            new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/md5/{{0}}?full=true", 0, 1),
+            new ExternalApi(ApiType.BeatmapSetDataByHash, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/md5/{{0}}?full=true&allowMissingNonBeatmapValues=true", 0, 1),
             new ExternalApi(ApiType.BeatmapSetsDataByBeatmapIds, ApiServer.Observatory, $"http://{ObservatoryUrl}/api/v2/beatmapsets?beatmapIds={{0}}", 0, 1),
             new ExternalApi(ApiType.BeatmapSetSearch,
                 ApiServer.Observatory,
@@ -189,9 +240,21 @@ public static class Configuration
 
     private static string GetApiToken()
     {
-        var apiToken = Config.GetSection("API").GetValue<string?>("TokenSecret");
+        var apiToken = GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("API_TOKEN_SECRET",
+            () => Environment.GetEnvironmentVariable("API_TOKEN_SECRET"),
+            () => Config.GetSection("API").GetValue<string?>("TokenSecret"));
+
         if (string.IsNullOrEmpty(apiToken)) throw new Exception("API token is empty. Please check your configuration.");
 
         return apiToken;
+    }
+
+    private static string GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv(string envKey, Func<string?> envBasedFunc, Func<string?> deprecatedConfigFunc)
+    {
+        var envValue = Environment.GetEnvironmentVariable(envKey);
+        if (string.IsNullOrEmpty(envValue))
+            return deprecatedConfigFunc() ?? "";
+
+        return envBasedFunc() ?? "";
     }
 }

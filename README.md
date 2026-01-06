@@ -1,12 +1,11 @@
 # 🌅 Sunrise - osu! private server
 
 <p align="center">
-  <img src="./readme.jpg" alt="Artwork made by torekka. We don't own the rights to this image.">
+  <img src="./.github/readme.jpg" alt="Artwork made by torekka. We don't own the rights to this image.">
 </p>
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![GitHub stars](https://img.shields.io/github/stars/SunriseCommunity/Sunrise.svg?style=social&label=Star)](https://github.com/SunriseCommunity/Sunrise)
-
 
 Sunrise is a private server for osu! written in C#. This repository has both endpoints for game-client and for the
 website. The server is currently in development and is not yet ready for public use.
@@ -16,9 +15,34 @@ website. The server is currently in development and is not yet ready for public 
 
 ## 📦 How to Set Up
 
-If you are planning to host your own instance of Sunrise, please follow the [official documentation](https://docs.sunrize.uk) for instructions on how to do so. 
+If you are planning to host your own instance of Sunrise, please highly consider using the [Solar System monorepo](https://github.com/SunriseCommunity/Solar-System).
 
-They are more in depth and cover various aspects of the setup process in comparison to this README.
+![Solar System](./.github/prefer_solar_system.png)
+
+It includes Sunrise and other all required services for a fully functional Sunrise server. As a bonus, it also includes **a website** and **a Discord bot**! **This is the recommended way to set up your Sunrise server without the need to manually set up each service.**
+
+If you are looking for the official documentation, please refer to [docs.sunrize.uk](https://docs.sunrize.uk).
+
+------
+
+> [!IMPORTANT]
+> **READ ME IF YOU ARE SELF-HOSTING SUNRISE AND SET UP IT BEFORE THE MOVE TO SOLAR SYSTEM MONOREPO**
+>
+> Due to move to the Solar System monorepo we made almost non-compatible changes to the Sunrise. If you were using Sunrise before, please watch out for the following breaking changes:
+> - **We now use `.env` file for environment variables instead of `appsettings.json`** - Please refer to step 3.1 of the _Standalone installation with self-signed certificate (Docker) 🐳_ or _Development installation ⚒️_ sections for more information.
+>- **⚠️ Hangfire now uses MySQL instead of Postgres** - This change is most important and requires action if you try to update your existing Sunrise server.
+> - - If you see `Deprecated hangfire connection was using Postgres, which is no longer supported` error at the server startup, please create `.env` file and setup the `HANGFIRE_*` variables according to your MySQL setup. View example below:
+> ```bash
+>   # Check your MySQL connection details from `appsettings.*.json` file:
+>       "ConnectionString": "Host=mysql-sunrise-db;Port=3306;Database=sunrise;Username=root;Password=root;SslMode=Required;"
+>   # Then set the following variables in your `.env` file:
+>   HANGFIRE_HOST=mysql-sunrise-db
+>   HANGFIRE_PORT=3306
+>   HANGFIRE_USER=root
+>   HANGFIRE_PASSWORD=root
+>   ```
+> - **We dropped docker compose setup for prometheus and grafana** - These services were an overhead for the solo Sunrise server setup. They are now included in the Solar System monorepo only.
+
 
 ## Features 🌟
 
@@ -32,15 +56,18 @@ They are more in depth and cover various aspects of the setup process in compari
 - [x] !mp commands (mostly)
 - [x] Server website (located at [Sunset](https://github.com/SunriseCommunity/Sunset))
 - [x] Support for non-standard gamemodes (e.g. Relax, Autopilot, ScoreV2)
+- [x] Custom beatmap status system
 - [x] osu!Direct
 - [x] Spectating
+- [x] Beatmap hype system
 - [x] Achievements (Medals)
 - [x] Rank snapshots
+- [x] Ability to upload custom server backgrounds
 
 ### Additional features
 
 - [x] Automated tests (unit and integration)
-- [x] Prometheus metrics with Grafana dashboard
+- [x] Telemetry system with Prometheus, Loki and Tempo
 - [x] Rate limiter for both internal and external requests
 - [x] Redis caching for faster response times
 - [x] Docker support
@@ -50,15 +77,30 @@ They are more in depth and cover various aspects of the setup process in compari
 > [!IMPORTANT]
 > The list of features is in priority order. The higher the feature is, the more important it is.
 
-## Standalone installation (Docker) 🐳
+## Standalone installation with self-signed certificate (Docker) 🐳
 
 1. Clone the repository
 2. Open the project's folder in any CLI environment.
-3. Create the file `Sunrise.Server/appsettings.Production.json` and fill it following the `Sunrise.Server/appsettings.Production.json.example` example
+3. Set up production environment
+   - Create the file `Sunrise.Server/appsettings.Production.json` and fill it following the `Sunrise.Server/appsettings.Production.json.example` example.
+
+     ```bash
+     cp Sunrise.Server/appsettings.Production.json.example Sunrise.Server/appsettings.Production.json
+     ```
+
+   - Set the environment variables in the `.env` file.
+
+     ```bash
+     cp .env.example .env
+     ```
+
+> [!WARNING]
+> Make sure to update `WEB_DOMAIN` and `API_TOKEN_SECRET` values!
+
 4. Set up the beatmap manager by following the instructions in
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
-   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager. 
-    - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
+   you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.Production.json` file to the address of the beatmap manager.
+   - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
 5. ⚠️ **Please create `sunrise.pfx` file and move it to `Sunrise/sunrise.pfx` folder, for more instructions follow** [Local connection ⚙️](##local-connection).
 6. Start server by running:
    ```bash
@@ -68,9 +110,9 @@ They are more in depth and cover various aspects of the setup process in compari
    the [Local connection ⚙️](##local-connection)
    section.
 
-> [!TIP] 
+> [!TIP]
 > Your final docker setup should look like this:
-> 
+>
 > ![image (3)](https://github.com/user-attachments/assets/998318b5-2112-4927-a040-0a8d7cc70b8b)
 
 ## Development installation ⚒️
@@ -84,7 +126,7 @@ They are more in depth and cover various aspects of the setup process in compari
 4. Set up the beatmap manager by following the instructions in
    the [Observatory repository](https://github.com/SunriseCommunity/Observatory). After setting up the beatmap manager,
    you need to set the `General:ObservatoryUrl` in the `Sunrise.Server/appsettings.{Your Environment}.json` file to the address of the beatmap manager.
-    - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
+   - **NB:** Make sure that the PORT is defined properly (sunrise checks port 3333 by default) and POSTGRES_PORT value doesn't conflict with other PC ports.
 5. ⚠️ **Please create `sunrise.pfx` file and move it to `Sunrise/sunrise.pfx` folder, for more instructions follow** [Local connection ⚙️](##local-connection).
 6. Run the project
 7. (Optional) If you want to connect to the server locally, please refer to

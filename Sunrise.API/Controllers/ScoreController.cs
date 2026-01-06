@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Response;
@@ -17,6 +18,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 namespace Sunrise.API.Controllers;
 
 [ApiController]
+[ApiHttpTrace]
 [Route("score/{id:int}")]
 [Subdomain("api")]
 [ProducesResponseType(StatusCodes.Status200OK)]

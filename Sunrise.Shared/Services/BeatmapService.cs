@@ -2,6 +2,7 @@ using System.Net;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Beatmap;
@@ -16,6 +17,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Shared.Services;
 
+[TraceExecution]
 public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService database, HttpClientService client)
 {
     private readonly SemaphoreSlim _dbSemaphore = new(1);
@@ -67,7 +69,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
                 if (!IsValidResult(beatmapSetTask) && !linkedCts.IsCancellationRequested)
                 {
-                    logger.LogWarning($"Error while getting beatmap set: {beatmapSetTask.Error.Message}, Retry count: {retryCount}");
+                    logger.LogWarning("Error while getting beatmap set: {errorMessage}, Retry count: {retryCount}", beatmapSetTask.Error.Message, retryCount);
 
                     if (retryCount > 0)
                     {

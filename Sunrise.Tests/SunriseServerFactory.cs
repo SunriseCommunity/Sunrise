@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
@@ -38,7 +39,8 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             services.AddScoped<HttpClientService>(provider =>
             {
                 var redis = provider.GetRequiredService<RedisRepository>();
-                MockHttpClient = new MockHttpClientService(redis);
+                var logger = provider.GetRequiredService<ILogger<HttpClientService>>();
+                MockHttpClient = new MockHttpClientService(redis, logger);
                 return MockHttpClient;
             });
 
@@ -65,6 +67,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
         try
         {
             var mon = JobStorage.Current?.GetMonitoringApi();
+
             if (mon != null)
             {
                 var scheduledJobs = mon.ScheduledJobs(0, int.MaxValue);

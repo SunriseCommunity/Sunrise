@@ -5,6 +5,7 @@ using Sunrise.API.Objects;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Server.Services.Helpers.Scores;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
@@ -24,8 +25,9 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions)
+public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions, ChatChannelRepository channels)
 {
+    [TraceExecution]
     public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
         string? storyboardHash)
@@ -78,7 +80,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         var (score, sessionUsername) = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
-        var dbScore = await database.Scores.GetScore(score.ScoreHash);
+        var dbScore = await database.Scores.GetScore(score.ScoreHash); // TODO: Score hash is not indexed, this is heavy performance downside. Consider refactoring to score uploading queue and checking if unique by inserting. (Insert score -> Process -> If in the valid request timeframe (API ratelimits can make score wait in queue), return score submission response)
 
         if (dbScore != null)
         {
@@ -255,6 +257,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             return "error: no";
         }
 
+        SunriseMetrics.ScoreSubmittedCounterInc(session, beatmap.Id, score.GameMode, score.Mods, score.PerformancePoints, score.Id);
+
         if (!isScoreScoreable)
         {
             return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
@@ -285,7 +289,6 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (score.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
         {
-            var channels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
             channels.GetChannel(session, "#announce")
                 ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, score, beatmapSet, beatmap));
         }
@@ -295,6 +298,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, score, prevUserPersonalBestScores, newAchievements);
     }
 
+    [TraceExecution]
     public async Task<string> GetBeatmapScores(Session session, int setId, GameMode gameMode, Mods mods,
         LeaderboardType leaderboardType, string beatmapHash, string filename, CancellationToken ct = default)
     {

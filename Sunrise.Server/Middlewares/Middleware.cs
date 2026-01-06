@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
@@ -5,6 +6,8 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
@@ -21,6 +24,8 @@ public sealed class Middleware(
     DatabaseService database
 ) : IMiddleware
 {
+    private readonly TextMapPropagator _propagator = Propagators.DefaultTextMapPropagator;
+
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         var ip = RegionService.GetUserIpAddress(context.Request);
@@ -29,6 +34,8 @@ public sealed class Middleware(
 
         var isApiRequest = context.Request.Host.Host.StartsWith("api.");
         var isAssetsRequest = context.Request.Host.Host.StartsWith("a.") || context.Request.Host.Host.StartsWith("assets.");
+
+        InjectTraceContext(context);
 
         if (path.StartsWithSegments(Configuration.ApiDocumentationPath) && !isApiRequest)
         {
@@ -230,5 +237,17 @@ public sealed class Middleware(
         }
 
         return false;
+    }
+
+    private void InjectTraceContext(HttpContext context)
+    {
+        var activity = Activity.Current;
+
+        if (activity != null)
+        {
+            _propagator.Inject(new PropagationContext(activity.Context, Baggage.Current),
+                context.Response.Headers,
+                (headers, key, value) => headers[key] = value);
+        }
     }
 }
