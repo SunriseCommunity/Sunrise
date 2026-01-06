@@ -13,15 +13,18 @@ website. The server is currently in development and is not yet ready for public 
 > [!NOTE]
 > Want to help? Have a question? :shipit: Feel free then to join our [Discord server](https://discord.gg/BjV7c9VRfn), there you can ask any question to maintainers of this project!
 
+<!-- TODO: Uncomment after I will be done with Solar System
+
 ## 📦 How to Set Up
 
-If you are planning to host your own instance of Sunrise, please highly consider using the [Solar System monorepo](https://github.com/SunriseCommunity/Solar-System).
+If you are planning to host your own instance of Sunrise, please highly consider using the **[Solar System monorepo](https://github.com/SunriseCommunity/Solar-System)**.
 
 ![Solar System](./.github/prefer_solar_system.png)
 
 It includes Sunrise and other all required services for a fully functional Sunrise server. As a bonus, it also includes **a website** and **a Discord bot**! **This is the recommended way to set up your Sunrise server without the need to manually set up each service.**
 
 If you are looking for the official documentation, please refer to [docs.sunrize.uk](https://docs.sunrize.uk).
+-->
 
 ------
 
