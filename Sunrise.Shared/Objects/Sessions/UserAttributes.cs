@@ -1,6 +1,8 @@
 using HOPEless.Bancho.Objects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -43,15 +45,22 @@ public class UserAttributes
     public bool IsBot { get; set; }
     public bool UsesOsuClient { get; set; }
 
-    public async Task<BanchoUserPresence> GetPlayerPresence()
+    public async Task<BanchoUserPresence> GetPlayerPresence(User? user = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
-        if (user == null)
-            throw new ApplicationException($"User with id {UserId} not found");
-        
+        if (user == null || user.Id != UserId)
+        {
+            user = await database.Users.GetUser(UserId,
+                options: new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
+            if (user == null)
+                throw new ApplicationException($"User with id {UserId} not found");
+        }
+
         var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
         var userRank = IsBot ? 0 : globalRank;
 
@@ -70,18 +79,32 @@ public class UserAttributes
         };
     }
 
-    public async Task<BanchoUserData> GetPlayerData()
+    public async Task<BanchoUserData> GetPlayerData(User? user = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
-        var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
-        if (user == null)
-            throw new ApplicationException($"User with id {UserId} not found");
 
-        var userStats = IsBot ? new UserStats() : await database.Users.Stats.GetUserStats(user.Id, GetCurrentGameMode());
+        if (user == null || user.Id != UserId)
+        {
+            user = await database.Users.GetUser(UserId,
+                options: new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
+
+            if (user == null)
+                throw new ApplicationException($"User with id {UserId} not found");
+        }
+
+        var userStats = IsBot ? new UserStats() : user.UserStats.FirstOrDefault(u => u.GameMode == GetCurrentGameMode());
+
         if (userStats == null)
-            throw new ApplicationException($"User stats for user with id {UserId} not found");
+        {
+            userStats = await database.Users.Stats.GetUserStats(user.Id, GetCurrentGameMode());
+
+            if (userStats == null)
+                throw new ApplicationException($"User stats for user with id {UserId} not found");
+        }
 
         var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
         var userRank = IsBot ? 0 : globalRank;

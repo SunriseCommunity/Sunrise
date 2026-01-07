@@ -32,11 +32,15 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     if (!addRanksIfNotFound)
                         throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-                    await _dbSemaphore.WaitAsync(ct);
+                    var userStats = user.UserStats.FirstOrDefault(s => s.GameMode == mode);
 
-                    var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode, ct);
                     if (userStats == null)
-                        throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                    {
+                        await _dbSemaphore.WaitAsync(ct);
+                        userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode, ct);
+                        if (userStats == null)
+                            throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                    }
 
                     var addOrUpdateUserRanksResult = await AddOrUpdateUserRanks(userStats, user);
                     if (addOrUpdateUserRanksResult.IsFailure)

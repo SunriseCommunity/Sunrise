@@ -105,6 +105,9 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
             sessions.CreateSession(us, new Location(), _mocker.User.GetUserLoginRequest(us));
         }
 
+        // TODO: Forces to create users ranks (which doesn't happen on user creation above). Creating user ranks seems to be a biggest bottleneck here, so we need to rewrite it to be more efficient. (Would propose getting ranks in pools maybe?)
+        _ = await client.PostAsync("/", new StringContent(GetUserBodyLoginRequest(_mocker.User.GetUserLoginRequest(await CreateTestUser()))));
+
         var timer = Stopwatch.StartNew();
 
         // Act
