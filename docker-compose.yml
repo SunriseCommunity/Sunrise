@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - 443:443
+      - ${SUNRISE_PORT:-443}:443
       - 5147:5147
     volumes:
       - ./Data:/app/Data
