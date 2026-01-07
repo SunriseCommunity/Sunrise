@@ -4,6 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -83,6 +84,51 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
         user.RegisterDate = user.RegisterDate.ToDatabasePrecision();
 
         return user;
+    }
+
+    protected async Task<List<User>> CreateTestUsers(int count = 1)
+    {
+        using var scope = App.Server.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+
+        var users = new List<User>();
+
+        for (var i = 0; i < count; i++)
+        {
+            var user = _mocker.User.GetRandomUser($"{_mocker.User.GetRandomUsername()}_{i}");
+
+            user.LastOnlineTime = user.LastOnlineTime.ToDatabasePrecision();
+            user.RegisterDate = user.RegisterDate.ToDatabasePrecision();
+
+            user.Id = i + 10000;
+
+            users.Add(user);
+        }
+
+        await database.DbContext.Users.AddRangeAsync(users);
+
+        var modes = Enum.GetValues<GameMode>();
+        var userStats = new List<UserStats>();
+
+        foreach (var mode in modes)
+        {
+            foreach (var user in users)
+            {
+                var stats = new UserStats
+                {
+                    UserId = user.Id,
+                    GameMode = mode
+                };
+
+                userStats.Add(stats);
+            }
+        }
+
+        await database.DbContext.UserStats.AddRangeAsync(userStats);
+
+        await database.DbContext.SaveChangesAsync();
+
+        return users;
     }
 
     protected async Task<Score> CreateTestScore(bool withReplay = true)

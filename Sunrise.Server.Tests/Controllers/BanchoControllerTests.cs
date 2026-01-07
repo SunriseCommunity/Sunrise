@@ -1,7 +1,11 @@
+using System.Diagnostics;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
+using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Repositories;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
@@ -78,8 +82,47 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         var serverLoginReplyPacket = responsePackets.FirstOrDefault(x => x.Type == PacketType.ServerLoginReply);
         Assert.NotNull(serverLoginReplyPacket);
 
-        // We expect the server to return the user ID on successful login
-        Assert.Equal(user.Id, new BanchoInt(serverLoginReplyPacket.Data).Value);
+        var isLoginSuccessful = new BanchoInt(serverLoginReplyPacket.Data).Value == user.Id;
+        Assert.True(isLoginSuccessful, "Login was not successful.");
+    }
+
+
+    [Fact]
+    public async Task TestReturnSuccessDoesntTakeTooLongForMultipleActiveSessions()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("c");
+
+        var user = await CreateTestUser();
+        var authBody = GetUserBodyLoginRequest(_mocker.User.GetUserLoginRequest(user));
+
+        var users = await CreateTestUsers(1000);
+
+        var sessions = Scope.ServiceProvider.GetRequiredService<SessionRepository>();
+
+        foreach (var us in users)
+        {
+            sessions.CreateSession(us, new Location(), _mocker.User.GetUserLoginRequest(us));
+        }
+
+        var timer = Stopwatch.StartNew();
+
+        // Act
+        var response = await client.PostAsync("/", new StringContent(authBody));
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        timer.Stop();
+
+        var responsePackets = await GetResponsePackets(response);
+        var serverLoginReplyPacket = responsePackets.FirstOrDefault(x => x.Type == PacketType.ServerLoginReply);
+        Assert.NotNull(serverLoginReplyPacket);
+
+        var isLoginSuccessful = new BanchoInt(serverLoginReplyPacket.Data).Value == user.Id;
+        Assert.True(isLoginSuccessful, "Login was not successful.");
+
+        Assert.True(timer.ElapsedMilliseconds < 5000, "Login took too long, possible performance issue with multiple active sessions.");
     }
 
 
