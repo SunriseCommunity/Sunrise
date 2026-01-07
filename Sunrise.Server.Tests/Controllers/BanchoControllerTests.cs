@@ -231,6 +231,57 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
     }
 
     [Fact]
+    public async Task TestReturnActiveUsersDataAndPresence()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("c");
+
+        var user = await CreateTestUser();
+        var authBody = GetUserBodyLoginRequest(_mocker.User.GetUserLoginRequest(user));
+
+        var otherPlayerUser = await CreateTestUser();
+
+        var sessions = Scope.ServiceProvider.GetRequiredService<SessionRepository>();
+        sessions.CreateSession(otherPlayerUser, new Location(), _mocker.User.GetUserLoginRequest(otherPlayerUser));
+
+        // Act
+        var response = await client.PostAsync("/", new StringContent(authBody));
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responsePackets = await GetResponsePackets(response);
+
+        var serverOtherPlayerUserDataPacket = responsePackets.FirstOrDefault(x =>
+        {
+            if (x.Type != PacketType.ServerUserData)
+                return false;
+
+            var packetData = new BanchoUserData(x.Data);
+            return packetData.UserId == otherPlayerUser.Id;
+        });
+
+        Assert.NotNull(serverOtherPlayerUserDataPacket);
+
+        var responseData = new BanchoUserData(serverOtherPlayerUserDataPacket.Data);
+        Assert.Equal(otherPlayerUser.Id, responseData.UserId);
+
+        var serverOtherPlayerPresencePacket = responsePackets.FirstOrDefault(x =>
+        {
+            if (x.Type != PacketType.ServerUserPresence)
+                return false;
+
+            var packetData = new BanchoUserPresence(x.Data);
+            return packetData.UserId == otherPlayerUser.Id;
+        });
+
+        Assert.NotNull(serverOtherPlayerPresencePacket);
+
+        var presenceData = new BanchoUserPresence(serverOtherPlayerPresencePacket.Data);
+        Assert.Equal(otherPlayerUser.Id, presenceData.UserId);
+    }
+
+    [Fact]
     public async Task TestReturnUserDataWithoutPerformanceOverflowIfLoginRequestValid()
     {
         // Arrange
