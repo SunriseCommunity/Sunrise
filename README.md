@@ -28,22 +28,17 @@ If you are looking for the official documentation, please refer to [docs.sunrize
 
 ------
 
-> [!IMPORTANT]
-> **READ ME IF YOU ARE SELF-HOSTING SUNRISE AND SET UP IT BEFORE THE MOVE TO SOLAR SYSTEM MONOREPO**
+> [!IMPORTANT] 
+> **Read me if you were self-hosting Sunrsie before the Solar System monorepo move (January 6, 2026)**
 >
-> Due to move to the Solar System monorepo we made almost non-compatible changes to the Sunrise. If you were using Sunrise before, please watch out for the following breaking changes:
-> - **We now use `.env` file for environment variables instead of `appsettings.json`** - Please refer to step 3.1 of the _Standalone installation with self-signed certificate (Docker) 🐳_ or _Development installation ⚒️_ sections for more information.
->- **⚠️ Hangfire now uses MySQL instead of Postgres** - This change is most important and requires action if you try to update your existing Sunrise server.
-> - - If you see `Deprecated hangfire connection was using Postgres, which is no longer supported` error at the server startup, please create `.env` file and setup the `HANGFIRE_*` variables according to your MySQL setup. View example below:
-> ```bash
->   # Check your MySQL connection details from `appsettings.*.json` file:
->       "ConnectionString": "Host=mysql-sunrise-db;Port=3306;Database=sunrise;Username=root;Password=root;SslMode=Required;"
->   # Then set the following variables in your `.env` file:
->   HANGFIRE_HOST=mysql-sunrise-db
->   HANGFIRE_PORT=3306
->   HANGFIRE_USER=root
->   HANGFIRE_PASSWORD=root
->   ```
+> Due to move to the Solar System monorepo we made almost non-compatible changes to the Sunrise.
+>
+> One of the biggest changes is the way we handle configuration - we moved from `appsettings.json` to `.env` file for environment variables.
+> Please refer to our [upgrade guide to .env variables](https://docs.sunrize.uk/upgrading/upgrade-to-dot-env-variables) to help you with the migration.
+>
+> Other notable changes:
+>
+> - **Hangfire now uses MySQL instead of Postgres** - This simplifies the setup process by using a single database system.
 > - **We dropped docker compose setup for prometheus and grafana** - These services were an overhead for the solo Sunrise server setup. They are now included in the Solar System monorepo only.
 
 
