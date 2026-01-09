@@ -36,7 +36,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             var httpClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(HttpClientService));
             if (httpClientDescriptor != null) services.Remove(httpClientDescriptor);
 
-            services.AddScoped<HttpClientService>(provider =>
+            services.AddSingleton<HttpClientService>(provider =>
             {
                 var redis = provider.GetRequiredService<RedisRepository>();
                 var logger = provider.GetRequiredService<ILogger<HttpClientService>>();
