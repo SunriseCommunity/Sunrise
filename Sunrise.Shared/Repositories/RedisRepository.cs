@@ -83,13 +83,19 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
     {
         var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var redisValue = $"{timestamp}:{value}";
+        var lookupKey = $"{key}:lookup";
 
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
+
+        if (existing.HasValue)
         {
-            await _sortedSetsDatabase.SortedSetRemoveAsync(key, entry.Element, CommandFlags.FireAndForget);
+            await _sortedSetsDatabase.SortedSetRemoveAsync(key, existing.ToString());
         }
 
-        await _sortedSetsDatabase.SortedSetAddAsync(key, redisValue, score, CommandFlags.FireAndForget);
+        await Task.WhenAll(
+            _sortedSetsDatabase.SortedSetAddAsync(key, redisValue, score),
+            _sortedSetsDatabase.HashSetAsync(lookupKey, value, redisValue)
+        );
     }
 
 
@@ -113,12 +119,13 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
 
     public async Task<long?> SortedSetRank(string key, int value)
     {
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
-        {
-            return await _sortedSetsDatabase.SortedSetRankAsync(key, entry.Element, Order.Descending);
-        }
+        var lookupKey = $"{key}:lookup";
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
 
-        return null;
+        if (!existing.HasValue)
+            return null;
+
+        return await _sortedSetsDatabase.SortedSetRankAsync(key, existing.ToString(), Order.Descending);
     }
 
     public async Task<long> SortedSetLength(string key)
@@ -128,12 +135,18 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
 
     public async Task<bool> SortedSetRemove(string key, int value)
     {
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
-        {
-            return await _sortedSetsDatabase.SortedSetRemoveAsync(key, entry.Element);
-        }
+        var lookupKey = $"{key}:lookup";
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
 
-        return false;
+        if (!existing.HasValue)
+            return false;
+
+        await Task.WhenAll(
+            _sortedSetsDatabase.SortedSetRemoveAsync(key, existing.ToString()),
+            _sortedSetsDatabase.HashDeleteAsync(lookupKey, value)
+        );
+
+        return true;
     }
 
     public async Task Flush(bool flushOnlyGeneralDatabase = true)
