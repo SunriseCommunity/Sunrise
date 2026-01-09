@@ -8,6 +8,7 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
@@ -1559,5 +1560,200 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Best beatmap score should belong to non-modded score due to the fact that it has higher total score
         var (bestBeatmapScore, _) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, score.GameMode);
         Assert.Contains(bestBeatmapScore, x => x.ScoreHash == score.ScoreHash);
+    }
+
+    [Fact]
+    public async Task TestUserRankingWhenUserAHasSubmittedScoreWith100PpAndUserBSubmits100PpScoreMakingTheirPpValueEqualUserAStillShouldHaveFirstRank()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        // Create User A with 100pp in std gamemode
+        var userA = await CreateTestUser();
+        var (replayA, beatmapIdA) = GetValidTestReplay();
+        var scoreA = replayA.GetScore();
+        scoreA.BeatmapId = beatmapIdA;
+        scoreA.GameMode = GameMode.Standard;
+        scoreA.PerformancePoints = 100;
+        scoreA.EnrichWithUserData(userA);
+
+        var beatmapSetA = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmapA = beatmapSetA.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmapA.EnrichWithScoreData(scoreA);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSetA);
+
+        await Database.Scores.AddScore(scoreA);
+        var userStatsA = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
+        if (userStatsA == null)
+            throw new Exception("User stats are null");
+
+        await userStatsA.UpdateWithScore(scoreA, null, 0);
+        await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
+
+        // Create User B and submit score with 100pp
+        var (sessionB, userB) = await CreateTestSession();
+        var (replayB, beatmapIdB) = GetValidTestReplay();
+        var scoreB = replayB.GetScore();
+        scoreB.BeatmapId = beatmapIdB;
+        scoreB.GameMode = GameMode.Standard;
+        scoreB.EnrichWithSessionData(sessionB);
+
+        var beatmapSetB = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmapB = beatmapSetB.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmapB.EnrichWithScoreData(scoreB);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSetB);
+
+        App.MockHttpClient?.MockPerformanceCalculation(100, 5.5);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            sessionB,
+            scoreB.ToScoreString(userB.Username),
+            scoreB.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            sessionB.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var databaseScoreB = await Database.Scores.GetScore(scoreB.ScoreHash);
+        Assert.NotNull(databaseScoreB);
+
+        var userStatsAFinal = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
+        var userStatsBFinal = await Database.Users.Stats.GetUserStats(userB.Id, GameMode.Standard);
+        Assert.NotNull(userStatsAFinal);
+        Assert.NotNull(userStatsBFinal);
+
+        // Both users should have equal PP
+        Assert.Equal(userStatsAFinal.PerformancePoints, userStatsBFinal.PerformancePoints);
+
+        // User A should be rank 1, User B should be rank 2 (User A was inserted first)
+        var (rankA, _) = await Database.Users.Stats.Ranks.GetUserRanks(userA, GameMode.Standard);
+        var (rankB, _) = await Database.Users.Stats.Ranks.GetUserRanks(userB, GameMode.Standard);
+        Assert.Equal(1, rankA);
+        Assert.Equal(2, rankB);
+    }
+
+    [Fact]
+    public async Task TestUserRankingWhenBothUsersHaveSamePpAndUserBSubmitsHigherPpMoreAndGoesToFirstPlaceInRanking()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
+
+        // Create User A with 100pp
+        var userA = await CreateTestUser();
+        var (replayA, beatmapIdA) = GetValidTestReplay();
+        var scoreA = replayA.GetScore();
+        scoreA.BeatmapId = beatmapIdA;
+        scoreA.GameMode = GameMode.Standard;
+        scoreA.Mods = Mods.None;
+        scoreA.PerformancePoints = 100;
+        scoreA.SubmissionStatus = SubmissionStatus.Best;
+        scoreA.BeatmapStatus = BeatmapStatus.Ranked;
+        scoreA.IsScoreable = true;
+        scoreA.ScoreHash = _mocker.GetRandomString(32);
+        scoreA.LocalProperties.FromScore(scoreA);
+        scoreA.EnrichWithUserData(userA);
+
+        var beatmapSetA = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmapA = beatmapSetA.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmapA.EnrichWithScoreData(scoreA);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSetA);
+
+        var addScoreResult = await Database.Scores.AddScore(scoreA);
+        if (addScoreResult.IsFailure)
+            throw new Exception(addScoreResult.Error);
+
+        var userStatsA = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
+        if (userStatsA == null)
+            throw new Exception("User stats are null");
+
+        await userStatsA.UpdateWithScore(scoreA, null, 1);
+        await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
+
+        // Create User B with 100pp
+        var userB = await CreateTestUser();
+        var (replayB1, beatmapIdB1) = GetValidTestReplay();
+        var scoreB1 = replayB1.GetScore();
+        scoreB1.BeatmapId = beatmapIdB1;
+        scoreB1.GameMode = GameMode.Standard;
+        scoreB1.Mods = Mods.None;
+        scoreB1.PerformancePoints = 100;
+        scoreB1.SubmissionStatus = SubmissionStatus.Best;
+        scoreB1.BeatmapStatus = BeatmapStatus.Ranked;
+        scoreB1.IsScoreable = true;
+        scoreB1.ScoreHash = _mocker.GetRandomString(32);
+        scoreB1.LocalProperties.FromScore(scoreB1);
+        scoreB1.EnrichWithUserData(userB);
+
+        var beatmapSetB1 = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmapB1 = beatmapSetB1.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmapB1.EnrichWithScoreData(scoreB1);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSetB1);
+
+        await Database.Scores.AddScore(scoreB1);
+        var userStatsB = await Database.Users.Stats.GetUserStats(userB.Id, GameMode.Standard);
+        if (userStatsB == null)
+            throw new Exception("User stats are null");
+
+        await userStatsB.UpdateWithScore(scoreB1, null, 0);
+        await Database.Users.Stats.UpdateUserStats(userStatsB, userB);
+
+        // Verify initial ranks: User A should be rank 1, User B should be rank 2
+        var (rankABefore, _) = await Database.Users.Stats.Ranks.GetUserRanks(userA, GameMode.Standard);
+        var (rankBBefore, _) = await Database.Users.Stats.Ranks.GetUserRanks(userB, GameMode.Standard);
+        Assert.Equal(1, rankABefore);
+        Assert.Equal(2, rankBBefore);
+
+        var sessionB = CreateTestSession(userB);
+        var (replayB2, beatmapIdB2) = GetValidTestReplay();
+        var scoreB2 = replayB2.GetScore();
+        scoreB2.BeatmapId = beatmapIdB2;
+        scoreB2.GameMode = GameMode.Standard;
+        scoreB2.Mods = Mods.None;
+        scoreB2.EnrichWithSessionData(sessionB);
+
+        var beatmapSetB2 = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmapB2 = beatmapSetB2.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmapB2.EnrichWithScoreData(scoreB2);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSetB2);
+
+        App.MockHttpClient?.MockPerformanceCalculation(101, 5.5);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            sessionB,
+            scoreB2.ToScoreString(userB.Username),
+            scoreB2.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            sessionB.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        // User B should now be rank 1, User A should be rank 2
+        var (rankAAfter, _) = await Database.Users.Stats.Ranks.GetUserRanks(userA, GameMode.Standard);
+        var (rankBAfter, _) = await Database.Users.Stats.Ranks.GetUserRanks(userB, GameMode.Standard);
+        Assert.Equal(2, rankAAfter);
+        Assert.Equal(1, rankBAfter);
+
+        var userStatsAFinal = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
+        var userStatsBFinal = await Database.Users.Stats.GetUserStats(userB.Id, GameMode.Standard);
+
+        Assert.Equal(1, userStatsAFinal!.BestGlobalRank);
+        Assert.Equal(1, userStatsBFinal!.BestGlobalRank);
     }
 }
