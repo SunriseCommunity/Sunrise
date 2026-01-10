@@ -17,9 +17,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
     public async Task<Dictionary<int, long>> GetUsersGlobalRanks(List<User> user, GameMode mode, CancellationToken ct = default)
     {
         var ranks = new Dictionary<int, long>();
-        var database = await databaseService.Value.Redis.SortedSetRanks(RedisKey.LeaderboardGlobal(mode), user.Select(u => u.Id).ToArray());
-
-        var results = database;
+        var results = await databaseService.Value.Redis.SortedSetRanks(RedisKey.LeaderboardGlobal(mode), user.Select(u => u.Id).ToArray());
 
         foreach (var rank in results)
         {

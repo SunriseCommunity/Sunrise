@@ -101,7 +101,11 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         var friends = sessionUser.UserInitiatedRelationships.Where(r => r.Relation == UserRelation.Friend).Select(r => r.TargetId).ToList();
         session.SendFriendsList(friends);
 
-        await sessions.SendCurrentPlayers(session);
+        var sendCurrentPlayersResult = await sessions.SendCurrentPlayers(session);
+        if (sendCurrentPlayersResult.IsFailure)
+            Log.Error("Error sending current players to user with id of {SessionUserId} (It's not critical, so proceeding with login): {Error}",
+                sessionUser.Id,
+                sendCurrentPlayersResult.Error);
 
         if (sessionUser.SilencedUntil > DateTime.UtcNow)
             session.SendSilenceStatus((int)(sessionUser.SilencedUntil - DateTime.UtcNow).TotalSeconds);
