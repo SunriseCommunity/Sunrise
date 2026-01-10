@@ -123,7 +123,8 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     (globalRank, countryRank) = getUserRanksResult;
                 }
 
-                return (globalRank.Value + 1, countryRank.Value + 1);
+                var shouldIncreaseByOne = addRanksIfNotFound == false;
+                return (globalRank.Value + (shouldIncreaseByOne ? 1 : 0), countryRank.Value + (shouldIncreaseByOne ? 1 : 0));
             }
             finally
             {
