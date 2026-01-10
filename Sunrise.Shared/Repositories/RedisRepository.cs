@@ -117,6 +117,44 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
     }
 
 
+    public async Task<Dictionary<int, long?>> SortedSetRanks(string key, int[] values)
+    {
+        var script = @"
+        local results = {}
+        for i = 1, #ARGV do
+            local member = redis.call('HGET', KEYS[2], ARGV[i])
+            if member then
+                results[i] = redis.call('ZREVRANK', KEYS[1], member)
+            else
+                results[i] = false
+            end
+        end
+        return results
+        ";
+
+        var args = values.Select(v => (RedisValue)v).ToArray();
+
+        var redisResult = await _sortedSetsDatabase.ScriptEvaluateAsync(
+            script,
+            [key, $"{key}:lookup"],
+            args
+        );
+
+        if (redisResult.IsNull)
+        {
+            return values.ToDictionary(v => v, _ => (long?)null);
+        }
+
+        var resultsArray = (RedisResult[])redisResult!;
+        var ranks = resultsArray
+            .Select(r => r.IsNull ? (long?)null : (long)r)
+            .ToArray();
+
+        return values
+            .Zip(ranks, (v, rank) => (v, rank))
+            .ToDictionary(pair => pair.v, pair => pair.rank);
+    }
+
     public async Task<long?> SortedSetRank(string key, int value)
     {
         var lookupKey = $"{key}:lookup";

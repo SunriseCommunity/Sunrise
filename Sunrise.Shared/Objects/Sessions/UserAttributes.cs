@@ -2,7 +2,6 @@ using HOPEless.Bancho.Objects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -45,7 +44,7 @@ public class UserAttributes
     public bool IsBot { get; set; }
     public bool UsesOsuClient { get; set; }
 
-    public async Task<BanchoUserPresence> GetPlayerPresence(User? user = null)
+    public async Task<BanchoUserPresence> GetPlayerPresence(User? user = null, (GameMode, Dictionary<int, long>)[]? cachedRanks = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -61,7 +60,15 @@ public class UserAttributes
                 throw new ApplicationException($"User with id {UserId} not found");
         }
 
-        var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+
+        var globalRank = cachedRanks?.FirstOrDefault(c => c.Item1 == GetCurrentGameMode()).Item2.GetValueOrDefault(user.Id);
+
+        if (globalRank == null)
+        {
+            var (globalRankT, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+            globalRank = globalRankT;
+        }
+
         var userRank = IsBot ? 0 : globalRank;
 
         return new BanchoUserPresence
@@ -79,7 +86,7 @@ public class UserAttributes
         };
     }
 
-    public async Task<BanchoUserData> GetPlayerData(User? user = null)
+    public async Task<BanchoUserData> GetPlayerData(User? user = null, (GameMode, Dictionary<int, long>)[]? cachedRanks = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -106,7 +113,14 @@ public class UserAttributes
                 throw new ApplicationException($"User stats for user with id {UserId} not found");
         }
 
-        var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+        var globalRank = cachedRanks?.FirstOrDefault(c => c.Item1 == GetCurrentGameMode()).Item2.GetValueOrDefault(user.Id);
+
+        if (globalRank == null)
+        {
+            var (globalRankT, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+            globalRank = globalRankT;
+        }
+
         var userRank = IsBot ? 0 : globalRank;
 
         // Note: osu! client expects short integer for performance points. So to avoid this limitation, we will send pp as ranked score if it's over the limit.

@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using CSharpFunctionalExtensions;
+﻿using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
@@ -41,6 +40,7 @@ public sealed class DatabaseService(
 
         logger.LogInformation("All cache (sorted sets, keys, db queries) is flushed. Forced to rebuild user ranks.");
 
+
         var tasks = Enum.GetValues(typeof(GameMode))
             .Cast<GameMode>()
             .Select(async mode =>
@@ -48,11 +48,16 @@ public sealed class DatabaseService(
                 using var scope = ServicesProviderHolder.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                await database.Users.Stats.Ranks.SetAllUsersRanks(mode, 50);
+
+                await database.Users.Stats.Ranks.SetAllUsersRanks(mode, 100);
             })
             .ToArray();
 
-        await Task.WhenAll(tasks);
+
+        foreach (var task in tasks)
+        {
+            await task;
+        }
 
         logger.LogInformation("User ranks rebuilt. Sorted sets is now up to date.");
     }

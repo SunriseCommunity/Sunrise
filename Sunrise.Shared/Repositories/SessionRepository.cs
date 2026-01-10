@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -154,14 +153,28 @@ public class SessionRepository
                 QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
             });
 
+        var userSessionsByGamemode = _sessions.Values
+            .GroupBy(s => s.Attributes.GetCurrentGameMode())
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var userIds = g.Select(s => s.UserId).ToHashSet();
+                    return currentUsers.Where(u => userIds.Contains(u.Id)).ToList();
+                });
+
+        var results = await Task.WhenAll(
+            userSessionsByGamemode.Select(async x =>
+                (x.Key, await database.Users.Ranks.GetUsersGlobalRanks(x.Value, x.Key))));
+
         foreach (var player in players)
         {
             var playerUser = currentUsers.FirstOrDefault(x => x.Id == player.UserId);
             if (playerUser == null)
                 Log.Warning("Could not find user with id {UserId} which has an active session.", player.UserId);
 
-            session.WritePacket(PacketType.ServerUserPresence, await player.Attributes.GetPlayerPresence(playerUser));
-            session.WritePacket(PacketType.ServerUserData, await player.Attributes.GetPlayerData(playerUser));
+            session.WritePacket(PacketType.ServerUserPresence, await player.Attributes.GetPlayerPresence(playerUser, results));
+            session.WritePacket(PacketType.ServerUserData, await player.Attributes.GetPlayerData(playerUser, results));
         }
     }
 

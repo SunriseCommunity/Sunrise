@@ -105,8 +105,8 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
             sessions.CreateSession(us, new Location(), _mocker.User.GetUserLoginRequest(us));
         }
 
-        // TODO: Forces to create users ranks (which doesn't happen on user creation above). Creating user ranks seems to be a biggest bottleneck here, so we need to rewrite it to be more efficient. (Would propose getting ranks in pools maybe?)
-        _ = await client.PostAsync("/", new StringContent(GetUserBodyLoginRequest(_mocker.User.GetUserLoginRequest(await CreateTestUser()))));
+        // TODO: Forces to create users ranks (which doesn't happen on user creation above). Creating user ranks seems to be a biggest bottleneck here.
+        await Database.FlushAndUpdateRedisCache(false);
 
         var timer = Stopwatch.StartNew();
 
@@ -125,7 +125,7 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         var isLoginSuccessful = new BanchoInt(serverLoginReplyPacket.Data).Value == user.Id;
         Assert.True(isLoginSuccessful, "Login was not successful.");
 
-        Assert.True(timer.ElapsedMilliseconds < 5000, "Login took too long, possible performance issue with multiple active sessions.");
+        Assert.True(timer.ElapsedMilliseconds < 1500, "Login took too long, possible performance issue with multiple active sessions.");
     }
 
 
