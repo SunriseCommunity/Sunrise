@@ -125,7 +125,7 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         var isLoginSuccessful = new BanchoInt(serverLoginReplyPacket.Data).Value == user.Id;
         Assert.True(isLoginSuccessful, "Login was not successful.");
 
-        Assert.True(timer.ElapsedMilliseconds < 1500, "Login took too long, possible performance issue with multiple active sessions.");
+        Assert.True(timer.ElapsedMilliseconds < 1500, $"Login took too long, possible performance issue with multiple active sessions. Took: {timer.ElapsedMilliseconds}ms");
     }
 
 
