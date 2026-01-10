@@ -57,6 +57,14 @@ namespace Sunrise.Server;
 
 public static class Bootstrap
 {
+    private static readonly string[] QueriesToRedact =
+    [
+        "h",
+        "ha",
+        "p",
+        "pass"
+    ];
+
     public static void Configure(this WebApplicationBuilder builder)
     {
         builder.Services.AddEndpointsApiExplorer();
@@ -141,6 +149,17 @@ public static class Bootstrap
                             var subdomain = context.Request.Host.Host.Split('.')[0];
 
                             activity.DisplayName = $"{method} {(string.IsNullOrWhiteSpace(subdomain) ? "" : $"{subdomain} ")}{path}";
+
+                            var query = context.Request.Query.Count > 0
+                                ? "?" + string.Join("&",
+                                    context.Request.Query
+                                        .Select(q => !QueriesToRedact.Contains(q.Key.ToLower())
+                                            ? $"{q.Key}={q.Value}"
+                                            : $"{q.Key}=[REDACTED]"))
+                                : string.Empty;
+
+                            if (!string.IsNullOrEmpty(query))
+                                activity.SetTag("url.query", query);
                         }
 
                         options.EnrichWithHttpRequest = (activity, request) => EnrichWithHttpContext(activity, request.HttpContext);
@@ -522,10 +541,15 @@ public static class Bootstrap
                 var subdomain = host.Contains('.') ? host.Split('.')[0] : host;
                 diag.Set("Subdomain", subdomain);
 
-                diag.Set("RequestPathWithQuery",
-                    http.Request.Path + (
-                        http.Request.QueryString.HasValue ? http.Request.QueryString.Value : string.Empty)
-                );
+                var query = http.Request.Query.Count > 0
+                    ? "?" + string.Join("&",
+                        http.Request.Query
+                            .Select(q => !QueriesToRedact.Contains(q.Key.ToLower())
+                                ? $"{q.Key}={q.Value}"
+                                : $"{q.Key}=[REDACTED]"))
+                    : string.Empty;
+
+                diag.Set("RequestPathWithQuery", http.Request.Path + query);
             };
         });
 

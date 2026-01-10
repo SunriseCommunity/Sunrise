@@ -83,13 +83,19 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
     {
         var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var redisValue = $"{timestamp}:{value}";
+        var lookupKey = $"{key}:lookup";
 
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
+
+        if (existing.HasValue)
         {
-            await _sortedSetsDatabase.SortedSetRemoveAsync(key, entry.Element, CommandFlags.FireAndForget);
+            await _sortedSetsDatabase.SortedSetRemoveAsync(key, existing.ToString());
         }
 
-        await _sortedSetsDatabase.SortedSetAddAsync(key, redisValue, score, CommandFlags.FireAndForget);
+        await Task.WhenAll(
+            _sortedSetsDatabase.SortedSetAddAsync(key, redisValue, score),
+            _sortedSetsDatabase.HashSetAsync(lookupKey, value, redisValue)
+        );
     }
 
 
@@ -111,14 +117,53 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
     }
 
 
-    public async Task<long?> SortedSetRank(string key, int value)
+    public async Task<Dictionary<int, long?>> SortedSetRanks(string key, int[] values)
     {
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
+        var script = @"
+        local results = {}
+        for i = 1, #ARGV do
+            local member = redis.call('HGET', KEYS[2], ARGV[i])
+            if member then
+                results[i] = redis.call('ZREVRANK', KEYS[1], member)
+            else
+                results[i] = false
+            end
+        end
+        return results
+        ";
+
+        var args = values.Select(v => (RedisValue)v).ToArray();
+
+        var redisResult = await _sortedSetsDatabase.ScriptEvaluateAsync(
+            script,
+            [key, $"{key}:lookup"],
+            args
+        );
+
+        if (redisResult.IsNull)
         {
-            return await _sortedSetsDatabase.SortedSetRankAsync(key, entry.Element, Order.Descending);
+            return values.ToDictionary(v => v, _ => (long?)null);
         }
 
-        return null;
+        var resultsArray = (RedisResult[])redisResult!;
+        var ranks = resultsArray
+            .Select(r => r.IsNull ? (long?)null : (long)r)
+            .ToArray();
+
+        return values
+            .Zip(ranks, (v, rank) => (v, rank))
+            .ToDictionary(pair => pair.v, pair => pair.rank);
+    }
+
+    public async Task<long?> SortedSetRank(string key, int value)
+    {
+        var lookupKey = $"{key}:lookup";
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
+
+        if (!existing.HasValue)
+            return null;
+
+        return await _sortedSetsDatabase.SortedSetRankAsync(key, existing.ToString(), Order.Descending);
     }
 
     public async Task<long> SortedSetLength(string key)
@@ -128,12 +173,18 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
 
     public async Task<bool> SortedSetRemove(string key, int value)
     {
-        await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
-        {
-            return await _sortedSetsDatabase.SortedSetRemoveAsync(key, entry.Element);
-        }
+        var lookupKey = $"{key}:lookup";
+        var existing = await _sortedSetsDatabase.HashGetAsync(lookupKey, value);
 
-        return false;
+        if (!existing.HasValue)
+            return false;
+
+        await Task.WhenAll(
+            _sortedSetsDatabase.SortedSetRemoveAsync(key, existing.ToString()),
+            _sortedSetsDatabase.HashDeleteAsync(lookupKey, value)
+        );
+
+        return true;
     }
 
     public async Task Flush(bool flushOnlyGeneralDatabase = true)

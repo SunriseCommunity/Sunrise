@@ -122,15 +122,15 @@ public class Session : BaseSession
         _helper.WritePacket(PacketType.ServerLockClient, time);
     }
 
-    public async Task SendUserPresence()
+    public async Task SendUserPresence(User? user = null)
     {
-        var userPresence = await Attributes.GetPlayerPresence();
+        var userPresence = await Attributes.GetPlayerPresence(user);
         _helper.WritePacket(PacketType.ServerUserPresence, userPresence);
     }
 
-    public async Task SendUserData()
+    public async Task SendUserData(User? user = null)
     {
-        var userData = await Attributes.GetPlayerData();
+        var userData = await Attributes.GetPlayerData(user);
         _helper.WritePacket(PacketType.ServerUserData, userData);
     }
 

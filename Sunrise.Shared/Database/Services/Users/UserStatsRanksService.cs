@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -12,6 +13,27 @@ namespace Sunrise.Shared.Database.Services.Users;
 public class UserStatsRanksService(Lazy<DatabaseService> databaseService, SunriseDbContext dbContext)
 {
     private readonly SemaphoreSlim _dbSemaphore = new(1);
+
+    public async Task<Dictionary<int, long>> GetUsersGlobalRanks(List<User> user, GameMode mode, CancellationToken ct = default)
+    {
+        var ranks = new Dictionary<int, long>();
+        var results = await databaseService.Value.Redis.SortedSetRanks(RedisKey.LeaderboardGlobal(mode), user.Select(u => u.Id).ToArray());
+
+        foreach (var rank in results)
+        {
+            if (rank.Value.HasValue)
+            {
+                ranks.Add(rank.Key, rank.Value.Value + 1);
+            }
+            else
+            {
+                var (globalRank, _) = await GetUserRanks(user.First(u => u.Id == rank.Key), mode, true, ct);
+                ranks.Add(rank.Key, globalRank);
+            }
+        }
+
+        return ranks;
+    }
 
     public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true, CancellationToken ct = default)
     {
@@ -32,11 +54,15 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     if (!addRanksIfNotFound)
                         throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-                    await _dbSemaphore.WaitAsync(ct);
+                    var userStats = user.UserStats.FirstOrDefault(s => s.GameMode == mode);
 
-                    var userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode, ct);
                     if (userStats == null)
-                        throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                    {
+                        await _dbSemaphore.WaitAsync(ct);
+                        userStats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode, ct);
+                        if (userStats == null)
+                            throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
+                    }
 
                     var addOrUpdateUserRanksResult = await AddOrUpdateUserRanks(userStats, user);
                     if (addOrUpdateUserRanksResult.IsFailure)
@@ -93,18 +119,21 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 
     public async Task<Result> SetAllUsersRanks(GameMode mode, int branchSize = 20)
     {
-        return await ResultUtil.TryExecuteAsync(async () =>
+        var database = databaseService.Value;
+
+        return await database.CommitAsTransactionAsync(async () =>
         {
             for (var i = 1;; i++)
             {
                 var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
                     LeaderboardSortType.Pp,
-                    options: new QueryOptions(new Pagination(i, branchSize)));
+                    options: new QueryOptions(new Pagination(i, branchSize))
+                    {
+                        QueryModifier = q => q.Cast<UserStats>().Include(s => s.User)
+                    });
 
                 foreach (var stats in usersStats)
                 {
-                    await dbContext.Entry(stats).Reference(s => s.User).LoadAsync();
-
                     await SortedSetAddOrUpdateUserStats(stats, stats.User);
                     await UpdateUserStatsBestRanks(stats, stats.User);
                 }
@@ -125,8 +154,8 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 
             await databaseService.Value.CommitAsTransactionAsync(async () =>
             {
-                var isUserGlobalRankGotLower = globalRank > prevGlobalRank;
-                var isUserCountryRankGotLower = countryRank > prevCountryRank;
+                var isUserGlobalRankGotLower = globalRank > prevGlobalRank && prevGlobalRank != long.MaxValue;
+                var isUserCountryRankGotLower = countryRank > prevCountryRank && prevCountryRank != long.MaxValue;
 
                 if (isUserGlobalRankGotLower)
                 {
@@ -173,11 +202,15 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
             var affectedUsersStats = await databaseService.Value.Users.Stats.GetUsersStats(
                 stats.GameMode,
                 LeaderboardSortType.Pp,
-                promotedUserIds.Select(id => (int)id).ToList());
+                promotedUserIds.Select(id => (int)id).ToList(),
+                new QueryOptions
+                {
+                    QueryModifier = q => q.Cast<UserStats>().Include(s => s.User)
+                });
 
             foreach (var userStats in affectedUsersStats)
             {
-                await UpdateUserStatsBestRanks(userStats);
+                await UpdateUserStatsBestRanks(userStats, userStats.User);
             }
         });
     }

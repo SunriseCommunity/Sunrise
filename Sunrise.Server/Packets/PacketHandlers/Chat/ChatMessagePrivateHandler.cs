@@ -1,12 +1,9 @@
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
-using Microsoft.EntityFrameworkCore;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.Users;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Chat;
 using Sunrise.Shared.Objects.Sessions;
@@ -63,7 +60,7 @@ public class ChatMessagePrivateHandler : IPacketHandler
                 });
             return;
         }
-        
+
         if (receiver is { Attributes.IgnoreNonFriendPm: false })
         {
             receiver.WritePacket(PacketType.ServerChatMessage, message);
@@ -71,9 +68,18 @@ public class ChatMessagePrivateHandler : IPacketHandler
         else
         {
             var receiverRelationship = await database.Users.Relationship.GetUserRelationship(receiver.UserId, session.UserId);
+
             if (receiverRelationship is { Relation: UserRelation.Friend })
             {
                 receiver.WritePacket(PacketType.ServerChatMessage, message);
+            }
+            else
+            {
+                session.WritePacket(PacketType.ServerChatPmBlocked,
+                    new BanchoChatMessage
+                    {
+                        Channel = receiverUser.Username
+                    });
             }
         }
 

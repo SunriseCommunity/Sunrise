@@ -1,4 +1,5 @@
 using HOPEless.Bancho.Objects;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -43,16 +44,31 @@ public class UserAttributes
     public bool IsBot { get; set; }
     public bool UsesOsuClient { get; set; }
 
-    public async Task<BanchoUserPresence> GetPlayerPresence()
+    public async Task<BanchoUserPresence> GetPlayerPresence(User? user = null, (GameMode, Dictionary<int, long>)[]? cachedRanks = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
-        if (user == null)
-            throw new ApplicationException($"User with id {UserId} not found");
-        
-        var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+        if (user == null || user.Id != UserId)
+        {
+            user = await database.Users.GetUser(UserId,
+                options: new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
+            if (user == null)
+                throw new ApplicationException($"User with id {UserId} not found");
+        }
+
+
+        var globalRank = cachedRanks?.FirstOrDefault(c => c.Item1 == GetCurrentGameMode()).Item2.GetValueOrDefault(user.Id);
+
+        if (globalRank == null)
+        {
+            var (globalRankT, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+            globalRank = globalRankT;
+        }
+
         var userRank = IsBot ? 0 : globalRank;
 
         return new BanchoUserPresence
@@ -70,20 +86,41 @@ public class UserAttributes
         };
     }
 
-    public async Task<BanchoUserData> GetPlayerData()
+    public async Task<BanchoUserData> GetPlayerData(User? user = null, (GameMode, Dictionary<int, long>)[]? cachedRanks = null)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
-        var user = await database.Users.GetUser(id: UserId, options: new QueryOptions(true));
-        if (user == null)
-            throw new ApplicationException($"User with id {UserId} not found");
 
-        var userStats = IsBot ? new UserStats() : await database.Users.Stats.GetUserStats(user.Id, GetCurrentGameMode());
+        if (user == null || user.Id != UserId)
+        {
+            user = await database.Users.GetUser(UserId,
+                options: new QueryOptions(true)
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
+
+            if (user == null)
+                throw new ApplicationException($"User with id {UserId} not found");
+        }
+
+        var userStats = IsBot ? new UserStats() : user.UserStats.FirstOrDefault(u => u.GameMode == GetCurrentGameMode());
+
         if (userStats == null)
-            throw new ApplicationException($"User stats for user with id {UserId} not found");
+        {
+            userStats = await database.Users.Stats.GetUserStats(user.Id, GetCurrentGameMode());
 
-        var (globalRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+            if (userStats == null)
+                throw new ApplicationException($"User stats for user with id {UserId} not found");
+        }
+
+        var globalRank = cachedRanks?.FirstOrDefault(c => c.Item1 == GetCurrentGameMode()).Item2.GetValueOrDefault(user.Id);
+
+        if (globalRank == null)
+        {
+            var (globalRankT, _) = await database.Users.Stats.Ranks.GetUserRanks(user, GetCurrentGameMode());
+            globalRank = globalRankT;
+        }
+
         var userRank = IsBot ? 0 : globalRank;
 
         // Note: osu! client expects short integer for performance points. So to avoid this limitation, we will send pp as ranked score if it's over the limit.

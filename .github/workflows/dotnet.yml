@@ -44,4 +44,4 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
       - name: Test
-        run: dotnet test --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
+        run: dotnet test -m:1 --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"

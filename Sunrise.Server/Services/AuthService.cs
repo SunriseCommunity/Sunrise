@@ -1,13 +1,11 @@
 ﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects;
@@ -17,7 +15,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService, ChatChannelRepository chatChannelRepository)
 {
     [TraceExecution]
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
@@ -29,14 +27,21 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var (session, error, loginResponseCode) = await userBanchoService.GetNewUserSession(loginRequest, ip);
+        var (user, getUserError) = await userBanchoService.GetUserFromLoginRequest(loginRequest, ip);
 
-        if (error != null || session == null)
+        if (getUserError != null || user == null)
+        {
+            var (error, loginResponseCode) = getUserError ?? ("Error retrieving user", LoginResponse.InvalidCredentials);
             return RejectLogin(response, error, loginResponseCode);
+        }
 
-        var user = await database.Users.GetUser(session.UserId);
-        if (user == null)
-            return RejectLogin(response, "User for this session doesn't exist");
+        var (session, getUserSessionError) = await userBanchoService.GetNewUserSession(user, loginRequest, ip);
+
+        if (getUserSessionError != null || session == null)
+        {
+            var (error, loginResponseCode) = getUserSessionError ?? ("Error creating user session", LoginResponse.InvalidCredentials);
+            return RejectLogin(response, error, loginResponseCode);
+        }
 
         var addEventResult = await database.Events.Users.AddUserLoginEvent(new UserEventAction(user, ip.ToString(), session.UserId), true, sr);
         if (addEventResult.IsFailure)
@@ -47,7 +52,7 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         if (request.Headers["X-Using-Old-Domain"] == "true")
             return RejectLogin(response, $"You are using old domain name, please try to connect with:\n \"-devserver {Configuration.Domain}\".\nIf you have any problems with connection, contact staff at discord.");
 
-        return await ProceedWithLogin(session, response);
+        return await ProceedWithLogin(session, user);
     }
 
     public FileContentResult Relogin()
@@ -75,29 +80,20 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         return new FileContentResult(writer.GetBytesToSend(), "application/octet-stream");
     }
 
-    private async Task<FileContentResult> ProceedWithLogin(Session session, HttpResponse response)
+    [TraceExecution]
+    private async Task<FileContentResult> ProceedWithLogin(Session session, User sessionUser)
     {
         session.SendLoginResponse(LoginResponse.Success);
         session.SendProtocolVersion();
         session.SendPrivilege();
         session.SendExistingChannels();
 
-        var chatChannels = ServicesProviderHolder.GetRequiredService<ChatChannelRepository>();
+        chatChannelRepository.JoinChannel("#osu", session);
+        chatChannelRepository.JoinChannel("#announce", session);
 
-        chatChannels.JoinChannel("#osu", session);
-        chatChannels.JoinChannel("#announce", session);
+        if (sessionUser.Privilege.HasFlag(UserPrivilege.Admin)) chatChannelRepository.JoinChannel("#staff", session);
 
-        var sessionUser = await database.Users.GetUser(session.UserId,
-            options: new QueryOptions
-            {
-                QueryModifier = q => q.Cast<User>().Include(u => u.UserInitiatedRelationships)
-            });
-        if (sessionUser == null)
-            return RejectLogin(response, "User for this session doesn't exist");
-
-        if (sessionUser.Privilege.HasFlag(UserPrivilege.Admin)) chatChannels.JoinChannel("#staff", session);
-
-        foreach (var channel in chatChannels.GetChannels(session))
+        foreach (var channel in chatChannelRepository.GetChannels(session))
         {
             session.SendChannelAvailable(channel);
         }
@@ -105,16 +101,20 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         var friends = sessionUser.UserInitiatedRelationships.Where(r => r.Relation == UserRelation.Friend).Select(r => r.TargetId).ToList();
         session.SendFriendsList(friends);
 
-        await sessions.SendCurrentPlayers(session);
+        var sendCurrentPlayersResult = await sessions.SendCurrentPlayers(session);
+        if (sendCurrentPlayersResult.IsFailure)
+            Log.Error("Error sending current players to user with id of {SessionUserId} (It's not critical, so proceeding with login): {Error}",
+                sessionUser.Id,
+                sendCurrentPlayersResult.Error);
 
         if (sessionUser.SilencedUntil > DateTime.UtcNow)
             session.SendSilenceStatus((int)(sessionUser.SilencedUntil - DateTime.UtcNow).TotalSeconds);
 
-        sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence());
-        sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData());
+        sessions.WriteToAllSessions(PacketType.ServerUserPresence, await session.Attributes.GetPlayerPresence(sessionUser));
+        sessions.WriteToAllSessions(PacketType.ServerUserData, await session.Attributes.GetPlayerData(sessionUser));
 
-        await session.SendUserData();
-        await session.SendUserPresence();
+        await session.SendUserData(sessionUser);
+        await session.SendUserPresence(sessionUser);
 
         session.SendNotification(Configuration.WelcomeMessage);
 
