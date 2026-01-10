@@ -91,6 +91,14 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
         {
             await _sortedSetsDatabase.SortedSetRemoveAsync(key, existing.ToString());
         }
+        else
+        {
+            // Remove all other pre hashset update entries for this value
+            await foreach (var entry in _sortedSetsDatabase.SortedSetScanAsync(key, $"*:{value}"))
+            {
+                await _sortedSetsDatabase.SortedSetRemoveAsync(key, entry.Element);
+            }
+        }
 
         await Task.WhenAll(
             _sortedSetsDatabase.SortedSetAddAsync(key, redisValue, score),
