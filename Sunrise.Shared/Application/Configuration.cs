@@ -43,7 +43,7 @@ public static class Configuration
     };
 
     public static bool GetUserLocationUsingCloudflareHeaders =
-        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("USE_CLOUDFLARE_HEADERS_FOR_GEOLOCATION"));
+        Environment.GetEnvironmentVariable("USE_CLOUDFLARE_HEADERS_FOR_GEOLOCATION") == "true";
 
     public static bool IsDevelopment => Env == "Development";
     public static bool IsTestingEnv => Env == "Tests";
