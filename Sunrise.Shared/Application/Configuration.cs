@@ -42,6 +42,9 @@ public static class Configuration
         ClockSkew = TimeSpan.Zero
     };
 
+    public static bool GetUserLocationUsingCloudflareHeaders =
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("USE_CLOUDFLARE_HEADERS_FOR_GEOLOCATION"));
+
     public static bool IsDevelopment => Env == "Development";
     public static bool IsTestingEnv => Env == "Tests";
 
@@ -121,6 +124,8 @@ public static class Configuration
     // - Will use best scores by performance points instead of total score for performance calculation
     public static bool UseNewPerformanceCalculationAlgorithm =>
         Config.GetSection("General").GetValue<bool?>("UseNewPerformanceCalculationAlgorithm") ?? false;
+
+
 
     // Beatmap hype
     public static int UserHypesWeekly =>

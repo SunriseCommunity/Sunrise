@@ -38,6 +38,38 @@ public class RegionService(ILogger<RegionService> logger, RedisRepository redisR
         return location;
     }
 
+    public Location? GetRegionFromCloudflareHeaders(IPAddress ip, HttpRequest request)
+    {
+        var countryCodeHeader = request.Headers["cf-ipcountry"].ToString();
+        var latitudeHeader = request.Headers["cf-iplatitude"].ToString();
+        var longitudeHeader = request.Headers["cf-iplongitude"].ToString();
+        var timezoneHeader = request.Headers["cf-timezone"].ToString();
+
+        if (string.IsNullOrEmpty(countryCodeHeader) &&
+            string.IsNullOrEmpty(latitudeHeader) &&
+            string.IsNullOrEmpty(longitudeHeader) &&
+            string.IsNullOrEmpty(timezoneHeader))
+        {
+            return null;
+        }
+
+        var countryCode = GetCountryCode(countryCodeHeader);
+        var latitude = float.TryParse(latitudeHeader, out var lat) ? lat : 0.0f;
+        var longitude = float.TryParse(longitudeHeader, out var lon) ? lon : 0.0f;
+
+        var timeOffset = GetTimeOffsetFromTimezone(timezoneHeader);
+
+        return new Location
+        {
+            Country = countryCode.ToString(),
+            Latitude = latitude,
+            Longitude = longitude,
+            Ip = ip.ToString(),
+            TimeOffset = timeOffset
+        };
+    }
+
+
     public static IPAddress GetUserIpAddress(HttpRequest request)
     {
         var ipAddress = string.Empty;
@@ -54,6 +86,20 @@ public class RegionService(ILogger<RegionService> logger, RedisRepository redisR
         if (string.IsNullOrEmpty(ipAddress)) ipAddress = request.HttpContext.Connection.RemoteIpAddress?.ToString();
 
         return IPAddress.TryParse(ipAddress, out var ip) ? ip : IPAddress.Loopback;
+    }
+
+    public static int GetTimeOffsetFromTimezone(string timezone)
+    {
+        try
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(timezone);
+            var offset = tz.GetUtcOffset(DateTime.UtcNow);
+            return (int)offset.TotalHours;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     public static CountryCode GetCountryCode(string cc)

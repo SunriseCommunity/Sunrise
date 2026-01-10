@@ -5,6 +5,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -31,7 +32,7 @@ public class UserBanchoService(DatabaseService database, SessionRepository sessi
         return (user, null);
     }
 
-    public async Task<(Session?, (string, LoginResponse)?)> GetNewUserSession(User user, LoginRequest loginRequest, IPAddress ip)
+    public async Task<(Session?, (string, LoginResponse)?)> GetNewUserSession(User user, LoginRequest loginRequest, IPAddress ip, Location? knownLocation = null)
     {
         if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.Admin))
             return (null,
@@ -52,7 +53,7 @@ public class UserBanchoService(DatabaseService database, SessionRepository sessi
             await sessions.RemoveSession(oldSession);
         }
 
-        var location = await regionService.GetRegion(ip);
+        var location = knownLocation ?? await regionService.GetRegion(ip);
         location.TimeOffset = loginRequest.UtcOffset;
 
         var session = sessions.CreateSession(user, location, loginRequest);

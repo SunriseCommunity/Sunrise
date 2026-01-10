@@ -15,7 +15,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService, ChatChannelRepository chatChannelRepository)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService, ChatChannelRepository chatChannelRepository, RegionService regionService)
 {
     [TraceExecution]
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
@@ -35,7 +35,11 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
             return RejectLogin(response, error, loginResponseCode);
         }
 
-        var (session, getUserSessionError) = await userBanchoService.GetNewUserSession(user, loginRequest, ip);
+        var location = Configuration.GetUserLocationUsingCloudflareHeaders
+            ? regionService.GetRegionFromCloudflareHeaders(ip, request)
+            : null;
+
+        var (session, getUserSessionError) = await userBanchoService.GetNewUserSession(user, loginRequest, ip, location);
 
         if (getUserSessionError != null || session == null)
         {
