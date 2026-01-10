@@ -13,26 +13,36 @@ namespace Sunrise.Server.Services;
 
 public class UserBanchoService(DatabaseService database, SessionRepository sessions, RegionService regionService)
 {
-    public async Task<(Session?, string?, LoginResponse)> GetNewUserSession(LoginRequest loginRequest, IPAddress ip)
+
+    public async Task<(User?, (string, LoginResponse)?)> GetUserFromLoginRequest(LoginRequest loginRequest, IPAddress ip)
     {
-        var user = await database.Users.GetUser(username: loginRequest.Username);
+        var user = await database.Users.GetUser(username: loginRequest.Username,
+            passhash: loginRequest.PassHash,
+            options: new QueryOptions(true)
+            {
+                QueryModifier = q => q.Cast<User>()
+                    .Include(u => u.UserStats)
+                    .Include(u => u.UserInitiatedRelationships)
+            });
 
         if (user == null)
-            return (null, "User with this username does not exist.", LoginResponse.InvalidCredentials);
+            return (null, ("Invalid credentials.", LoginResponse.InvalidCredentials));
 
-        if (user.Passhash != loginRequest.PassHash)
-            return (null, "Invalid credentials.", LoginResponse.InvalidCredentials);
+        return (user, null);
+    }
 
+    public async Task<(Session?, (string, LoginResponse)?)> GetNewUserSession(User user, LoginRequest loginRequest, IPAddress ip)
+    {
         if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.Admin))
             return (null,
-                "Server is currently in maintenance mode. Please try again later.",
-                LoginResponse.ServerError);
+                ("Server is currently in maintenance mode. Please try again later.",
+                    LoginResponse.ServerError));
 
         if (user.IsUserSunriseBot())
-            return (null, "You can't login as Sunrise Bot", LoginResponse.InvalidCredentials);
+            return (null, ("You can't login as Sunrise Bot", LoginResponse.InvalidCredentials));
 
         if (user.IsRestricted() && await database.Users.Moderation.IsUserRestricted(user.Id))
-            return (null, "Your account is restricted. Please contact support for more information.", LoginResponse.InvalidCredentials);
+            return (null, ("Your account is restricted. Please contact support for more information.", LoginResponse.InvalidCredentials));
 
         var oldSession = sessions.GetSession(userId: user.Id);
 
@@ -53,7 +63,7 @@ public class UserBanchoService(DatabaseService database, SessionRepository sessi
             session.SendNotification("Welcome back! Your account has been re-enabled. It may take a few seconds to load your data.");
         }
 
-        return (session, null, LoginResponse.Success);
+        return (session, null);
     }
 
     public async Task<string?> GetFriends(int userId, CancellationToken ct = default)

@@ -1,13 +1,11 @@
 ﻿using HOPEless.Bancho;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Sunrise.Server.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Helpers;
 using Sunrise.Shared.Objects;
@@ -29,20 +27,21 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
 
-        var (session, error, loginResponseCode) = await userBanchoService.GetNewUserSession(loginRequest, ip);
+        var (user, getUserError) = await userBanchoService.GetUserFromLoginRequest(loginRequest, ip);
 
-        if (error != null || session == null)
+        if (getUserError != null || user == null)
+        {
+            var (error, loginResponseCode) = getUserError ?? ("Error retrieving user", LoginResponse.InvalidCredentials);
             return RejectLogin(response, error, loginResponseCode);
+        }
 
-        var user = await database.Users.GetUser(session.UserId,
-            options: new QueryOptions(true)
-            {
-                QueryModifier = q => q.Cast<User>()
-                    .Include(u => u.UserStats)
-                    .Include(u => u.UserInitiatedRelationships)
-            });
-        if (user == null)
-            return RejectLogin(response, "User for this session doesn't exist");
+        var (session, getUserSessionError) = await userBanchoService.GetNewUserSession(user, loginRequest, ip);
+
+        if (getUserSessionError != null || session == null)
+        {
+            var (error, loginResponseCode) = getUserSessionError ?? ("Error creating user session", LoginResponse.InvalidCredentials);
+            return RejectLogin(response, error, loginResponseCode);
+        }
 
         var addEventResult = await database.Events.Users.AddUserLoginEvent(new UserEventAction(user, ip.ToString(), session.UserId), true, sr);
         if (addEventResult.IsFailure)
