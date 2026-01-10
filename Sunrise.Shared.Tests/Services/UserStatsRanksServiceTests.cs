@@ -1,10 +1,13 @@
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
+using RedisKey = Sunrise.Shared.Objects.Keys.RedisKey;
 
 namespace Sunrise.Shared.Tests.Services;
 
@@ -199,6 +202,29 @@ public class UserStatsRanksServiceTests(IntegrationDatabaseFixture fixture) : Da
         // Assert
         globalRank.Should().Be(1);
         countryRank.Should().Be(1);
+    }
+
+    [Theory]
+    [MemberData(nameof(GetGameModes))]
+    public async Task GetUserRanks_ReturnsRanks_ShouldRemovePreviousRanksWhichAreNotInHashTable(GameMode mode)
+    {
+        // Arrange
+        var userId = 1002;
+
+        using var scope = App.Server.Services.CreateScope();
+        var redisConnection = scope.ServiceProvider.GetRequiredService<ConnectionMultiplexer>();
+
+        var redisSortedSetDb = redisConnection.GetDatabase(1);
+        var redisValue = $"{long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}:{userId}";
+        await redisSortedSetDb.SortedSetAddAsync(RedisKey.LeaderboardGlobal(mode), redisValue, 10000);
+
+        var user = await CreateTestUserWithStats(mode, 1000);
+
+        // Act
+        var (globalRank, _) = await Database.Users.Stats.Ranks.GetUserRanks(user, mode);
+
+        // Assert
+        globalRank.Should().Be(1);
     }
 
     [Theory]
