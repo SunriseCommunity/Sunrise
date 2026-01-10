@@ -88,6 +88,11 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 
     public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true, CancellationToken ct = default)
     {
+        return await GetUserRanksRecursive(user, mode, addRanksIfNotFound, false, ct);
+    }
+
+    private async Task<(long globalRank, long countryRank)> GetUserRanksRecursive(User user, GameMode mode, bool addRanksIfNotFound = true, bool isRecursiveCall = false, CancellationToken ct = default)
+    {
         var getUserRanksResult = await ResultUtil.TryExecuteAsync(async () =>
         {
             var globalRankTask = databaseService.Value.Redis.SortedSetRank(RedisKey.LeaderboardGlobal(mode), user.Id);
@@ -119,11 +124,11 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     if (addOrUpdateUserRanksResult.IsFailure)
                         throw new ApplicationException(addOrUpdateUserRanksResult.Error);
 
-                    var getUserRanksResult = await GetUserRanks(user, mode, false);
+                    var getUserRanksResult = await GetUserRanksRecursive(user, mode, false, true, ct);
                     (globalRank, countryRank) = getUserRanksResult;
                 }
 
-                var shouldIncreaseByOne = addRanksIfNotFound == false;
+                var shouldIncreaseByOne = isRecursiveCall == false;
                 return (globalRank.Value + (shouldIncreaseByOne ? 1 : 0), countryRank.Value + (shouldIncreaseByOne ? 1 : 0));
             }
             finally
