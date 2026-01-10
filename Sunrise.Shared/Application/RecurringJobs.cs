@@ -4,11 +4,13 @@ using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Users;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Application;
@@ -31,40 +33,53 @@ public class RecurringJobs
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var pageSize = 100;
+        var pageSize = 1000;
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
             for (var x = 1;; x++)
             {
-                var usersStats = await database.Users.Stats.GetUsersStats(i, LeaderboardSortType.Pp, options: new QueryOptions(true, new Pagination(x, pageSize)), ct: ct);
-
-                var users = await database.Users.GetUsers(usersStats.Select(us => us.UserId).ToList(), ct: ct);
-
-                foreach (var stats in usersStats)
-                {
-                    var user = users.FirstOrDefault(u => u.Id == stats.UserId);
-                    if (user == null || !user.IsActive(false)) continue;
-
-                    var currentSnapshot = await database.Users.Stats.Snapshots.GetUserStatsSnapshot(stats.UserId, stats.GameMode, ct);
-                    var rankSnapshots = currentSnapshot.GetSnapshots();
-
-                    rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
-
-                    if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
-
-                    var (globalRank, countryRank) = await database.Users.Stats.Ranks.GetUserRanks(user, stats.GameMode, ct: ct);
-
-                    rankSnapshots.Add(new StatsSnapshot
+                var usersStats = await database.Users.Stats.GetUsersStats(i,
+                    LeaderboardSortType.Pp,
+                    options: new QueryOptions(true, new Pagination(x, pageSize))
                     {
-                        Rank = globalRank,
-                        CountryRank = countryRank,
-                        PerformancePoints = stats.PerformancePoints
+                        QueryModifier = q => q.Cast<UserStats>()
+                            .Where(us => us.PerformancePoints > 0 && us.User.AccountStatus == UserAccountStatus.Active)
+                            .Include(us => us.User)
+                    },
+                    ct: ct);
+
+                var usersSnapshots = await database.Users.Stats.Snapshots.GetUsersAllStatsSnapshot(usersStats.Select(us => us.UserId).ToList(), i, ct);
+                var (usersGlobalRanks, usersCountryRanks) = await database.Users.Stats.Ranks.GetUsersRanks(usersStats.Select(us => us.User).ToList(), i, ct);
+
+                Parallel.ForEach(
+                    usersSnapshots,
+                    new ParallelOptions
+                    {
+                        MaxDegreeOfParallelism = Environment.ProcessorCount
+                    },
+                    (currentSnapshot, _) =>
+                    {
+                        var rankSnapshots = currentSnapshot.Value.GetSnapshots();
+
+                        rankSnapshots.Sort((a, b) => a.SavedAt.CompareTo(b.SavedAt));
+
+                        if (rankSnapshots.Count >= 70) rankSnapshots = rankSnapshots[1..]; // Remove the oldest snapshot
+
+                        var (globalRank, countryRank) = (usersGlobalRanks[currentSnapshot.Key], usersCountryRanks[currentSnapshot.Key]);
+                        var stats = usersStats.First(us => us.UserId == currentSnapshot.Key);
+
+                        rankSnapshots.Add(new StatsSnapshot
+                        {
+                            Rank = globalRank,
+                            CountryRank = countryRank,
+                            PerformancePoints = stats.PerformancePoints
+                        });
+
+                        currentSnapshot.Value.SetSnapshots(rankSnapshots);
                     });
 
-                    currentSnapshot.SetSnapshots(rankSnapshots);
-                    await database.Users.Stats.Snapshots.UpdateUserStatsSnapshot(currentSnapshot);
-                }
+                await database.Users.Stats.Snapshots.UpdateUserStatsSnapshot(usersSnapshots.Values.ToList());
 
                 if (usersStats.Count < pageSize) break;
             }
