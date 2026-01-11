@@ -9,4 +9,5 @@ public enum UserPrivilege
     Admin = 1 << 3,
     Developer = 1 << 4,
     ServerBot = 1 << 5,
+    SuperUser = 1 << 6
 }
