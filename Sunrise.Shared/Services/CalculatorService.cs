@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -87,12 +88,11 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         return (performances[0], performances[1], performances[2], performances[3]);
     }
 
-    public async Task<double> CalculateUserWeightedAccuracy(int userId, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode, Score? score = null)
     {
-        var user = await database.Value.Users.GetUser(userId);
-        if (user == null) return 0;
+        if (!user.IsActive()) return -1;
 
-        var (userBestScores, _) = await database.Value.Scores.GetUserScores(userId,
+        var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,
             new QueryOptions(true, new Pagination(1, 100))
@@ -103,12 +103,11 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
     }
 
-    public async Task<double> CalculateUserWeightedPerformance(int userId, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode, Score? score = null)
     {
-        var user = await database.Value.Users.GetUser(userId);
-        if (user == null) return 0;
+        if (!user.IsActive()) return -1;
 
-        var (userBestScores, _) = await database.Value.Scores.GetUserScores(userId,
+        var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,
             new QueryOptions(true, new Pagination(1, 100)));

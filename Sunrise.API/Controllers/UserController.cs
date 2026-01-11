@@ -307,7 +307,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user.IsRestricted())
             return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
 
-        var (scores, totalScores) = await database.Scores.GetUserScores(id,
+        var (scores, totalScores) = await database.Scores.GetUserScores(user.Id,
             mode,
             scoresType,
             new QueryOptions(true, new Pagination(page, limit))

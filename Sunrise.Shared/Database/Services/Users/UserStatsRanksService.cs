@@ -186,7 +186,7 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     LeaderboardSortType.Pp,
                     options: new QueryOptions(new Pagination(i, branchSize))
                     {
-                        QueryModifier = q => q.Cast<UserStats>().Include(s => s.User)
+                        QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
                     });
 
                 foreach (var stats in usersStats)
