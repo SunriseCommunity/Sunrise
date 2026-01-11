@@ -34,7 +34,7 @@ public class UserBanchoService(DatabaseService database, SessionRepository sessi
 
     public async Task<(Session?, (string, LoginResponse)?)> GetNewUserSession(User user, LoginRequest loginRequest, IPAddress ip, Location? knownLocation = null)
     {
-        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.Admin))
+        if (Configuration.OnMaintenance && !user.Privilege.HasFlag(UserPrivilege.SuperUser))
             return (null,
                 ("Server is currently in maintenance mode. Please try again later.",
                     LoginResponse.ServerError));

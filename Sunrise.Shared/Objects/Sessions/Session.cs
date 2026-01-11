@@ -53,7 +53,7 @@ public class Session : BaseSession
         if (user == null)
             return;
 
-        if (user.Privilege.HasFlag(UserPrivilege.Admin)) return;
+        if (user.Privilege.HasFlag(UserPrivilege.SuperUser)) return;
 
         message += " You will be disconnected shortly.";
 
