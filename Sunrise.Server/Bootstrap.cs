@@ -164,6 +164,18 @@ public static class Bootstrap
 
                         options.EnrichWithHttpRequest = (activity, request) => EnrichWithHttpContext(activity, request.HttpContext);
                         options.EnrichWithHttpResponse = (activity, response) => EnrichWithHttpContext(activity, response.HttpContext);
+
+                        var excludedPaths = new PathString[]
+                        {
+                            "/ping",
+                            "/metrics",
+                            "/health",
+                            "/ws"
+                        };
+
+                        options.Filter = httpContext =>
+                            !excludedPaths.Any(x
+                                => httpContext.Request.Path.StartsWithSegments(x, StringComparison.OrdinalIgnoreCase));
                     })
                     .AddEntityFrameworkCoreInstrumentation()
                     .AddHangfireInstrumentation()
