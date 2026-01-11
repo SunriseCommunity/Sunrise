@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
-using Sunrise.Server.Commands.ChatCommands.Development;
+using Sunrise.Server.Commands.ChatCommands.System;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
