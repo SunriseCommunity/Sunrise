@@ -8,6 +8,6 @@ public enum UserPrivilege
     Bat = 1 << 1,
     Admin = 1 << 3,
     Developer = 1 << 4,
-    ServerBot = 1 << 5,
-    SuperUser = 1 << 6
+    SuperUser = 1 << 9,
+    ServerBot = 1 << 10
 }
