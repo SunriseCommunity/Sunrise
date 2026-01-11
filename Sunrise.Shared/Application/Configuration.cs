@@ -48,6 +48,9 @@ public static class Configuration
     public static bool DemoteSuperUserOnStartup =>
         Environment.GetEnvironmentVariable("DEMOTE_SUPERUSER_ON_STARTUP_USE_THIS_IF_SOMEONE_STOLEN_YOUR_SUPERUSER_ACCOUNT") == "true";
 
+    public static string? SolarSystemVersion =>
+        Environment.GetEnvironmentVariable("SOLAR_SYSTEM_VERSION");
+
     public static string? SuperUserSecretPassword { get; set; }
 
     public static bool IsDevelopment => Env == "Development";

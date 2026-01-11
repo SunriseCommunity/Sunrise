@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
@@ -91,5 +92,17 @@ public class BaseController(IMemoryCache cache, DatabaseService database, Sessio
         }
 
         return Ok(new StatusResponse(usersOnline, totalUsers, totalScores, totalRestrictions));
+    }
+
+    [HttpGet]
+    [IgnoreMaintenance]
+    [Route("/version")]
+    [EndpointDescription("Check solar system version")]
+    [ProducesResponseType(typeof(SolarSystemVersionResponse), StatusCodes.Status200OK)]
+    public IActionResult GetSolarSystemVersion()
+    {
+        var solarSystemVersion = Configuration.SolarSystemVersion;
+
+        return Ok(new SolarSystemVersionResponse(solarSystemVersion != null, solarSystemVersion));
     }
 }
