@@ -55,7 +55,7 @@ public static class ChatCommandRepository
                 var possibleCommands = GetAvailableCommands(session)
                     .Where(x => x.Contains(command))
                     .ToArray();
-                
+
                 SendMessage(session,
                     possibleCommands.Length > 0 ? $"Did you mean: !{string.Join(", !", possibleCommands)}? Type {Configuration.BotPrefix}help for a list of available commands." : $"Command {command} not found. Type {Configuration.BotPrefix}help for a list of available commands.");
 
@@ -103,12 +103,14 @@ public static class ChatCommandRepository
         if (sessionUser == null)
             return [];
 
-
         var privilege = sessionUser.Privilege;
+
+        var shouldShowMultiplayerSpecificCommands = session.Match != null;
 
         return Handlers
             .Where(x => privilege.HasFlag(x.Value.RequiredPrivileges))
-            .Where(x => !x.Value.Prefix.Contains("mp") || session.Match != null) // Don't add multiplayer specific commands, if user is currently not in multiplayer match.
+            .Where(x => !x.Value.Prefix.Contains("mp") || shouldShowMultiplayerSpecificCommands)
+            .Where(x => !x.Value.IsHidden)
             .Select(x => x.Key)
             .ToArray();
     }
@@ -206,7 +208,7 @@ public static class ChatCommandRepository
 
             if (attribute.Prefix != string.Empty) Prefixes = Prefixes.Append(attribute.Prefix).ToArray();
 
-            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredPrivileges, attribute.IsGlobal);
+            var command = new ChatCommand(instance, attribute.Prefix, attribute.RequiredPrivileges, attribute.IsGlobal, attribute.IsHidden);
             Handlers.TryAdd($"{attribute.Prefix} {attribute.Command}".Trim(),
                 command); // .Trim() => https://imgur.com/a/0rsYZRv
         }

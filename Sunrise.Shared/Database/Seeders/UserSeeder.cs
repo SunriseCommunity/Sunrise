@@ -22,6 +22,44 @@ public static class UserSeeder
         await context.SaveChangesAsync(ct);
     }
 
+    public static async Task FetchSuperUserAndEitherPrintSecretOrDemote(DbContext context, CancellationToken ct = default)
+    {
+        if (Configuration.IsTestingEnv && Configuration.SuperUserSecretPassword == null) return;
+
+        var superUserExists = await context.Set<User>().AnyAsync(u => u.Privilege.HasFlag(UserPrivilege.SuperUser), ct);
+
+        if (superUserExists)
+        {
+            if (!Configuration.DemoteSuperUserOnStartup) return;
+
+            var superUsers = await context.Set<User>().Where(u => u.Privilege.HasFlag(UserPrivilege.SuperUser)).ToListAsync(ct);
+
+            foreach (var su in superUsers)
+            {
+                su.Privilege &= ~UserPrivilege.SuperUser;
+                context.Set<User>().Update(su);
+            }
+
+            await context.SaveChangesAsync(ct);
+        }
+
+        var suSecret = Guid.NewGuid().ToString("N");
+
+        Configuration.SuperUserSecretPassword = suSecret;
+
+        Console.WriteLine("=====================================================");
+
+        if (Configuration.DemoteSuperUserOnStartup)
+        {
+            Console.WriteLine("\nNOTE: SuperUser privileges have been DEMOTED on startup as per configuration. Don't forget to remove \"DEMOTE_SUPERUSER_ON_STARTUP_USE_THIS_IF_SOMEONE_STOLEN_YOUR_SUPERUSER_ACCOUNT\" from your environment variables after regaining access.\n");
+        }
+
+        Console.WriteLine("No SuperUser found in the database.");
+        Console.WriteLine("To get SuperUser privileges, create a user and run the following command to Bancho Bot:");
+        Console.WriteLine($"{Configuration.BotPrefix}claimowner {Configuration.SuperUserSecretPassword}");
+        Console.WriteLine("=====================================================");
+    }
+
     private static async Task<List<(string, string)>> FetchUserForeignKeys(DbContext context)
     {
         var map = new List<(string, string)>();

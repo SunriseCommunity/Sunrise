@@ -97,8 +97,7 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
-
-        var privilegeEnum = JsonStringFlagEnumHelper.CombineFlags(request.Privilege);
+        var privilegeEnum = request.GetPrivilege();
 
         var updatedPrivileges = user.Privilege ^ privilegeEnum;
 
