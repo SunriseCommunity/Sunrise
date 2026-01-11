@@ -10,8 +10,14 @@
 Sunrise is a private server for osu! written in C#. This repository has both endpoints for game-client and for the
 website. The server is currently in development and is not yet ready for public use.
 
+
 > [!NOTE]
 > Want to help? Have a question? :shipit: Feel free then to join our [Discord server](https://discord.gg/BjV7c9VRfn), there you can ask any question to maintainers of this project!
+
+
+## 🖼️ Preview
+
+![](https://github.com/SunriseCommunity/Solar-System/blob/main/.github/preview.jpg)
 
 <!-- TODO: Uncomment after I will be done with Solar System
 
@@ -26,7 +32,9 @@ It includes Sunrise and other all required services for a fully functional Sunri
 If you are looking for the official documentation, please refer to [docs.sunrize.uk](https://docs.sunrize.uk).
 -->
 
-------
+
+-----
+
 
 > [!IMPORTANT] 
 > **Read me if you were self-hosting Sunrsie before the Solar System monorepo move (January 6, 2026)**
@@ -35,11 +43,6 @@ If you are looking for the official documentation, please refer to [docs.sunrize
 >
 > One of the biggest changes is the way we handle configuration - we moved from `appsettings.json` to `.env` file for environment variables.
 > Please refer to our [upgrade guide to .env variables](https://docs.sunrize.uk/upgrading/upgrade-to-dot-env-variables) to help you with the migration.
->
-> Other notable changes:
->
-> - **Hangfire now uses MySQL instead of Postgres** - This simplifies the setup process by using a single database system.
-> - **We dropped docker compose setup for prometheus and grafana** - These services were an overhead for the solo Sunrise server setup. They are now included in the Solar System monorepo only.
 
 
 ## Features 🌟
