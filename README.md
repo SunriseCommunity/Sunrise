@@ -151,7 +151,6 @@ If you are looking for the official documentation, please refer to [docs.sunrize
    127.0.0.1 c.sunrise.local
    127.0.0.1 assets.sunrise.local
    127.0.0.1 cho.sunrise.local
-   127.0.0.1 assets.sunrise.local
    127.0.0.1 c4.sunrise.local
    127.0.0.1 b.sunrise.local
    ```
