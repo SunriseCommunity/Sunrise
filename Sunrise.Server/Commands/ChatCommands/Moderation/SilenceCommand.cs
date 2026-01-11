@@ -4,6 +4,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
@@ -31,6 +32,14 @@ public class SilenceCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
+        var sessionUser = await database.Users.GetUser(session.UserId);
+
+        if (sessionUser == null)
+        {
+            ChatCommandRepository.SendMessage(session, "Your user data could not be found.");
+            return;
+        }
+
         var user = await database.Users.GetUser(userId);
 
         if (user == null)
@@ -39,7 +48,7 @@ public class SilenceCommand : IChatCommand
             return;
         }
 
-        if (user.Privilege.HasFlag(UserPrivilege.Admin))
+        if (sessionUser.Privilege.GetHighestPrivilege() <= user.Privilege.GetHighestPrivilege())
         {
             ChatCommandRepository.SendMessage(session, "You cannot silence this user due to their privilege level.");
             return;
