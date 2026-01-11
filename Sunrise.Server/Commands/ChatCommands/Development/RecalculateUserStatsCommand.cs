@@ -112,18 +112,8 @@ public class RecalculateUserStatsCommand : IChatCommand
             GameMode = stats.GameMode
         };
 
+        await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
         var user = stats.User;
-
-        if (user == null)
-        {
-            user = await database.Users.GetUser(stats.UserId, options: new QueryOptions(true));
-        }
-
-        if (user == null)
-        {
-            ChatCommandRepository.TrySendMessage(userIdToSendUpdatesTo, $"User with id {stats.UserId} not found when recalculating stats.");
-            return;
-        }
 
         var pageSize = 100;
 
