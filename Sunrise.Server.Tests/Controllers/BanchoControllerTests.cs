@@ -121,6 +121,8 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         var isLoginShouldFail = privilege.HasFlag(UserPrivilege.SuperUser) == false;
         var isLoginFailed = new BanchoInt(serverLoginReplyPacket.Data).Value == (int)LoginResponse.ServerError;
         Assert.Equal(isLoginShouldFail, isLoginFailed);
+
+        Configuration.OnMaintenance = false;
     }
 
     [Fact]
