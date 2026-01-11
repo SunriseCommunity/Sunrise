@@ -86,6 +86,42 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         Assert.True(isLoginSuccessful, "Login was not successful.");
     }
 
+    [Theory]
+    [InlineData(UserPrivilege.User)]
+    [InlineData(UserPrivilege.Supporter)]
+    [InlineData(UserPrivilege.Bat)]
+    [InlineData(UserPrivilege.Admin)]
+    [InlineData(UserPrivilege.Developer)]
+    [InlineData(UserPrivilege.SuperUser)]
+    [InlineData(UserPrivilege.ServerBot)]
+    public async Task TestReturnLogoutIfServerOnMaintenanceOnLoginRequestForPrivilege(UserPrivilege privilege)
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("c");
+
+        Configuration.OnMaintenance = true;
+
+        var user = await CreateTestUser();
+
+        user.Privilege = privilege;
+        await Database.Users.UpdateUser(user);
+
+        var authBody = GetUserBodyLoginRequest(_mocker.User.GetUserLoginRequest(user));
+
+        // Act
+        var response = await client.PostAsync("/", new StringContent(authBody));
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responsePackets = await GetResponsePackets(response);
+        var serverLoginReplyPacket = responsePackets.FirstOrDefault(x => x.Type == PacketType.ServerLoginReply);
+        Assert.NotNull(serverLoginReplyPacket);
+
+        var isLoginShouldFail = privilege.HasFlag(UserPrivilege.SuperUser) == false;
+        var isLoginFailed = new BanchoInt(serverLoginReplyPacket.Data).Value == (int)LoginResponse.ServerError;
+        Assert.Equal(isLoginShouldFail, isLoginFailed);
+    }
 
     [Fact]
     public async Task TestReturnSuccessDoesntTakeTooLongForMultipleActiveSessions()
