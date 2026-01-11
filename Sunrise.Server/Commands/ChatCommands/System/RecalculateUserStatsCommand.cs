@@ -12,7 +12,7 @@ using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Server.Commands.ChatCommands.Development;
+namespace Sunrise.Server.Commands.ChatCommands.System;
 
 [ChatCommand("recalculateuserstats", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserStatsCommand : IChatCommand
