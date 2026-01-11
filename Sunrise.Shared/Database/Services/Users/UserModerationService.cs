@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
@@ -65,7 +66,7 @@ public class UserModerationService(
 
             user.AccountStatus = UserAccountStatus.Active;
             await databaseService.Value.Users.UpdateUser(user);
-            await RefreshUserStats(user.Id);
+            await RefreshUserStats(user);
 
             // TODO: Move outside, and also trigger if executed by server
             if (executorId.HasValue)
@@ -95,7 +96,11 @@ public class UserModerationService(
                 ExpiryDate = DateTime.UtcNow.Add(expiresAfter ?? TimeSpan.FromDays(365))
             };
 
-            var user = await databaseService.Value.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId,
+                options: new QueryOptions
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
             if (user == null)
                 throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
@@ -111,7 +116,7 @@ public class UserModerationService(
             dbContext.Restrictions.Add(restriction);
             await dbContext.SaveChangesAsync();
 
-            await RefreshUserStats(user.Id);
+            await RefreshUserStats(user);
 
             var session = sessions.GetSession(userId: userId);
             session?.SendRestriction(reason);
@@ -137,7 +142,11 @@ public class UserModerationService(
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
-            var user = await databaseService.Value.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId,
+                options: new QueryOptions
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
             if (user == null) throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
             user.AccountStatus = UserAccountStatus.Active;
@@ -146,7 +155,7 @@ public class UserModerationService(
             if (updateUserResult.IsFailure)
                 throw new ApplicationException(updateUserResult.Error);
 
-            await RefreshUserStats(user.Id);
+            await RefreshUserStats(user);
         });
     }
 
@@ -154,7 +163,11 @@ public class UserModerationService(
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
-            var user = await databaseService.Value.Users.GetUser(userId);
+            var user = await databaseService.Value.Users.GetUser(userId,
+                options: new QueryOptions
+                {
+                    QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+                });
             if (user == null) throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
             if (user.IsUserSunriseBot())
@@ -174,28 +187,32 @@ public class UserModerationService(
             if (updateUserResult.IsFailure)
                 throw new ApplicationException(updateUserResult.Error);
 
-            await RefreshUserStats(user.Id);
+            await RefreshUserStats(user);
         });
     }
 
-    private async Task RefreshUserStats(int userId)
+    private async Task RefreshUserStats(User user)
     {
         foreach (var i in Enum.GetValues(typeof(GameMode)))
         {
-            var stat = await databaseService.Value.Users.Stats.GetUserStats(userId, (GameMode)i);
-            if (stat == null)
-                continue;
+            var mode = (GameMode)i;
 
-            var pp = await calculatorService.CalculateUserWeightedPerformance(userId, (GameMode)i);
-            var acc = await calculatorService.CalculateUserWeightedAccuracy(userId, (GameMode)i);
+            var stats = user.UserStats.FirstOrDefault(s => s.GameMode == mode);
 
-            stat.PerformancePoints = pp;
-            stat.Accuracy = acc;
+            if (stats == null)
+            {
+                stats = await databaseService.Value.Users.Stats.GetUserStats(user.Id, mode);
+                if (stats == null)
+                    continue;
+            }
 
-            var user = await dbContext.Users.FindAsync(userId);
-            if (user == null) throw new Exception();
+            var pp = await calculatorService.CalculateUserWeightedPerformance(user, mode);
+            var acc = await calculatorService.CalculateUserWeightedAccuracy(user, mode);
 
-            await databaseService.Value.Users.Stats.UpdateUserStats(stat, user);
+            stats.PerformancePoints = pp;
+            stats.Accuracy = acc;
+
+            await databaseService.Value.Users.Stats.UpdateUserStats(stats, user);
         }
     }
 }

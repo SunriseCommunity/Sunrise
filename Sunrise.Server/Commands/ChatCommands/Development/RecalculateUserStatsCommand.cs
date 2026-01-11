@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -83,7 +84,13 @@ public class RecalculateUserStatsCommand : IChatCommand
             var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
             var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-            var pageStats = await database.Users.Stats.GetUsersStats(mode, LeaderboardSortType.Pp, options: new QueryOptions(new Pagination(x, pageSize)));
+            var pageStats = await database.Users.Stats.GetUsersStats(mode,
+                LeaderboardSortType.Pp,
+                options: new QueryOptions(new Pagination(x, pageSize))
+                {
+                    QueryModifier = q => q.Cast<UserStats>().Include(s => s.User)
+                },
+                ct: token);
 
             foreach (var stats in pageStats)
             {
@@ -105,6 +112,9 @@ public class RecalculateUserStatsCommand : IChatCommand
             GameMode = stats.GameMode
         };
 
+        await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
+        var user = stats.User;
+
         var pageSize = 100;
 
         for (var i = 1;; i++)
@@ -124,8 +134,8 @@ public class RecalculateUserStatsCommand : IChatCommand
             if (pageScores.Count < pageSize) break;
         }
 
-        var pp = await calculatorService.CalculateUserWeightedPerformance(stats.UserId, stats.GameMode);
-        var acc = await calculatorService.CalculateUserWeightedAccuracy(stats.UserId, stats.GameMode);
+        var pp = await calculatorService.CalculateUserWeightedPerformance(user, stats.GameMode);
+        var acc = await calculatorService.CalculateUserWeightedAccuracy(user, stats.GameMode);
 
         const float tolerance = 0.0001f;
 
@@ -157,10 +167,6 @@ public class RecalculateUserStatsCommand : IChatCommand
 
         stats.PerformancePoints = pp;
         stats.Accuracy = acc;
-
-        await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
-
-        var user = stats.User;
 
         await database.Users.Stats.UpdateUserStats(stats, user);
     }

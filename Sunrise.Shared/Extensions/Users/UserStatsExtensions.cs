@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -43,9 +44,13 @@ public static class UserStatsExtensions
             using var scope = ServicesProviderHolder.CreateScope();
             var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+            await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
+            var user = userStats.User;
+
             userStats.PerformancePoints =
-                await calculatorService.CalculateUserWeightedPerformance(userStats.UserId, score.GameMode, score);
-            userStats.Accuracy = await calculatorService.CalculateUserWeightedAccuracy(userStats.UserId, score.GameMode, score);
+                await calculatorService.CalculateUserWeightedPerformance(user, score.GameMode, score);
+            userStats.Accuracy = await calculatorService.CalculateUserWeightedAccuracy(user, score.GameMode, score);
         }
     }
 
