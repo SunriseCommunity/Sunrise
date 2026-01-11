@@ -2,15 +2,14 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 
-namespace Sunrise.Server.Commands.ChatCommands.Development;
+namespace Sunrise.Server.Commands.ChatCommands.System;
 
-[ChatCommand("deleteuser", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("deleteuser", requiredPrivileges: UserPrivilege.SuperUser)]
 public class DeleteUserCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

@@ -213,7 +213,7 @@ public sealed class Middleware(
         }
 
         var user = context.GetCurrentUser();
-        var ignoreMaintenanceMode = user != null && user.Privilege.HasFlag(UserPrivilege.Admin);
+        var ignoreMaintenanceMode = user != null && user.Privilege.HasFlag(UserPrivilege.SuperUser);
 
         if (ignoreMaintenanceMode)
         {

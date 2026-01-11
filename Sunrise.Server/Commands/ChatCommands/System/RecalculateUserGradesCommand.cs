@@ -12,9 +12,9 @@ using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
-namespace Sunrise.Server.Commands.ChatCommands.Development;
+namespace Sunrise.Server.Commands.ChatCommands.System;
 
-[ChatCommand("recalculateusergrades", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("recalculateusergrades", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserGradesCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
@@ -102,7 +102,7 @@ public class RecalculateUserGradesCommand : IChatCommand
         var userGrades = await database.Users.Grades.GetUserGrades(userId, mode);
         if (userGrades == null)
             throw new Exception($"User {userId} has no userGrades");
-        
+
         userGrades = ClearUserGrades(userGrades);
 
         var pageSize = 100;

@@ -9,5 +9,6 @@ public static class DatabaseSeeder
     {
         await MedalSeeder.SeedMedals(context, cancellationToken);
         await UserSeeder.SeedUsers(context, cancellationToken);
+        await UserSeeder.FetchSuperUserAndEitherPrintSecretOrDemote(context, cancellationToken);
     }
 }

@@ -227,7 +227,7 @@ public static class Bootstrap
         }).AddJwtBearer(x => { x.TokenValidationParameters = Configuration.WebTokenValidationParameters; });
 
         builder.Services.AddAuthorizationBuilder()
-            .AddPolicy("RequireDeveloper", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Developer)))
+            .AddPolicy("RequireSuperUser", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.SuperUser)))
             .AddPolicy("RequireAdmin", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Admin)))
             .AddPolicy("RequireBat", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Bat)));
 

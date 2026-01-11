@@ -5,9 +5,9 @@ using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 
-namespace Sunrise.Server.Commands.ChatCommands.Development;
+namespace Sunrise.Server.Commands.ChatCommands.System;
 
-[ChatCommand("viewconfig", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("viewconfig", requiredPrivileges: UserPrivilege.SuperUser)]
 public class ViewConfigCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
