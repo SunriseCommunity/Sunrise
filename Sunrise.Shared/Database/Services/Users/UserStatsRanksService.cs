@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -35,7 +36,62 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
         return ranks;
     }
 
+    [TraceExecution]
+    public async Task<(Dictionary<int, long>, Dictionary<int, long>)> GetUsersRanks(List<User> users, GameMode mode, CancellationToken ct = default)
+    {
+        var globalRanks = new Dictionary<int, long>();
+        var countryRanks = new Dictionary<int, long>();
+
+        var userById = users.ToDictionary(u => u.Id);
+
+        var globalResults = await databaseService.Value.Redis.SortedSetRanks(
+            RedisKey.LeaderboardGlobal(mode),
+            users.Select(u => u.Id).ToArray());
+
+        var userIdsByCountry = users
+            .GroupBy(u => u.Country)
+            .ToDictionary(g => g.Key, g => g.Select(u => u.Id).ToArray());
+
+        var countryRankTasks = userIdsByCountry.Select(async kvp =>
+        {
+            var ranks = await databaseService.Value.Redis.SortedSetRanks(
+                RedisKey.LeaderboardCountry(mode, kvp.Key),
+                kvp.Value);
+            return ranks;
+        });
+
+        var countryResultsArrays = await Task.WhenAll(countryRankTasks);
+
+        var countryRankByUserId = countryResultsArrays
+            .SelectMany(r => r)
+            .ToDictionary(r => r.Key, r => r.Value);
+
+        foreach (var (userId, globalRank) in globalResults)
+        {
+            var countryRank = countryRankByUserId[userId];
+
+            if (globalRank.HasValue && countryRank.HasValue)
+            {
+                globalRanks[userId] = globalRank.Value + 1;
+                countryRanks[userId] = countryRank.Value + 1;
+            }
+            else
+            {
+                var (fetchedGlobalRank, fetchedCountryRank) = await GetUserRanks(userById[userId], mode, true, ct);
+                globalRanks[userId] = fetchedGlobalRank;
+                countryRanks[userId] = fetchedCountryRank;
+            }
+        }
+
+        return (globalRanks, countryRanks);
+    }
+
     public async Task<(long globalRank, long countryRank)> GetUserRanks(User user, GameMode mode, bool addRanksIfNotFound = true, CancellationToken ct = default)
+    {
+        return await GetUserRanksRecursive(user, mode, addRanksIfNotFound, false, ct);
+    }
+
+    private async Task<(long globalRank, long countryRank)> GetUserRanksRecursive(User user, GameMode mode, bool addRanksIfNotFound = true, bool isRecursiveCall = false, CancellationToken ct = default)
     {
         var getUserRanksResult = await ResultUtil.TryExecuteAsync(async () =>
         {
@@ -68,11 +124,12 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
                     if (addOrUpdateUserRanksResult.IsFailure)
                         throw new ApplicationException(addOrUpdateUserRanksResult.Error);
 
-                    var getUserRanksResult = await GetUserRanks(user, mode, false);
+                    var getUserRanksResult = await GetUserRanksRecursive(user, mode, false, true, ct);
                     (globalRank, countryRank) = getUserRanksResult;
                 }
 
-                return (globalRank.Value + 1, countryRank.Value + 1);
+                var shouldIncreaseByOne = isRecursiveCall == false;
+                return (globalRank.Value + (shouldIncreaseByOne ? 1 : 0), countryRank.Value + (shouldIncreaseByOne ? 1 : 0));
             }
             finally
             {
