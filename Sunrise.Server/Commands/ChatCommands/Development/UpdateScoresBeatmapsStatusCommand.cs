@@ -11,7 +11,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("updatescoresbeatmapstatus", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("updatescoresbeatmapstatus", requiredPrivileges: UserPrivilege.SuperUser)]
 public class UpdateScoresBeatmapsStatusCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

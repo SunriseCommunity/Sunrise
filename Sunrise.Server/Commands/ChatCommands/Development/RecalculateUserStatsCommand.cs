@@ -14,7 +14,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("recalculateuserstats", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("recalculateuserstats", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserStatsCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

@@ -8,7 +8,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("canceljob", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("canceljob", requiredPrivileges: UserPrivilege.SuperUser)]
 public class CancelJobCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

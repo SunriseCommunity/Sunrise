@@ -9,7 +9,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("disableinactiveusers", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("disableinactiveusers", requiredPrivileges: UserPrivilege.SuperUser)]
 public class DisableInactiveUsersCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

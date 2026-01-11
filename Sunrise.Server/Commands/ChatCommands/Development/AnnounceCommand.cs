@@ -8,7 +8,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("announce", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("announce", requiredPrivileges: UserPrivilege.SuperUser)]
 public class AnnounceCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

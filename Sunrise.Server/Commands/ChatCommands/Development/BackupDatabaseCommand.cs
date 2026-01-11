@@ -9,7 +9,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("backupdatabase", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("backupdatabase", requiredPrivileges: UserPrivilege.SuperUser)]
 public class BackupDatabaseCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

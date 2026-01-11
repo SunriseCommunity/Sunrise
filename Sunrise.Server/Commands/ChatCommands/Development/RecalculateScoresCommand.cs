@@ -14,7 +14,7 @@ using Sunrise.Shared.Utils.Calculators;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("recalculatescores", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("recalculatescores", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateScoresCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

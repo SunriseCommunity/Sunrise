@@ -7,7 +7,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("viewconfig", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("viewconfig", requiredPrivileges: UserPrivilege.SuperUser)]
 public class ViewConfigCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

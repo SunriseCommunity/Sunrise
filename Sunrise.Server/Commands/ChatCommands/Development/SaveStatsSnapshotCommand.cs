@@ -9,7 +9,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("savestatssnapshot", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("savestatssnapshot", requiredPrivileges: UserPrivilege.SuperUser)]
 public class SaveStatsSnapshotCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

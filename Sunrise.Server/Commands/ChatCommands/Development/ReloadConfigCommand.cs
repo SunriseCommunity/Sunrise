@@ -7,7 +7,7 @@ using Sunrise.Shared.Objects.Sessions;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("reloadconfig", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("reloadconfig", requiredPrivileges: UserPrivilege.SuperUser)]
 public class ReloadConfigCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

@@ -8,7 +8,7 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("maintenance", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("maintenance", requiredPrivileges: UserPrivilege.SuperUser)]
 public class MaintenanceCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)

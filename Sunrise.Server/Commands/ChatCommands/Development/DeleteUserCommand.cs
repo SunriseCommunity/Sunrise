@@ -10,7 +10,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Commands.ChatCommands.Development;
 
-[ChatCommand("deleteuser", requiredPrivileges: UserPrivilege.Developer)]
+[ChatCommand("deleteuser", requiredPrivileges: UserPrivilege.SuperUser)]
 public class DeleteUserCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
