@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;
@@ -9,6 +10,7 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
@@ -183,8 +185,22 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var scoresWithSameMods = databaseScoresWithSameMods.EnrichWithLeaderboardPositions();
 
-        var userStats = await database.Users.Stats.GetUserStats(score.UserId, score.GameMode);
+        var user = await database.Users.GetUser(session.UserId,
+            options: new QueryOptions
+            {
+                QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
+            });
 
+        if (user == null)
+        {
+            await SaveRejectedScore(score);
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user while submitting score");
+            return "error: no";
+        }
+        
+        var userStats = user.UserStats.FirstOrDefault(u => u.GameMode == score.GameMode)
+                        ?? await database.Users.Stats.GetUserStats(user.Id, score.GameMode);
+        
         if (userStats == null)
         {
             await SaveRejectedScore(score);
@@ -206,15 +222,6 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             : ([], 0);
 
         var prevUserPersonalBestScores = prevUserBeatmapScores.Scores.GetUserPersonalBestScores(score.UserId);
-
-        var user = await database.Users.GetUser(session.UserId);
-
-        if (user == null)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user while submitting score");
-            return "error: no";
-        }
 
         var (prevUserGlobalRank, _) = isScoreScoreable ? await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode) : (0, 0);
         prevUserStats.LocalProperties.Rank = prevUserGlobalRank;
