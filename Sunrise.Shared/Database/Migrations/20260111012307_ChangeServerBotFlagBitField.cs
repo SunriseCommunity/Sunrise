@@ -23,7 +23,7 @@ namespace Sunrise.Shared.Database.Migrations
             migrationBuilder.Sql(@"
             UPDATE user
             SET Privilege = (Privilege & ~1024) | 32
-            WHERE (Privilege & 32) = 32;
+            WHERE (Privilege & 1024) = 1024;
             ");
         }
     }
