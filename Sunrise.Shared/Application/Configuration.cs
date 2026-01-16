@@ -171,7 +171,8 @@ public static class Configuration
 
 
     // Bot section
-    public static string BotUsername => Config.GetSection("Bot").GetValue<string?>("Username") ?? "";
+    public static string BotUsernameFromConfig => Config.GetSection("Bot").GetValue<string?>("Username") ?? "Sunrise Bot";
+    public static string? BotUsername { get; set; } = "";
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
 
     // Redis section

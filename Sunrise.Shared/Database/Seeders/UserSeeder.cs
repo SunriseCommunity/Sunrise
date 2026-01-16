@@ -192,7 +192,7 @@ public static class UserSeeder
     {
         var sunriseBot = new User
         {
-            Username = Configuration.BotUsername,
+            Username = Configuration.BotUsernameFromConfig,
             Description = "Let your smile be the sunshine that brightens the world around you.",
             Country = CountryCode.AQ,
             Privilege = UserPrivilege.ServerBot,
