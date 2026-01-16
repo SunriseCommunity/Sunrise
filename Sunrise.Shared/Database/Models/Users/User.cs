@@ -16,6 +16,7 @@ public class User
 {
     public int Id { get; set; }
 
+    // TODO: Don't allow usernames with empty string, possible cause of osu! crash
     public string Username { get; set; }
 
     public string Email { get; set; }

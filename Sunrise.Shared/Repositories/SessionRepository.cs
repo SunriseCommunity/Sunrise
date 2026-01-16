@@ -219,13 +219,13 @@ public class SessionRepository
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var bot = await database.Users.GetUser(username: Configuration.BotUsername);
+        var bot = await database.Users.GetServerBot();
 
         if (bot == null)
             throw new Exception("Bot not found in the database while initializing bot in the session repository.");
 
         var loginRequest = new LoginRequest(
-            Configuration.BotUsername,
+            bot.Username,
             "Hash",
             "Version",
             0,

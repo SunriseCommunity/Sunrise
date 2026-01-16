@@ -80,6 +80,16 @@ public class UserRepository(
 
         return Result.Success();
     }
+    
+    public async Task<User?> GetServerBot()
+    {
+        var user = await dbContext.Users
+            .Where(u => u.Privilege.HasFlag(UserPrivilege.ServerBot))
+            .IncludeUserThumbnails()
+            .FirstOrDefaultAsync();
+
+        return user;
+    }
 
     public async Task<User?> GetUser(
         long? id = null,

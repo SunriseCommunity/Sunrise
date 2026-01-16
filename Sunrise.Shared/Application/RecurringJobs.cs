@@ -26,6 +26,20 @@ public class RecurringJobs
         RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
 
         RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
+        
+        RecurringJob.AddOrUpdate("Refresh server bot account", () => RefreshServerBotAccount(CancellationToken.None), "*/1 * * * *"); // Every minute
+    }
+    
+    public static async Task RefreshServerBotAccount(CancellationToken ct)
+    {
+        using var scope = ServicesProviderHolder.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        
+        var botUser = await database.Users.GetServerBot();
+        if (botUser == null)
+            return;
+        
+        Configuration.BotUsername = botUser.Username;
     }
 
     public static async Task SaveUsersStatsSnapshots(CancellationToken ct)
