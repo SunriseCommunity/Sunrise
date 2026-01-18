@@ -14,7 +14,7 @@
       "Window": 10,
       "QueueLimit": 20
     },
-    "UseNewPerformanceCalculationAlgorithm": false
+    "UseNewPerformanceCalculationAlgorithm": true
   },
   "BeatmapHype": {
     "UserHypesWeekly": 10,
@@ -22,8 +22,8 @@
     "AllowMultipleHypeFromSameUser": false
   },
   "Moderation": {
-      "BannablePPThreshold": 2500,
-      "BannedIps": []
+    "BannablePPThreshold": 2500,
+    "BannedIps": []
   },
   "Database": {
     "SlowQueryThresholdMilliseconds": 1000
@@ -39,8 +39,8 @@
     "ClearCacheOnStartup": false
   },
   "Hangfire": {
-      "UseHangfireServer": true,
-      "MaxDailyBackupCount": 14
+    "UseHangfireServer": true,
+    "MaxDailyBackupCount": 14
   },
   "Telemetry": {
     "UseMetrics": true,
