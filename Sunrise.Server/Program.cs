@@ -65,6 +65,7 @@ if (Configuration.ClearCacheOnStartup)
 
 var sessions = app.Services.GetRequiredService<SessionRepository>();
 sessions.AddBotToSession().Wait();
+RecurringJobs.RefreshServerBotAccount(CancellationToken.None).Wait();
 
 app.Run();
 
