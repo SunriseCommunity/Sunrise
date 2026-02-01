@@ -5,9 +5,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build and Test
+  test:
+    name: Test Group ${{ matrix.group }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+
     env:
       ASPNETCORE_ENVIRONMENT: Tests
       WEB_DOMAIN: sunrise.local
@@ -25,6 +30,7 @@ jobs:
       HANGFIRE_PASSWORD: root
       REDIS_HOST: localhost
       REDIS_PORT: 6339
+
     steps:
       - uses: actions/checkout@v4
       - name: Setup .NET
@@ -43,5 +49,59 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore
-      - name: Test
-        run: dotnet test -m:1 --no-build --verbosity normal --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"
+      - name: Run tests (Group ${{ matrix.group }}/16)
+        env:
+          TEST_GROUP: ${{ matrix.group }}
+          TEST_TOTAL_GROUPS: 16
+        run: |
+          # Find all test class files
+          TEST_FILES=$(find . -path "*.Tests/*.cs" -name "*Tests.cs" | sort)
+          
+          # Convert to array
+          readarray -t FILES_ARRAY <<< "$TEST_FILES"
+          TOTAL=${#FILES_ARRAY[@]}
+          
+          echo "Found $TOTAL test files total"
+          
+          # Build filter for this group's test classes
+          FILTER=""
+          for i in "${!FILES_ARRAY[@]}"; do
+            if [ $(( (i % TEST_TOTAL_GROUPS) + 1 )) -eq $TEST_GROUP ]; then
+              FILE="${FILES_ARRAY[$i]}"
+              # Extract class name from filename
+              CLASS=$(basename "$FILE" .cs)
+              if [ -n "$CLASS" ]; then
+                echo "  - $CLASS"
+                if [ -z "$FILTER" ]; then
+                  FILTER="FullyQualifiedName~$CLASS"
+                else
+                  FILTER="$FILTER|FullyQualifiedName~$CLASS"
+                fi
+              fi
+            fi
+          done
+          
+          if [ -z "$FILTER" ]; then
+            echo "No tests assigned to group $TEST_GROUP"
+            exit 0
+          fi
+          
+          echo ""
+          echo "Group $TEST_GROUP/$TEST_TOTAL_GROUPS running with filter:"
+          echo "$FILTER"
+          echo ""
+          
+          FAILED=0
+          
+          echo "=== Running Sunrise.Shared.Tests ==="
+          if ! dotnet test Sunrise.Shared.Tests/Sunrise.Shared.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
+          fi
+          
+          echo ""
+          echo "=== Running Sunrise.Server.Tests ==="
+          if ! dotnet test Sunrise.Server.Tests/Sunrise.Server.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
+          fi
+          
+          exit $FAILED
