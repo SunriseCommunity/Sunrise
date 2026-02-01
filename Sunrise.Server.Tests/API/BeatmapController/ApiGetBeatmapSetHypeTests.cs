@@ -1,6 +1,8 @@
 using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -23,6 +25,7 @@ public class ApiGetBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
