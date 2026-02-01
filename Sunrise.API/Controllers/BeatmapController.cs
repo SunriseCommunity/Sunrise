@@ -182,7 +182,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var user = HttpContext.GetCurrentUserOrThrow();
 
-        var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
+        var hypeBeatmapSetResult = await database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id, beatmapSet.StatusGeneric);
         if (hypeBeatmapSetResult.IsFailure)
             return Problem(hypeBeatmapSetResult.Error, statusCode: StatusCodes.Status400BadRequest);
 

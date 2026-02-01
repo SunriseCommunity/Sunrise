@@ -1,3 +1,4 @@
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Shared.Extensions.Beatmaps;
@@ -80,5 +81,10 @@ public static class BeatmapStatusExtensions
     public static bool IsScoreable(this BeatmapStatusWeb status)
     {
         return status is BeatmapStatusWeb.Ranked or BeatmapStatusWeb.Approved or BeatmapStatusWeb.Loved or BeatmapStatusWeb.Qualified;
+    }
+
+    public static bool IsEligibleForHype(this BeatmapStatusWeb status)
+    {
+        return Configuration.ExcludedHypeStatuses.All(s => s != status);
     }
 }

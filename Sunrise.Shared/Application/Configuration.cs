@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Sunrise.Shared.Enums;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Objects;
 
@@ -146,6 +147,16 @@ public static class Configuration
     public static bool AllowMultipleHypeFromSameUser =>
         Config.GetSection("BeatmapHype").GetValue<bool?>("AllowMultipleHypeFromSameUser") ?? true;
 
+    public static BeatmapStatusWeb[] ExcludedHypeStatuses =>
+        Config.GetSection("BeatmapHype").GetSection("ExcludedHypeStatuses").Get<string[]>()?.Select(x =>
+        {
+            var isValid = Enum.TryParse(x, out BeatmapStatusWeb status);
+            if (!isValid)
+                throw new Exception($"Invalid beatmap status in ExcludedHypeStatuses: {x}. Should be one of the following: {string.Join(", ", Enum.GetNames(typeof(BeatmapStatusWeb)))}");
+
+            return status;
+        }).ToArray() ??
+        [BeatmapStatusWeb.Qualified, BeatmapStatusWeb.Approved, BeatmapStatusWeb.Ranked, BeatmapStatusWeb.Loved];
 
     // Telemetry section
     public static bool UseMetrics => Config.GetSection("Telemetry").GetValue<bool?>("UseMetrics") ?? true;
