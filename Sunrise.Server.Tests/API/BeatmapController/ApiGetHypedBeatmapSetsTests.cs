@@ -58,6 +58,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
