@@ -221,6 +221,24 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         return (scores, totalCount);
     }
 
+    public async Task<Dictionary<DateTime, int>> GetUserPlayHistoryScores(int userId, CancellationToken ct = default)
+    {
+        return await dbContext.Scores
+            .FilterValidScores()
+            .Where(s => s.UserId == userId)
+            .GroupBy(s => new
+            {
+                s.WhenPlayed.Year,
+                s.WhenPlayed.Month
+            })
+            .Select(g => new
+            {
+                Date = new DateTime(g.Key.Year, g.Key.Month, 1, 0, 0, 0, DateTimeKind.Utc),
+                Count = g.Count()
+            })
+            .ToDictionaryAsync(x => x.Date, x => x.Count, ct);
+    }
+
     public async Task<(List<Score>, int)> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null, CancellationToken ct = default)
     {
         var scoresQuery = dbContext.Scores.FilterValidScores();

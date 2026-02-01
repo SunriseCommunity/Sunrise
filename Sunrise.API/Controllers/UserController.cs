@@ -283,6 +283,28 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         return Ok(new StatsSnapshotsResponse(snapshots));
     }
 
+
+    [HttpGet]
+    [Route("{userId:int}/play-history-graph")]
+    [EndpointDescription("Get user play history graph data")]
+    [ResponseCache(VaryByHeader = "Authorization", Duration = 300)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(PlayHistorySnapshotsResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserPlayHistoryGraphData([Range(1, int.MaxValue)] int userId, CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(userId, ct: ct);
+
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        if (user.IsRestricted())
+            return Problem(ApiErrorResponse.Detail.UserIsRestricted, statusCode: StatusCodes.Status404NotFound);
+
+        var playHistorySnapshots = await database.Scores.GetUserPlayHistoryScores(userId, ct);
+
+        return Ok(new PlayHistorySnapshotsResponse(playHistorySnapshots));
+    }
+
     [HttpGet]
     [Route("{id:int}/scores")]
     [EndpointDescription("Get user scores")]
