@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
@@ -11,6 +11,7 @@ using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Utils;
 
 namespace Sunrise.Shared.Database.Services.Beatmaps;
@@ -23,10 +24,13 @@ public class BeatmapHypeService(
     BeatmapEventService beatmapEventService
 )
 {
-    public async Task<Result> AddBeatmapHypeFromUserInventory(User user, int beatmapSetId)
+    public async Task<Result> AddBeatmapHypeFromUserInventory(User user, int beatmapSetId, BeatmapStatusWeb beatmapStatus)
     {
         return await databaseService.Value.CommitAsTransactionAsync(async () =>
         {
+            if (!beatmapStatus.IsEligibleForHype())
+                throw new ApplicationException($"You can't hype beatmapset with status '{beatmapStatus}'");
+
             var beatmapsetCustomStatuses = await databaseService.Value.Beatmaps.CustomStatuses.GetCustomBeatmapSetStatuses(beatmapSetId);
             if (beatmapsetCustomStatuses.Any())
                 throw new ApplicationException("You can't hype beatmapset with custom beatmap status");
@@ -49,7 +53,7 @@ public class BeatmapHypeService(
                 {
                     throw new ApplicationException("You already hyped this beatmap set");
                 }
-                
+
                 userBeatmapHype.Hypes += 1;
             }
 

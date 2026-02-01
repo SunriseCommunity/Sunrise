@@ -125,7 +125,7 @@ public class BeatmapSet
     public CompactUser? User { get; set; }
 
     public User? BeatmapNominatorUser { get; set; }
-    public bool CanBeHyped => BeatmapNominatorUser == null && !IsScoreable;
+    public bool CanBeHyped => BeatmapNominatorUser == null && StatusGeneric.IsEligibleForHype();
 }
 
 public class Covers

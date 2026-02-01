@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Sunrise.API.Serializable.Request;
@@ -8,6 +8,7 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -42,12 +43,17 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First();
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+        foreach (var b in beatmapSet.Beatmaps)
+        {
+            b.StatusString = beatmapSet.StatusString;
+        }
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         if (wasHypedBefore)
         {
-            var addBeatmapHypeResult = await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
+            var addBeatmapHypeResult = await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id, beatmapSet.StatusGeneric);
             if (addBeatmapHypeResult.IsFailure)
                 throw new Exception(addBeatmapHypeResult.Error);
         }
@@ -113,10 +119,20 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
 
         var beatmapSetFirst = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmapFirst = beatmapSetFirst.Beatmaps.First();
+        beatmapSetFirst.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+        foreach (var b in beatmapSetFirst.Beatmaps)
+        {
+            b.StatusString = beatmapSetFirst.StatusString;
+        }
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetFirst);
 
         var beatmapSetSecond = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmapSecond = beatmapSetSecond.Beatmaps.First();
+        beatmapSetSecond.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+        foreach (var b in beatmapSetSecond.Beatmaps)
+        {
+            b.StatusString = beatmapSetSecond.StatusString;
+        }
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetSecond);
 
         // Act
@@ -165,6 +181,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First();
+        beatmapSet.StatusString = BeatmapStatusWeb.Ranked.BeatmapStatusWebToString();
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         
         var addCustomBeatmapStatusResult = await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus

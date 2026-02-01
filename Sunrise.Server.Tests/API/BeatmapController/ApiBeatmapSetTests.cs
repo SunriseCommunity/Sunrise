@@ -1,9 +1,10 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Sunrise.API.Serializable.Request;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -168,5 +169,33 @@ public class ApiBeatmapSetTests(IntegrationDatabaseFixture fixture) : ApiTest(fi
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(BeatmapStatusWeb.Graveyard, true)]
+    [InlineData(BeatmapStatusWeb.Ranked, false)]
+    public async Task TestGetBeatmapSetCanBeHypedBasedOnExcludedStatuses(BeatmapStatusWeb status, bool expectedCanBeHyped)
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Id = 1;
+        beatmapSet.StatusString = status.BeatmapStatusWebToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var response = await client.GetAsync("beatmapset/1");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var beatmapSetResponse = await response.Content.ReadFromJsonAsyncWithAppConfig<BeatmapSetResponse>();
+        Assert.NotNull(beatmapSetResponse);
+        Assert.Equal(status, beatmapSetResponse.Status);
+        Assert.Equal(expectedCanBeHyped, beatmapSetResponse.CanBeHyped);
     }
 }

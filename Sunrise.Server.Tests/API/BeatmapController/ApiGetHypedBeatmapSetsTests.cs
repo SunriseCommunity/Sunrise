@@ -1,11 +1,12 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -62,7 +63,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
 
         EnvManager.Set("BeatmapHype:HypesToStartHypeTrain", shouldAddedHypeStartHypeTrain ? "1" : "100");
 
-        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
+        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id, beatmapSet.StatusGeneric);
 
         // Act
         var response = await client.GetAsync("beatmapset/get-hyped-sets");
@@ -97,15 +98,17 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
 
         var beatmapSetFirst = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSetFirst.Id = 1;
+        beatmapSetFirst.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetFirst);
-        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSetFirst.Id);
+        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSetFirst.Id, beatmapSetFirst.StatusGeneric);
 
         var beatmapSetSecond = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSetSecond.Id = 2;
+        beatmapSetSecond.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSetSecond);
-        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSetSecond.Id);
+        await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSetSecond.Id, beatmapSetSecond.StatusGeneric);
 
         // Act
         var response = await client.GetAsync("beatmapset/get-hyped-sets?limit=1&page=2");
@@ -120,7 +123,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
         Assert.Equal(2, content.TotalCount);
         Assert.Equal(beatmapSetFirst.Id, content.Sets.First().Id);
     }
-    
+
     [Fact]
     public async Task TestGetHypedBeatmapSetsUnauthorized()
     {

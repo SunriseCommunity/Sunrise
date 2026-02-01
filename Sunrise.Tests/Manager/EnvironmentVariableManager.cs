@@ -45,4 +45,30 @@ public class EnvironmentVariableManager : IDisposable
             throw new Exception($"Configuration reload failed after setting environment variable '{key}'.", ex);
         }
     }
+
+    public void Set(string key, List<string> values)
+    {
+        if (!_originalValues.ContainsKey(key))
+        {
+            _originalValues[key] = Environment.GetEnvironmentVariable(key);
+        }
+
+        Env.TraversePath().Load(".env.tests");
+
+        Environment.SetEnvironmentVariable(key, null);
+
+        for (var i = 0; i < values.Count; i++)
+        {
+            Environment.SetEnvironmentVariable($"{key}:{i}", values[i]);
+        }
+
+        try
+        {
+            Configuration.GetConfig().Reload();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Configuration reload failed after setting environment variable '{key}'.", ex);
+        }
+    }
 }
