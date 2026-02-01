@@ -5,11 +5,11 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
-using Sunrise.Tests;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -17,7 +17,7 @@ namespace Sunrise.Server.Tests.API.BeatmapController;
 public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
-    
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -32,6 +32,12 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+
+        foreach (var beatmap in beatmapSet.Beatmaps)
+        {
+            beatmap.StatusString = beatmapSet.StatusString;
+        }
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
@@ -75,12 +81,18 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+
+        foreach (var beatmap in beatmapSet.Beatmaps)
+        {
+            beatmap.StatusString = beatmapSet.StatusString;
+        }
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         EnvManager.Set("BeatmapHype:AllowMultipleHypeFromSameUser", isMultipleHypeEnabled ? "true" : "false");
 
-        var addBeatmapHypeBeforeResult = await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id);
+        var addBeatmapHypeBeforeResult = await Database.Beatmaps.Hypes.AddBeatmapHypeFromUserInventory(user, beatmapSet.Id, beatmapSet.StatusGeneric);
         if (addBeatmapHypeBeforeResult.IsFailure)
             throw new Exception(addBeatmapHypeBeforeResult.Error);
 
@@ -122,6 +134,12 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+
+        foreach (var beatmap in beatmapSet.Beatmaps)
+        {
+            beatmap.StatusString = beatmapSet.StatusString;
+        }
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
@@ -152,6 +170,12 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
+        beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
+
+        foreach (var beatmap in beatmapSet.Beatmaps)
+        {
+            beatmap.StatusString = beatmapSet.StatusString;
+        }
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
@@ -179,7 +203,7 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         Assert.NotNull(userHypes);
         Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly);
     }
-    
+
     [Fact]
     public async Task TestAddBeatmapSetHypeUnauthorized()
     {
@@ -226,5 +250,114 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestAddBeatmapSetHypeCantHypeExcludedStatuses()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        var excludedStatus = BeatmapStatusWeb.Pending;
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
+        EnvManager.Set("BeatmapHype:ExcludedHypeStatuses",
+            [excludedStatus.ToString()]);
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Id = 1;
+        beatmapSet.StatusString = excludedStatus.BeatmapStatusWebToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var response = await client.PostAsync("beatmapset/1/hype", new StringContent(string.Empty));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var responseString = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
+        Assert.Contains("can't hype", responseString?.Detail?.ToLower());
+
+        var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
+        Assert.Equal(0, beatmapHypeCount);
+
+        var userHypes = await Database.Users.Inventory.GetInventoryItem(user.Id, ItemType.Hype);
+        Assert.NotNull(userHypes);
+        Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly);
+    }
+
+    [Fact]
+    public async Task TestAddBeatmapSetHypeCanHypeNonExcludedStatuses()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var allowedStatus = BeatmapStatusWeb.Graveyard;
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Id = 1;
+        beatmapSet.StatusString = allowedStatus.BeatmapStatusWebToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var response = await client.PostAsync("beatmapset/1/hype", new StringContent(string.Empty));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
+        Assert.Equal(1, beatmapHypeCount);
+
+        var userHypes = await Database.Users.Inventory.GetInventoryItem(user.Id, ItemType.Hype);
+        Assert.NotNull(userHypes);
+        Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly - 1);
+    }
+
+    [Fact]
+    public async Task TestAddBeatmapSetHypeOverridesDefault()
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("api");
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+        EnvManager.Set("BeatmapHype:ExcludedHypeStatuses", [BeatmapStatusWeb.Qualified.ToString()]);
+
+        var user = await CreateTestUser();
+        var tokens = await GetUserAuthTokens(user);
+        client.UseUserAuthToken(tokens);
+
+        var allowedStatus = BeatmapStatusWeb.Ranked;
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Id = 1;
+        beatmapSet.StatusString = allowedStatus.BeatmapStatusWebToString();
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var response = await client.PostAsync("beatmapset/1/hype", new StringContent(string.Empty));
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var beatmapHypeCount = await Database.Beatmaps.Hypes.GetBeatmapHypeCount(beatmapSet.Id);
+        Assert.Equal(1, beatmapHypeCount);
+
+        var userHypes = await Database.Users.Inventory.GetInventoryItem(user.Id, ItemType.Hype);
+        Assert.NotNull(userHypes);
+        Assert.Equal(userHypes.Quantity, Configuration.UserHypesWeekly - 1);
     }
 }
