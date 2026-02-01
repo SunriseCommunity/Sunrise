@@ -156,7 +156,7 @@ public static class Configuration
 
             return status;
         }).ToArray() ??
-        [BeatmapStatusWeb.Qualified, BeatmapStatusWeb.Approved, BeatmapStatusWeb.Ranked, BeatmapStatusWeb.Loved];
+        [BeatmapStatusWeb.Qualified, BeatmapStatusWeb.Approved, BeatmapStatusWeb.Ranked, BeatmapStatusWeb.Loved, BeatmapStatusWeb.Wip, BeatmapStatusWeb.Pending];
 
     // Telemetry section
     public static bool UseMetrics => Config.GetSection("Telemetry").GetValue<bool?>("UseMetrics") ?? true;
