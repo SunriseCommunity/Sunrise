@@ -22,11 +22,13 @@ public class RecalculateScoresCommand : IChatCommand
         if (args == null || args.Length < 3)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum> <startFromId> <isStartMaintenance>; Example: {Configuration.BotPrefix}recalculatescores 0 10 for osu std starting from score 10 with maintenance mode on..");
+                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum | all> <startFromId> <isStartMaintenance>; Example: {Configuration.BotPrefix}recalculatescores 0 10 true for osu std starting from score 10 with maintenance mode on.");
             return Task.CompletedTask;
         }
 
-        if (!Enum.TryParse(args[0], out GameMode mode))
+        GameMode? mode = Enum.TryParse(args[0], out GameMode parsedMode) ? parsedMode : null;
+
+        if (mode == null && args[0] != "all")
         {
             ChatCommandRepository.SendMessage(session, "Invalid mode.");
             return Task.CompletedTask;
@@ -45,7 +47,7 @@ public class RecalculateScoresCommand : IChatCommand
         }
 
         BackgroundTaskService.TryStartNewBackgroundJob<RecalculateScoresCommand>(
-            () => RecalculateScores(session.UserId, CancellationToken.None, mode, startFromId),
+            () => RecalculateScores(session.UserId, CancellationToken.None, startFromId, mode),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message),
             isStartMaintenance);
 
@@ -53,7 +55,7 @@ public class RecalculateScoresCommand : IChatCommand
     }
 
     [AutomaticRetry(Attempts = 0)]
-    public async Task RecalculateScores(int userId, CancellationToken ct, GameMode mode, int startFromId)
+    public async Task RecalculateScores(int userId, CancellationToken ct, int startFromId, GameMode? mode = null)
     {
         await BackgroundTaskService.ExecuteBackgroundTask<RecalculateScoresCommand>(
             async () =>
@@ -106,7 +108,7 @@ public class RecalculateScoresCommand : IChatCommand
                                         throw new Exception($"Failed to update score {score.Id}, error: {result.Error} ");
                                     }
 
-                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} to be marked as DELETED, since we couldn't find beatmap it was played on");
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {score.GameMode} to be marked as DELETED, since we couldn't find beatmap it was played on");
                                     break;
                                 }
                             }
@@ -135,10 +137,10 @@ public class RecalculateScoresCommand : IChatCommand
                                 const float tolerance = 0.0001f;
 
                                 if (Math.Abs(oldAccuracy - score.Accuracy) > tolerance)
-                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} acc value from {oldAccuracy} to {score.Accuracy}");
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {score.GameMode} acc value from {oldAccuracy} to {score.Accuracy}");
 
                                 if (Math.Abs(oldPerformancePoints - score.PerformancePoints) > tolerance)
-                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {mode} pp value from {oldPerformancePoints} to {score.PerformancePoints}");
+                                    ChatCommandRepository.TrySendMessage(userId, $"Updated score id {score.Id} in gamemode {score.GameMode} pp value from {oldPerformancePoints} to {score.PerformancePoints}");
 
                                 break;
                             }
