@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -98,7 +98,8 @@ public static class MedalSeeder
 
     private static string FormatDifficultyRatingPassCondition(int difficultyRating)
     {
-        return $"{nameof(MedalConditionContext.beatmap)}.{nameof(Beatmap.DifficultyRating)} >= {difficultyRating} && {nameof(MedalConditionContext.beatmap)}.{nameof(Beatmap.DifficultyRating)} < {difficultyRating + 1}";
+        var noReducingMods = (int)(Mods.Easy | Mods.NoFail | Mods.HalfTime);
+        return $"{nameof(MedalConditionContext.beatmap)}.{nameof(Beatmap.DifficultyRating)} >= {difficultyRating} && {nameof(MedalConditionContext.beatmap)}.{nameof(Beatmap.DifficultyRating)} < {difficultyRating + 1} && ({nameof(MedalConditionContext.score)}.{nameof(Score.Mods)} & {noReducingMods}) == 0";
     }
 
     private static string FormatDifficultyRatingFullComboCondition(int difficultyRating)
