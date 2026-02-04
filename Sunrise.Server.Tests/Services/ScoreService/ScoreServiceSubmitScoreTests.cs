@@ -1756,4 +1756,58 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(1, userStatsAFinal!.BestGlobalRank);
         Assert.Equal(1, userStatsBFinal!.BestGlobalRank);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TestMedalNotAwardedWithDifficultyReducingMods(bool hasNonEligibleMod)
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+        score.GameMode = GameMode.Standard;
+        score.Mods = hasNonEligibleMod ? Mods.HalfTime : Mods.None;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+        beatmap.DifficultyRating = 1.5;
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var userUnlockedMedals = await Database.Users.Medals.GetUserMedals(session.UserId);
+
+        if (hasNonEligibleMod)
+        {
+            Assert.DoesNotContain(userUnlockedMedals, m => m.MedalId == 1);
+        }
+        else
+        {
+            Assert.Contains(userUnlockedMedals, m => m.MedalId == 1);
+        }
+    }
 }
