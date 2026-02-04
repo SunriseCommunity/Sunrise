@@ -252,9 +252,41 @@ public static class MedalSeeder
                 new Medal { Id = 100, Name = "Man this DJ is fire", Description = "Just don't listen to the original. It's not as good.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(1357624) },
                 "Files/Medals/all-secret-thisdjisfire.png"
             },
-             {    
+            {    
                 new Medal { Id = 101, Name = "Heat abnormal", Description = "Is it just me, or does my head get dizzy from all the heat?", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2058976) },
                 "Files/Medals/all-secret-heat-abnormal.png"
+            },
+            {    
+                new Medal { Id = 102, Name = "Kurukurukuru~", Description = "Spinning round and round on the road of misfortune.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2088431) },
+                "Files/Medals/all-secret-kurukuru.png"
+            },
+            {    
+                new Medal { Id = 103, Name = "ビビビビ!", Description = "An alien signal crashed through your reality. The sliders have been hijacked!", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2145109) },
+                "Files/Medals/all-secret-bebebebebe.png"
+            },
+            {    
+                new Medal { Id = 104, Name = "Frozen Streams", Description = "Perhaps there were too many circles. Your fingers will never thaw.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(297933) },
+                "Files/Medals/all-secret-ice-angel.png"
+            },
+            {    
+                new Medal { Id = 105, Name = "Sweet Chaos", Description = "Who needs consistency anyway? Just overlaps and ice cream dreams.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(669232) },
+                "Files/Medals/all-secret-icecream-princess.png"
+            },
+            {    
+                new Medal { Id = 106, Name = "Feeling Astrosexy", Description = "Feeling sexy, aren't we?", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(13244) },
+                "Files/Medals/all-secret-astrosexy.png"
+            },
+            {    
+                new Medal { Id = 107, Name = "Mission Accomplished", Description = "You were tasked with the most covert assignment to date. May fortune favor you. This medal will self-destruct in 5 seconds.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(2287992) },
+                "Files/Medals/all-secret-zenithfall.png"
+            },
+            {    
+                new Medal { Id = 108, Name = "HASHIRE SORI YO", Description = "KAZE NO YOU NI! TSUKIMIHARA WO! PADORU PADORU!", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(1073074) },
+                "Files/Medals/all-secret-padoru.png"
+            },
+            {    
+                new Medal { Id = 109, Name = "Memories Unlocked", Description = "Years of clicking, one final breakthrough. Every song, every note, every memory - finally conquered.", Category = MedalCategory.BeatmapHunt, Condition = FormatPlayBeatmapSetIdCondition(532522) },
+                "Files/Medals/all-secret-osumemories.png"
             }
      };
     // @formatter:on
