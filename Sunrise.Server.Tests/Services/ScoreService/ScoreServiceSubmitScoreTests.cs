@@ -287,6 +287,48 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
+    public async Task TestIgnoreAlreadyUnlockedMedalAfterScoreSubmission()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+        score.Mods |= Mods.Nightcore | Mods.DoubleTime | Mods.Hidden;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await Database.Users.Medals.UnlockMedal(session.UserId, 93);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+        Assert.DoesNotContain("achievements-new:93", resultString);
+    }
+
+    [Fact]
     public async Task TestSuccessfulUpdateUserGradesAfterScoreSubmission()
     {
         // Arrange
