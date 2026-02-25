@@ -20,7 +20,7 @@ namespace Sunrise.Shared.Services;
 [TraceExecution]
 public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
-    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score, int? retryCount = 1, CancellationToken ct = default)
+    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score, int? retryCount = 1, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
     {
         var serializedScore = new CalculateScoreRequest(score)
         {
@@ -34,13 +34,13 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
             : new CancellationTokenSource(TimeSpan.FromMinutes(10));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
-        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, ct: linkedCts.Token);
+        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
 
         while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(performanceResult))
         {
             retryCount--;
 
-            performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, ct: linkedCts.Token);
+            performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
 
             if (!IsValidResult(performanceResult) && !linkedCts.IsCancellationRequested)
             {

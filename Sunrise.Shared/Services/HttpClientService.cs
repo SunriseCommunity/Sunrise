@@ -29,11 +29,11 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
-    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, CancellationToken ct = default)
+    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
     {
         if (session.IsRateLimited())
         {
-            if (session is Session gameSession)
+            if (session is Session gameSession && shouldSendRateLimitWarning)
             {
                 gameSession.SendRateLimitWarning();
             }

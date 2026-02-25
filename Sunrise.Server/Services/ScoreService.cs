@@ -43,8 +43,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             scoreSerialized,
             () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: 3, shouldSendRateLimitWarning: false),
             () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue, shouldSendRateLimitWarning: false),
-            notFoundNotification: null,
-            resultInstanceName: "BeatmapSet");
+            null,
+            "BeatmapSet");
 
         if (beatmapSetResult.IsFailure)
             return "error: no";
@@ -71,10 +71,10 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         var scorePerformanceResult = await ExecuteWithRetry(
             session,
             scoreSerialized,
-            () => calculatorService.CalculateScorePerformance(session, score),
-            () => calculatorService.CalculateScorePerformance(session, score, int.MaxValue),
-            notFoundNotification: "While we could find the beatmapset you played on, we couldn't find the beatmap file for it. If you think this is a mistake, please report it to the developer with the beatmap hash: " + beatmapHash,
-            resultInstanceName: "Beatmap");
+            () => calculatorService.CalculateScorePerformance(session, score, shouldSendRateLimitWarning: false),
+            () => calculatorService.CalculateScorePerformance(session, score, int.MaxValue, false),
+            "While we could find the beatmapset you played on, we couldn't find the beatmap file for it. If you think this is a mistake, please report it to the developer with the beatmap hash: " + beatmapHash,
+            "Beatmap");
 
         if (scorePerformanceResult.IsFailure)
             return "error: no";
@@ -402,7 +402,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         isNotFound = result.Error.Status == HttpStatusCode.NotFound;
 
-        SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized,
+        SubmitScoreHelper.ReportRejectionToMetrics(session,
+            scoreSerialized,
             isNotFound
                 ? $"Invalid request: {resultInstanceName} not found"
                 : $"{resultInstanceName} couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
