@@ -89,7 +89,7 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             }
         }
 
-        return base.PostRequestWithBody<T>(session, type, body, headers);
+        return base.PostRequestWithBody<T>(session, type, body, headers, shouldSendRateLimitWarning, ct);
     }
 
     public override Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)

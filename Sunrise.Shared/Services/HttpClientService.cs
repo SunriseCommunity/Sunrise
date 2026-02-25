@@ -156,7 +156,7 @@ public class HttpClientService
 
             if (responseResult.IsSuccess) return responseResult;
 
-            badRequestsToCodes.Add(api.Server.ToString(), responseResult.Error.Status.ToString());
+            badRequestsToCodes[api.Server.ToString()] = responseResult.Error.Status.ToString();
 
             if (!responseResult.IsFailure)
                 continue;
