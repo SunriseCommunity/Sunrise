@@ -55,6 +55,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -107,6 +108,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -156,6 +158,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.StatusString = "pending";
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
@@ -212,6 +215,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.StatusString = "ranked";
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
@@ -268,6 +272,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -311,6 +316,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -354,6 +360,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -403,6 +410,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -445,6 +453,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         EnvManager.Set("Moderation:BannablePpThreshold", "0");
 
@@ -491,6 +500,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         EnvManager.Set("Moderation:BannablePpThreshold", "0");
 
@@ -546,6 +556,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -586,6 +597,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -623,6 +635,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(score);
 
@@ -659,6 +672,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -697,6 +711,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         var timeElapsed = _mocker.GetRandomInteger();
 
@@ -750,6 +765,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -803,6 +819,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(oldScore);
 
@@ -866,6 +883,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(oldScore);
 
@@ -1282,6 +1300,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(oldScore);
 
@@ -1340,6 +1359,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(oldScore);
 
@@ -1405,6 +1425,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -1471,6 +1492,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -1533,6 +1555,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(moddedScore);
 
@@ -1785,6 +1808,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.DifficultyRating = 1.5;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation(500, 1.5);
 
         // Act
         var resultString = await scoreService.SubmitScore(
