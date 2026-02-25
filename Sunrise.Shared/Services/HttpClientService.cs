@@ -29,7 +29,7 @@ public class HttpClientService
         _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
     }
 
-    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
+    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
         if (session.IsRateLimited())
         {
@@ -71,7 +71,7 @@ public class HttpClientService
                     headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
             }
 
-            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body);
+            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body, ct);
 
             if (responseResult.IsSuccess) return responseResult;
 
@@ -162,7 +162,7 @@ public class HttpClientService
                 continue;
 
             if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
-            
+
             responseResult.Error.Message += $" ({string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"))})";
 
             return responseResult;

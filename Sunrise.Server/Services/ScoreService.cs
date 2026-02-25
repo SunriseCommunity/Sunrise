@@ -1,4 +1,5 @@
-﻿using System.Net;
+using System.Net;
+using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.API.Enums;
@@ -18,6 +19,7 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -36,40 +38,16 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     {
         var scoreSubmittedAt = DateTime.UtcNow;
 
-        var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: 3, shouldSendRateLimitWarning: false);
+        var beatmapSetResult = await ExecuteWithRetry(
+            session,
+            scoreSerialized,
+            () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: 3, shouldSendRateLimitWarning: false),
+            () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue, shouldSendRateLimitWarning: false),
+            notFoundNotification: null,
+            resultInstanceName: "BeatmapSet");
 
         if (beatmapSetResult.IsFailure)
-        {
-            var isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
-
-            if (isBeatmapsetNotFound)
-            {
-                SubmitScoreHelper.ReportRejectionToMetrics(session,
-                    scoreSerialized,
-                    "Invalid request: BeatmapSet not found");
-
-                return "error: no";
-            }
-
-            session.SendNotification("One of your recent score seems to have troubles retrieving the beatmap data from. This score can be missing in your profile or leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
-
-            SubmitScoreHelper.ReportRejectionToMetrics(session,
-                scoreSerialized,
-                "Initial beatmap retrieval failed, retrying...");
-
-            beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue, shouldSendRateLimitWarning: false);
-
-            if (beatmapSetResult.IsFailure)
-            {
-                isBeatmapsetNotFound = beatmapSetResult.Error.Status == HttpStatusCode.NotFound;
-
-                SubmitScoreHelper.ReportRejectionToMetrics(session,
-                    scoreSerialized,
-                    isBeatmapsetNotFound ? "Invalid request: BeatmapSet not found" : "Beatmap set couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
-
-                return "error: no";
-            }
-        }
+            return "error: no";
 
         var beatmapSet = beatmapSetResult.Value;
 
@@ -89,6 +67,25 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
             return "error: no";
         }
+
+        var scorePerformanceResult = await ExecuteWithRetry(
+            session,
+            scoreSerialized,
+            () => calculatorService.CalculateScorePerformance(session, score),
+            () => calculatorService.CalculateScorePerformance(session, score, int.MaxValue),
+            notFoundNotification: "While we could find the beatmapset you played on, we couldn't find the beatmap file for it. If you think this is a mistake, please report it to the developer with the beatmap hash: " + beatmapHash,
+            resultInstanceName: "Beatmap");
+
+        if (scorePerformanceResult.IsFailure)
+            return "error: no";
+
+        if (scorePerformanceResult.Value == null)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score performance calculation returned null");
+            return "error: no";
+        }
+
+        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
 
         if (replay is { Length: >= 24 })
         {
@@ -197,10 +194,10 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user while submitting score");
             return "error: no";
         }
-        
+
         var userStats = user.UserStats.FirstOrDefault(u => u.GameMode == score.GameMode)
                         ?? await database.Users.Stats.GetUserStats(user.Id, score.GameMode);
-        
+
         if (userStats == null)
         {
             await SaveRejectedScore(score);
@@ -368,6 +365,49 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         return string.Join("\n", responses);
+    }
+
+    private async Task<Result<T, ErrorMessage>> ExecuteWithRetry<T>(
+        Session session,
+        string scoreSerialized,
+        Func<Task<Result<T, ErrorMessage>>> initialCall,
+        Func<Task<Result<T, ErrorMessage>>> retryCall,
+        string? notFoundNotification,
+        string resultInstanceName)
+    {
+        var result = await initialCall();
+
+        if (!result.IsFailure)
+            return result;
+
+        var isNotFound = result.Error.Status == HttpStatusCode.NotFound;
+
+        if (isNotFound)
+        {
+            if (notFoundNotification != null)
+                session.SendNotification(notFoundNotification);
+
+            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"Invalid request: {resultInstanceName} not found");
+            return result;
+        }
+
+        session.SendNotification("One of your recent score seems to have troubles retrieving the beatmap data from. This score can be missing in your profile or leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
+
+        SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"{resultInstanceName} retrieval failed, retrying...");
+
+        result = await retryCall();
+
+        if (!result.IsFailure)
+            return result;
+
+        isNotFound = result.Error.Status == HttpStatusCode.NotFound;
+
+        SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized,
+            isNotFound
+                ? $"Invalid request: {resultInstanceName} not found"
+                : $"{resultInstanceName} couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
+
+        return result;
     }
 
     private async Task SaveRejectedScore(Score score)

@@ -1,3 +1,4 @@
+using System.Net;
 using CSharpFunctionalExtensions;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
@@ -19,14 +20,36 @@ namespace Sunrise.Shared.Services;
 [TraceExecution]
 public class CalculatorService(Lazy<DatabaseService> database, HttpClientService client)
 {
-    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score)
+    public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateScorePerformance(BaseSession session, Score score, int? retryCount = 1, CancellationToken ct = default)
     {
         var serializedScore = new CalculateScoreRequest(score)
         {
             Mods = score.Mods.IgnoreNotStandardModsForRecalculation()
         };
 
-        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore);
+        // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
+        // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
+        using var timeoutCts = retryCount == int.MaxValue
+            ? new CancellationTokenSource()
+            : new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
+
+        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, ct: linkedCts.Token);
+
+        while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(performanceResult))
+        {
+            retryCount--;
+
+            performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, ct: linkedCts.Token);
+
+            if (!IsValidResult(performanceResult) && !linkedCts.IsCancellationRequested)
+            {
+                if (retryCount > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), linkedCts.Token);
+                }
+            }
+        }
 
         if (performanceResult.IsFailure) return performanceResult;
 
@@ -113,5 +136,13 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
             new QueryOptions(true, new Pagination(1, 100)));
 
         return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
+    }
+
+    private bool IsValidResult<T>(Result<T, ErrorMessage> result)
+    {
+        var isNotFoundResult = result.IsFailure && result.Error.Status == HttpStatusCode.NotFound;
+        var isValidResult = result.IsSuccess || isNotFoundResult;
+
+        return isValidResult;
     }
 }
