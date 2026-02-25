@@ -15,6 +15,7 @@ using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
+using Sunrise.Server.Controllers;
 using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -1969,5 +1970,66 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
 
         Assert.Equal(500, databaseScore.PerformancePoints);
+    }
+
+    [Fact]
+    public async Task TestDuplicateScoreSubmissionIsRejectedWhileOriginalIsProcessed()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+        
+        var secondScope = App.Server.Services.CreateScope();
+        var secondScoreService = secondScope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        // Act
+        var results = await Task.WhenAll(scoreService.SubmitScore(
+                session,
+                score.ToScoreString(user.Username),
+                score.BeatmapHash,
+                _mocker.GetRandomInteger(),
+                _mocker.GetRandomInteger(),
+                _mocker.GetRandomString(),
+                session.Attributes.UserHash,
+                _replayService.GenerateReplayFormFile(),
+                null
+            ),
+            secondScoreService.SubmitScore(
+                session,
+                score.ToScoreString(user.Username),
+                score.BeatmapHash,
+                _mocker.GetRandomInteger(),
+                _mocker.GetRandomInteger(),
+                _mocker.GetRandomString(),
+                session.Attributes.UserHash,
+                _replayService.GenerateReplayFormFile(),
+                null
+            ));
+
+        // Assert
+        var processedCount = results.Count(r => !r.Contains("error"));
+        var errorCount = results.Count(r => r.Contains("error"));
+        Assert.Equal(1, processedCount);
+        Assert.Equal(1, errorCount);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
     }
 }
