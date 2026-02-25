@@ -126,6 +126,8 @@ public class HttpClientService
             });
         }
 
+        var badRequestsToCodes = new Dictionary<string, string>();
+
         foreach (var api in apis)
         {
             if (args.Length < api.NumberOfRequiredArgs)
@@ -154,22 +156,29 @@ public class HttpClientService
 
             if (responseResult.IsSuccess) return responseResult;
 
+            badRequestsToCodes.Add(api.Server.ToString(), responseResult.Error.Status.ToString());
+
             if (!responseResult.IsFailure)
                 continue;
 
             if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
+            
+            responseResult.Error.Message += $" ({string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"))})";
 
             return responseResult;
         }
 
+        var badRequestsToCodesString = string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"));
+
         _logger.LogWarning(
-            "Failed to get response from any API server for {type} with args {args}.",
+            "Failed to get response from any API server for {type} with args {args}. (Bad requests to codes: {badRequestsToCodes})",
             type,
-            string.Join(", ", args));
+            string.Join(", ", args),
+            badRequestsToCodesString);
 
         return Result.Failure<T, ErrorMessage>(new ErrorMessage
         {
-            Message = $"Failed to get response from any API server for {type} with args {string.Join(", ", args)}.",
+            Message = $"Failed to get response from any API server for {type} with args {string.Join(", ", args)} ({badRequestsToCodesString}).",
             Status = HttpStatusCode.BadRequest
         });
     }
