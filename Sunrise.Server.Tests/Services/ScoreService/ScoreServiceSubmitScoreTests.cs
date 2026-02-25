@@ -1,14 +1,17 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Server.Commands.ChatCommands.System;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
@@ -1809,5 +1812,138 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         {
             Assert.Contains(userUnlockedMedals, m => m.MedalId == 1);
         }
+    }
+
+    [Fact]
+    public async Task TestSuccessfulSubmitScoreWithBeatmapSetRetrievalFallback()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        // Intentionally simulate observatory failure for first 3 tries to test fallback mechanism.
+        var beatmapSetCallCount = 0;
+        App.MockHttpClient?.MockResponse<BeatmapSet>(ApiType.BeatmapSetDataByHash,
+            _ =>
+            {
+                beatmapSetCallCount++;
+                if (beatmapSetCallCount <= 3)
+                    throw new Exception("Simulated observatory failure");
+
+                return beatmapSet;
+            });
+
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+    }
+
+    [Fact]
+    public async Task TestSuccessfulSubmitScoreWithPerformanceCalculationFallback()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        // Intentionally simulate calculation failure for first 2 tries to test fallback mechanism.
+        var calcCallCount = 0;
+        App.MockHttpClient?.MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance,
+            _ =>
+            {
+                calcCallCount++;
+                if (calcCallCount <= 2)
+                    throw new Exception("Simulated calculation failure");
+
+                return new PerformanceAttributes
+                {
+                    PerformancePoints = 500,
+                    Difficulty = new DifficultyAttributes
+                    {
+                        Stars = 5.0,
+                        MaxCombo = 200,
+                        Mode = GameMode.Standard
+                    },
+                    State = new ScoreState
+                    {
+                        MaxCombo = 200,
+                        N300 = 150,
+                        N100 = 10,
+                        N50 = 0,
+                        NGeki = 20,
+                        NKatu = 5,
+                        Misses = 0
+                    }
+                };
+            });
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(databaseScore);
+
+        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+
+        Assert.Equal(500, databaseScore.PerformancePoints);
     }
 }
