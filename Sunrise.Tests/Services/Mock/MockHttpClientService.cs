@@ -70,7 +70,7 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             });
     }
 
-    public override Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null)
+    public override Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
         if (_mockResponses.TryGetValue(type, out var mockResponse))
         {
