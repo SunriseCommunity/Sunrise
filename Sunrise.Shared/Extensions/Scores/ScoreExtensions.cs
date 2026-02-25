@@ -144,21 +144,6 @@ public static class ScoreExtensions
         score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
         score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
 
-        using var scope = ServicesProviderHolder.CreateScope();
-        var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
-
-        var scorePerformanceResult = calculatorService.CalculateScorePerformance(session, score).Result;
-
-        if (scorePerformanceResult.IsFailure)
-        {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, scorePerformanceResult.Error.Message);
-            score.PerformancePoints = 0;
-        }
-        else
-        {
-            score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
-        }
-
         return (score, split[1]);
     }
 

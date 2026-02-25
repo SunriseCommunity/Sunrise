@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Mvc;
 using osu.Shared;
+using Serilog;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Server.Services.Helpers.Scores;
@@ -18,6 +20,9 @@ namespace Sunrise.Server.Controllers;
 [ApiExplorerSettings(IgnoreApi = true)]
 public class ScoreController(ScoreService scoreService, AssetBanchoService assetBanchoService, SessionRepository sessions) : ControllerBase
 {
+    private static readonly ConcurrentDictionary<string, DateTime> _processingScores = new();
+    private static readonly TimeSpan ScoreProcessingTimeout = TimeSpan.FromMinutes(10);
+
     [HttpPost(RequestType.OsuSubmitScore)]
     public async Task<IActionResult> Submit(
         [FromForm(Name = "pass")] string passhash,
@@ -46,16 +51,46 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
             return Ok("error: pass");
         }
 
-        var result = await scoreService.SubmitScore(session,
-            scoreSerialized,
-            beatmapHash,
-            scoreTime,
-            scoreFailTime,
-            osuVersion,
-            clientHash,
-            replayFile,
-            storyboardHash);
-        return await Task.FromResult<IActionResult>(Ok(result));
+        var scoreHash = scoreSerialized.Split(':')[2];
+
+        // TODO: Hopefully this will be replaced by writing scores which are being processed to the database (check BeatmapService TODOs), since right now this is not really scalable. 
+        var isScoreAlreadyBeingProcessed = _processingScores.TryGetValue(scoreHash, out var existingTimestamp) &&
+                                           DateTime.UtcNow - existingTimestamp < ScoreProcessingTimeout;
+
+        if (isScoreAlreadyBeingProcessed)
+        {
+            SubmitScoreHelper.ReportRejectionToMetrics(session,
+                scoreSerialized,
+                "Duplicate score submission while previous is still processing");
+
+            return Ok("error: no");
+        }
+
+        var isScoreAddedToProcessing = _processingScores.TryAdd(scoreHash, DateTime.UtcNow);
+
+        if (!isScoreAddedToProcessing)
+        {
+            Log.Warning("Failed to add score hash {ScoreHash} to processing dictionary for user {Username}. Another submission might be processing concurrently.", scoreHash, username);
+        }
+
+        try
+        {
+            var result = await scoreService.SubmitScore(session,
+                scoreSerialized,
+                beatmapHash,
+                scoreTime,
+                scoreFailTime,
+                osuVersion,
+                clientHash,
+                replayFile,
+                storyboardHash);
+
+            return Ok(result);
+        }
+        finally
+        {
+            _processingScores.TryRemove(scoreHash, out _);
+        }
     }
 
     [HttpGet(RequestType.OsuGetScores)]
