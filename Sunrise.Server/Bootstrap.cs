@@ -436,6 +436,8 @@ public static class Bootstrap
 
         builder.Services.AddScoped<ScoreRepository>();
         builder.Services.AddScoped<ScoreFileService>();
+
+        builder.Services.AddScoped<OsuVersionRepository>();
     }
 
 
@@ -447,6 +449,7 @@ public static class Bootstrap
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
         builder.Services.AddScoped<HttpClientService>();
+        builder.Services.AddScoped<OsuVersionService>();
 
         builder.Services.AddScoped<ScoreService>();
         builder.Services.AddScoped<UserBanchoService>();

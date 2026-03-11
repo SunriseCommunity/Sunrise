@@ -15,7 +15,7 @@ using Sunrise.Shared.Services;
 
 namespace Sunrise.Server.Services;
 
-public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService, ChatChannelRepository chatChannelRepository, RegionService regionService)
+public class AuthService(DatabaseService database, SessionRepository sessions, UserAuthService userAuthService, UserBanchoService userBanchoService, ChatChannelRepository chatChannelRepository, RegionService regionService, OsuVersionService osuVersionService)
 {
     [TraceExecution]
     public async Task<FileContentResult> Login(HttpRequest request, HttpResponse response)
@@ -23,6 +23,13 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
         var sr = await new StreamReader(request.Body).ReadToEndAsync();
         var loginRequest = ServerParsers.ParseLogin(sr);
         var ip = RegionService.GetUserIpAddress(request);
+
+        if (Configuration.EnforceLatestClientVersion)
+        {
+            var versionCheckResult = await CheckClientVersion(loginRequest.Version, response);
+            if (versionCheckResult != null)
+                return versionCheckResult;
+        }
 
         response.Headers["cho-protocol"] = "19";
         response.Headers.Connection = "keep-alive";
@@ -127,6 +134,34 @@ public class AuthService(DatabaseService database, SessionRepository sessions, U
                 "Server is currently in maintenance mode. Please keep in mind that some features may not work properly.");
 
         return new FileContentResult(session.GetContent(), "application/octet-stream");
+    }
+
+    private async Task<FileContentResult?> CheckClientVersion(string versionString, HttpResponse response)
+    {
+        var clientVersion = OsuVersion.TryParse(versionString);
+
+        if (clientVersion == null)
+        {
+            Log.Warning("Login attempted with unparseable osu! version string: {VersionString}", versionString);
+            return null;
+        }
+
+        var latestVersion = await osuVersionService.GetLatestVersion(clientVersion.Stream);
+
+
+        if (latestVersion == null)
+        {
+            Log.Warning("Could not fetch latest osu! version for stream {Stream}. Allowing login for version {ClientVersion}", clientVersion.Stream, clientVersion);
+            return null;
+        }
+
+        if (clientVersion < latestVersion)
+        {
+            Log.Information("Login rejected: outdated osu! client {ClientVersion} on stream {Stream} (latest: {LatestVersion})", clientVersion, clientVersion.Stream, latestVersion);
+            return RejectLogin(response, $"Your osu! client is outdated. Please update to {latestVersion} to continue.", LoginResponse.OutdatedClient);
+        }
+
+        return null;
     }
 
     public async Task<IActionResult> Register(HttpRequest request)

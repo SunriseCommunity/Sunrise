@@ -52,6 +52,7 @@ website. The server is currently in development and is not yet ready for public 
 - [x] Achievements (Medals)
 - [x] Rank snapshots
 - [x] Ability to upload custom server backgrounds
+- [x] Version enforcement for the osu! clients
 
 ### Additional features
 

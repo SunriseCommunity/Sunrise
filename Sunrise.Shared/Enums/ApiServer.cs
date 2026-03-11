@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums;
+namespace Sunrise.Shared.Enums;
 
 public enum ApiServer
 {
@@ -8,5 +8,6 @@ public enum ApiServer
     OsuDirect = 3,
     OldPpy = 5,
     Observatory = 6,
-    IpApi = 7
+    IpApi = 7,
+    OsuPpy = 8
 }

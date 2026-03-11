@@ -2,6 +2,7 @@ using System.Net;
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
+using Serilog;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;
 using Sunrise.API.Serializable.Response;
@@ -18,6 +19,7 @@ using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
@@ -29,7 +31,7 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions, ChatChannelRepository channels)
+public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions, ChatChannelRepository channels, OsuVersionService osuVersionService)
 {
     [TraceExecution]
     public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
@@ -60,6 +62,10 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         }
 
         var (score, sessionUsername) = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
+
+        if (Configuration.EnforceLatestClientVersion)
+            await CheckScoreClientVersion(score.OsuVersion, osuVersion);
+
         var dbScore = await database.Scores.GetScore(score.ScoreHash); // TODO: Score hash is not indexed, this is heavy performance downside. Consider refactoring to score uploading queue and checking if unique by inserting. (Insert score -> Process -> If in the valid request timeframe (API ratelimits can make score wait in queue), return score submission response)
 
         if (dbScore != null)
@@ -415,5 +421,27 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     {
         score.SubmissionStatus = SubmissionStatus.Deleted;
         await database.Scores.AddScore(score);
+    }
+
+    private async Task CheckScoreClientVersion(string scoreOsuVersion, string formOsuVersion)
+    {
+        var versionString = !string.IsNullOrWhiteSpace(scoreOsuVersion) ? scoreOsuVersion : formOsuVersion;
+        var clientVersion = OsuVersion.TryParse(versionString);
+
+        if (clientVersion == null)
+            return;
+
+        var latestVersion = await osuVersionService.GetLatestVersion(clientVersion.Stream);
+
+        if (latestVersion == null)
+            return;
+
+        if (clientVersion < latestVersion)
+        {
+            Log.Warning("Score submitted with outdated osu! client version {ClientVersion} (stream: {Stream}, latest: {LatestVersion})",
+                clientVersion,
+                clientVersion.Stream,
+                latestVersion);
+        }
     }
 }
