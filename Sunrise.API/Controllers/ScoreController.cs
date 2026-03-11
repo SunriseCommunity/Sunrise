@@ -58,7 +58,10 @@ public class ScoreController(DatabaseService database, SessionRepository session
     {
         var session = HttpContext.GetCurrentSession();
 
-        var score = await database.Scores.GetScore(id, new QueryOptions(true), ct);
+        var score = await database.Scores.GetScore(id, new QueryOptions(true)
+        {
+            QueryModifier = query => query.Cast<Score>().IncludeUser()
+        }, ct);
 
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
@@ -70,7 +73,9 @@ public class ScoreController(DatabaseService database, SessionRepository session
         if (replay == null)
             return Problem(ApiErrorResponse.Detail.ReplayNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        var replayFile = new ReplayFile(score, replay);
+        ct.ThrowIfCancellationRequested();
+
+        var replayFile = new ReplayFile(score, replay, score.User);
         var replayStream = await replayFile.ReadReplay();
         var replayFileName = await replayFile.GetFileName(session);
 
