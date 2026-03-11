@@ -14,7 +14,8 @@
       "Window": 10,
       "QueueLimit": 20
     },
-    "UseNewPerformanceCalculationAlgorithm": true
+    "UseNewPerformanceCalculationAlgorithm": true,
+    "EnforceLatestClientVersion": true
   },
   "BeatmapHype": {
     "UserHypesWeekly": 10,

@@ -1,4 +1,4 @@
-﻿namespace Sunrise.Shared.Enums;
+namespace Sunrise.Shared.Enums;
 
 public enum ApiType
 {
@@ -18,6 +18,7 @@ public enum ApiType
 
     BeatmapSetsDataByBeatmapIds = 9,
 
-    GetObservatoryStats = 10
+    GetObservatoryStats = 10,
 
+    GetOsuChangelog = 11
 }

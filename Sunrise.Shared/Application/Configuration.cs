@@ -135,6 +135,9 @@ public static class Configuration
     public static bool UseNewPerformanceCalculationAlgorithm =>
         Config.GetSection("General").GetValue<bool?>("UseNewPerformanceCalculationAlgorithm") ?? false;
 
+    public static bool EnforceLatestClientVersion { get; set; } =
+        Config.GetSection("General").GetValue<bool?>("EnforceLatestClientVersion") ?? false;
+
 
 
     // Beatmap hype
@@ -231,7 +234,8 @@ public static class Configuration
 
     public static List<ExternalApi> ExternalApis { get; } =
     [
-        new(ApiType.GetIPLocation, ApiServer.IpApi, "http://ip-api.com/json/{0}", 0, 1)
+        new(ApiType.GetIPLocation, ApiServer.IpApi, "http://ip-api.com/json/{0}", 0, 1),
+        new(ApiType.GetOsuChangelog, ApiServer.OsuPpy, "https://osu.ppy.sh/api/v2/changelog", 0, 0)
     ];
 
     public static IConfigurationRoot GetConfig()
