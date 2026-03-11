@@ -125,7 +125,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         return beatmapSets.ToList();
     }
 
-    public async Task<Result<List<BeatmapSet>, ErrorMessage>> SearchBeatmapSets(BaseSession session, string? rankedStatus, string mode,
+    public async Task<Result<List<BeatmapSet>, ErrorMessage>> SearchBeatmapSets(BaseSession session, string? rankedStatus, string? mode,
         string query, Pagination pagination, CancellationToken ct = default)
     {
         var beatmapSetsResult = await client.SendRequest<List<BeatmapSet>>(session,
