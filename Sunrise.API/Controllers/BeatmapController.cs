@@ -460,12 +460,12 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         }
 
         var beatmapSetStatus = status?.Any() == true ? string.Join("&status=", status.Select(s => (int)s)) : null;
-        var beatmapSetGameMode = mode.HasValue ? (int)mode : -1;
+        var beatmapSetGameMode = mode.HasValue ? ((int)mode).ToString() : null;
 
         var beatmapSetsResult = await beatmapService.SearchBeatmapSets(session,
             beatmapSetStatus,
-            beatmapSetGameMode.ToString(),
-            query,
+            beatmapSetGameMode,
+            query ?? "",
             new Pagination(page - 1, limit),
             ct);
 
