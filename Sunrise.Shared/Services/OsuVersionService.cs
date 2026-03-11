@@ -9,25 +9,47 @@ namespace Sunrise.Shared.Services;
 
 public class OsuVersionService(ILogger<OsuVersionService> logger, OsuVersionRepository repository, HttpClientService client)
 {
+    private static readonly SemaphoreSlim VersionRefreshLock = new(1, 1);
+
     public async Task<OsuVersion?> GetLatestVersion(string stream)
     {
         var cached = await repository.GetCachedVersion(stream);
         if (cached != null)
             return cached;
 
-        await FetchAndCacheAllVersions();
+        await VersionRefreshLock.WaitAsync();
+        try
+        {
+            cached = await repository.GetCachedVersion(stream);
+            if (cached != null)
+                return cached;
+
+            await FetchAndCacheAllVersions();
+        }
+        finally
+        {
+            VersionRefreshLock.Release();
+        }
 
         return await repository.GetCachedVersion(stream);
     }
 
     public async Task ForceRefreshVersions()
     {
-        foreach (var stream in OsuVersion.SupportedStreams)
+        await VersionRefreshLock.WaitAsync();
+        try
         {
-            await repository.RemoveCachedVersion(stream);
-        }
+            foreach (var stream in OsuVersion.SupportedStreams)
+            {
+                await repository.RemoveCachedVersion(stream);
+            }
 
-        await FetchAndCacheAllVersions();
+            await FetchAndCacheAllVersions();
+        }
+        finally
+        {
+            VersionRefreshLock.Release();
+        }
     }
 
     private async Task FetchAndCacheAllVersions()
