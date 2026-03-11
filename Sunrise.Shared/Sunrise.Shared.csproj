@@ -13,7 +13,7 @@
         <PackageReference Include="EFCoreSecondLevelCacheInterceptor.StackExchange.Redis" Version="5.2.1"/>
         <PackageReference Include="Hangfire.AspNetCore" Version="1.8.18"/>
         <PackageReference Include="Hangfire.MySqlStorage" Version="2.0.3"/>
-        <PackageReference Include="HoLLy.osu.HOPEless" Version="2.1.0"/>
+        <PackageReference Include="HoLLy.osu.HOPEless" Version="2.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15"/>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.22"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22"/>
