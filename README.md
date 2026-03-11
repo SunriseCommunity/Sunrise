@@ -21,18 +21,6 @@ website. The server is currently in development and is not yet ready for public 
 
 -----
 
-
-> [!IMPORTANT] 
-> **Read me if you were self-hosting Sunrsie before the Solar System monorepo move (January 6, 2026)**
->
-> Due to move to the Solar System monorepo we made almost non-compatible changes to the Sunrise.
->
-> One of the biggest changes is the way we handle configuration - we moved from `appsettings.json` to `.env` file for environment variables.
-> Please refer to our [upgrade guide to .env variables](https://docs.sunrize.uk/upgrading/upgrade-to-dot-env-variables) to help you with the migration.
-> 
-> If you are looking on how to migrate to the Solar System, please view the following [**migration guide**](https://docs.sunrize.uk/upgrading/migration-to-solar-system-from-manual-install)
-
-
 ## Features 🌟
 
 ### Core features
