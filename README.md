@@ -19,7 +19,6 @@ website. The server is currently in development and is not yet ready for public 
 
 ![](https://github.com/SunriseCommunity/Solar-System/blob/main/.github/preview.jpg)
 
------
 
 ## Features 🌟
 
