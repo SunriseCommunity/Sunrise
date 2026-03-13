@@ -13,9 +13,12 @@ public class DisableInactiveUsersCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        BackgroundTaskService.TryStartNewBackgroundJob<DisableInactiveUsersCommand>(
-            () => DisableInactiveUsers(session.UserId, CancellationToken.None),
-            message => ChatCommandRepository.SendMessage(session, message));
+        ChatCommandRepository.SendMessage(session, "Disabling inactive users is currently deprecated as it's being revisited. Please feel free to contact us on Discord if you have any suggestions.");
+
+        // TODO: Uncomment this when we revisit disabling inactive users
+        // BackgroundTaskService.TryStartNewBackgroundJob<DisableInactiveUsersCommand>(
+        //     () => DisableInactiveUsers(session.UserId, CancellationToken.None),
+        //     message => ChatCommandRepository.SendMessage(session, message));
 
         return Task.CompletedTask;
     }
