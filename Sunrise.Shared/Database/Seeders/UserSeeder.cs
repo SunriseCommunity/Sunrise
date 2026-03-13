@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
@@ -202,35 +202,43 @@ public static class UserSeeder
 
         var sunriseBotEntry = await context.Set<User>().Where(x => x.Privilege.HasFlag(UserPrivilege.ServerBot)).FirstOrDefaultAsync(ct);
 
-        if (sunriseBotEntry != null)
+        try
         {
-            sunriseBot.Id = sunriseBotEntry.Id;
-            sunriseBot.RegisterDate = sunriseBotEntry.RegisterDate;
-            context.Entry(sunriseBotEntry).CurrentValues.SetValues(sunriseBot);
-
-            context.Set<User>().Update(sunriseBotEntry);
-        }
-        else
-        {
-            var usersWithBotCredentials =
-                await context.Set<User>().Where(x => x.Username == sunriseBot.Username || x.Email == sunriseBot.Email).ToListAsync(cancellationToken: ct);
-
-            if (usersWithBotCredentials.Any())
+            if (sunriseBotEntry != null)
             {
-                foreach (var user in usersWithBotCredentials)
+                sunriseBot.Id = sunriseBotEntry.Id;
+                sunriseBot.RegisterDate = sunriseBotEntry.RegisterDate;
+                context.Entry(sunriseBotEntry).CurrentValues.SetValues(sunriseBot);
+
+                context.Set<User>().Update(sunriseBotEntry);
+            }
+            else
+            {
+                var usersWithBotCredentials =
+                    await context.Set<User>().Where(x => x.Username == sunriseBot.Username || x.Email == sunriseBot.Email).ToListAsync(cancellationToken: ct);
+
+                if (usersWithBotCredentials.Any())
                 {
-                    Log.Error("User {username} (id: {userId}) has same credential as Sunrise Bot, while not having Server Bot Privilege privileges.", user.Username, user.Id);
+                    foreach (var user in usersWithBotCredentials)
+                    {
+                        Log.Error("User {username} (id: {userId}) has same credential as Sunrise Bot, while not having Server Bot Privilege privileges.", user.Username, user.Id);
+                    }
+
+                    throw new Exception("Error while creating sunrise bot in database. Remove or edit users above to continue.");
                 }
 
-                throw new Exception("Error while creating sunrise bot in database. Remove or edit users above to continue.");
+                await context.Set<User>().AddAsync(sunriseBot, ct);
+                await context.SaveChangesAsync(ct);
+                await AddSunriseBotAvatar(context, sunriseBot, ct);
             }
 
-            await context.Set<User>().AddAsync(sunriseBot, ct);
             await context.SaveChangesAsync(ct);
-            await AddSunriseBotAvatar(context, sunriseBot, ct);
         }
-
-        await context.SaveChangesAsync(ct);
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Log.Fatal(ex, "Failed to seed Sunrise Bot in the database.");
+            throw;
+        }
     }
 
     private static async Task AddSunriseBotAvatar(DbContext context, User sunriseBot, CancellationToken ct = default)
