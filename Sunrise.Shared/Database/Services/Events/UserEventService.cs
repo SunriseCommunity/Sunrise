@@ -26,15 +26,15 @@ public class UserEventService(SunriseDbContext dbContext)
 
     public async Task<Result> AddUserRegisterEvent(UserEventAction userEventAction, User userData)
     {
-        var data = new
+        var data = new UserRegistered
         {
-            RegisterData = new
+            RegisterData = new UserRegisteredData
             {
-                userData.Username,
-                userData.Email,
-                userData.Passhash,
-                userData.Country,
-                userData.RegisterDate
+                Username = userData.Username,
+                Email = userData.Email,
+                Passhash = userData.Passhash,
+                Country = userData.Country,
+                RegisterDate = userData.RegisterDate
             }
         };
 
@@ -153,11 +153,45 @@ public class UserEventService(SunriseDbContext dbContext)
 
     public async Task<User?> IsIpHasAnyRegisteredAccounts(string ip, CancellationToken ct = default)
     {
-        var userEvent = await dbContext.EventUsers
+        var registerEvents = await dbContext.EventUsers
             .AsNoTracking().Include(eventUser => eventUser.User)
-            .FirstOrDefaultAsync(x => x.Ip == ip && x.EventType == UserEventType.Register, ct);
+            .Where(x => x.Ip == ip && x.EventType == UserEventType.Register)
+            .ToListAsync(ct);
 
-        return userEvent?.User;
+        var nonIgnoredEvent = registerEvents.FirstOrDefault(e =>
+        {
+            var data = e.GetData<UserRegistered>();
+            return data?.IsExemptFromMultiaccountCheck != true;
+        });
+
+        return nonIgnoredEvent?.User;
+    }
+
+    public async Task<Result> SetRegisterEventIgnoredFromIpCheck(int userId, bool ignored, CancellationToken ct = default)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var registerEvent = await dbContext.EventUsers
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.EventType == UserEventType.Register, ct);
+
+            if (registerEvent == null)
+                throw new Exception("Register event not found for user");
+
+            var previousData = registerEvent.GetData<UserRegistered>();
+
+            registerEvent.SetData(new UserRegistered
+            {
+                RegisterData = previousData?.RegisterData ?? new UserRegisteredData
+                {
+                    Username = string.Empty,
+                    Email = string.Empty,
+                    Passhash = string.Empty
+                },
+                IsExemptFromMultiaccountCheck = ignored
+            });
+
+            await dbContext.SaveChangesAsync(ct);
+        });
     }
 
     public async Task<Result> AddUserChangeCountryEvent(UserEventAction userEventAction, CountryCode oldCountry, CountryCode newCountry)
