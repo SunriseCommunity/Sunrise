@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -24,10 +23,9 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
-        var targetUser = await CreateTestUser();
 
         // Act
-        var response = await client.PostAsync($"user/{targetUser.Id}/edit/hide-previous-username", new StringContent(""));
+        var response = await client.PostAsync("user/edit/hide-previous-username", new StringContent(""));
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -40,41 +38,16 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
         var client = App.CreateClient().UseClient("api");
 
         var regularUser = await CreateTestUser();
-        var targetUser = await CreateTestUser();
 
         var tokens = await GetUserAuthTokens(regularUser);
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/hide-previous-username",
+        var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
             new EditHidePreviousUsernameRequest { EventId = 1, IsHidden = true });
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task TestAdminEditHidePreviousUsernameWithInvalidUserId()
-    {
-        // Arrange
-        var client = App.CreateClient().UseClient("api");
-
-        var superUser = _mocker.User.GetRandomUser();
-        superUser.Privilege = UserPrivilege.Admin;
-        await CreateTestUser(superUser);
-
-        var tokens = await GetUserAuthTokens(superUser);
-        client.UseUserAuthToken(tokens);
-
-        // Act
-        var response = await client.PostAsJsonAsync("user/999999/edit/hide-previous-username",
-            new EditHidePreviousUsernameRequest { EventId = 1, IsHidden = true });
-
-        // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-
-        var responseError = await response.Content.ReadFromJsonAsyncWithAppConfig<ProblemDetails>();
-        Assert.Contains(ApiErrorResponse.Detail.UserNotFound, responseError?.Detail);
     }
 
     [Fact]
@@ -87,13 +60,11 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
         superUser.Privilege = UserPrivilege.Admin;
         await CreateTestUser(superUser);
 
-        var targetUser = await CreateTestUser();
-
         var tokens = await GetUserAuthTokens(superUser);
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/hide-previous-username", new StringContent(""));
+        var response = await client.PostAsJsonAsync("user/edit/hide-previous-username", new StringContent(""));
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -126,7 +97,7 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/hide-previous-username",
+        var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
             new EditHidePreviousUsernameRequest { EventId = changeEvent.Id, IsHidden = true });
 
         // Assert
@@ -169,7 +140,7 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
         client.UseUserAuthToken(tokens);
 
         // Act
-        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/hide-previous-username",
+        var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
             new EditHidePreviousUsernameRequest { EventId = changeEvent.Id, IsHidden = false });
 
         // Assert
