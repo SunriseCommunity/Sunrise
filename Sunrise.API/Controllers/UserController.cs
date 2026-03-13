@@ -245,6 +245,21 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         return Ok();
     }
 
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("edit/hide-previous-username")]
+    [EndpointDescription("Set whether a username change event is hidden from the user's previous usernames list")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> EditHidePreviousUsername(
+        [FromBody] EditHidePreviousUsernameRequest request,
+        CancellationToken ct = default)
+    {
+        var result = await database.Events.Users.SetUserChangeUsernameEventVisibility(request.EventId, request.IsHidden, ct);
+        if (result.IsFailure)
+            return Problem(result.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+        return Ok();
+    }
 
     [HttpGet]
     [Route("{userId:int}/graph")]
