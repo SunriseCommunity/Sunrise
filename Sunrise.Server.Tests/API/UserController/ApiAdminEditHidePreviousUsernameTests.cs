@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
@@ -44,7 +44,11 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
-            new EditHidePreviousUsernameRequest { EventId = 1, IsHidden = true });
+            new EditHidePreviousUsernameRequest
+            {
+                EventId = 1,
+                IsHidden = true
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
@@ -98,7 +102,11 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
-            new EditHidePreviousUsernameRequest { EventId = changeEvent.Id, IsHidden = true });
+            new EditHidePreviousUsernameRequest
+            {
+                EventId = changeEvent.Id,
+                IsHidden = true
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -141,7 +149,11 @@ public class ApiAdminEditHidePreviousUsernameTests(IntegrationDatabaseFixture fi
 
         // Act
         var response = await client.PostAsJsonAsync("user/edit/hide-previous-username",
-            new EditHidePreviousUsernameRequest { EventId = changeEvent.Id, IsHidden = false });
+            new EditHidePreviousUsernameRequest
+            {
+                EventId = changeEvent.Id,
+                IsHidden = false
+            });
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
