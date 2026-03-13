@@ -223,6 +223,28 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         return Ok();
     }
 
+    [HttpPost]
+    [Authorize("RequireAdmin")]
+    [Route("{id:int}/edit/ignore-login-data")]
+    [EndpointDescription("Set whether a user's registration IP is ignored during multi-account detection")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EditUserIgnoreLoginData(
+        [Range(1, int.MaxValue)] int id,
+        [FromBody] EditIgnoreLoginDataRequest request,
+        CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(id, ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var result = await database.Events.Users.SetRegisterEventIgnoredFromIpCheck(user.Id, request.IsIgnored, ct);
+        if (result.IsFailure)
+            return Problem(result.Error, statusCode: StatusCodes.Status500InternalServerError);
+
+        return Ok();
+    }
+
 
     [HttpGet]
     [Route("{userId:int}/graph")]
