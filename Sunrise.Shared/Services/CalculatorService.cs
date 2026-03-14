@@ -113,8 +113,6 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
     public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode, Score? score = null)
     {
-        if (!user.IsActive()) return -1;
-
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,
@@ -128,8 +126,6 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
     public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode, Score? score = null)
     {
-        if (!user.IsActive()) return -1;
-
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,

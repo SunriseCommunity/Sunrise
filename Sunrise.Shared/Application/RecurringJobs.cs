@@ -4,13 +4,14 @@ using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
-using Sunrise.Shared.Attributes;
+using Serilog;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Application;
@@ -23,22 +24,23 @@ public class RecurringJobs
 
         RecurringJob.AddOrUpdate("Save users stats snapshots", () => SaveUsersStatsSnapshots(CancellationToken.None), "59 23 * * *"); // At 23:59 UTC
 
-        RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
+        // TODO: Disabling inactive users is not really was thinking through. I would keep it as deprecated for now and maybe revisit it in the future.
+        // RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
 
         RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
-        
+
         RecurringJob.AddOrUpdate("Refresh server bot account", () => RefreshServerBotAccount(CancellationToken.None), "*/1 * * * *"); // Every minute
     }
-    
+
     public static async Task RefreshServerBotAccount(CancellationToken ct)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var botUser = await database.Users.GetServerBot();
         if (botUser == null)
             return;
-        
+
         Configuration.BotUsername = botUser.Username;
     }
 
@@ -58,7 +60,7 @@ public class RecurringJobs
                     options: new QueryOptions(true, new Pagination(x, pageSize))
                     {
                         QueryModifier = q => q.Cast<UserStats>()
-                            .Where(us => us.PerformancePoints > 0 && us.User.AccountStatus == UserAccountStatus.Active)
+                            .Where(us => us.PerformancePoints > 0) // TODO: Check later how it affects the database growth for pp == 0 and give additional review when we are going to revisit disabling inactive users. 
                             .Include(us => us.User)
                     },
                     ct: ct);
@@ -151,6 +153,56 @@ public class RecurringJobs
             if (users.Count < pageSize) break;
         }
 
+    }
+
+    public static async Task RecalculateDisabledUsersStats(CancellationToken ct)
+    {
+        const int pageSize = 50;
+
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            using var scope = ServicesProviderHolder.CreateScope();
+            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+            var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
+
+            var brokenStats = await database.DbContext.UserStats
+                .Include(us => us.User)
+                .Where(us => us.User.AccountStatus == UserAccountStatus.Disabled)
+                .Where(us => us.PerformancePoints == -1 || us.Accuracy == -1)
+                .OrderBy(us => us.Id)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            if (brokenStats.Count == 0)
+                break;
+
+            foreach (var stats in brokenStats)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var user = stats.User;
+
+                var pp = await calculatorService.CalculateUserWeightedPerformance(user, stats.GameMode);
+                var acc = await calculatorService.CalculateUserWeightedAccuracy(user, stats.GameMode);
+
+                stats.PerformancePoints = pp;
+                stats.Accuracy = acc;
+
+                await database.Users.Stats.UpdateUserStats(stats, user);
+
+                Log.Information(
+                    "Recalculated disabled user {UserId} stats for {GameMode}: PP {OldPp} -> {NewPp}, Acc -> {NewAcc}",
+                    user.Id,
+                    stats.GameMode,
+                    -1,
+                    pp,
+                    acc);
+            }
+        }
+
+        Log.Information("Finished recalculating disabled users stats");
     }
 
     public static async Task BackupDatabase(CancellationToken ct)

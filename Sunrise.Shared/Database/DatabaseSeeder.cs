@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Seeders;
 
 namespace Sunrise.Shared.Database;
@@ -10,5 +10,6 @@ public static class DatabaseSeeder
         await MedalSeeder.SeedMedals(context, cancellationToken);
         await UserSeeder.SeedUsers(context, cancellationToken);
         await UserSeeder.FetchSuperUserAndEitherPrintSecretOrDemote(context, cancellationToken);
+        await StartupDataMigrations.Apply(context, cancellationToken);
     }
 }
