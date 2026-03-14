@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Users;
 
 namespace Sunrise.Shared.Database;
 
@@ -16,7 +17,8 @@ public static class StartupDataMigrations
     private static async Task EnqueueRecalculateDisabledUsersStats(DbContext context, CancellationToken ct = default)
     {
         var hasBrokenStats = await context.Set<UserStats>()
-            .AnyAsync(us => us.PerformancePoints == -1 || us.Accuracy == -1, ct);
+            .AnyAsync(us => us.User.AccountStatus == UserAccountStatus.Disabled &&
+                            (us.PerformancePoints == -1 || us.Accuracy == -1), ct);
 
         if (!hasBrokenStats)
             return;
