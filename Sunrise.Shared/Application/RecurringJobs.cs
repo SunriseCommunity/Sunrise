@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MySql.Data.MySqlClient;
 using Serilog;
-using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
@@ -29,19 +28,19 @@ public class RecurringJobs
         // RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
 
         RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
-        
+
         RecurringJob.AddOrUpdate("Refresh server bot account", () => RefreshServerBotAccount(CancellationToken.None), "*/1 * * * *"); // Every minute
     }
-    
+
     public static async Task RefreshServerBotAccount(CancellationToken ct)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
+
         var botUser = await database.Users.GetServerBot();
         if (botUser == null)
             return;
-        
+
         Configuration.BotUsername = botUser.Username;
     }
 
@@ -61,7 +60,7 @@ public class RecurringJobs
                     options: new QueryOptions(true, new Pagination(x, pageSize))
                     {
                         QueryModifier = q => q.Cast<UserStats>()
-                            .Where(us => us.PerformancePoints > 0 && us.User.AccountStatus == UserAccountStatus.Active)
+                            .Where(us => us.PerformancePoints > 0) // TODO: Check later how it affects the database growth for pp == 0 and give additional review when we are going to revisit disabling inactive users. 
                             .Include(us => us.User)
                     },
                     ct: ct);
@@ -195,7 +194,11 @@ public class RecurringJobs
 
                 Log.Information(
                     "Recalculated disabled user {UserId} stats for {GameMode}: PP {OldPp} -> {NewPp}, Acc -> {NewAcc}",
-                    user.Id, stats.GameMode, -1, pp, acc);
+                    user.Id,
+                    stats.GameMode,
+                    -1,
+                    pp,
+                    acc);
             }
         }
 
