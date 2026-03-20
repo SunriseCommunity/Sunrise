@@ -111,9 +111,13 @@ public class RecalculateUserStatsCommand : IChatCommand
         {
             GameMode = stats.GameMode
         };
-
-        await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
+        
         var user = stats.User;
+        if (user == null)
+        {
+            await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
+            user = stats.User;
+        }
 
         var pageSize = 100;
 
