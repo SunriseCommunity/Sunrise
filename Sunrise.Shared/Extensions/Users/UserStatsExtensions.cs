@@ -44,9 +44,14 @@ public static class UserStatsExtensions
             using var scope = ServicesProviderHolder.CreateScope();
             var calculatorService = scope.ServiceProvider.GetRequiredService<CalculatorService>();
 
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-            await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
             var user = userStats.User;
+
+            if (user == null)
+            {
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                await database.DbContext.Entry(userStats).Reference(s => s.User).LoadAsync();
+                user = userStats.User;
+            }
 
             userStats.PerformancePoints =
                 await calculatorService.CalculateUserWeightedPerformance(user, score.GameMode, score);

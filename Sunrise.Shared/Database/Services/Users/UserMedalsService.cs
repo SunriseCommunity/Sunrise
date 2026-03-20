@@ -27,6 +27,21 @@ public class UserMedalsService(Lazy<DatabaseService> databaseService, SunriseDbC
         return userMedals;
     }
 
+    public async Task<Result> UnlockMedals(int userId, List<int> medalIds)
+    {
+        return await ResultUtil.TryExecuteAsync(async () =>
+        {
+            var medalsToAdd = medalIds.Select(medalId => new UserMedals
+            {
+                UserId = userId,
+                MedalId = medalId
+            }).ToList();
+
+            dbContext.UserMedals.AddRange(medalsToAdd);
+            await dbContext.SaveChangesAsync();
+        });
+    }
+
     public async Task<Result> UnlockMedal(int userId, int medalId)
     {
         return await ResultUtil.TryExecuteAsync(async () =>

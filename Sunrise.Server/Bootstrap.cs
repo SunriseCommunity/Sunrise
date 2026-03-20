@@ -350,6 +350,8 @@ public static class Bootstrap
 
     public static void AddSingletons(this WebApplicationBuilder builder)
     {
+        builder.Services.AddHttpContextAccessor();
+
         // TODO: Multiple of these repositories can be scoped instead of singleton if they don't hold state
         builder.Services.AddSingleton<SessionRepository>();
         builder.Services.AddSingleton<ChatChannelRepository>();

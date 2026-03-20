@@ -20,8 +20,6 @@ public class MedalService(DatabaseService database)
     [TraceExecution]
     public async Task<string> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
     {
-        List<string> newMedals = [];
-
         if (!score.IsPassed || !beatmap.Status.IsScoreable()) return string.Empty;
 
         var medals = await database.Medals.GetMedals(score.GameMode);
@@ -41,13 +39,10 @@ public class MedalService(DatabaseService database)
             (medal, _) => EvaluateMedal(medal)
         );
 
-        foreach (var medal in eligibleMedals.OrderBy(m => m.Id))
-        {
-            await database.Users.Medals.UnlockMedal(userStats.UserId, medal.Id);
-            newMedals.Add(GetMedalString(medal));
-        }
+        var newMedalsIds = eligibleMedals.Select(m => m.Id).ToList();
+        await database.Users.Medals.UnlockMedals(userStats.UserId, newMedalsIds);
 
-        return string.Join("/", newMedals);
+        return string.Join("/", eligibleMedals.Select(GetMedalString));
 
         ValueTask EvaluateMedal(Medal medal)
         {
