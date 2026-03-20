@@ -296,6 +296,76 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
+    public async Task TestMultipleUnlockedMedalsPersistedInDatabase()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.DoubleTime | Mods.Hidden | Mods.HardRock;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+        beatmap.DifficultyRating = 5.0;
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation(500, 5.0);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var achievementsMatch = System.Text.RegularExpressions.Regex.Match(resultString, @"achievements-new:(.*)");
+        Assert.True(achievementsMatch.Success, "Response should contain achievements-new section");
+
+        var achievementsRaw = achievementsMatch.Groups[1].Value.Trim();
+        Assert.False(string.IsNullOrEmpty(achievementsRaw), "Achievements string should not be empty");
+
+        var responseMedalIds = achievementsRaw
+            .Split('/')
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(s => int.Parse(s.Split('+')[0]))
+            .ToList();
+
+        Assert.True(responseMedalIds.Count > 1,
+            $"Expected multiple medals to be unlocked, but got {responseMedalIds.Count}: [{string.Join(", ", responseMedalIds)}]");
+
+        var userUnlockedMedals = await Database.Users.Medals.GetUserMedals(session.UserId);
+        var databaseMedalIds = userUnlockedMedals.Select(m => m.MedalId).ToHashSet();
+
+        foreach (var medalId in responseMedalIds)
+        {
+            Assert.True(databaseMedalIds.Contains(medalId),
+                $"Medal {medalId} was returned in the response but NOT found in the database. " +
+                $"Response medals: [{string.Join(", ", responseMedalIds)}], " +
+                $"Database medals: [{string.Join(", ", databaseMedalIds)}]");
+        }
+
+        Assert.Equal(responseMedalIds.Count, userUnlockedMedals.Count);
+    }
+
+    [Fact]
     public async Task TestSuccessfulUpdateUserGradesAfterScoreSubmission()
     {
         // Arrange
