@@ -23,19 +23,19 @@ public class BeatmapResponse
         StarRatingTaiko = beatmap.ModeInt switch
         {
             1 => beatmap.DifficultyRating,
-            0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 1 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+            0 => beatmapSet?.ConvertedBeatmaps?.FirstOrDefault(b => b.ModeInt == 1 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
             _ => 0
         };
         StarRatingCatch = beatmap.ModeInt switch
         {
             2 => beatmap.DifficultyRating,
-            0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 2 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+            0 => beatmapSet?.ConvertedBeatmaps?.FirstOrDefault(b => b.ModeInt == 2 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
             _ => 0
         };
         StarRatingMania = beatmap.ModeInt switch
         {
             3 => beatmap.DifficultyRating,
-            0 => beatmapSet?.ConvertedBeatmaps.FirstOrDefault(b => b.ModeInt == 3 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
+            0 => beatmapSet?.ConvertedBeatmaps?.FirstOrDefault(b => b.ModeInt == 3 && b.Id == beatmap.Id)?.DifficultyRating ?? 0,
             _ => 0
         };
         TotalLength = beatmap.TotalLength;

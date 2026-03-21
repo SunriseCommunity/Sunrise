@@ -58,8 +58,9 @@ public class BeatmapSetResponse
     public DateTime LastUpdated { get; set; }
 
     [JsonPropertyName("submitted_date")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
-    public DateTime SubmittedDate { get; set; }
+    public DateTime? SubmittedDate { get; set; }
 
     [JsonPropertyName("ranked_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

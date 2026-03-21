@@ -98,22 +98,22 @@ public class BeatmapSet
 
     [JsonPropertyName("submitted_date")]
     [JsonConverter(typeof(DateTimeUnixConverter))]
-    public DateTime SubmittedDate { get; set; }
+    public DateTime? SubmittedDate { get; set; }
 
     [JsonPropertyName("availability")]
     public BeatmapAvailability Availability { get; set; }
 
     [JsonPropertyName("beatmaps")]
-    public Beatmap[] Beatmaps { get; set; }
+    public Beatmap[]? Beatmaps { get; set; }
 
     [JsonPropertyName("converts")]
-    public Beatmap[] ConvertedBeatmaps { get; set; }
+    public Beatmap[]? ConvertedBeatmaps { get; set; }
 
     [JsonPropertyName("description")]
     public BeatmapSetDescription? Description { get; set; }
 
     [JsonPropertyName("genre")]
-    public BeatmapSetGenre Genre { get; set; }
+    public BeatmapSetGenre? Genre { get; set; }
 
     [JsonPropertyName("language")]
     public BeatmapSetLanguage? Language { get; set; }
