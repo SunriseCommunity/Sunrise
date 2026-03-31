@@ -1,4 +1,4 @@
-﻿using CSharpFunctionalExtensions;
+using CSharpFunctionalExtensions;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +21,7 @@ public sealed class DatabaseService(
     EventRepository eventRepository,
     ScoreRepository scoreRepository,
     MedalRepository medalRepository,
-    IEFCacheServiceProvider cacheProvider)
+    IEFCacheServiceProvider? cacheProvider = null)
 {
 
     public readonly BeatmapRepository Beatmaps = beatmapRepository;
@@ -124,13 +124,16 @@ public sealed class DatabaseService(
                 {
                     DbContext.SavingChanges -= OnSavingChanges;
 
-                    var prefixedAffectedTables = affectedTables
-                        .Select(tableName => Configuration.DatabaseCacheKeyPrefix + tableName)
-                        .ToHashSet();
-
-                    if (prefixedAffectedTables.Count > 0)
+                    if (cacheProvider != null)
                     {
-                        cacheProvider.InvalidateCacheDependencies(new EFCacheKey(prefixedAffectedTables));
+                        var prefixedAffectedTables = affectedTables
+                            .Select(tableName => Configuration.DatabaseCacheKeyPrefix + tableName)
+                            .ToHashSet();
+
+                        if (prefixedAffectedTables.Count > 0)
+                        {
+                            cacheProvider.InvalidateCacheDependencies(new EFCacheKey(prefixedAffectedTables));
+                        }
                     }
                 }
             }
