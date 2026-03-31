@@ -20,6 +20,8 @@ public static class Configuration
         .AddEnvironmentVariables()
         .Build();
 
+    public static string DatabaseCacheKeyPrefix = "EF_";
+
     // API section
     private static string? _webTokenSecret;
 
