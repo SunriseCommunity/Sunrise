@@ -1,4 +1,4 @@
-using CSharpFunctionalExtensions;
+﻿using CSharpFunctionalExtensions;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -132,7 +132,10 @@ public sealed class DatabaseService(
 
                         if (prefixedAffectedTables.Count > 0)
                         {
-                            cacheProvider.InvalidateCacheDependencies(new EFCacheKey(prefixedAffectedTables));
+                            foreach (var table in prefixedAffectedTables)
+                            {
+                                cacheProvider.InvalidateCacheDependencies(new EFCacheKey(new HashSet<string> { table }));
+                            }
                         }
                     }
                 }
