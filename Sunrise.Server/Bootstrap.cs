@@ -329,7 +329,7 @@ public static class Bootstrap
             builder.Services.AddEFSecondLevelCache(options =>
             {
                 options.UseStackExchangeRedisCacheProvider(Configuration.RedisConnection, TimeSpan.FromSeconds(10))
-                    .UseCacheKeyPrefix("EF_").ConfigureLogging(true);
+                    .UseCacheKeyPrefix(Configuration.DatabaseCacheKeyPrefix).ConfigureLogging(true);
 
                 options.CacheAllQueries(CacheExpirationMode.Sliding, TimeSpan.FromMinutes(5));
                 options.UseDbCallsIfCachingProviderIsDown(TimeSpan.FromMinutes(1));

@@ -1,4 +1,6 @@
 ﻿using CSharpFunctionalExtensions;
+using EFCoreSecondLevelCacheInterceptor;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
@@ -18,7 +20,8 @@ public sealed class DatabaseService(
     UserRepository userRepository,
     EventRepository eventRepository,
     ScoreRepository scoreRepository,
-    MedalRepository medalRepository)
+    MedalRepository medalRepository,
+    IEFCacheServiceProvider cacheProvider)
 {
 
     public readonly BeatmapRepository Beatmaps = beatmapRepository;
@@ -68,6 +71,25 @@ public sealed class DatabaseService(
         var isCurrentlyInOtherTransactionScope = DbContext.Database.CurrentTransaction != null;
         await using var transaction = isCurrentlyInOtherTransactionScope ? null : await DbContext.Database.BeginTransactionAsync(ct);
 
+        HashSet<string> affectedTables = [];
+
+        void OnSavingChanges(object? sender, SavingChangesEventArgs e)
+        {
+            var tableNames = DbContext.ChangeTracker.Entries()
+                .Where(entry => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+                .Select(entry => entry.Metadata.GetTableName())
+                .Where(tableName => !string.IsNullOrWhiteSpace(tableName));
+
+
+            foreach (var tableName in tableNames)
+            {
+                affectedTables.Add(tableName!);
+            }
+        }
+
+        if (!isCurrentlyInOtherTransactionScope)
+            DbContext.SavingChanges += OnSavingChanges;
+
         try
         {
             await action();
@@ -80,6 +102,9 @@ public sealed class DatabaseService(
         }
         catch (ApplicationException ex)
         {
+            if (!isCurrentlyInOtherTransactionScope && transaction != null)
+                await transaction.RollbackAsync(ct);
+
             return Result.Failure($"{ex.Message}\n{ex.InnerException?.Message}");
         }
         catch (Exception ex)
@@ -90,6 +115,29 @@ public sealed class DatabaseService(
             logger.LogWarning(ex, "Failed to process db transaction");
 
             return Result.Failure($"{ex.Message}\n{ex.InnerException?.Message}");
+        }
+        finally
+        {
+            try
+            {
+                if (!isCurrentlyInOtherTransactionScope)
+                {
+                    DbContext.SavingChanges -= OnSavingChanges;
+
+                    var prefixedAffectedTables = affectedTables
+                        .Select(tableName => Configuration.DatabaseCacheKeyPrefix + tableName)
+                        .ToHashSet();
+
+                    if (prefixedAffectedTables.Count > 0)
+                    {
+                        cacheProvider.InvalidateCacheDependencies(new EFCacheKey(prefixedAffectedTables));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to invalidate cache after db transaction, affected tables: {AffectedTables}", string.Join(", ", affectedTables));
+            }
         }
     }
 }
