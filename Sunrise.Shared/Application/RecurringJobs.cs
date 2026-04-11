@@ -1,3 +1,4 @@
+using System.Formats.Tar;
 using System.IO.Compression;
 using CSharpFunctionalExtensions;
 using Hangfire;
@@ -215,7 +216,7 @@ public class RecurringJobs
 
         var databaseBackupFilePath = Path.Combine(Configuration.DataPath, databaseBackupString);
 
-        var zipFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.zip");
+        var archiveFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.tar.gz");
 
         try
         {
@@ -231,9 +232,7 @@ public class RecurringJobs
                 var oldestFile = files.OrderBy(f => new FileInfo(f).CreationTime).First();
                 File.Delete(oldestFile);
             }
-
-            using var zipArchive = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
-
+            
             var backupDatabaseResult = await CreateDatabaseBackup(databaseBackupFilePath, ct);
 
             if (backupDatabaseResult.IsFailure)
@@ -242,20 +241,24 @@ public class RecurringJobs
             backupDatabaseFilePath = backupDatabaseResult.Value;
             var backupDatabaseFilename = Path.GetFileName(backupDatabaseFilePath);
 
-            await CopyFileToZip(zipArchive, backupDatabaseFilePath, backupDatabaseFilename, ct);
+            await using var archiveStream = File.OpenWrite(archiveFileName);
+            await using var gzipStream = new GZipStream(archiveStream, CompressionLevel.Fastest);
+            await using var tarWriter = new TarWriter(gzipStream, TarEntryFormat.Gnu, false);
+            
+            await AddFileToTar(tarWriter, backupDatabaseFilePath, backupDatabaseFilename, ct);
 
             foreach (var filePath in GetFilesRecursively(dataFolderPath, ct))
             {
                 ct.ThrowIfCancellationRequested();
 
-                var relativePath = Path.GetRelativePath(Configuration.DataPath, filePath);
-                await CopyFileToZip(zipArchive, filePath, relativePath, ct);
+                var relativePath = Path.GetRelativePath(Configuration.DataPath, filePath).Replace('\\', '/');
+                await AddFileToTar(tarWriter, filePath, relativePath, ct);
             }
         }
         catch (Exception)
         {
-            if (File.Exists(zipFileName))
-                File.Delete(zipFileName);
+            if (File.Exists(archiveFileName))
+                File.Delete(archiveFileName);
 
             throw;
         }
@@ -266,13 +269,16 @@ public class RecurringJobs
         }
     }
 
-    private static async Task CopyFileToZip(ZipArchive zipArchive, string path, string zipPath, CancellationToken ct = default)
+    private static async Task AddFileToTar(TarWriter tarWriter, string filePath, string entryName, CancellationToken ct = default)
     {
-        var zipEntry = zipArchive.CreateEntry(zipPath);
+        await using var fileStream = File.OpenRead(filePath);
 
-        await using var fileReader = File.OpenRead(path);
-        await using var zipStream = zipEntry.Open();
-        await fileReader.CopyToAsync(zipStream, ct);
+        var entry = new GnuTarEntry(TarEntryType.RegularFile, entryName)
+        {
+            DataStream = fileStream
+        };
+
+        await tarWriter.WriteEntryAsync(entry, ct);
     }
 
     private static async Task<Result<string>> CreateDatabaseBackup(string databaseBackupFilePathString, CancellationToken ct)
@@ -309,13 +315,13 @@ public class RecurringJobs
 
     private static IEnumerable<string> GetFilesRecursively(string directory, CancellationToken ct = default)
     {
-        foreach (var filePath in Directory.GetFiles(directory))
+        foreach (var filePath in Directory.EnumerateFiles(directory))
         {
             ct.ThrowIfCancellationRequested();
             yield return filePath;
         }
 
-        foreach (var subDirectory in Directory.GetDirectories(directory))
+        foreach (var subDirectory in Directory.EnumerateDirectories(directory))
         {
             ct.ThrowIfCancellationRequested();
 
