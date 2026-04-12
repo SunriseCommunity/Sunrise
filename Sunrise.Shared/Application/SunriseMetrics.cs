@@ -183,22 +183,23 @@ public class SunriseMetrics
             new KeyValuePair<string, object?>("user_id", session.UserId.ToString()));
     }
 
-    public static void RequestReturnedErrorCounterInc(string requestType, Session? session, string? errorMessage)
+    [Obsolete("Please use logger instead")]
+    public static void RequestReturnedErrorCounterInc(string requestType, int userId, string? errorMessage)
     {
         RequestReturnedErrorCounter.Add(1,
             new KeyValuePair<string, object?>("request_type", requestType),
-            new KeyValuePair<string, object?>("user_id", session?.UserId.ToString() ?? "-1"));
+            new KeyValuePair<string, object?>("user_id", userId.ToString()));
 
         Log.Error("Request {RequestType} by (user id: {UserId}) returned error: {ErrorMessage}",
             requestType,
-            session?.UserId.ToString() ?? "-1",
+            userId.ToString(),
             errorMessage ?? "Not specified");
     }
 
-    public static void ScoreSubmittedCounterInc(Session session, int beatmapId, GameMode gameMode, Mods mods, double pp,  int scoreId)
+    public static void ScoreSubmittedCounterInc(int userId, int beatmapId, GameMode gameMode, Mods mods, double pp, int scoreId)
     {
         ScoresSubmittedCounter.Add(1,
-            new KeyValuePair<string, object?>("user_id", session.UserId.ToString()),
+            new KeyValuePair<string, object?>("user_id", userId.ToString()),
             new KeyValuePair<string, object?>("beatmap_id", beatmapId.ToString()),
             new KeyValuePair<string, object?>("game_mode", gameMode.ToString()),
             new KeyValuePair<string, object?>("mods", mods.ToString()),

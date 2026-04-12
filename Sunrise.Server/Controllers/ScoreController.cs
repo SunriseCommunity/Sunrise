@@ -44,7 +44,7 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
 
         if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session,
+            SubmitScoreHelper.ReportRejectionToMetrics(session.UserId,
                 scoreSerialized,
                 "SubmitScore: Invalid session or passhash mismatch");
 
@@ -59,7 +59,7 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
 
         if (isScoreAlreadyBeingProcessed)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session,
+            SubmitScoreHelper.ReportRejectionToMetrics(session.UserId,
                 scoreSerialized,
                 "Duplicate score submission while previous is still processing");
 

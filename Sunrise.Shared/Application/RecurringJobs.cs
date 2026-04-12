@@ -24,7 +24,7 @@ public class RecurringJobs
 
         RecurringJob.AddOrUpdate("Save users stats snapshots", () => SaveUsersStatsSnapshots(CancellationToken.None), "59 23 * * *"); // At 23:59 UTC
 
-        // TODO: Disabling inactive users is not really was thinking through. I would keep it as deprecated for now and maybe revisit it in the future.
+        // TODO: Disabling inactive users wasn't fully thought through. I would keep it as deprecated for now and maybe revisit it in the future.
         // RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
 
         RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
@@ -53,7 +53,7 @@ public class RecurringJobs
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
-            for (var x = 1;; x++)
+            for (var x = 1; ; x++)
             {
                 var usersStats = await database.Users.Stats.GetUsersStats(i,
                     LeaderboardSortType.Pp,
@@ -109,7 +109,7 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)), ct: ct);
 
@@ -131,12 +131,12 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetUsers(options: new QueryOptions(new Pagination(i, pageSize))
-                {
-                    QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
-                },
+            {
+                QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
+            },
                 ct: ct);
 
             foreach (var user in users.Where(user =>
