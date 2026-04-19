@@ -84,6 +84,11 @@ public class ChatChannelRepository
         return channel;
     }
 
+    public ChatChannel? GetScoreAnnouncementChannel()
+    {
+        return _channels.GetValueOrDefault("#announce");
+    }
+
     public List<ChatChannel> GetChannels(Session? session = null)
     {
         if (session == null)
