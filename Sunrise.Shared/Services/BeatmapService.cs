@@ -32,7 +32,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 Status = HttpStatusCode.BadRequest
             });
 
-        BeatmapSet? beatmapSet;
+        BeatmapSet beatmapSet;
 
         // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
         // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
@@ -44,9 +44,13 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         try
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
-
-            beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
-            if (beatmapSet != null) return beatmapSet;
+            
+            var cachedBeatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
+            if (cachedBeatmapSet != null) 
+            {
+                beatmapSet = cachedBeatmapSet;
+                return Result.Success<BeatmapSet, ErrorMessage>(beatmapSet);
+            }
 
             var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
             {
