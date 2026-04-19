@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
@@ -16,6 +17,7 @@ namespace Sunrise.Shared.Database.Models;
 [Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
 [Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
+[Index(nameof(ScoreHash), IsUnique = true)]
 public class Score
 {
     public Score()
@@ -26,10 +28,11 @@ public class Score
     public int Id { get; set; }
 
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; }
+    public User? User { get; set; }
 
     public int UserId { get; set; }
     public int BeatmapId { get; set; }
+    [MaxLength(32)]
     public string ScoreHash { get; set; }
     public string BeatmapHash { get; set; }
 
@@ -52,6 +55,7 @@ public class Score
     public Mods Mods { get; set; }
     public string Grade { get; set; }
     public bool IsPassed { get; set; }
+    // TODO: Drop persisted IsScoreable once all score reads derive it from BeatmapStatus.
     public bool IsScoreable { get; set; }
     public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.Unknown;
     public GameMode GameMode { get; set; }
