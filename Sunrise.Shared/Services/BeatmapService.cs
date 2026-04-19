@@ -44,12 +44,13 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         try
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
-            
+
             var cachedBeatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
-            if (cachedBeatmapSet != null) 
+
+            if (cachedBeatmapSet != null)
             {
                 beatmapSet = cachedBeatmapSet;
-                return Result.Success<BeatmapSet, ErrorMessage>(beatmapSet);
+                return beatmapSet;
             }
 
             var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
@@ -119,7 +120,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         var beatmapSetsResults = await Task.WhenAll(beatmapSetsTasks);
 
-        if (beatmapSetsResults.Any(b => b.IsFailure && (ignoreNotFoundBeatmapSets == false || b.Error.Status != HttpStatusCode.NotFound)))
+        if (beatmapSetsResults.Any(b => b.IsFailure && (!ignoreNotFoundBeatmapSets || b.Error.Status != HttpStatusCode.NotFound)))
         {
             return beatmapSetsResults.First(v => v.IsFailure).Error;
         }
