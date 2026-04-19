@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -6,31 +6,21 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
-using Sunrise.Shared.Objects.Sessions;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
-namespace Sunrise.Server.Services.Helpers.Scores;
+namespace Sunrise.Server.Helpers;
 
 public static class SubmitScoreHelper
 {
-    private const string MetricsError = "Score {0} by (user id: {1}) rejected with reason: {2}";
     private const string AnnounceNewFirstPlaceString = "{0} achieved #1 on {1}";
 
-
-    public static string GetNewFirstPlaceString(Session session, Score score, BeatmapSet beatmapSet, Beatmap beatmap)
+    public static string GetNewFirstPlaceString(Score score, BeatmapSet beatmapSet, Beatmap beatmap)
     {
-        var scoreMessage = score.GetBeatmapInGameChatString(beatmapSet, session).Result;
+        var scoreMessage = score.GetBeatmapInGameChatString(beatmapSet, beatmap);
         var message = string.Format(AnnounceNewFirstPlaceString, score.User.GetUserInGameChatString(), scoreMessage);
 
         return message;
-    }
-
-    public static void ReportRejectionToMetrics(Session session, string scoreData, string reason)
-    {
-        var message = string.Format(MetricsError, scoreData, session.UserId, reason);
-        SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, null, message);
     }
 
     public static void UpdateSubmissionStatus(this Score score, Score? prevPBest)
@@ -65,30 +55,6 @@ public static class SubmitScoreHelper
         score.SubmissionStatus = SubmissionStatus.Submitted;
     }
 
-    public static bool IsScoreValid(Session session, Score score, string clientHash,
-        string beatmapHash, string onlineBeatmapHash, string? storyboardHash, string sessionUsername)
-    {
-        var computedOnlineHash = score.ComputeOnlineHash(sessionUsername.Trim(), clientHash, storyboardHash);
-
-        var checks = new[]
-        {
-            string.Equals(clientHash, session.Attributes.UserHash, StringComparison.Ordinal),
-            string.Equals(score.ScoreHash, computedOnlineHash, StringComparison.Ordinal),
-            string.Equals(beatmapHash,
-                onlineBeatmapHash,
-                StringComparison
-                    .Ordinal) // Since we got beatmap from client hash, this is not really needed. But just for obscure cases.
-        };
-
-        if (checks.All(x => x))
-        {
-            return true;
-        }
-
-        ReportRejectionToMetrics(session, $"{clientHash}|{session.Attributes.UserHash}|{score.ScoreHash}|{computedOnlineHash}|{beatmapHash}|{onlineBeatmapHash}.storyboard.{storyboardHash}", "Invalid checksums on score submission");
-        return false;
-    }
-
     public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats userStats, UserStats prevUserStats,
         Score newScore,
         UserPersonalBestScores? prevUserPersonalBestScores, string? newAchievements = null)
@@ -116,7 +82,7 @@ public static class SubmitScoreHelper
                mods.HasFlag(Mods.Autoplay);
     }
 
-    public static int GetTimeElapsed(Score score, int scoreTime, int scoreFailTime)
+    public static int GetTimeElapsed(SubmittedScore score, int scoreTime, int scoreFailTime)
     {
         var isPassed = score.IsPassed || score.Mods.HasFlag(Mods.NoFail);
         return isPassed ? scoreTime : scoreFailTime;
