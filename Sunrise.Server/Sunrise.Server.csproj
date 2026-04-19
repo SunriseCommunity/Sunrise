@@ -21,6 +21,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Sunrise.Tests"/>
+        <InternalsVisibleTo Include="Sunrise.Server.Tests"/>
     </ItemGroup>
 
     <ItemGroup>
