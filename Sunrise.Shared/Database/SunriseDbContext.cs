@@ -3,7 +3,10 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Events;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Scores;
+using ScoreTaskQueueEntity = Sunrise.Shared.Database.Models.Scores.ScoreTaskQueue;
 
 namespace Sunrise.Shared.Database;
 
@@ -37,6 +40,8 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
+    public DbSet<ScoreProcessingQueue> ScoreProcessingQueue { get; set; }
+    public DbSet<ScoreTaskQueue> ScoreTaskQueue { get; set; }
 
     public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
@@ -45,6 +50,11 @@ public class SunriseDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        const string scoreTaskTypeColumn = nameof(ScoreTaskQueueEntity.TaskType);
+        const string scoreTaskScoreIdColumn = nameof(ScoreTaskQueueEntity.ScoreId);
+        const string scoreTaskPayloadIdColumn = nameof(ScoreTaskQueueEntity.ScoreProcessingQueueId);
+        const string scoreTaskStatusColumn = nameof(ScoreTaskQueueEntity.Status);
+
         modelBuilder.Entity<User>()
             .Property(u => u.Username)
             .UseCollation("utf8mb4_unicode_ci");
@@ -64,6 +74,34 @@ public class SunriseDbContext : DbContext
             .WithMany(u => u.UserReceivedRelationships)
             .HasForeignKey(ur => ur.TargetId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ScoreTaskQueue>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_score_task_queue_target",
+                $"(({scoreTaskTypeColumn} = {(int)ScoreTaskType.Submission} AND {scoreTaskPayloadIdColumn} IS NOT NULL AND {scoreTaskScoreIdColumn} IS NULL) " +
+                $"OR ({scoreTaskTypeColumn} <> {(int)ScoreTaskType.Submission} AND {scoreTaskPayloadIdColumn} IS NULL AND {scoreTaskScoreIdColumn} IS NOT NULL))"));
+
+        modelBuilder.Entity<ScoreTaskQueue>()
+            .Property<int?>("ActiveScoreId")
+            .HasComputedColumnSql(
+                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskScoreIdColumn} ELSE NULL END",
+                true);
+
+        modelBuilder.Entity<ScoreTaskQueue>()
+            .Property<int?>("ActiveScoreProcessingQueueId")
+            .HasComputedColumnSql(
+                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskPayloadIdColumn} ELSE NULL END",
+                true);
+
+        modelBuilder.Entity<ScoreTaskQueue>()
+            .HasIndex("ActiveScoreId")
+            .IsUnique()
+            .HasDatabaseName("UX_score_task_queue_active_score");
+
+        modelBuilder.Entity<ScoreTaskQueue>()
+            .HasIndex("ActiveScoreProcessingQueueId")
+            .IsUnique()
+            .HasDatabaseName("UX_score_task_queue_active_payload");
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

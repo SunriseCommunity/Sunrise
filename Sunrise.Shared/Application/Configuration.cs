@@ -191,6 +191,39 @@ public static class Configuration
     public static string? BotUsername { get; set; } = "";
     public static string BotPrefix => Config.GetSection("Bot").GetValue<string?>("Prefix") ?? "";
 
+    // Score processing queue section
+    public static int ScoreProcessingTimeoutSeconds =>
+        Config.GetSection("ScoreProcessing").GetValue<int?>("TimeoutSeconds") ?? 10;
+
+    public static int ScoreProcessingMaxConcurrency =>
+        Config.GetSection("ScoreProcessing").GetValue<int?>("MaxConcurrency") ?? 3;
+
+    public static int ScoreProcessingPollerInterBatchDelaySeconds =>
+        Config.GetSection("ScoreProcessing").GetValue<int?>("PollerInterBatchDelaySeconds")
+        ?? Config.GetSection("ScoreProcessing").GetValue<int?>("PollerIntervalSeconds")
+        ?? 1;
+
+    public static int ScoreProcessingMaxRetries =>
+        Config.GetSection("ScoreProcessing").GetValue<int?>("MaxRetries") ?? 10;
+
+    public static int ScoreProcessingBatchLeaseSeconds =>
+        Config.GetSection("ScoreProcessing").GetValue<int?>("BatchLeaseSeconds") ?? 120;
+
+    public static TimeSpan ScoreProcessingBatchLease =>
+        TimeSpan.FromSeconds(ScoreProcessingBatchLeaseSeconds);
+
+    public static TimeSpan[] ScoreProcessingBackoffSchedule =>
+        Config.GetSection("ScoreProcessing").GetSection("BackoffScheduleSeconds").Get<int[]>()
+            ?.Select(seconds => TimeSpan.FromSeconds(seconds)).ToArray()
+        ??
+        [
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(15),
+            TimeSpan.FromMinutes(1),
+            TimeSpan.FromMinutes(15),
+            TimeSpan.FromHours(1)
+        ];
+
     // Redis section
     public static string RedisConnection => GetValuesFromEnvOrFallbackToDeprecatedConfigIfCantAccessEnv("REDIS_HOST",
         () => string.Format("{0}:{1}",

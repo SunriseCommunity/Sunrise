@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -10,9 +11,11 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    partial class SunriseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260419233843_AddScoreProcessingQueue")]
+    partial class AddScoreProcessingQueue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -304,13 +307,9 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.Property<string>("ScoreHash")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<int>("SubmissionStatus")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TimeElapsed")
                         .HasColumnType("int");
 
                     b.Property<long>("TotalScore")
@@ -367,8 +366,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.Property<string>("ScoreHash")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
+                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("ScoreSerialized")
                         .IsRequired()

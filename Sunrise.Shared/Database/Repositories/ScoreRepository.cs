@@ -11,6 +11,8 @@ using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Users;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Utils;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -37,15 +39,6 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         {
             dbContext.UpdateEntity(score);
             await dbContext.SaveChangesAsync();
-        });
-    }
-
-    public async Task<Result> MarkScoreAsDeleted(Score score)
-    {
-        return await ResultUtil.TryExecuteAsync(async () =>
-        {
-            score.SubmissionStatus = SubmissionStatus.Deleted;
-            await UpdateScore(score);
         });
     }
 
@@ -78,6 +71,14 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .FirstOrDefaultAsync(cancellationToken: ct);
     }
 
+    public async Task<Score?> GetUnvalidatedScore(int id, QueryOptions? options = null, CancellationToken ct = default)
+    {
+        return await dbContext.Scores
+            .Where(s => s.Id == id)
+            .UseQueryOptions(options)
+            .FirstOrDefaultAsync(cancellationToken: ct);
+    }
+
     public async Task<Score?> GetScore(string scoreHash, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.Scores
@@ -86,7 +87,6 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .UseQueryOptions(options)
             .FirstOrDefaultAsync(cancellationToken: ct);
     }
-
 
     public async Task<(List<KeyValuePair<int, int>>, int)> GetUserMostPlayedBeatmapIds(int userId, GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
@@ -123,10 +123,9 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         var scoresGrouped = dbContext.Scores
             .FilterValidScores()
             .FilterPassedScoreableScores()
-            .Where(
-                s =>
-                    s.BeatmapHash == EF.Constant(beatmapHash) &&
-                    s.GameMode == EF.Constant(gameMode));
+            .Where(s =>
+                s.BeatmapHash == EF.Constant(beatmapHash) &&
+                s.GameMode == EF.Constant(gameMode));
 
         if (type is LeaderboardType.GlobalWithMods && mods != null)
         {
@@ -270,7 +269,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         var command = connection.CreateCommand();
         command.CommandText = $"""
-                               
+
                                        SELECT Id,
                                               RANK() OVER (PARTITION BY BeatmapId ORDER BY {orderByValue} DESC) AS LeaderboardPosition
                                        FROM score
@@ -316,5 +315,80 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
                 Count = g.LongCount()
             })
             .ToDictionaryAsync(k => k.GameMode, v => v.Count, ct);
+    }
+
+    public async Task<UserBeatmapPeers> GetUserBeatmapPeersForUpdate(
+        int userId,
+        string beatmapHash,
+        Mods mods,
+        int? excludeScoreId = null,
+        CancellationToken ct = default)
+    {
+        var excludeId = excludeScoreId ?? 0;
+
+        // TODO: Use EntityFrameworkCore.Locking.MySql instead after move to Pomelo MySQL provider
+        var scores = await dbContext.Scores
+            .FromSqlInterpolated($"""
+                                  SELECT * FROM score
+                                  WHERE UserId = {userId}
+                                    AND BeatmapHash = {beatmapHash}
+                                    AND IsScoreable = TRUE
+                                    AND IsPassed = TRUE
+                                    AND SubmissionStatus != {(int)SubmissionStatus.Failed}
+                                    AND SubmissionStatus != {(int)SubmissionStatus.Deleted}
+                                    AND SubmissionStatus != {(int)SubmissionStatus.Unknown}
+                                    AND Id != {excludeId}
+                                  FOR UPDATE
+                                  """)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        foreach (var score in scores)
+        {
+            score.LocalProperties = score.LocalProperties.FromScore(score);
+        }
+
+        var overallPeer = scores.GetUserPersonalBestScores(userId);
+        var sameModsPeer = scores
+            .Where(x => x.Mods == mods)
+            .ToList()
+            .GetUserPersonalBestScores(userId);
+
+        return new UserBeatmapPeers(sameModsPeer, overallPeer);
+    }
+
+    public async Task<int?> GetUserMaxComboExcluding(
+        int userId,
+        GameMode gameMode,
+        int? excludeScoreId = null,
+        CancellationToken ct = default)
+    {
+        var query = dbContext.Scores
+            .AsNoTracking()
+            .Where(s => s.UserId == userId
+                        && s.GameMode == gameMode
+                        && s.SubmissionStatus == SubmissionStatus.Best
+                        && s.IsScoreable
+                        && s.IsPassed);
+
+        if (excludeScoreId.HasValue)
+        {
+            var excludeId = excludeScoreId.Value;
+            query = query.Where(s => s.Id != excludeId);
+        }
+
+        var hasAny = await query.AnyAsync(ct);
+        if (!hasAny)
+            return null;
+
+        return await query.MaxAsync(s => (int?)s.MaxCombo, ct);
+    }
+    
+    public async Task<int?> GetUserIdByScoreId(int scoreId, CancellationToken ct = default)
+    {
+        return await dbContext.Scores
+            .Where(p => p.Id == scoreId)
+            .Select(p => (int?)p.UserId)
+            .FirstOrDefaultAsync(ct);
     }
 }

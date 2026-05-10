@@ -42,6 +42,7 @@ using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Repositories;
@@ -437,6 +438,8 @@ public static class Bootstrap
         builder.Services.AddScoped<BeatmapEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
+        builder.Services.AddScoped<ScoreProcessingQueueRepository>();
+        builder.Services.AddScoped<ScoreTaskQueueRepository>();
         builder.Services.AddScoped<ScoreFileService>();
 
         builder.Services.AddScoped<OsuVersionRepository>();
