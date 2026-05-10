@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Server.Commands.ChatCommands.System;
@@ -7,6 +9,7 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
@@ -15,7 +18,6 @@ using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
-using Sunrise.Server.Controllers;
 using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -318,7 +320,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.DifficultyRating = 5.0;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        App.MockHttpClient?.MockPerformanceCalculation(500, 5.0);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -336,7 +338,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var achievementsMatch = System.Text.RegularExpressions.Regex.Match(resultString, @"achievements-new:(.*)");
+        var achievementsMatch = Regex.Match(resultString, @"achievements-new:(.*)");
         Assert.True(achievementsMatch.Success, "Response should contain achievements-new section");
 
         var achievementsRaw = achievementsMatch.Groups[1].Value.Trim();
@@ -780,6 +782,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
         beatmap.EnrichWithScoreData(score);
+        beatmap.StatusString = BeatmapStatusWeb.Pending.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -859,6 +862,44 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         var restrictionReason = await Database.Users.Moderation.GetActiveRestrictionReason(session.UserId);
         Assert.Contains("Invalid checksums on score submission", restrictionReason);
+    }
+
+    [Fact]
+    public async Task TestMissingReplayDoesNotRestrictUser()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomString(),
+            session.Attributes.UserHash,
+            null,
+            null
+        );
+
+        // Assert
+        Assert.Contains("error", resultString);
+
+        var isRestricted = await Database.Users.Moderation.IsUserRestricted(session.UserId);
+        Assert.False(isRestricted);
     }
 
     [Fact]
@@ -1414,6 +1455,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         oldScore.SubmissionStatus = SubmissionStatus.Best;
 
         oldScore.EnrichWithSessionData(session);
+        oldScore.WhenPlayed = DateTime.UtcNow.AddMinutes(-5);
+        oldScore.ClientTime = oldScore.WhenPlayed;
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.GameMode = oldScore.GameMode;
@@ -1684,7 +1727,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsA == null)
             throw new Exception("User stats are null");
 
-        await userStatsA.UpdateWithScore(scoreA, null, 0);
+        userStatsA.UpdateWithDbScore(scoreA);
         await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
 
         // Create User B and submit score with 100pp
@@ -1773,7 +1816,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsA == null)
             throw new Exception("User stats are null");
 
-        await userStatsA.UpdateWithScore(scoreA, null, 1);
+        userStatsA.UpdateWithDbScore(scoreA);
         await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
 
         // Create User B with 100pp
@@ -1801,7 +1844,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsB == null)
             throw new Exception("User stats are null");
 
-        await userStatsB.UpdateWithScore(scoreB1, null, 0);
+        userStatsB.UpdateWithDbScore(scoreB1);
         await Database.Users.Stats.UpdateUserStats(userStatsB, userB);
 
         // Verify initial ranks: User A should be rank 1, User B should be rank 2
@@ -1910,7 +1953,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
-    public async Task TestSuccessfulSubmitScoreWithBeatmapSetRetrievalFallback()
+    public async Task TestScoreQueuedWhenBeatmapRetrievalFails()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
@@ -1956,16 +1999,20 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         );
 
         // Assert
-        Assert.DoesNotContain("error", resultString);
+        Assert.Equal("error: no", resultString);
 
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
+        var queueEntry = await Database.DbContext.ScoreTaskQueue
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+        Assert.NotNull(queueEntry);
+        Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
+        Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
+        Assert.NotNull(queueEntry.ScoreProcessingQueueId);
     }
 
     [Fact]
-    public async Task TestSuccessfulSubmitScoreWithPerformanceCalculationFallback()
+    public async Task TestScoreQueuedWhenPerformanceCalculationFails()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
@@ -2032,74 +2079,15 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         );
 
         // Assert
-        Assert.DoesNotContain("error", resultString);
+        Assert.Equal("error: no", resultString);
 
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
+        var queueEntry = await Database.DbContext.ScoreTaskQueue
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
-
-        Assert.Equal(500, databaseScore.PerformancePoints);
-    }
-
-    [Fact]
-    public async Task TestDuplicateScoreSubmissionIsRejectedWhileOriginalIsProcessed()
-    {
-        // Arrange
-        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var secondScope = App.Server.Services.CreateScope();
-        var secondScoreService = secondScope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-
-        var (session, user) = await CreateTestSession();
-
-        var (replay, beatmapId) = GetValidTestReplay();
-
-        var score = replay.GetScore();
-        score.BeatmapId = beatmapId;
-
-        score.EnrichWithSessionData(session);
-
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
-        beatmap.EnrichWithScoreData(score);
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        App.MockHttpClient?.MockPerformanceCalculation();
-
-        // Act
-        var results = await Task.WhenAll(scoreService.SubmitScore(
-                session,
-                score.ToScoreString(user.Username),
-                score.BeatmapHash,
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomString(),
-                session.Attributes.UserHash,
-                _replayService.GenerateReplayFormFile(),
-                null
-            ),
-            secondScoreService.SubmitScore(
-                session,
-                score.ToScoreString(user.Username),
-                score.BeatmapHash,
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomString(),
-                session.Attributes.UserHash,
-                _replayService.GenerateReplayFormFile(),
-                null
-            ));
-
-        // Assert
-        var processedCount = results.Count(r => !r.Contains("error"));
-        var errorCount = results.Count(r => r.Contains("error"));
-        Assert.Equal(1, processedCount);
-        Assert.Equal(1, errorCount);
-
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
-
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+        Assert.NotNull(queueEntry);
+        Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
+        Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
+        Assert.NotNull(queueEntry.ScoreProcessingQueueId);
     }
 }

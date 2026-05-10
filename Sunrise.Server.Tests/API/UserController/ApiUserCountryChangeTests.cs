@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
@@ -73,7 +73,7 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
 
             var gamemodeUserStats = user.UserStats.First(s => s.GameMode == mode);
 
-            await gamemodeUserStats.UpdateWithScore(newScore, null, 0);
+            gamemodeUserStats.UpdateWithDbScore(newScore);
             var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
             if (updateUserStatsResult.IsFailure)
                 throw new Exception(updateUserStatsResult.Error);
@@ -171,7 +171,7 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
 
             var gamemodeUserStats = user.UserStats.First(s => s.GameMode == GameMode.Standard);
 
-            await gamemodeUserStats.UpdateWithScore(newScore, null, 0);
+            gamemodeUserStats.UpdateWithDbScore(newScore);
             var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
             if (updateUserStatsResult.IsFailure)
                 throw new Exception(updateUserStatsResult.Error);
@@ -264,7 +264,7 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
 
                 var gamemodeUserStats = user.UserStats.First(s => s.GameMode == mode);
 
-                await gamemodeUserStats.UpdateWithScore(newScore, null, 0);
+                gamemodeUserStats.UpdateWithDbScore(newScore);
                 var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
                 if (updateUserStatsResult.IsFailure)
                     throw new Exception(updateUserStatsResult.Error);
