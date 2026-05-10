@@ -129,9 +129,28 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,
-            new QueryOptions(true, new Pagination(1, 100)));
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
         return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
+    }
+
+    public async Task<(double PerformancePoints, double Accuracy)> CalculateUserWeightedStats(User user, GameMode mode, Score? score = null)
+    {
+        var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
+            mode,
+            ScoreTableType.Best,
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
+
+        var pp = PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
+        var accuracy = PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
+
+        return (pp, accuracy);
     }
 
     private bool IsValidResult<T>(Result<T, ErrorMessage> result)
