@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
 using Sunrise.Shared.Application;
@@ -11,6 +12,7 @@ using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
+using Sunrise.Shared.Services;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -158,6 +160,9 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
             }
         };
 
+        var calculatorService = App.Services.GetRequiredService<CalculatorService>();
+
+
         foreach (var (user, pp) in mockUserScoresData)
         {
             await CreateTestUser(user);
@@ -172,6 +177,8 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
             var gamemodeUserStats = user.UserStats.First(s => s.GameMode == GameMode.Standard);
 
             gamemodeUserStats.UpdateWithDbScore(newScore);
+            (gamemodeUserStats.PerformancePoints, gamemodeUserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(user, newScore.GameMode, newScore);
+
             var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
             if (updateUserStatsResult.IsFailure)
                 throw new Exception(updateUserStatsResult.Error);

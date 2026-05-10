@@ -9,12 +9,14 @@ namespace Sunrise.Shared.Extensions.Users;
 
 public static class UserStatsExtensions
 {
+    // TODO: I personally don't like existance of this method. Ideally tests should have separate helper and production code shouldn't use this at all.
     public static void UpdateWithDbScore(this UserStats userStats, Score score)
     {
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
         userStats.TotalScore += score.TotalScore;
         IncreaseTotalHits(userStats, score);
+        userStats.PlayTime += score.TimeElapsed;
         userStats.PlayCount++;
 
         if (isFailed || !score.IsScoreable)
