@@ -1,0 +1,34 @@
+using CSharpFunctionalExtensions;
+using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Objects;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
+
+namespace Sunrise.Processing.Scores.Handlers;
+
+public class ScoreDeletionHandler(
+    DatabaseService database,
+    ScoreCommitPipeline pipeline)
+    : ScoreHandlerBase(database, pipeline)
+{
+    public override async Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct)
+    {
+        var score = await Database.Scores.GetUnvalidatedScore(task.ScoreId!.Value, ct: ct);
+        if (score == null)
+            return new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, $"Score {task.ScoreId} not found").ToUnit();
+
+        if (score.SubmissionStatus == SubmissionStatus.Deleted)
+            return UnitResult.Success<ScoreProcessingError>();
+
+        var loadUserStateResult = await LoadUserState(score, ct);
+        if (loadUserStateResult.IsFailure)
+            return UnitResult.Failure(loadUserStateResult.Error);
+
+        var (user, userStats, userGrades) = loadUserStateResult.Value;
+        var ctx = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades);
+
+        return await CommitAndFinish(ctx, task, ct);
+    }
+}

@@ -327,6 +327,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         var excludeId = excludeScoreId ?? 0;
 
         // TODO: Use EntityFrameworkCore.Locking.MySql instead after move to Pomelo MySQL provider
+        // TODO: Use FilterPassedScoreableScores to filter scoreable scores
         var scores = await dbContext.Scores
             .FromSqlInterpolated($"""
                                   SELECT * FROM score
@@ -383,7 +384,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         return await query.MaxAsync(s => (int?)s.MaxCombo, ct);
     }
-    
+
     public async Task<int?> GetUserIdByScoreId(int scoreId, CancellationToken ct = default)
     {
         return await dbContext.Scores

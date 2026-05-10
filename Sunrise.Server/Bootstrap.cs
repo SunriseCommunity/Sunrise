@@ -31,6 +31,11 @@ using Serilog.Sinks.Grafana.Loki;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Processing.Scores.Handlers;
+using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Processing.Scores.Processors;
+using Sunrise.Processing.Services;
 using Sunrise.Server.Middlewares;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -127,7 +132,7 @@ public static class Bootstrap
 
     public static void AddTelemetry(this WebApplicationBuilder builder)
     {
-        if (string.IsNullOrEmpty(Configuration.TempoUri) && Configuration.UseMetrics == false)
+        if (string.IsNullOrEmpty(Configuration.TempoUri) && !Configuration.UseMetrics)
             return;
 
         var openTelemetryBuilder = builder.Services
@@ -457,9 +462,18 @@ public static class Bootstrap
         builder.Services.AddScoped<OsuVersionService>();
 
         builder.Services.AddScoped<ScoreService>();
+        builder.Services.AddScoped<ScoreCommitPipeline>();
+        builder.Services.AddScoped<IScoreEntityProcessor, LeaderboardProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserStatsScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserGradesScoreProcessor>();
+        builder.Services.AddScoped<ScoreSideEffectsPublisherService>();
+        builder.Services.AddScoped<ScoreSubmissionHandler>();
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreSubmissionHandler>(ScoreTaskType.Submission);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRecalculationHandler>(ScoreTaskType.Recalculation);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreDeletionHandler>(ScoreTaskType.Delete);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRestorationHandler>(ScoreTaskType.Restore);
+        builder.Services.AddScoped<ScoreProcessingJob>();
         builder.Services.AddScoped<UserBanchoService>();
-
-        builder.Services.AddScoped<Services.AuthService>();
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();

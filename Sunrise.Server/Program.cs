@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Hangfire;
+using Sunrise.Processing;
 using Sunrise.Server;
 using Sunrise.Server.Middlewares;
 using Sunrise.Shared.Application;
@@ -55,6 +56,7 @@ app.Configure();
 
 app.WarmUpSingletons();
 RecurringJobs.Initialize();
+ProcessingJobs.Initialize();
 
 if (Configuration.ClearCacheOnStartup)
 {

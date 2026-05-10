@@ -16,7 +16,6 @@
         </PackageReference>
         <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
         <PackageReference Include="Rijndael256" Version="3.2.0"/>
-        <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -26,6 +25,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sunrise.Shared/Sunrise.Shared.csproj"/>
+        <ProjectReference Include="..\Sunrise.Processing\Sunrise.Processing.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

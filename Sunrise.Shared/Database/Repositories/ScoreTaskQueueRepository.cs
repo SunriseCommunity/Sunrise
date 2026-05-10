@@ -103,10 +103,8 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
             return UnitResult.Failure($"Score task {taskId} was not found.");
 
         if (task.Status == ScoreProcessingStatus.Processing)
-        {
             return UnitResult.Failure(
                 $"Score task {taskId} is currently being processed and cannot be cancelled.");
-        }
 
         if (task.Status == ScoreProcessingStatus.Failed)
             return UnitResult.Failure($"Score task {taskId} has already failed; nothing to cancel.");

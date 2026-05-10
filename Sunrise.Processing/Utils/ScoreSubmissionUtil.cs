@@ -9,9 +9,9 @@ using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
-namespace Sunrise.Server.Helpers;
+namespace Sunrise.Processing.Utils;
 
-public static class SubmitScoreHelper
+public static class ScoreSubmissionUtil
 {
     private const string AnnounceNewFirstPlaceString = "{0} achieved #1 on {1}";
 

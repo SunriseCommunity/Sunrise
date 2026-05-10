@@ -11,11 +11,11 @@ using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 
-namespace Sunrise.Server.Services;
+namespace Sunrise.Processing.Services;
 
 public class MedalService(DatabaseService database)
 {
-    private static readonly ActivitySource ActivitySource = new("Sunrise.MedalService");
+    private static readonly ActivitySource ActivitySource = new("Sunrise.Processing.Services.MedalService");
 
     [TraceExecution]
     public async Task<string> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)

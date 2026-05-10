@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Sunrise.Shared/Sunrise.Shared.csproj"/>
+        <ProjectReference Include="../Sunrise.API/Sunrise.API.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
+    </ItemGroup>
+</Project>
