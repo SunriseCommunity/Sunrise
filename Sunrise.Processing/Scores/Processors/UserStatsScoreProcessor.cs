@@ -47,8 +47,8 @@ public class UserStatsScoreProcessor(
 
         var isFirstBeatmapScore = personalBestScores == null;
 
-        var isBetterTotalScoreValue = !isFirstBeatmapScore && score.TotalScore > personalBestScores?.BestScoreBasedByTotalScore.TotalScore;
-        var isBetterPerformanceValue = !isFirstBeatmapScore && (
+        var isBetterTotalScoreValue = isFirstBeatmapScore || score.TotalScore > personalBestScores?.BestScoreBasedByTotalScore.TotalScore;
+        var isBetterPerformanceValue = isFirstBeatmapScore || (
             Configuration.UseNewPerformanceCalculationAlgorithm
                 ? score.PerformancePoints > personalBestScores?.BestScoreForPerformanceCalculation.PerformancePoints
                 : isBetterTotalScoreValue);
