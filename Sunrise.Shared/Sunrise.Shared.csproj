@@ -20,13 +20,13 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.22"/>
         <PackageReference Include="MySql.EntityFrameworkCore" Version="9.0.9"/>
         <PackageReference Include="MySqlBackup.NET" Version="2.7.0"/>
-        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0"/>
-        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.14.0-beta.1"/>
-        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0"/>
-        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0"/>
-        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.14.0-beta.2"/>
-        <PackageReference Include="OpenTelemetry.Instrumentation.Hangfire" Version="1.14.0-beta.1"/>
-        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.3-beta.1" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.15.1-beta.1" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Hangfire" Version="1.15.1-beta.1" />
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
         <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0"/>
         <PackageReference Include="Serilog.Exceptions.EntityFrameworkCore" Version="8.4.0"/>
