@@ -22,11 +22,11 @@ public class SessionRepository
     private readonly ChatChannelRepository _channels;
     private readonly ConcurrentDictionary<string, Session> _sessions = new();
 
-    public SessionRepository(ChatChannelRepository channels)
+    public SessionRepository(ChatChannelRepository channels, IRecurringJobManager recurringJobManager)
     {
         _channels = channels;
 
-        RecurringJob.AddOrUpdate("ClearInactiveSessions", () => ClearInactiveSessions(), "*/1 * * * *");
+        recurringJobManager.AddOrUpdate("ClearInactiveSessions", () => ClearInactiveSessions(), "*/1 * * * *");
     }
 
     public void WriteToAllSessions(PacketType type, object data, int ignoreUserId = -1)
