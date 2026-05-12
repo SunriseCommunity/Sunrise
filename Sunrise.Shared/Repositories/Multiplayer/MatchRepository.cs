@@ -8,9 +8,18 @@ namespace Sunrise.Shared.Repositories.Multiplayer;
 
 public class MatchRepository
 {
+    private readonly ConcurrentQueue<(int id, DateTime time)> _freeMatchIds = new();
     private readonly ConcurrentDictionary<int, MultiplayerMatch> _matches = new();
+    private readonly TimeSpan _reuseMatchIdDelay = TimeSpan.FromSeconds(10);
+
     private readonly ConcurrentDictionary<int, Session> _sessionsInLobby = new();
-    private short _matchIdCounter = 1;
+
+    private int _matchIdCounter;
+
+    public IEnumerable<MultiplayerMatch> GetMatches()
+    {
+        return _matches.Values;
+    }
 
     public void JoinLobby(Session session)
     {
@@ -33,7 +42,7 @@ public class MatchRepository
         {
             Match =
             {
-                MatchId = _matchIdCounter++
+                MatchId = GetNextMatchId()
             }
         };
 
@@ -72,10 +81,11 @@ public class MatchRepository
         multiplayerMatch.UpdateMatchSettings(match, session);
     }
 
-    public void RemoveMatch(int matchId)
+    public void RemoveMatch(int matchId, bool discardReuseMatchIdDelay = false)
     {
         _matches.TryRemove(matchId, out _);
         WriteRemoveToLobby(matchId);
+        _freeMatchIds.Enqueue((matchId, discardReuseMatchIdDelay ? DateTime.MinValue : DateTime.UtcNow));
     }
 
     public void WriteUpdateToLobby(MultiplayerMatch match, bool isNewLobby = false)
@@ -97,5 +107,20 @@ public class MatchRepository
     public int GetMatchCount()
     {
         return _matches.Count;
+    }
+
+    private int GetNextMatchId()
+    {
+        while (_freeMatchIds.TryPeek(out var entry))
+        {
+            // If user will send request to join match X, which is deleted in the middle of the request and replaced with match Y. X.MatchId shouldn't be == to Y.MatchId
+            if (DateTime.UtcNow - entry.time < _reuseMatchIdDelay)
+                break;
+
+            if (_freeMatchIds.TryDequeue(out entry))
+                return entry.id;
+        }
+
+        return Interlocked.Increment(ref _matchIdCounter);
     }
 }
