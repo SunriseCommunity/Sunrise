@@ -89,6 +89,17 @@ public class MatchRepository
 
     public void RemoveMatch(int matchId, bool discardReuseMatchIdDelay = false)
     {
+        if (!_matches.TryGetValue(matchId, out var match))
+            return;
+
+        if (match.Match.InProgress)
+            match.EndGame(true);
+
+        foreach (var session in _sessionsInLobby.Values)
+        {
+            match.RemovePlayer(session, true);
+        }
+
         _matches.TryRemove(matchId, out _);
         WriteRemoveToLobby(matchId);
         _freeMatchIds.Enqueue((matchId, discardReuseMatchIdDelay ? DateTime.MinValue : DateTime.UtcNow));
