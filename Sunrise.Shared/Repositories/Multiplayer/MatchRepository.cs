@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Hangfire;
 using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Sunrise.Shared.Objects.Multiplayer;
@@ -15,6 +16,11 @@ public class MatchRepository
     private readonly ConcurrentDictionary<int, Session> _sessionsInLobby = new();
 
     private int _matchIdCounter;
+
+    public MatchRepository(IRecurringJobManager recurringJobManager)
+    {
+        recurringJobManager.AddOrUpdate("ClearInactiveMatches", () => ClearInactiveMatches(), Cron.Minutely);
+    }
 
     public IEnumerable<MultiplayerMatch> GetMatches()
     {
@@ -122,5 +128,12 @@ public class MatchRepository
         }
 
         return Interlocked.Increment(ref _matchIdCounter);
+    }
+
+    public void ClearInactiveMatches()
+    {
+        _matches.Where(x => x.Value.CreatedAt < DateTime.UtcNow - TimeSpan.FromMinutes(1) && x.Value.Players.IsEmpty)
+            .ToList()
+            .ForEach(x => RemoveMatch(x.Key));
     }
 }

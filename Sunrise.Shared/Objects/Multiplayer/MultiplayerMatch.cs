@@ -13,6 +13,7 @@ namespace Sunrise.Shared.Objects.Multiplayer;
 public class MultiplayerMatch
 {
     private readonly int _roomCreatorId;
+    public readonly DateTime CreatedAt = DateTime.UtcNow;
 
     public MultiplayerMatch(MatchRepository matches, BanchoMultiplayerMatch newMatch)
     {
