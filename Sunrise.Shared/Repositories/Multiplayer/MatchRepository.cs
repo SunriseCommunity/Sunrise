@@ -81,7 +81,7 @@ public class MatchRepository
 
         if (!multiplayerMatch.TryAddPlayer(session))
         {
-            // TryJoinMatch sends the SendMultiMatchJoinFail packet if the join fails, so we don't need to handle non-successful joins here
+            // TryAddPlayer sends the SendMultiMatchJoinFail packet if the join fails, so we don't need to handle non-successful joins here
             return false;
         }
 
