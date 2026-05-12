@@ -41,21 +41,27 @@ public class MatchRepository
         WriteUpdateToLobby(multiplayerMatch, true);
     }
 
-    public void JoinMatch(Session session, BanchoMultiplayerJoin joinData)
+    public bool TryJoinMatch(Session session, BanchoMultiplayerJoin joinData)
     {
         if (!_matches.TryGetValue(joinData.MatchId, out var multiplayerMatch))
         {
             session.SendMultiMatchJoinFail();
-            return;
+            return false;
         }
 
         if (multiplayerMatch.Match.GamePassword != null && multiplayerMatch.Match.GamePassword != joinData.Password.Replace(" ", "_"))
         {
             session.SendMultiMatchJoinFail();
-            return;
+            return false;
         }
 
-        multiplayerMatch.AddPlayer(session);
+        if (!multiplayerMatch.TryAddPlayer(session))
+        {
+            session.SendMultiMatchJoinFail();
+            return false;
+        }
+
+        return true;
     }
 
     public void UpdateMatch(Session session, BanchoMultiplayerMatch match)

@@ -26,14 +26,18 @@ public class MultiMatchCreateHandler : IPacketHandler
 
         var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
+        // NOTE: As the host can not join the lobby, best would be not to announce the creation, but I'll leave it for another day
         multiplayerMatches.CreateMatch(match);
 
-        multiplayerMatches.JoinMatch(session,
+        var isHostJoinedMatch = multiplayerMatches.TryJoinMatch(session,
             new BanchoMultiplayerJoin
             {
                 MatchId = match.MatchId,
                 Password = match.GamePassword
             });
+
+        if (!isHostJoinedMatch)
+            multiplayerMatches.RemoveMatch(match.MatchId);
 
         return Task.CompletedTask;
     }
