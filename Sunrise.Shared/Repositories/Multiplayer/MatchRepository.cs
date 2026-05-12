@@ -42,7 +42,7 @@ public class MatchRepository
         _sessionsInLobby.TryRemove(session.UserId, out _);
     }
 
-    public void CreateMatch(BanchoMultiplayerMatch match)
+    public bool CreateMatchWithHost(Session session, BanchoMultiplayerMatch match)
     {
         var multiplayerMatch = new MultiplayerMatch(this, match)
         {
@@ -53,7 +53,16 @@ public class MatchRepository
         };
 
         _matches.TryAdd(match.MatchId, multiplayerMatch);
+
+        if (!multiplayerMatch.TryAddPlayer(session))
+        {
+            _matches.TryRemove(match.MatchId, out _);
+            _freeMatchIds.Enqueue((match.MatchId, DateTime.MinValue)); // We didn't announce this match to lobby, so we can reuse this match id immediately
+            return false;
+        }
+
         WriteUpdateToLobby(multiplayerMatch, true);
+        return true;
     }
 
     public bool TryJoinMatch(Session session, BanchoMultiplayerJoin joinData)
