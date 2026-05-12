@@ -72,7 +72,7 @@ public class MatchRepository
 
         if (!multiplayerMatch.TryAddPlayer(session))
         {
-            session.SendMultiMatchJoinFail();
+            // TryJoinMatch sends the SendMultiMatchJoinFail packet if the join fails, so we don't need to handle non-successful joins here
             return false;
         }
 
@@ -95,7 +95,7 @@ public class MatchRepository
         if (match.Match.InProgress)
             match.EndGame(true);
 
-        foreach (var session in _sessionsInLobby.Values)
+        foreach (var session in match.Players.Values)
         {
             match.RemovePlayer(session, true);
         }
