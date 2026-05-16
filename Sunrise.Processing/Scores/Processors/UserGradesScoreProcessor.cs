@@ -1,7 +1,9 @@
 ﻿using osu.Shared;
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Extensions.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Processing.Scores.Processors;
@@ -38,14 +40,17 @@ public class UserGradesScoreProcessor : IScoreEntityProcessor
     {
         var score = ctx.Score;
         var userGrades = ctx.UserGrades;
-        var prevBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
+        var previousOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
 
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
         if (isFailed || !score.IsScoreable || score.SubmissionStatus != SubmissionStatus.Best)
             return;
 
-        if (prevBest != null)
-            UpdateUserGradesCount(userGrades, prevBest.Grade, -1);
+        if (!IsOverallBestScore(score, previousOverallBest))
+            return;
+
+        if (previousOverallBest != null)
+            UpdateUserGradesCount(userGrades, previousOverallBest.Grade, -1);
 
         UpdateUserGradesCount(userGrades, score.Grade, 1);
     }
@@ -55,12 +60,29 @@ public class UserGradesScoreProcessor : IScoreEntityProcessor
         var score = ctx.Score;
         var userGrades = ctx.UserGrades;
         var original = ctx.OriginalState;
+        var promotedOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
 
         var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
         if (isFailed || !original.IsScoreable || original.SubmissionStatus != SubmissionStatus.Best)
             return;
 
+        if (!IsOverallBestScore(score, promotedOverallBest))
+            return;
+
         UpdateUserGradesCount(userGrades, score.Grade, -1);
+
+        if (promotedOverallBest != null)
+            UpdateUserGradesCount(userGrades, promotedOverallBest.Grade, 1);
+    }
+
+    private static bool IsOverallBestScore(Score score, Score? peer)
+    {
+        if (peer == null)
+            return true;
+
+        return new List<Score> { score, peer }
+            .SortScoresByTheirScoreValue()
+            .First() == score;
     }
 
     private static void UpdateUserGradesCount(UserGrades userGrades, string grade, int delta)
