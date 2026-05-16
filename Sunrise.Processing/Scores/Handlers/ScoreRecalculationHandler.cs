@@ -29,7 +29,7 @@ public class ScoreRecalculationHandler(
 
         if (score.SubmissionStatus == SubmissionStatus.Deleted)
             return new ScoreProcessingError(
-                    ScoreProcessingErrorCode.Unexpected,
+                    ScoreProcessingErrorCode.InvalidScoreState,
                     $"Score {task.ScoreId} is deleted; use RestoreScore to bring it back")
                 .ToResult<ScoreCommitContext>();
 

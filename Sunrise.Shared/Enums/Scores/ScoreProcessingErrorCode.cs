@@ -16,5 +16,6 @@ public enum ScoreProcessingErrorCode
     UserGradesNotFound = 11,
     TransactionFailed = 12,
     ParsedScoreInvalid = 13,
-    CancelledByOperator = 14
+    CancelledByOperator = 14,
+    InvalidScoreState = 15
 }

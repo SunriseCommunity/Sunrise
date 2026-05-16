@@ -26,7 +26,7 @@ public class ScoreRestorationHandler(
 
         if (score.SubmissionStatus != SubmissionStatus.Deleted)
             return new ScoreProcessingError(
-                    ScoreProcessingErrorCode.Unexpected,
+                    ScoreProcessingErrorCode.InvalidScoreState,
                     $"Score {task.ScoreId} is not deleted")
                 .ToResult<ScoreCommitContext>();
 

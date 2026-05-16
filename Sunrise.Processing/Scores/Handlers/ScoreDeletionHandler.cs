@@ -20,7 +20,10 @@ public class ScoreDeletionHandler(
             return new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, $"Score {task.ScoreId} not found").ToUnit();
 
         if (score.SubmissionStatus == SubmissionStatus.Deleted)
-            return UnitResult.Success<ScoreProcessingError>();
+            return new ScoreProcessingError(
+                ScoreProcessingErrorCode.InvalidScoreState,
+                $"Score {task.ScoreId} is already deleted"
+            ).ToUnit();
 
         var loadUserStateResult = await LoadUserState(score, ct);
         if (loadUserStateResult.IsFailure)

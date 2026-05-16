@@ -143,7 +143,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 Log.Warning("Score processing permanently failed for submission task {TaskId}, user {UserId}", task.Id, affectedUserId);
 
                 if (affectedUserId.HasValue && sessions.TryGetSession(out var userSession, userId: affectedUserId.Value) && userSession != null)
-                    userSession.SendNotification("Your score could not be processed after multiple attempts. Please try resubmitting.");
+                    userSession.SendNotification($"One of your submitted scores couldn't be processed. If you think this is a mistake, please contact the support with task ID: {task.Id}");
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
