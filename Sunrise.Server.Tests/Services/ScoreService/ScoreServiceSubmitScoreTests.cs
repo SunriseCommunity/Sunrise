@@ -1380,6 +1380,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         oldScore.Grade = "A";
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
+        oldScore.Mods = Mods.None;
+        oldScore.GameMode = GameMode.Standard;
 
         oldScore.EnrichWithSessionData(session);
 
@@ -1456,6 +1458,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.Hidden;
+        oldScore.GameMode = GameMode.Standard;
 
         oldScore.EnrichWithSessionData(session);
 
@@ -1479,7 +1482,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.BeatmapHash = oldScore.BeatmapHash;
         score.Grade = "B";
 
-        score.TotalScore = oldScore.TotalScore + 1;
+        score.TotalScore = oldScore.TotalScore - 1;
 
         score.EnrichWithSessionData(session);
 
