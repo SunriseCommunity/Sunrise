@@ -97,18 +97,21 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
     {
         using var entryScope = scopeFactory.CreateScope();
         var entryDatabase = entryScope.ServiceProvider.GetRequiredService<DatabaseService>();
-        var handler = entryScope.ServiceProvider.GetRequiredKeyedService<IScoreHandler>(task.TaskType);
-        var sessions = entryScope.ServiceProvider.GetRequiredService<SessionRepository>();
         int? affectedUserId = null;
 
         try
         {
+            var handler = entryScope.ServiceProvider.GetRequiredKeyedService<IScoreHandler>(task.TaskType);
+            var sessions = entryScope.ServiceProvider.GetRequiredService<SessionRepository>();
             affectedUserId = await ResolveAffectedUserId(entryDatabase, task, ct);
             var result = await handler.ExecuteAsync(task, ct);
 
+            using var bookkeepingScope = scopeFactory.CreateScope();
+            var bookkeepingDatabase = bookkeepingScope.ServiceProvider.GetRequiredService<DatabaseService>();
+
             if (result.IsSuccess)
             {
-                await CleanupCompletedTask(entryDatabase, task, ct);
+                await CleanupCompletedTask(bookkeepingDatabase, task, ct);
                 Log.Information("Successfully processed score task {TaskId} ({TaskType}) for user {UserId}", task.Id, task.TaskType, affectedUserId);
                 SunriseMetrics.ScoreProcessingEntryCounterInc("success", task.TaskType);
                 return;
@@ -118,13 +121,13 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
             if (task.TaskType == ScoreTaskType.Submission && error.Code == ScoreProcessingErrorCode.DuplicateScore)
             {
-                await CleanupCompletedTask(entryDatabase, task, ct);
+                await CleanupCompletedTask(bookkeepingDatabase, task, ct);
                 Log.Information("Cleaned up duplicate submission task {TaskId} for user {UserId}", task.Id, affectedUserId);
                 SunriseMetrics.ScoreProcessingEntryCounterInc("success", task.TaskType, error.Code);
                 return;
             }
 
-            await entryDatabase.ScoreTaskQueue.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
+            await bookkeepingDatabase.ScoreTaskQueue.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
 
             Log.Warning("Score processing failed for task {TaskId} ({TaskType}), user {UserId}: [{Code}] {Error}",
                 task.Id,
