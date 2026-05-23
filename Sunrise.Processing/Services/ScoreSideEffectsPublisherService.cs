@@ -11,6 +11,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
@@ -114,7 +115,9 @@ public class ScoreSideEffectsPublisherService(
         var isScoreFirstPlace = globalScores.FirstOrDefault()?.ScoreHash == score.ScoreHash;
 
         var secondBeatmapsBestFromDifferentUser = globalScores.Find(s => s.UserId != score.UserId);
-        var isPeerWasFirstPlace = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore.TotalScore > secondBeatmapsBestFromDifferentUser?.TotalScore;
+
+        // TODO: Is checking by BestScoreBasedByTotalScore correct here?
+        var isPeerWasFirstPlace = IsOverallBestScore(ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore, secondBeatmapsBestFromDifferentUser);
 
         var shouldAnnounceNewFirstPlace = isScoreFirstPlace && !isPeerWasFirstPlace;
 
@@ -128,5 +131,22 @@ public class ScoreSideEffectsPublisherService(
     private async Task<string> UnlockMedalsAndGetNewlyUnlocked(Score score, Beatmap beatmap, UserStats userStats)
     {
         return await medalService.UnlockAndGetNewMedals(score, beatmap, userStats);
+    }
+
+    private static bool IsOverallBestScore(Score? scoreA, Score? scoreB)
+    {
+        if (scoreB == null)
+            return true;
+
+        if (scoreA == null)
+            return false;
+
+        return new List<Score>
+            {
+                scoreA,
+                scoreB
+            }
+            .SortScoresByTheirScoreValue()
+            .First() == scoreA;
     }
 }
