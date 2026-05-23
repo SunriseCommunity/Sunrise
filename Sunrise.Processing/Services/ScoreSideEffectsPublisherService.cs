@@ -11,7 +11,6 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
@@ -38,22 +37,50 @@ public class ScoreSideEffectsPublisherService(
         if (ctx.Beatmap == null || ctx.BeatmapSet == null)
             throw new InvalidOperationException("Cannot publish side effects without beatmap and beatmap set on context.");
 
-        await PublishScoreSideEffects(beatmapRatelimitSession, ctx.Score, ctx.BeatmapSet, ctx.Beatmap, ctx.User, ctx.UserStats, ct);
+        await PublishScoreSideEffects(beatmapRatelimitSession, ctx, ct);
 
         var newAchievements = await UnlockMedalsAndGetNewlyUnlocked(ctx.Score, ctx.Beatmap, ctx.UserStats);
+
+        var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(ctx.User, ctx.UserStats.GameMode, ct: ct);
+        ctx.UserStats.LocalProperties.Rank = newUserRank;
+
+        var scoresWithLeaderboardPosition = await database.Scores.EnrichScoresWithLeaderboardPosition(new List<Score?>
+            {
+                ctx.Score,
+                ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore,
+                ctx.UserPersonalBestScores?.OverallPeer?.BestScoreForPerformanceCalculation
+            }.Where(s => s != null).Cast<Score>().ToList(),
+            ct);
+
+        // Fill leaderboard position for the graphs
+        scoresWithLeaderboardPosition.ForEach(s =>
+        {
+            if (s.Id == ctx.Score.Id)
+                ctx.Score.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
+            else if (ctx.UserPersonalBestScores?.OverallPeer != null)
+            {
+                if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreBasedByTotalScore.Id)
+                    ctx.UserPersonalBestScores.OverallPeer.BestScoreBasedByTotalScore.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
+                else if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.Id)
+                    ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
+            }
+        });
 
         return ScoreSubmissionUtil.GetScoreSubmitResponse(ctx.Beatmap, ctx.UserStats, prevUserStats, ctx.Score, ctx.UserPersonalBestScores?.OverallPeer, newAchievements);
     }
 
     private async Task PublishScoreSideEffects(
         BaseSession beatmapRatelimitSession,
-        Score score,
-        BeatmapSet beatmapSet,
-        Beatmap beatmap,
-        User user,
-        UserStats userStats,
+        ScoreCommitContext ctx,
         CancellationToken ct = default)
     {
+        var score = ctx.Score;
+        var beatmap = ctx.Beatmap;
+        var beatmapSet = ctx.BeatmapSet;
+
+        if (beatmap == null || beatmapSet == null)
+            throw new InvalidOperationException("Beatmap and beatmap set must be present in context to publish score side effects.");
+
         SunriseMetrics.ScoreSubmittedCounterInc(score.UserId, beatmap.Id, score.GameMode, score.Mods, score.PerformancePoints, score.Id);
 
         webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(sessions, score)));
@@ -77,29 +104,19 @@ public class ScoreSideEffectsPublisherService(
         var (globalScores, _) = await database.Scores.GetBeatmapScores(
             score.BeatmapHash,
             score.GameMode,
-            options: new QueryOptions
+            options: new QueryOptions(new Pagination(1, 2))
             {
                 AsNoTracking = true,
                 IgnoreCountQueryIfExists = true
             },
             ct: ct);
 
-        var previousLeaderboardTopUserId = globalScores
-            .Where(s => s.ScoreHash != score.ScoreHash)
-            .ToList()
-            .SortScoresByTheirScoreValue()
-            .FirstOrDefault()
-            ?.UserId;
+        var isScoreFirstPlace = globalScores.FirstOrDefault()?.ScoreHash == score.ScoreHash;
 
-        globalScores = globalScores.UpsertUserScoreToSortedScores(score);
-        score = globalScores.First(s => s.ScoreHash == score.ScoreHash);
+        var secondBeatmapsBestFromDifferentUser = globalScores.Find(s => s.UserId != score.UserId);
+        var isPeerWasFirstPlace = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore.TotalScore > secondBeatmapsBestFromDifferentUser?.TotalScore;
 
-        var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode, ct: ct);
-        userStats.LocalProperties.Rank = newUserRank;
-
-        var shouldAnnounceNewFirstPlace = score.LocalProperties.LeaderboardPosition == 1
-                                          && previousLeaderboardTopUserId.HasValue
-                                          && previousLeaderboardTopUserId.Value != score.UserId;
+        var shouldAnnounceNewFirstPlace = isScoreFirstPlace && !isPeerWasFirstPlace;
 
         if (shouldAnnounceNewFirstPlace)
         {
