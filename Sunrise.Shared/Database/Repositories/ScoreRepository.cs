@@ -62,18 +62,16 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         return (scores, totalCount);
     }
 
-    public async Task<Score?> GetScore(int id, QueryOptions? options = null, CancellationToken ct = default)
+    public async Task<Score?> GetScore(int id, QueryOptions? options = null, bool? filterValidScores = true, CancellationToken ct = default)
     {
-        return await dbContext.Scores
-            .FilterValidScores()
-            .Where(s => s.Id == id)
-            .UseQueryOptions(options)
-            .FirstOrDefaultAsync(cancellationToken: ct);
-    }
+        var baseScores = dbContext.Scores.AsQueryable();
 
-    public async Task<Score?> GetUnvalidatedScore(int id, QueryOptions? options = null, CancellationToken ct = default)
-    {
-        return await dbContext.Scores
+        if (filterValidScores.HasValue && filterValidScores.Value)
+        {
+            baseScores = baseScores.FilterValidScores();
+        }
+
+        return await baseScores
             .Where(s => s.Id == id)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync(cancellationToken: ct);

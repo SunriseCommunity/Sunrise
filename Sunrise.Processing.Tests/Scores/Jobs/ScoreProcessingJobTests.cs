@@ -130,7 +130,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
         Assert.Null(await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.Id));
         Assert.Null(await Database.ScoreProcessingQueue.GetById(payload.Id));
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
         Assert.NotNull(persistedScore);
         Assert.Equal(payload.ScoreHash, persistedScore.ScoreHash);
         Assert.Equal(SubmissionStatus.Best, persistedScore.SubmissionStatus);

@@ -20,7 +20,7 @@ public class ScoreRecalculationHandler(
     protected override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
         ScoreTaskQueue task, CancellationToken ct)
     {
-        var score = await Database.Scores.GetUnvalidatedScore(task.ScoreId!.Value, ct: ct);
+        var score = await Database.Scores.GetScore(task.ScoreId!.Value, filterValidScores: false, ct: ct);
         if (score == null)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,

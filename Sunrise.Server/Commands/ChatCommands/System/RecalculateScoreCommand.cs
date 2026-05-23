@@ -39,7 +39,7 @@ public class RecalculateScoreCommand : IChatCommand
             {
                 using var scope = ServicesProviderHolder.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-                var score = await database.Scores.GetUnvalidatedScore(scoreId, ct: ct);
+                var score = await database.Scores.GetScore(scoreId, filterValidScores: false, ct: ct);
 
                 if (score == null)
                 {

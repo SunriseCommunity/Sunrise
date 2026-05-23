@@ -15,7 +15,7 @@ public class ScoreDeletionHandler(
 {
     public override async Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct)
     {
-        var score = await Database.Scores.GetUnvalidatedScore(task.ScoreId!.Value, ct: ct);
+        var score = await Database.Scores.GetScore(task.ScoreId!.Value, filterValidScores: false, ct: ct);
         if (score == null)
             return new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, $"Score {task.ScoreId} not found").ToUnit();
 

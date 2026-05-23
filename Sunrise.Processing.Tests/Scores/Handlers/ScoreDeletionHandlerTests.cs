@@ -49,8 +49,8 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.True(result.IsSuccess);
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
-        var persistedReplacement = await Database.Scores.GetUnvalidatedScore(replacement.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
+        var persistedReplacement = await Database.Scores.GetScore(replacement.Id, filterValidScores: false);
         Assert.NotNull(persistedScore);
         Assert.NotNull(persistedReplacement);
         Assert.Equal(SubmissionStatus.Deleted, persistedScore.SubmissionStatus);

@@ -104,8 +104,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Assert
         Assert.True(result.IsSuccess);
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
-        var persistedReplacement = await Database.Scores.GetUnvalidatedScore(replacement.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
+        var persistedReplacement = await Database.Scores.GetScore(replacement.Id, filterValidScores: false);
         var persistedUserGrades = await Database.Users.Grades.GetUserGrades(user.Id, score.GameMode);
 
         Assert.NotNull(persistedScore);
@@ -142,8 +142,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Assert
         Assert.True(result.IsSuccess);
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         var persistedUserGrades = await Database.Users.Grades.GetUserGrades(user.Id, score.GameMode);
 
         Assert.NotNull(persistedScore);
@@ -344,8 +344,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Assert
         Assert.True(result.IsSuccess);
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
-        var persistedPromotedPeer = await Database.Scores.GetUnvalidatedScore(promotedPeer.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
+        var persistedPromotedPeer = await Database.Scores.GetScore(promotedPeer.Id, filterValidScores: false);
         var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
 
         Assert.NotNull(persistedScore);
@@ -409,8 +409,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Assert
         Assert.True(result.IsSuccess);
 
-        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
-        var persistedPromotedPeer = await Database.Scores.GetUnvalidatedScore(promotedPeer.Id);
+        var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
+        var persistedPromotedPeer = await Database.Scores.GetScore(promotedPeer.Id, filterValidScores: false);
         var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
 
         Assert.NotNull(persistedScore);

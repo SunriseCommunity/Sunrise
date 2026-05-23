@@ -33,7 +33,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Best, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Submitted, persistedPreviousBest.SubmissionStatus);
     }
@@ -54,7 +54,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Best, persistedPreviousBest.SubmissionStatus);
     }
@@ -75,7 +75,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Best, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Submitted, persistedPreviousBest.SubmissionStatus);
     }
@@ -96,7 +96,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Best, persistedPreviousBest.SubmissionStatus);
     }
@@ -118,7 +118,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Deleted, score.SubmissionStatus);
 
-        var persistedNextBest = await Database.Scores.GetUnvalidatedScore(nextBest.Id);
+        var persistedNextBest = await Database.Scores.GetScore(nextBest.Id, filterValidScores: false);
         Assert.NotNull(persistedNextBest);
         Assert.Equal(SubmissionStatus.Best, persistedNextBest.SubmissionStatus);
     }
@@ -140,7 +140,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Deleted, score.SubmissionStatus);
 
-        var persistedNextBest = await Database.Scores.GetUnvalidatedScore(nextBest.Id);
+        var persistedNextBest = await Database.Scores.GetScore(nextBest.Id, filterValidScores: false);
         Assert.NotNull(persistedNextBest);
         Assert.Equal(SubmissionStatus.Submitted, persistedNextBest.SubmissionStatus);
     }
@@ -162,7 +162,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Best, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Submitted, persistedPreviousBest.SubmissionStatus);
     }
@@ -184,7 +184,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         // Assert
         Assert.Equal(SubmissionStatus.Failed, score.SubmissionStatus);
 
-        var persistedPreviousBest = await Database.Scores.GetUnvalidatedScore(previousBest.Id);
+        var persistedPreviousBest = await Database.Scores.GetScore(previousBest.Id, filterValidScores: false);
         Assert.NotNull(persistedPreviousBest);
         Assert.Equal(SubmissionStatus.Best, persistedPreviousBest.SubmissionStatus);
     }
