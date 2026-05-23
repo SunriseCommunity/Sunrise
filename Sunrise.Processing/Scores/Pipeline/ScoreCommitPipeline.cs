@@ -38,6 +38,8 @@ public class ScoreCommitPipeline
     {
         var score = ctx.Score;
 
+        score.LocalProperties = new LocalProperties().FromScore(score);
+
         ctx.OriginalState = ScoreStateSnapshot.Capture(score);
 
         EnrichScoreWithBeatmapStatus(score, ctx.Beatmap);
