@@ -31,7 +31,7 @@ public static class ScoreExtensions
 
     public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores, bool? basedByPerformance = null) where T : Score
     {
-        return GroupScoresByUserId(scores)
+        return scores.GroupScoresByUserId()
             .Select(x => x.ToList()
                 .GroupScoresByBeatmapId()
                 .Select(y =>
@@ -43,15 +43,6 @@ public static class ScoreExtensions
                         : groupedScores.SortScoresByTheirScoreValue().First();
                 }))
             .SelectMany(x => x)
-            .ToList();
-    }
-
-    public static List<T> GetScoresGroupedByBeatmapBest<T>(this List<T> scores) where T : Score
-    {
-        return GroupScoresByBeatmapId(scores)
-            .Select(x => x.ToList()
-                .SortScoresByTheirScoreValue()
-                .First())
             .ToList();
     }
 
@@ -101,25 +92,6 @@ public static class ScoreExtensions
             : scores.SortScoresByTotalScore();
     }
 
-    public static List<T> UpsertUserScoreToSortedScores<T>(this List<T> scores, T score) where T : Score
-    {
-        var leaderboard = GetScoresGroupedByUsersBest(scores);
-
-        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode);
-
-        foreach (var oldScore in oldScores)
-        {
-            leaderboard.Remove(oldScore);
-        }
-
-        leaderboard.Add(score);
-        leaderboard = GetScoresGroupedByUsersBest(leaderboard);
-        leaderboard = leaderboard.SortScoresByTheirScoreValue();
-        leaderboard = leaderboard.EnrichWithLeaderboardPositions();
-
-        return leaderboard.ToList();
-    }
-
     public static Score ToScore(this SubmittedScore baseScore, int userId, Beatmap beatmap)
     {
         var score = new Score
@@ -146,7 +118,7 @@ public static class ScoreExtensions
             OsuVersion = baseScore.OsuVersion,
             BeatmapStatus = beatmap.Status,
             ClientTime = baseScore.ClientTime,
-            Accuracy = baseScore.Accuracy,
+            Accuracy = baseScore.Accuracy
         };
 
         score.LocalProperties = score.LocalProperties.FromScore(score);
@@ -187,7 +159,7 @@ public static class ScoreExtensions
                 WhenPlayed = scoreSubmittedAt,
                 OsuVersion = string.IsNullOrWhiteSpace(split[17]) ? throw new Exception("Osu version is empty") : split[17].Trim(),
                 ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null),
-                Accuracy = 0,
+                Accuracy = 0
             };
 
             score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
@@ -300,7 +272,7 @@ public static class ScoreExtensions
             }
         }
 
-        return GetBeatmapInGameChatString(score, beatmapSet, beatmap);
+        return score.GetBeatmapInGameChatString(beatmapSet, beatmap);
     }
 
     public static string GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, Beatmap beatmap)

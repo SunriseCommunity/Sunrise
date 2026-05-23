@@ -5,11 +5,10 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
-namespace Sunrise.Shared.Extensions.Users;
+namespace Sunrise.Tests.Extensions;
 
 public static class UserStatsExtensions
 {
-    // TODO: I personally don't like existance of this method. Ideally tests should have separate helper and production code shouldn't use this at all.
     public static void UpdateWithDbScore(this UserStats userStats, Score score)
     {
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
