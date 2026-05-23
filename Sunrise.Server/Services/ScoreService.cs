@@ -208,7 +208,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         if (!shouldParkAsFailed)
         {
-            userSession.SendNotification("One of your recent score seems to have troubles retrieving the beatmap data from. This score can be missing in your profile or leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
+            userSession.SendNotification("One of your recent scores seems to have trouble retrieving its beatmap data. This score may be missing from your profile or the leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
         }
     }
 }
