@@ -1,6 +1,7 @@
 ﻿using osu.Shared;
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Attributes;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Scores;
@@ -9,31 +10,38 @@ using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 namespace Sunrise.Processing.Scores.Processors;
 
 [TraceExecution]
-public class UserGradesScoreProcessor : IScoreEntityProcessor
+public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityProcessorBase
 {
-    public int Priority => 200;
+    public override int Priority => 200;
 
-    public Task OnNewSubmission(ScoreCommitContext ctx)
+    protected override Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
         IncrementWithScore(ctx);
         return Task.CompletedTask;
     }
 
-    public Task OnRecalculation(ScoreCommitContext ctx)
+    protected override Task OnRecalculationInternal(ScoreCommitContext ctx)
     {
         return Task.CompletedTask;
     }
 
-    public Task OnDeletion(ScoreCommitContext ctx)
+    protected override Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         DecrementWithScore(ctx);
         return Task.CompletedTask;
     }
 
-    public Task OnRestoration(ScoreCommitContext ctx)
+    protected override Task OnRestorationInternal(ScoreCommitContext ctx)
     {
         IncrementWithScore(ctx);
         return Task.CompletedTask;
+    }
+
+    protected override async Task AfterExecution(ScoreCommitContext ctx)
+    {
+        var updateUserGradesResult = await database.Users.Grades.UpdateUserGrades(ctx.UserGrades);
+        if (updateUserGradesResult.IsFailure)
+            throw new ApplicationException("Failed to persist user grades: " + updateUserGradesResult.Error);
     }
 
     private static void IncrementWithScore(ScoreCommitContext ctx)
@@ -80,7 +88,11 @@ public class UserGradesScoreProcessor : IScoreEntityProcessor
         if (peer == null)
             return true;
 
-        return new List<Score> { score, peer }
+        return new List<Score>
+            {
+                score,
+                peer
+            }
             .SortScoresByTheirScoreValue()
             .First() == score;
     }

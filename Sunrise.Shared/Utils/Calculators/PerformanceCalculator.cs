@@ -1,6 +1,5 @@
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Mods = osu.Shared.Mods;
 using GameModeVanilla = osu.Shared.GameMode;
@@ -9,16 +8,11 @@ namespace Sunrise.Shared.Utils.Calculators;
 
 public static class PerformanceCalculator
 {
-    public static double CalculateUserWeightedAccuracy(List<Score> userBestScores, Score? score = null)
+    public static double CalculateUserWeightedAccuracy(List<Score> userBestScores)
     {
-        if (userBestScores.Count == 0 && score == null) return 0;
+        if (userBestScores.Count == 0) return 0;
 
         if (userBestScores.Count > 100) throw new ArgumentOutOfRangeException(nameof(userBestScores));
-
-        if (score != null)
-        {
-            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
-        }
 
         var top100Scores = userBestScores.Take(100).ToList();
 
@@ -30,16 +24,11 @@ public static class PerformanceCalculator
         return weightedAccuracy * bonusAccuracy / 100;
     }
 
-    public static double CalculateUserWeightedPerformance(List<Score> userBestScores, Score? score = null)
+    public static double CalculateUserWeightedPerformance(List<Score> userBestScores)
     {
-        if (userBestScores.Count == 0 && score == null) return 0;
+        if (userBestScores.Count == 0) return 0;
 
         if (userBestScores.Count > 100) throw new ArgumentOutOfRangeException(nameof(userBestScores));
-
-        if (score != null)
-        {
-            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
-        }
 
         var top100Scores = userBestScores.Take(100).ToList();
 
@@ -52,11 +41,15 @@ public static class PerformanceCalculator
         return weightedPp + bonusPp;
     }
 
-    public static float CalculateAccuracy(Score score) 
-        => CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
-    
-    public static float CalculateAccuracy(SubmittedScore score) 
-        => CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
+    public static float CalculateAccuracy(Score score)
+    {
+        return CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
+    }
+
+    public static float CalculateAccuracy(SubmittedScore score)
+    {
+        return CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
+    }
 
     private static float CalculateAccuracy(
         int count300,
@@ -89,7 +82,7 @@ public static class PerformanceCalculator
                 true => 100f * (countGeki * 305f + count300 * 300f + countKatu * 200f + count100 * 100f + count50 * 50f) / (totalHits * 305f),
                 false => 100f * ((count300 + countGeki) * 300f + countKatu * 200f + count100 * 100f + count50 * 50f) / (totalHits * 300f)
             },
-            _ =>  throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
         };
     }
 }

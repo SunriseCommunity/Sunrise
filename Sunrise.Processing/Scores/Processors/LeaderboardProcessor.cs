@@ -2,36 +2,37 @@ using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Processing.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Database.Extensions;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Processing.Scores.Processors;
 
 [TraceExecution]
-public class LeaderboardProcessor(DatabaseService database) : IScoreEntityProcessor
+public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcessorBase
 {
-    public int Priority => 100;
+    public override int Priority => 100;
 
-    public async Task OnNewSubmission(ScoreCommitContext ctx)
+    protected override Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
-        await ReconcileSubmissionStatus(ctx);
+        ReconcileSubmissionStatus(ctx);
+        return Task.CompletedTask;
     }
 
-    public async Task OnRecalculation(ScoreCommitContext ctx)
+    protected override Task OnRecalculationInternal(ScoreCommitContext ctx)
     {
-        await ReconcileSubmissionStatus(ctx);
-        await PersistScore(ctx);
+        ReconcileSubmissionStatus(ctx);
+        return Task.CompletedTask;
     }
 
-    public async Task OnDeletion(ScoreCommitContext ctx)
+    protected override Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         ctx.Score.SubmissionStatus = SubmissionStatus.Deleted;
 
-        await ReconcileSubmissionStatus(ctx);
-        await PersistScore(ctx);
+        ReconcileSubmissionStatus(ctx);
+        return Task.CompletedTask;
     }
 
-    public async Task OnRestoration(ScoreCommitContext ctx)
+    protected override Task OnRestorationInternal(ScoreCommitContext ctx)
     {
         var score = ctx.Score;
 
@@ -39,22 +40,21 @@ public class LeaderboardProcessor(DatabaseService database) : IScoreEntityProces
             ? SubmissionStatus.Submitted
             : SubmissionStatus.Failed;
 
-        await ReconcileSubmissionStatus(ctx);
-        await PersistScore(ctx);
+        ReconcileSubmissionStatus(ctx);
+        return Task.CompletedTask;
     }
 
-    private async Task PersistScore(ScoreCommitContext ctx)
+    protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
-        if (ctx.TaskType == ScoreTaskType.Submission)
-            throw new InvalidOperationException("Score persistence should not be handled in recalculation for new submissions.");
+        database.DbContext.UpdateEntity(ctx.Score);
 
-        var persistResult = await database.Scores.UpdateScore(ctx.Score);
+        if (ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreBasedByTotalScore != null)
+            database.DbContext.UpdateEntity(ctx.UserPersonalBestScores.SameModsPeer.BestScoreBasedByTotalScore);
 
-        if (persistResult.IsFailure)
-            throw new ApplicationException("Failed to persist score: " + persistResult.Error);
+        await database.DbContext.SaveChangesAsync();
     }
 
-    private async Task ReconcileSubmissionStatus(ScoreCommitContext ctx)
+    private void ReconcileSubmissionStatus(ScoreCommitContext ctx)
     {
         var score = ctx.Score;
 
@@ -69,10 +69,6 @@ public class LeaderboardProcessor(DatabaseService database) : IScoreEntityProces
                 ? SubmissionStatus.Submitted
                 : SubmissionStatus.Failed;
 
-            var demoteResult = await database.Scores.UpdateScore(sameModsPeer);
-            if (demoteResult.IsFailure)
-                throw new ApplicationException("Failed to demote previous best score: " + demoteResult.Error);
-
             return;
         }
 
@@ -82,10 +78,6 @@ public class LeaderboardProcessor(DatabaseService database) : IScoreEntityProces
         if (vacatedBest && sameModsPeer != null && sameModsPeer.SubmissionStatus != SubmissionStatus.Best)
         {
             sameModsPeer.SubmissionStatus = SubmissionStatus.Best;
-
-            var promoteResult = await database.Scores.UpdateScore(sameModsPeer);
-            if (promoteResult.IsFailure)
-                throw new ApplicationException("Failed to promote next-best score: " + promoteResult.Error);
         }
     }
 }

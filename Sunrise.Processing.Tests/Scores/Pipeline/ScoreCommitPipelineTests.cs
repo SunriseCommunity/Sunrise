@@ -11,9 +11,9 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -51,7 +51,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var (expectedWeightedPerformancePoints, expectedWeightedAccuracy) = (PerformanceCalculator.CalculateUserWeightedPerformance([score]), PerformanceCalculator.CalculateUserWeightedAccuracy([score]));
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -74,8 +74,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         Assert.NotNull(persistedUserGrades);
         Assert.Equal(score.TotalScore, persistedUserStats.RankedScore);
         Assert.Equal(score.MaxCombo, persistedUserStats.MaxCombo);
-        Assert.Equal(expectedWeighted.PerformancePoints, persistedUserStats.PerformancePoints, 6);
-        Assert.Equal(expectedWeighted.Accuracy, persistedUserStats.Accuracy, 6);
+        Assert.Equal(expectedWeightedPerformancePoints, persistedUserStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeightedAccuracy, persistedUserStats.Accuracy, 6);
         Assert.Equal(1, persistedUserGrades.CountA);
     }
 
@@ -289,6 +289,141 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         Assert.Equal(expectedWeighted.PerformancePoints, persistedUserStats.PerformancePoints, 6);
         Assert.Equal(expectedWeighted.Accuracy, persistedUserStats.Accuracy, 6);
     }
+
+    [Fact]
+    public async Task TestCommitRecalculationDemotionUsesPromotedBestForWeightedValues()
+    {
+        // Arrange
+        using var pipelineScope = App.Server.Services.CreateScope();
+        var pipeline = CreatePipeline(pipelineScope.ServiceProvider);
+        var calculator = pipelineScope.ServiceProvider.GetRequiredService<CalculatorService>();
+
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true"); // We want target by new PP values
+
+        var user = await CreateTestUser();
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+
+        var promotedPeer = _mocker.Score.GetBestScoreableRandomScore();
+        promotedPeer.UserId = user.Id;
+        promotedPeer.Mods = Mods.None;
+        promotedPeer.TotalScore = 700;
+        promotedPeer.PerformancePoints = 150;
+        promotedPeer.MaxCombo = 300;
+        promotedPeer.EnrichWithBeatmapData(beatmap);
+        promotedPeer.GameMode = GameMode.Standard;
+        promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
+        promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
+        promotedPeer = await CreateTestScore(promotedPeer);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.UserId = user.Id;
+        score.Mods = Mods.None;
+        score.TotalScore = 900;
+        score.PerformancePoints = 200;
+        score.MaxCombo = 350;
+        score.EnrichWithBeatmapData(beatmap);
+        score.GameMode = GameMode.Standard;
+        score.SubmissionStatus = SubmissionStatus.Best;
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+        score = await CreateTestScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        var weightedBefore = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+        userStats.PerformancePoints = weightedBefore.PerformancePoints;
+        userStats.Accuracy = weightedBefore.Accuracy;
+
+        score.PerformancePoints = 100;
+
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, beatmap);
+
+        // Act
+        var result = await pipeline.Commit(context, null, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+
+        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
+        var persistedPromotedPeer = await Database.Scores.GetUnvalidatedScore(promotedPeer.Id);
+        var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
+
+        Assert.NotNull(persistedScore);
+        Assert.NotNull(persistedPromotedPeer);
+        Assert.NotNull(persistedUserStats);
+        Assert.Equal(SubmissionStatus.Best, persistedScore.SubmissionStatus);
+        Assert.Equal(SubmissionStatus.Submitted, persistedPromotedPeer.SubmissionStatus);
+
+        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+        Assert.Equal(expectedWeighted.PerformancePoints, persistedUserStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeighted.Accuracy, persistedUserStats.Accuracy, 6);
+    }
+
+    [Fact]
+    public async Task TestCommitRecalculationDemotionUsesPromotedBestForWeightedValuesIfUpdateSubmissionStatus()
+    {
+        // Arrange
+        using var pipelineScope = App.Server.Services.CreateScope();
+        var pipeline = CreatePipeline(pipelineScope.ServiceProvider);
+        var calculator = pipelineScope.ServiceProvider.GetRequiredService<CalculatorService>();
+
+        var user = await CreateTestUser();
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+
+        var promotedPeer = _mocker.Score.GetBestScoreableRandomScore();
+        promotedPeer.UserId = user.Id;
+        promotedPeer.Mods = Mods.None;
+        promotedPeer.TotalScore = 700;
+        promotedPeer.PerformancePoints = 150;
+        promotedPeer.MaxCombo = 300;
+        promotedPeer.EnrichWithBeatmapData(beatmap);
+        promotedPeer.GameMode = GameMode.RelaxStandard;
+        promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
+        promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
+        promotedPeer = await CreateTestScore(promotedPeer);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.UserId = user.Id;
+        score.Mods = Mods.None;
+        score.TotalScore = 900;
+        score.PerformancePoints = 200;
+        score.MaxCombo = 350;
+        score.EnrichWithBeatmapData(beatmap);
+        score.GameMode = GameMode.RelaxStandard;
+        score.SubmissionStatus = SubmissionStatus.Best;
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+        score = await CreateTestScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        var weightedBefore = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+        userStats.PerformancePoints = weightedBefore.PerformancePoints;
+        userStats.Accuracy = weightedBefore.Accuracy;
+
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, beatmap);
+
+        // Act
+        var result = await pipeline.Commit(context, null, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+
+        var persistedScore = await Database.Scores.GetUnvalidatedScore(score.Id);
+        var persistedPromotedPeer = await Database.Scores.GetUnvalidatedScore(promotedPeer.Id);
+        var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
+
+        Assert.NotNull(persistedScore);
+        Assert.NotNull(persistedPromotedPeer);
+        Assert.NotNull(persistedUserStats);
+        Assert.Equal(SubmissionStatus.Best, persistedScore.SubmissionStatus);
+        Assert.Equal(SubmissionStatus.Submitted, persistedPromotedPeer.SubmissionStatus);
+
+        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+        Assert.Equal(expectedWeighted.PerformancePoints, persistedUserStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeighted.Accuracy, persistedUserStats.Accuracy, 6);
+    }
+
 
     [Fact]
     public async Task TestCommitSubmissionUpdatesUserRankInLeaderboard()
@@ -657,7 +792,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var processors = new List<IScoreEntityProcessor>
         {
             new LeaderboardProcessor(database),
-            new UserGradesScoreProcessor()
+            new UserGradesScoreProcessor(database)
         };
 
         if (includeUserStatsProcessor)

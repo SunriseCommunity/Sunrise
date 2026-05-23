@@ -8,6 +8,7 @@ using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Utils.Processing;
 using Xunit;
@@ -345,11 +346,15 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
     {
         // Arrange
         var processor = CreateProcessor();
-        var calculator = GetCalculator();
         var user = await CreateTestUser();
-        var score = CreateScore(user.Id, totalScore: 1000, performancePoints: 100, maxCombo: 400);
+        var score = await CreatePersistedScore(user.Id, 1000, 100, 400);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+
+        score.PerformancePoints = 140;
+        score.Accuracy = 98;
+        await Database.Scores.UpdateScore(score);
+
+        var (expectedWeightedPerformancePoints, expectedWeightedAccuracy) = (PerformanceCalculator.CalculateUserWeightedPerformance([score]), PerformanceCalculator.CalculateUserWeightedAccuracy([score]));
 
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Recalculation, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
@@ -357,8 +362,10 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         await processor.OnRecalculation(context);
 
         // Assert
-        Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
-        Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+        var (updatedUserStats, _) = await LoadUserState(user, score.GameMode);
+
+        Assert.Equal(expectedWeightedPerformancePoints, updatedUserStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeightedAccuracy, updatedUserStats.Accuracy, 6);
     }
 
     [Theory]

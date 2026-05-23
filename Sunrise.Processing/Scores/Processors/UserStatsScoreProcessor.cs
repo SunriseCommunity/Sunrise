@@ -15,28 +15,35 @@ namespace Sunrise.Processing.Scores.Processors;
 [TraceExecution]
 public class UserStatsScoreProcessor(
     DatabaseService database,
-    CalculatorService calculatorService) : IScoreEntityProcessor
+    CalculatorService calculatorService) : ScoreEntityProcessorBase
 {
-    public int Priority => 200;
+    public override int Priority => 200;
 
-    public async Task OnNewSubmission(ScoreCommitContext ctx)
+    protected override async Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
         await IncrementUserStats(ctx);
     }
 
-    public async Task OnRecalculation(ScoreCommitContext ctx)
+    protected override async Task OnRecalculationInternal(ScoreCommitContext ctx)
     {
         await ApplyWeightedRefresh(ctx);
     }
 
-    public async Task OnDeletion(ScoreCommitContext ctx)
+    protected override async Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         await DecrementUserStats(ctx);
     }
 
-    public async Task OnRestoration(ScoreCommitContext ctx)
+    protected override async Task OnRestorationInternal(ScoreCommitContext ctx)
     {
         await IncrementUserStats(ctx);
+    }
+
+    protected override async Task AfterExecution(ScoreCommitContext ctx)
+    {
+        var updateUserStatsResult = await database.Users.Stats.UpdateUserStats(ctx.UserStats, ctx.User);
+        if (updateUserStatsResult.IsFailure)
+            throw new ApplicationException("Failed to persist user stats: " + updateUserStatsResult.Error);
     }
 
     private async Task IncrementUserStats(ScoreCommitContext ctx)
@@ -74,7 +81,7 @@ public class UserStatsScoreProcessor(
 
         if (isBetterPerformanceValue && score.LocalProperties.IsRanked)
         {
-            (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode, score);
+            (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
         }
     }
 
@@ -123,7 +130,7 @@ public class UserStatsScoreProcessor(
         if (!score.LocalProperties.IsRanked || !score.IsScoreable || !score.IsPassed)
             return;
 
-        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode, score);
+        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
     }
 
     private static void IncreaseTotalHits(UserStats userStats, Score score)

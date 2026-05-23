@@ -1,5 +1,4 @@
 using CSharpFunctionalExtensions;
-using Microsoft.EntityFrameworkCore;
 using Sunrise.Processing.Scores.Processors;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
@@ -58,21 +57,6 @@ public class ScoreCommitPipeline
         {
             await DispatchProcessor(processor, ctx);
         }
-
-        var persistScoreResult = ctx.TaskType == ScoreTaskType.Submission
-            ? await _database.Scores.AddScore(score)
-            : await _database.Scores.UpdateScore(score);
-
-        if (persistScoreResult.IsFailure)
-            throw new ApplicationException("Failed to persist score: " + persistScoreResult.Error);
-
-        var updateUserStatsResult = await _database.Users.Stats.UpdateUserStats(ctx.UserStats, ctx.User);
-        if (updateUserStatsResult.IsFailure)
-            throw new ApplicationException("Failed to persist user stats: " + updateUserStatsResult.Error);
-
-        var updateUserGradesResult = await _database.Users.Grades.UpdateUserGrades(ctx.UserGrades);
-        if (updateUserGradesResult.IsFailure)
-            throw new ApplicationException("Failed to persist user grades: " + updateUserGradesResult.Error);
 
         var refreshClaimLeaseResult = await TryRefreshClaimLease(task, ct);
         if (refreshClaimLeaseResult.IsFailure)

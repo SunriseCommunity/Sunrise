@@ -111,7 +111,7 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         return (performances[0], performances[1], performances[2], performances[3]);
     }
 
-    public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode)
     {
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
@@ -121,10 +121,10 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
                 IgnoreCountQueryIfExists = true
             });
 
-        return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
+        return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores);
     }
 
-    public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode)
     {
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
@@ -134,9 +134,10 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
                 IgnoreCountQueryIfExists = true
             });
 
-        return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
+        return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores);
     }
 
+    // TODO: Remove score
     public async Task<(double PerformancePoints, double Accuracy)> CalculateUserWeightedStats(User user, GameMode mode, Score? score = null)
     {
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
@@ -147,8 +148,8 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
                 IgnoreCountQueryIfExists = true
             });
 
-        var pp = PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
-        var accuracy = PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
+        var pp = PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores);
+        var accuracy = PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores);
 
         return (pp, accuracy);
     }

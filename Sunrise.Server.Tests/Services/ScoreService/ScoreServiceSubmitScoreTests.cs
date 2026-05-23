@@ -12,7 +12,6 @@ using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Tests.Abstracts;

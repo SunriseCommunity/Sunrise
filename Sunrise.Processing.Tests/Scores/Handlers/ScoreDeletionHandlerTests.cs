@@ -119,7 +119,7 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
         return new ScoreCommitPipeline(database,
         [
             new LeaderboardProcessor(database),
-            new UserGradesScoreProcessor(),
+            new UserGradesScoreProcessor(database),
             new UserStatsScoreProcessor(database, services.GetRequiredService<CalculatorService>())
         ]);
     }

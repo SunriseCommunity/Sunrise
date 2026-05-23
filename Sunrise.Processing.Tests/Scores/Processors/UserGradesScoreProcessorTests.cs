@@ -6,7 +6,6 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
-using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils.Processing;
 using Xunit;
 using Mods = osu.Shared.Mods;
@@ -15,17 +14,18 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Processing.Tests.Scores.Processors;
 
-public class UserGradesScoreProcessorTests : BaseTest
+[Collection("Integration tests collection")]
+public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
-    private readonly MockService _mocker = new();
-
     [Fact]
     public async Task TestOnNewSubmissionWithBestScoreIncrementsMatchingGradeCount()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
+
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -45,9 +45,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnNewSubmissionWithPreviousBestReplacesGradeCounts()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -79,9 +80,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnNewSubmissionWithModSpecificBestButWorseOverallKeepsGradesUnchanged()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -119,9 +121,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnNewSubmissionWithInvalidScoreStateKeepsGradesUnchanged(bool isScoreable, bool isPassed, SubmissionStatus submissionStatus)
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -142,9 +145,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnRecalculationReturnsWithoutChangingGrades()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -165,9 +169,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnDeletionWithBestOriginalStateDecrementsMatchingGradeCount()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -189,9 +194,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnDeletionWithPromotedReplacementReplacesGradeCounts()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -224,9 +230,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnDeletionWithNonBestOriginalStateKeepsGradesUnchanged()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -248,9 +255,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnRestorationWithBestScoreIncrementsMatchingGradeCount()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -270,9 +278,10 @@ public class UserGradesScoreProcessorTests : BaseTest
     public async Task TestOnNewSubmissionWithUnknownGradeThrowsArgumentOutOfRangeException()
     {
         // Arrange
-        var processor = new UserGradesScoreProcessor();
-        var user = CreateUser();
-        var userStats = CreateUserStats();
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
         var userGrades = new UserGrades
         {
             UserId = user.Id,
@@ -283,30 +292,6 @@ public class UserGradesScoreProcessorTests : BaseTest
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => processor.OnNewSubmission(context));
-    }
-
-    private User CreateUser()
-    {
-        var user = _mocker.User.GetRandomUser();
-        user.Id = 77;
-        return user;
-    }
-
-    private static UserStats CreateUserStats()
-    {
-        return new UserStats
-        {
-            UserId = 77,
-            GameMode = GameMode.Standard,
-            Accuracy = 98,
-            TotalScore = 1000,
-            RankedScore = 1000,
-            PlayCount = 1,
-            PerformancePoints = 100,
-            MaxCombo = 100,
-            PlayTime = 120,
-            TotalHits = 110
-        };
     }
 
     private static Score CreateScore(

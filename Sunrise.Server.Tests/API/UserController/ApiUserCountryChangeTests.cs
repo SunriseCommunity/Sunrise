@@ -9,7 +9,6 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Services;
