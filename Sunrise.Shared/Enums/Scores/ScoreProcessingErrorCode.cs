@@ -2,7 +2,7 @@ namespace Sunrise.Shared.Enums.Scores;
 
 public enum ScoreProcessingErrorCode
 {
-    Unexpected = -1,
+    Unexpected = 0,
     BeatmapNotFound = 1,
     DuplicateScore = 2,
     PpCalculationFailed = 3,
