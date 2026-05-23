@@ -182,6 +182,9 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
     }
 
+    /// <summary>
+    ///     Happens if we submitted score on a loved beatmap. It is not ranked, but it is scoreable.
+    /// </summary>
     [Fact]
     public async Task TestOnNewSubmissionWithUnrankedScoreableBeatmapUpdatesMaxComboOnly()
     {
