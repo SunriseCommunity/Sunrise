@@ -22,6 +22,7 @@ public class Score
 {
     public Score()
     {
+        // TODO: This doesn't work without explicit call. Please let's deprecate it in favour of dynamic values
         LocalProperties = new LocalProperties().FromScore(this);
     }
 
