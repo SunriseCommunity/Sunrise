@@ -318,6 +318,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
     public async Task<UserBeatmapPeers> GetUserBeatmapPeersForUpdate(
         int userId,
         string beatmapHash,
+        GameMode gameMode,
         Mods mods,
         int? excludeScoreId = null,
         CancellationToken ct = default)
@@ -331,6 +332,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
                                   SELECT * FROM score
                                   WHERE UserId = {userId}
                                     AND BeatmapHash = {beatmapHash}
+                                    AND GameMode = {(int)gameMode}
                                     AND IsScoreable = TRUE
                                     AND IsPassed = TRUE
                                     AND SubmissionStatus != {(int)SubmissionStatus.Failed}

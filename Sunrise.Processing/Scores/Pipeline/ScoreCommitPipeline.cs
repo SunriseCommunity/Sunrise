@@ -49,6 +49,7 @@ public class ScoreCommitPipeline
         var peers = await _database.Scores.GetUserBeatmapPeersForUpdate(
             score.UserId,
             score.BeatmapHash,
+            score.GameMode,
             score.Mods,
             excludeScoreId,
             ct);
