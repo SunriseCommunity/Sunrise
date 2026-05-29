@@ -118,8 +118,9 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             }
 
             var error = result.Error;
+            var isDuplicateScore = error.Code == ScoreProcessingErrorCode.DuplicateScore;
 
-            if (task.TaskType == ScoreTaskType.Submission && error.Code == ScoreProcessingErrorCode.DuplicateScore)
+            if (isDuplicateScore && task.TaskType == ScoreTaskType.Submission)
             {
                 await CleanupCompletedTask(bookkeepingDatabase, task, ct);
                 Log.Information("Cleaned up duplicate submission task {TaskId} for user {UserId}", task.Id, affectedUserId);
@@ -129,6 +130,8 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
             await bookkeepingDatabase.ScoreTaskQueue.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
 
+            var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
+
             Log.Warning("Score processing failed for task {TaskId} ({TaskType}), user {UserId}: [{Code}] {Error}",
                 task.Id,
                 task.TaskType,
@@ -137,17 +140,12 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 error.Message);
 
             SunriseMetrics.ScoreProcessingEntryCounterInc(
-                error.Disposition == ScoreProcessingDisposition.Permanent ? "permanent_failure" : "retryable_failure",
+                isPermanent ? "permanent_failure" : "retryable_failure",
                 task.TaskType,
                 error.Code);
 
-            if (error.Disposition == ScoreProcessingDisposition.Permanent && task.TaskType == ScoreTaskType.Submission)
-            {
-                Log.Warning("Score processing permanently failed for submission task {TaskId}, user {UserId}", task.Id, affectedUserId);
-
-                if (affectedUserId.HasValue && sessions.TryGetSession(out var userSession, userId: affectedUserId.Value) && userSession != null)
-                    userSession.SendNotification($"One of your submitted scores couldn't be processed. If you think this is a mistake, please contact the support with task ID: {task.Id}");
-            }
+            if (isPermanent && task.TaskType == ScoreTaskType.Submission)
+                NotifyUserOfPermanentFailure(sessions, task, affectedUserId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -157,6 +155,14 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         {
             await HandleUnexpectedEntryException(task, affectedUserId, ex);
         }
+    }
+
+    private static void NotifyUserOfPermanentFailure(SessionRepository sessions, ScoreTaskQueue task, int? affectedUserId)
+    {
+        Log.Warning("Score processing permanently failed for submission task {TaskId}, user {UserId}", task.Id, affectedUserId);
+
+        if (affectedUserId.HasValue && sessions.TryGetSession(out var userSession, userId: affectedUserId.Value) && userSession != null)
+            userSession.SendNotification($"One of your submitted scores couldn't be processed. If you think this is a mistake, please contact the support with task ID: {task.Id}");
     }
 
     private static async Task CleanupCompletedTask(DatabaseService database, ScoreTaskQueue task, CancellationToken ct)
