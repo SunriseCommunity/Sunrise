@@ -13,25 +13,28 @@ public class ScoreDeletionHandler(
     ScoreCommitPipeline pipeline)
     : ScoreHandlerBase(database, pipeline)
 {
-    public override async Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct)
+    internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(ScoreTaskQueue task, CancellationToken ct)
     {
         var score = await Database.Scores.GetScore(task.ScoreId!.Value, filterValidScores: false, ct: ct);
         if (score == null)
-            return new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, $"Score {task.ScoreId} not found").ToUnit();
+            return new ScoreProcessingError(
+                    ScoreProcessingErrorCode.Unexpected,
+                    $"Score {task.ScoreId} not found")
+                .ToResult<ScoreCommitContext>();
 
         if (score.SubmissionStatus == SubmissionStatus.Deleted)
             return new ScoreProcessingError(
                 ScoreProcessingErrorCode.InvalidScoreState,
                 $"Score {task.ScoreId} is already deleted"
-            ).ToUnit();
+            ).ToResult<ScoreCommitContext>();
 
         var loadUserStateResult = await LoadUserState(score, ct);
         if (loadUserStateResult.IsFailure)
-            return UnitResult.Failure(loadUserStateResult.Error);
+            return loadUserStateResult.Error.ToResult<ScoreCommitContext>();
 
         var (user, userStats, userGrades) = loadUserStateResult.Value;
         var ctx = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades);
 
-        return await CommitAndFinish(ctx, task, ct);
+        return ctx;
     }
 }
