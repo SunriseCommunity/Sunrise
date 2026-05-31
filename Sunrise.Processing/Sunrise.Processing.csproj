@@ -14,4 +14,8 @@
     <ItemGroup>
         <PackageReference Include="Rougamo.OpenTelemetry" Version="5.0.0"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Sunrise.Processing.Tests"/>
+    </ItemGroup>
 </Project>

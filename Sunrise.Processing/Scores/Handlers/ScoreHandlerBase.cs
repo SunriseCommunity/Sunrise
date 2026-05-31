@@ -24,7 +24,7 @@ public abstract class ScoreHandlerBase(
 
     protected DatabaseService Database { get; } = database;
 
-    public virtual async Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct)
+    public async Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct)
     {
         var prepareResult = await PrepareAsync(task, ct);
         if (prepareResult.IsFailure)
@@ -58,13 +58,13 @@ public abstract class ScoreHandlerBase(
         return UnitResult.Success<ScoreProcessingError>();
     }
 
-    protected virtual Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal virtual Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
         ScoreTaskQueue task, CancellationToken ct)
     {
         throw new NotSupportedException($"{GetType().Name} does not implement PrepareAsync.");
     }
 
-    protected virtual Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
+    internal virtual Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
     {
         return Task.CompletedTask;
     }

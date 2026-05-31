@@ -14,7 +14,7 @@ public class ScoreRestorationHandler(
     : ScoreHandlerBase(database, pipeline)
 {
 
-    protected override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
         ScoreTaskQueue task, CancellationToken ct)
     {
         var score = await Database.Scores.GetScore(task.ScoreId!.Value, filterValidScores: false, ct: ct);

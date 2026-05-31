@@ -28,7 +28,7 @@ public class ScoreSubmissionHandler(
 {
     private UserStats? _prevUserStatsSnapshot;
 
-    protected override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
         ScoreTaskQueue task, CancellationToken ct)
     {
         if (!task.ScoreProcessingQueueId.HasValue)
@@ -47,7 +47,7 @@ public class ScoreSubmissionHandler(
         return await PrepareFromPayload(BaseSession.GenerateServerSession(), payload, ct);
     }
 
-    protected override async Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
+    internal override async Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
     {
         if (!IsScoreScoreable(ctx.Score) || ctx.BeatmapSet == null || ctx.Beatmap == null)
             return;
