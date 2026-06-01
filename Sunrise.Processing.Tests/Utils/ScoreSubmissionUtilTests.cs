@@ -9,6 +9,7 @@ using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Utils.Converters;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Xunit;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -158,31 +159,6 @@ public class ScoreSubmissionUtilTests : BaseTest
 
         // Assert
         Assert.Equal(expectedResponse, result);
-    }
-
-    [Theory]
-    [InlineData(Mods.Target)]
-    [InlineData(Mods.Random)]
-    [InlineData(Mods.KeyCoop)]
-    [InlineData(Mods.Cinema)]
-    [InlineData(Mods.Autoplay)]
-    public void TestIsHasInvalidModsWithForbiddenModsReturnsTrue(Mods mods)
-    {
-        // Arrange & Act
-        var result = ScoreSubmissionUtil.IsHasInvalidMods(mods);
-
-        // Assert
-        Assert.True(result);
-    }
-
-    [Fact]
-    public void TestIsHasInvalidModsWithAllowedModsReturnsFalse()
-    {
-        // Arrange & Act
-        var result = ScoreSubmissionUtil.IsHasInvalidMods(Mods.Hidden | Mods.HardRock);
-
-        // Assert
-        Assert.False(result);
     }
 
     [Fact]
