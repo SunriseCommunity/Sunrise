@@ -1,5 +1,5 @@
 ﻿using osu.Shared;
-using Sunrise.Processing.Utils;
+using Sunrise.Shared.Utils;
 using Sunrise.Tests.Abstracts;
 using Mods = osu.Shared.Mods;
 

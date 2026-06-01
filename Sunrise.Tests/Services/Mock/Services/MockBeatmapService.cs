@@ -1,5 +1,7 @@
-﻿using Sunrise.Shared.Enums.Beatmaps;
+﻿using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Tests.Extensions;
 using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
 using GameMode = osu.Shared.GameMode;
 
@@ -123,8 +125,28 @@ public class MockBeatmapService(MockService service)
         return await MockBeatmapSet(beatmapSet);
     }
 
+    public async Task<(BeatmapSet, Beatmap)> MockRandomBeatmapWithSet()
+    {
+        var beatmapSet = service.Beatmap.GetRandomBeatmapSet();
+
+        beatmapSet = await MockBeatmapSet(beatmapSet);
+        var beatmap = beatmapSet.Beatmaps?.First() ?? throw new NullReferenceException();
+
+        return (beatmapSet, beatmap);
+    }
+
     public async Task<BeatmapSet> MockBeatmapSet(BeatmapSet beatmapSet)
     {
         return await service.Redis.MockBeatmapSetCache(beatmapSet);
+    }
+
+    public async Task<(BeatmapSet, Beatmap)> MockBeatmapWithSetForScore(Score score)
+    {
+        var beatmapSet = service.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(score);
+        await service.Beatmap.MockBeatmapSet(beatmapSet);
+
+        return (beatmapSet, beatmap);
     }
 }

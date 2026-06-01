@@ -20,6 +20,26 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
         _mockResponses[apiType] = args => responseFactory(args)!;
     }
 
+    public void MockBeatmapSetByBeatmapIdNotFound(int beatmapId)
+    {
+        MockResponse<ErrorMessage>(ApiType.BeatmapSetDataByBeatmapId,
+            _ => new ErrorMessage
+            {
+                Message = $"Beatmap set with beatmap ID {beatmapId} not found.",
+                Status = HttpStatusCode.NotFound
+            });
+    }
+
+    public void MockBeatmapSetByHashInternalServerError()
+    {
+        MockResponse<ErrorMessage>(ApiType.BeatmapSetDataByHash,
+            _ => new ErrorMessage
+            {
+                Message = "Internal server error while fetching beatmap set. ",
+                Status = HttpStatusCode.InternalServerError
+            });
+    }
+
     public void MockPerformanceCalculation(double performancePoints = 500, double difficultyRating = 5.0)
     {
         MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance,

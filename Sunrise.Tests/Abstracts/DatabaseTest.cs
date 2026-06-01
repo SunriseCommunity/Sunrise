@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects;
@@ -12,6 +13,7 @@ using Sunrise.Shared.Repositories;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
 using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils.Processing;
 
 namespace Sunrise.Tests.Abstracts;
 
@@ -193,5 +195,24 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
         var beatmapId = _mocker.Redis.GetBeatmapIdFromHash(replay.GetScore().BeatmapHash);
 
         return (replay, beatmapId);
+    }
+
+    protected async Task<int> CreateReplayFileId(int userId)
+    {
+        IFormFile replayFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", "score.osr");
+        var replayResult = await Database.Scores.Files.AddReplayFile(userId, replayFile);
+
+        Assert.True(replayResult.IsSuccess);
+        return replayResult.Value.Id;
+    }
+
+    protected async Task<ScoreProcessingQueue> CreateTestScoreProcessingQueue(Score score, User user, bool withReplay = true)
+    {
+        int? replayFileId = withReplay ? await CreateReplayFileId(user.Id) : null;
+        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+
+        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+
+        return queueEntry;
     }
 }
