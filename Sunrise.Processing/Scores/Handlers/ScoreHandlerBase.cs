@@ -30,11 +30,25 @@ public abstract class ScoreHandlerBase(
         if (prepareResult.IsFailure)
             return UnitResult.Failure(prepareResult.Error);
 
-        return await CommitAndFinish(prepareResult.Value, task, ct);
+
+        var commitResult = await CommitAsync(prepareResult.Value, task, ct);
+        if (commitResult.IsFailure)
+            return commitResult.Error;
+
+        await OnCommitted(commitResult.Value, ct);
+        return UnitResult.Success<ScoreProcessingError>();
     }
 
-    protected async Task<UnitResult<ScoreProcessingError>> CommitAndFinish(
-        ScoreCommitContext ctx, ScoreTaskQueue? task, CancellationToken ct)
+    internal virtual Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+        ScoreTaskQueue task, CancellationToken ct)
+    {
+        throw new NotSupportedException($"{GetType().Name} does not implement PrepareAsync.");
+    }
+
+    protected async Task<Result<ScoreCommitContext, ScoreProcessingError>> CommitAsync(
+        ScoreCommitContext ctx,
+        ScoreTaskQueue? task,
+        CancellationToken ct)
     {
         var commitResult = await pipeline.Commit(ctx, task, ct);
 
@@ -42,7 +56,7 @@ public abstract class ScoreHandlerBase(
         {
             var translated = TryTranslateTransactionFailure(commitResult.Error);
             if (translated.IsFailure)
-                return UnitResult.Failure(translated.Error);
+                return translated.Error;
 
             Log.Warning("Failed to commit score state mutation, reason: {Reason}, ScoreId: {ScoreId}",
                 commitResult.Error,
@@ -51,17 +65,10 @@ public abstract class ScoreHandlerBase(
             return new ScoreProcessingError(
                 ScoreProcessingErrorCode.TransactionFailed,
                 $"Failed to commit score state mutation: {commitResult.Error}",
-                ScoreProcessingDisposition.Retryable).ToUnit();
+                ScoreProcessingDisposition.Retryable);
         }
 
-        await OnCommitted(ctx, ct);
-        return UnitResult.Success<ScoreProcessingError>();
-    }
-
-    internal virtual Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
-        ScoreTaskQueue task, CancellationToken ct)
-    {
-        throw new NotSupportedException($"{GetType().Name} does not implement PrepareAsync.");
+        return ctx;
     }
 
     internal virtual Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
@@ -112,8 +119,6 @@ public abstract class ScoreHandlerBase(
         userStats.LocalProperties.Rank = currentRank;
 
         return (user, userStats, userGrades);
-
-
     }
 
     [TraceExecution]

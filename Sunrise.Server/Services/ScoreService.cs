@@ -77,7 +77,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(Configuration.ScoreProcessingTimeoutSeconds));
-            var processSubmissionResult = await submissionTaskHandler.ProcessInlineSubmission(session, candidate, cts.Token);
+            var processSubmissionResult = await submissionTaskHandler.ExecuteInlineSubmission(session, candidate, cts.Token);
 
             if (processSubmissionResult.IsSuccess)
                 return processSubmissionResult.Value ?? "error: no";

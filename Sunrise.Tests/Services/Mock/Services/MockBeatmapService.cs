@@ -140,11 +140,17 @@ public class MockBeatmapService(MockService service)
         return await service.Redis.MockBeatmapSetCache(beatmapSet);
     }
 
-    public async Task<(BeatmapSet, Beatmap)> MockBeatmapWithSetForScore(Score score)
+    public async Task<(BeatmapSet, Beatmap)> MockRankedBeatmapWithSetForScore(Score score)
     {
         var beatmapSet = service.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Ranked = (int)BeatmapStatusWeb.Ranked;
+        beatmapSet.StatusString = "ranked";
+
         var beatmap = beatmapSet.Beatmaps!.First();
         beatmap.EnrichWithScoreData(score);
+        beatmap.Ranked = (int)BeatmapStatusWeb.Ranked;
+        beatmap.StatusString = "ranked";
+        
         await service.Beatmap.MockBeatmapSet(beatmapSet);
 
         return (beatmapSet, beatmap);

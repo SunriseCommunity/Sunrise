@@ -65,13 +65,43 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
     }
 
     [Fact]
-    public async Task TestPrepareAsyncWithMissingBeatmapReturnsBeatmapNotFound()
+    public async Task TestPrepareAsyncWithServerErrorResponseForBeatmapReturnsBeatmapNotFoundRetryable()
     {
         // Arrange
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
         score = await CreateTestScore(score);
+
+        App.MockHttpClient?.MockBeatmapSetByHashInternalServerError();
+
+        var handler = (ScoreRecalculationHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
+
+        // Act
+        var result = await handler.PrepareAsync(new ScoreTaskQueue
+            {
+                TaskType = ScoreTaskType.Recalculation,
+                ScoreId = score.Id
+            },
+            CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.BeatmapNotFound, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Retryable, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareAsyncWithMissingBeatmapReturnsBeatmapNotFoundPermanent()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        score = await CreateTestScore(score);
+
+        App.MockHttpClient?.MockBeatmapSetByBeatmapIdNotFound(score.BeatmapId);
 
         var handler = (ScoreRecalculationHandler)Scope.ServiceProvider
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
@@ -91,7 +121,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
     }
 
     [Fact]
-    public async Task TestPrepareAsyncWithFailedRecalculationReturnsPpCalculationFailed()
+    public async Task TestPrepareAsyncWithFailedPpCalculationReturnsPpCalculationFailed()
     {
         // Arrange
         var user = await CreateTestUser();
@@ -99,7 +129,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
         score.EnrichWithUserData(user);
         score = await CreateTestScore(score);
 
-        await _mocker.Beatmap.MockBeatmapWithSetForScore(score);
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
         var handler = (ScoreRecalculationHandler)Scope.ServiceProvider
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
@@ -130,7 +160,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
 
         score = await CreateTestScore(score);
 
-        var (_, beatmap) = await _mocker.Beatmap.MockBeatmapWithSetForScore(score);
+        var (_, beatmap) = await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 321);
 
         var handler = (ScoreRecalculationHandler)Scope.ServiceProvider

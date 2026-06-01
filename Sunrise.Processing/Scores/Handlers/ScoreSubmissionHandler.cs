@@ -44,95 +44,66 @@ public class ScoreSubmissionHandler(
                     $"Submission payload {task.ScoreProcessingQueueId.Value} was not found for task {task.Id}")
                 .ToResult<ScoreCommitContext>();
 
-        return await PrepareFromPayload(BaseSession.GenerateServerSession(), payload, ct);
+        var beatmapRatelimitSession = BaseSession.GenerateServerSession();
+
+        var prepareInlineSubmissionCtxAsync = await PrepareInlineSubmissionAsync(beatmapRatelimitSession, payload, ct);
+        if (prepareInlineSubmissionCtxAsync.IsFailure)
+            return prepareInlineSubmissionCtxAsync.Error;
+
+        return prepareInlineSubmissionCtxAsync;
     }
 
-    internal override async Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
-    {
-        if (!IsScoreScoreable(ctx.Score) || ctx.BeatmapSet == null || ctx.Beatmap == null)
-            return;
-
-        await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndBuildSubmissionResponse(
-            BaseSession.GenerateServerSession(),
-            ctx,
-            _prevUserStatsSnapshot!,
-            ct);
-    }
-
-    public async Task<Result<string?, ScoreProcessingError>> ProcessInlineSubmission(
+    private async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
         BaseSession beatmapRatelimitSession,
-        ScoreProcessingQueue queueEntry,
-        CancellationToken ct,
-        ScoreTaskQueue? task = null)
-    {
-        var prepareResult = await PrepareFromPayload(beatmapRatelimitSession, queueEntry, ct);
-        if (prepareResult.IsFailure)
-            return prepareResult.Error;
-
-        var ctx = prepareResult.Value;
-
-        var commitResult = await pipeline.Commit(ctx, task, ct);
-
-        if (commitResult.IsFailure)
-        {
-            var translated = TryTranslateTransactionFailure(commitResult.Error);
-            if (translated.IsFailure)
-                return translated.Error;
-
-            Log.Warning("Failed to commit score state mutation, reason: {Reason}, ScoreId: {ScoreId}",
-                commitResult.Error,
-                ctx.Score.Id);
-
-            return new ScoreProcessingError(
-                ScoreProcessingErrorCode.TransactionFailed,
-                $"Failed to apply score state changes: {commitResult.Error}",
-                ScoreProcessingDisposition.Retryable);
-        }
-
-        if (!IsScoreScoreable(ctx.Score) || ctx.BeatmapSet == null || ctx.Beatmap == null)
-            return Result.Success<string?, ScoreProcessingError>(null);
-
-        var response = await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndBuildSubmissionResponse(
-            beatmapRatelimitSession,
-            ctx,
-            _prevUserStatsSnapshot!,
-            ct);
-
-        return Result.Success<string?, ScoreProcessingError>(response);
-    }
-
-    private async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareFromPayload(
-        BaseSession beatmapRatelimitSession,
-        ScoreProcessingQueue queueEntry,
-        CancellationToken ct)
+        ScoreProcessingQueue queueEntry, CancellationToken ct)
     {
         var loadBeatmapResult = await ResolveBeatmap(beatmapService, beatmapRatelimitSession, queueEntry.BeatmapHash, ct);
         if (loadBeatmapResult.IsFailure)
-            return loadBeatmapResult.Error.ToResult<ScoreCommitContext>();
+            return loadBeatmapResult.Error;
 
         var (beatmapSet, beatmap) = loadBeatmapResult.Value;
 
-        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
-        if (buildResult.IsFailure)
-            return buildResult.Error.ToResult<ScoreCommitContext>();
+        var buildScoreCandidateResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        if (buildScoreCandidateResult.IsFailure)
+            return buildScoreCandidateResult.Error.ToResult<ScoreCommitContext>();
 
-        var (submittedScore, score) = buildResult.Value;
-        score.TimeElapsed = queueEntry.TimeElapsed;
+        var (submittedScore, score) = buildScoreCandidateResult.Value;
 
         if (Configuration.EnforceLatestClientVersion)
             await CheckScoreClientVersion(score.OsuVersion, queueEntry.OsuVersion, ct);
 
-        var validationResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap.Checksum ?? string.Empty);
+        var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap.Checksum ?? string.Empty);
 
-        if (validationResult.IsFailure)
+        if (validateBuiltScoreResult.IsFailure)
         {
-            await RestrictUserForInvalidChecksums(score.UserId, validationResult.Error.Code);
-            return validationResult.Error.ToResult<ScoreCommitContext>();
+            await RestrictUserIfErrorCodeIsBannable(score.UserId, validateBuiltScoreResult.Error.Code);
+            return validateBuiltScoreResult.Error.ToResult<ScoreCommitContext>();
         }
 
-        var computeResult = await ComputePerformanceAndValidate(beatmapRatelimitSession, score, ct);
-        if (computeResult.IsFailure)
-            return computeResult.Error.ToResult<ScoreCommitContext>();
+        var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
+        if (scorePerformanceResult.IsFailure)
+            return new ScoreProcessingError(
+                    ScoreProcessingErrorCode.PpCalculationFailed,
+                    "PP calculation failed: " + scorePerformanceResult.Error.Message,
+                    ScoreProcessingDisposition.Retryable)
+                .ToResult<ScoreCommitContext>();
+
+        if (scorePerformanceResult.Value == null)
+            return new ScoreProcessingError(
+                    ScoreProcessingErrorCode.PpCalculationFailed,
+                    "Score performance calculation returned null",
+                    ScoreProcessingDisposition.Retryable)
+                .ToResult<ScoreCommitContext>();
+
+        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+
+        var validateScorePerformanceResult = ValidateScorePerformance(score, ct);
+
+        if (validateScorePerformanceResult.IsFailure)
+        {
+            await RestrictUserIfErrorCodeIsBannable(score.UserId, validateScorePerformanceResult.Error.Code);
+            return validateScorePerformanceResult.Error.ToResult<ScoreCommitContext>();
+        }
 
         var loadUserStateResult = await LoadUserState(score, ct);
         if (loadUserStateResult.IsFailure)
@@ -146,41 +117,45 @@ public class ScoreSubmissionHandler(
         return ctx;
     }
 
-    private async Task<UnitResult<ScoreProcessingError>> ComputePerformanceAndValidate(
-        BaseSession session, Score score, CancellationToken ct)
+    public async Task<Result<string?, ScoreProcessingError>> ExecuteInlineSubmission(
+        BaseSession beatmapRatelimitSession,
+        ScoreProcessingQueue queueEntry,
+        CancellationToken ct,
+        ScoreTaskQueue? task = null)
     {
-        var scorePerformanceResult = await calculatorService.CalculateScorePerformance(session, score, ct: ct);
-        if (scorePerformanceResult.IsFailure)
-            return new ScoreProcessingError(ScoreProcessingErrorCode.PpCalculationFailed,
-                "PP calculation failed: " + scorePerformanceResult.Error.Message,
-                ScoreProcessingDisposition.Retryable).ToUnit();
+        var prepareResult = await PrepareInlineSubmissionAsync(beatmapRatelimitSession, queueEntry, ct);
+        if (prepareResult.IsFailure)
+            return prepareResult.Error;
 
-        if (scorePerformanceResult.Value == null)
-            return new ScoreProcessingError(ScoreProcessingErrorCode.PpCalculationFailed,
-                "Score performance calculation returned null",
-                ScoreProcessingDisposition.Retryable).ToUnit();
+        var ctx = prepareResult.Value;
 
-        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+        var commitResult = await CommitAsync(prepareResult.Value, task, ct);
+        if (commitResult.IsFailure)
+            return commitResult.Error;
 
+        var newAchievements = await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndReturnNewAchievements(BaseSession.GenerateServerSession(), ctx, ct);
+
+        var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(ctx, newAchievements, _prevUserStatsSnapshot!, ct);
+
+        return responseString;
+    }
+
+    internal override async Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
+    {
+        await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndReturnNewAchievements(BaseSession.GenerateServerSession(), ctx, ct);
+    }
+
+    private UnitResult<ScoreProcessingError> ValidateScorePerformance(Score score, CancellationToken ct)
+    {
         var hasNonStandardModsForBanCheck = score.Mods.TryGetSelectedNotStandardMods() is not Mods.None;
         var isScoreBannable = score.PerformancePoints >= Configuration.BannablePpThreshold
                               && !hasNonStandardModsForBanCheck
                               && score.LocalProperties.IsRanked;
 
         if (isScoreBannable)
-        {
-            Log.Error("Too many performance points. Cheating? ScoreId: {scoreId}", score.Id);
-            await Database.Users.Moderation.RestrictPlayer(score.UserId, null, "Auto-restricted for submitting impossible score");
             return new ScoreProcessingError(ScoreProcessingErrorCode.BannablePpThreshold, "Too many PP - auto-restricted").ToUnit();
-        }
 
         return UnitResult.Success<ScoreProcessingError>();
-    }
-
-    private static bool IsScoreScoreable(Score score)
-    {
-        var isCurrentScoreFailed = ScoreSubmissionUtil.IsScoreFailed(score);
-        return !isCurrentScoreFailed && score.IsScoreable;
     }
 
     private async Task CheckScoreClientVersion(string scoreOsuVersion, string formOsuVersion, CancellationToken ct)
@@ -203,11 +178,23 @@ public class ScoreSubmissionHandler(
                 latestVersion);
     }
 
-    private async Task RestrictUserForInvalidChecksums(int userId, ScoreProcessingErrorCode errorCode)
+    private async Task RestrictUserIfErrorCodeIsBannable(int userId, ScoreProcessingErrorCode errorCode)
     {
-        if (errorCode != ScoreProcessingErrorCode.InvalidChecksums)
-            return;
+        var reason = errorCode switch
+        {
+            ScoreProcessingErrorCode.BannablePpThreshold => "Auto-restricted for submitting impossible score",
+            ScoreProcessingErrorCode.InvalidChecksums => "Invalid checksums on score submission",
+            _ => null
+        };
 
-        await Database.Users.Moderation.RestrictPlayer(userId, null, "Invalid checksums on score submission");
+        if (reason != null)
+        {
+            Log.Error("Score submission failed with error code {ErrorCode} for user {UserId}. Restriction reason: {Reason}",
+                errorCode,
+                userId,
+                reason);
+
+            await Database.Users.Moderation.RestrictPlayer(userId, null, reason);
+        }
     }
 }

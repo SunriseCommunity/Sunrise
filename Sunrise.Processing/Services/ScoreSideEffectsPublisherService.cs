@@ -29,18 +29,14 @@ public class ScoreSideEffectsPublisherService(
     SessionRepository sessions,
     ChatChannelRepository channels)
 {
-    public async Task<string> PublishScoreSideEffectsAndBuildSubmissionResponse(
-        BaseSession beatmapRatelimitSession,
+    public async Task<string> BuildScoreSubmitResponse(
         ScoreCommitContext ctx,
+        string? newAchievements,
         UserStats prevUserStats,
         CancellationToken ct = default)
     {
-        if (ctx.Beatmap == null || ctx.BeatmapSet == null)
-            throw new InvalidOperationException("Cannot publish side effects without beatmap and beatmap set on context.");
-
-        await PublishScoreSideEffects(beatmapRatelimitSession, ctx, ct);
-
-        var newAchievements = await UnlockMedalsAndGetNewlyUnlocked(ctx.Score, ctx.Beatmap, ctx.UserStats);
+        if (ctx.Beatmap == null)
+            throw new InvalidOperationException("Beatmap must be present in context to build score submit response.");
 
         var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(ctx.User, ctx.UserStats.GameMode, ct: ct);
         ctx.UserStats.LocalProperties.Rank = newUserRank;
@@ -70,7 +66,7 @@ public class ScoreSideEffectsPublisherService(
         return ScoreSubmissionUtil.GetScoreSubmitResponse(ctx.Beatmap, ctx.UserStats, prevUserStats, ctx.Score, ctx.UserPersonalBestScores?.OverallPeer, newAchievements);
     }
 
-    private async Task PublishScoreSideEffects(
+    public async Task<string?> PublishScoreSideEffectsAndReturnNewAchievements(
         BaseSession beatmapRatelimitSession,
         ScoreCommitContext ctx,
         CancellationToken ct = default)
@@ -78,6 +74,10 @@ public class ScoreSideEffectsPublisherService(
         var score = ctx.Score;
         var beatmap = ctx.Beatmap;
         var beatmapSet = ctx.BeatmapSet;
+
+        // If score is not scoreable - no side effects will be planned for it
+        if (!IsScoreScoreable(score))
+            return null;
 
         if (beatmap == null || beatmapSet == null)
             throw new InvalidOperationException("Beatmap and beatmap set must be present in context to publish score side effects.");
@@ -98,8 +98,10 @@ public class ScoreSideEffectsPublisherService(
                     score.Mods,
                     recalculateBeatmapResult.Error);
             }
-
-            beatmap.UpdateBeatmapWithPerformance(score.Mods, recalculateBeatmapResult.Value);
+            else
+            {
+                beatmap.UpdateBeatmapWithPerformance(score.Mods, recalculateBeatmapResult.Value);
+            }
         }
 
         var (globalScores, _) = await database.Scores.GetBeatmapScores(
@@ -126,6 +128,10 @@ public class ScoreSideEffectsPublisherService(
             channels.GetScoreAnnouncementChannel()
                 ?.SendToChannel(ScoreSubmissionUtil.GetNewFirstPlaceString(score, beatmapSet, beatmap));
         }
+
+        var newAchievements = await UnlockMedalsAndGetNewlyUnlocked(score, beatmap, ctx.UserStats);
+
+        return newAchievements;
     }
 
     private async Task<string> UnlockMedalsAndGetNewlyUnlocked(Score score, Beatmap beatmap, UserStats userStats)
@@ -148,5 +154,11 @@ public class ScoreSideEffectsPublisherService(
             }
             .SortScoresByTheirScoreValue()
             .First() == scoreA;
+    }
+
+    private static bool IsScoreScoreable(Score score)
+    {
+        var isCurrentScoreFailed = ScoreSubmissionUtil.IsScoreFailed(score);
+        return !isCurrentScoreFailed && score.IsScoreable;
     }
 }

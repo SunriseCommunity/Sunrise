@@ -30,6 +30,7 @@ public static class ScoreExtensions
     public static void EnrichWithUserData(this Score score, User user)
     {
         score.UserId = user.Id;
+        score.User = user;
     }
 
     public static void EnrichWithBeatmapData(this Score score, Beatmap beatmap)

@@ -26,24 +26,22 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
     private readonly MockService _mocker = new();
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndBuildSubmissionResponseWithoutBeatmapThrows()
+    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithoutBeatmapThrows()
     {
         // Arrange
         using var scope = Scope;
         var service = scope.ServiceProvider.GetRequiredService<ScoreSideEffectsPublisherService>();
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
-        score.User = user;
+        score.EnrichWithUserData(user);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades);
 
         // Act
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.PublishScoreSideEffectsAndBuildSubmissionResponse(
+            service.PublishScoreSideEffectsAndReturnNewAchievements(
                 BaseSession.GenerateServerSession(),
                 ctx,
-                userStats.Clone(),
                 CancellationToken.None));
 
         // Assert
@@ -51,7 +49,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
     }
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndBuildSubmissionResponseWithNewFirstPlaceSendsAnnouncement()
+    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithNewFirstPlaceSendsAnnouncement()
     {
         // Arrange
         using var scope = Scope;
@@ -69,7 +67,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var previousTopScore = _mocker.Score.GetBestScoreableRandomScore();
-        previousTopScore.UserId = otherUser.Id;
+        previousTopScore.EnrichWithUserData(otherUser);
         previousTopScore.Mods = Mods.None;
         previousTopScore.TotalScore = 900;
         previousTopScore.EnrichWithBeatmapData(beatmap);
@@ -77,25 +75,22 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         await CreateTestScore(previousTopScore);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
+        score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = 1000;
         score.EnrichWithBeatmapData(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
-        score.User = user;
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var prevUserStats = userStats.Clone();
         ApplyScoreToUserStats(userStats, score);
 
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
 
         // Act
-        var response = await service.PublishScoreSideEffectsAndBuildSubmissionResponse(
+        var response = await service.PublishScoreSideEffectsAndReturnNewAchievements(
             BaseSession.GenerateServerSession(),
             ctx,
-            prevUserStats,
             CancellationToken.None);
 
         // Assert
@@ -111,7 +106,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
     }
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndBuildSubmissionResponseWithoutLeaderboardTakeoverDoesNotSendAnnouncement()
+    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithoutLeaderboardTakeoverDoesNotSendAnnouncement()
     {
         // Arrange
         using var scope = Scope;
@@ -128,7 +123,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var existingBest = _mocker.Score.GetBestScoreableRandomScore();
-        existingBest.UserId = user.Id;
+        existingBest.EnrichWithUserData(user);
         existingBest.Mods = Mods.None;
         existingBest.TotalScore = 900;
         existingBest.EnrichWithBeatmapData(beatmap);
@@ -136,25 +131,22 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         await CreateTestScore(existingBest);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
+        score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = 1000;
         score.EnrichWithBeatmapData(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
-        score.User = user;
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var prevUserStats = userStats.Clone();
         ApplyScoreToUserStats(userStats, score);
 
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
 
         // Act
-        _ = await service.PublishScoreSideEffectsAndBuildSubmissionResponse(
+        _ = await service.PublishScoreSideEffectsAndReturnNewAchievements(
             BaseSession.GenerateServerSession(),
             ctx,
-            prevUserStats,
             CancellationToken.None);
 
         // Assert
