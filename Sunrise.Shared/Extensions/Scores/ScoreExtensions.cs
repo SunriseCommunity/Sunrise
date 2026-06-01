@@ -92,7 +92,7 @@ public static class ScoreExtensions
             : scores.SortScoresByTotalScore();
     }
 
-    public static Score ToScore(this SubmittedScore baseScore, int userId, Beatmap beatmap)
+    public static Score ToScore(this SubmittedScore baseScore, int userId, Beatmap beatmap, int timeElapsed)
     {
         var score = new Score
         {
@@ -118,7 +118,8 @@ public static class ScoreExtensions
             OsuVersion = baseScore.OsuVersion,
             BeatmapStatus = beatmap.Status,
             ClientTime = baseScore.ClientTime,
-            Accuracy = baseScore.Accuracy
+            Accuracy = baseScore.Accuracy,
+            TimeElapsed = timeElapsed
         };
 
         score.LocalProperties = score.LocalProperties.FromScore(score);

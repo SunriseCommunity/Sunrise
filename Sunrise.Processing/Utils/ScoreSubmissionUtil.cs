@@ -73,15 +73,6 @@ public static class ScoreSubmissionUtil
             $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
     }
 
-    public static bool IsHasInvalidMods(Mods mods)
-    {
-        return mods.HasFlag(Mods.Target) ||
-               mods.HasFlag(Mods.Random) ||
-               mods.HasFlag(Mods.KeyCoop) ||
-               mods.HasFlag(Mods.Cinema) ||
-               mods.HasFlag(Mods.Autoplay);
-    }
-
     public static int GetTimeElapsed(SubmittedScore score, int scoreTime, int scoreFailTime)
     {
         var isPassed = score.IsPassed || score.Mods.HasFlag(Mods.NoFail);

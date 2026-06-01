@@ -4,9 +4,11 @@ using Serilog;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Utils;
 
 namespace Sunrise.Processing.Utils;
 
@@ -23,7 +25,7 @@ public static class ScoreCandidateBuilderUtil
         }
 
         var submittedScore = parsedScoreResult.Value;
-        var score = submittedScore.ToScore(queueEntry.UserId, beatmap);
+        var score = submittedScore.ToScore(queueEntry.UserId, beatmap, queueEntry.TimeElapsed);
 
         if (queueEntry.ReplayFileId.HasValue)
             score.ReplayFileId = queueEntry.ReplayFileId.Value;
@@ -103,11 +105,13 @@ public static class ScoreCandidateBuilderUtil
 
     private static UnitResult<ScoreProcessingError> AssertScoreMods(Score score, string scoreSerialized)
     {
-        if (ScoreSubmissionUtil.IsHasInvalidMods(score.Mods))
+        if (ModsValidationUtil.IsModeCombinationInvalid(score.Mods, score.GameMode.ToVanillaGameMode()))
         {
             Log.Warning("Invalid mods found on score {score}", scoreSerialized);
             return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidMods, "Invalid mods").ToUnit();
         }
+
+        // TODO: Is this branch dead (covered by the method above)? Please validate
 
         var notStandardMods = score.Mods.TryGetSelectedNotStandardMods();
         var hasNonStandardMods = notStandardMods is not Mods.None;

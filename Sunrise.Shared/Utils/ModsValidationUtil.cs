@@ -1,6 +1,6 @@
 using osu.Shared;
 
-namespace Sunrise.Processing.Utils;
+namespace Sunrise.Shared.Utils;
 
 public static class ModsValidationUtil
 {
