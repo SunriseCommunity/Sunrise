@@ -1,9 +1,9 @@
+using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Processing.Scores.Handlers;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Scores;
-using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Sessions;
@@ -13,7 +13,6 @@ using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils.Processing;
 using Xunit;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
-using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Processing.Tests.Scores.Handlers;
 
@@ -352,83 +351,301 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
 {
     private readonly MockService _mocker = new();
 
-    // TODO: Fill with more tests
-
     [Fact]
-    public async Task TestProcessInlineSubmissionWithValidScoreReturnsResponseAndPersistsScore()
+    public async Task TestPrepareInlineSubmissionAsyncWithServerErrorResponseForBeatmapReturnsBeatmapNotFoundRetryable()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
-        var (replay, beatmapId) = GetValidTestReplay();
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        beatmapSet.IgnoreBeatmapRanking();
-        var score = replay.GetScore();
-        score.BeatmapId = beatmapId;
-        score.EnrichWithSessionData(session);
-        beatmapSet.Beatmaps!.First().EnrichWithScoreData(score);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        App.MockHttpClient?.MockBeatmapSetByHashInternalServerError();
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.BeatmapNotFound, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Retryable, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithMissingBeatmapReturnsBeatmapNotFoundPermanent()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        App.MockHttpClient?.MockBeatmapSetByBeatmapIdNotFound(score.BeatmapId);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.BeatmapNotFound, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithMissingReplayReturnsReplayMissing()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user, false);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.ReplayMissing, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
+    }
+
+    [Theory]
+    [InlineData(Mods.DoubleTime | Mods.HalfTime, ScoreProcessingErrorCode.InvalidMods)]
+    [InlineData(Mods.Relax | Mods.Relax2, ScoreProcessingErrorCode.InvalidMods)]
+    [InlineData(Mods.Target, ScoreProcessingErrorCode.InvalidMods)]
+    [InlineData(Mods.Key1, ScoreProcessingErrorCode.InvalidMods, GameMode.Standard)]
+    public async Task TestPrepareInlineSubmissionAsyncWithInvalidModsReturnsInvalidMods(Mods mods, ScoreProcessingErrorCode expectedErrorCode, GameMode? gamemodeOverride = null)
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+
+        score.Mods = mods;
+
+        if (gamemodeOverride.HasValue)
+            score.GameMode = gamemodeOverride.Value;
+
+        score.GameMode.EnrichWithMods(score.Mods);
+
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(expectedErrorCode, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithInvalidChecksumsReturnsInvalidChecksums()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
 
         var replayFileId = await CreateReplayFileId(user.Id);
         var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
-        var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
-        App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 250);
+        queueEntry.ClientHash = "invalid-client-hash";
+        queueEntry.ScoreHash = "invalid-score-hash";
+
+        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.ExecuteInlineSubmission(BaseSession.GenerateServerSession(), queueEntry, CancellationToken.None);
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidChecksums, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithFailedPpCalculationReturnsPpCalculationFailed()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.PpCalculationFailed, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Retryable, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithPpCalculationBeyondBannableThresholdReturnsBannablePpThreshold()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.None;
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+        App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 999999);
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.BannablePpThreshold, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
+    }
+
+    [Fact]
+    public async Task TestPrepareInlineSubmissionAsyncWithSubmissionScoreProcessingQueueEntryReturnsSubmissionContext()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
+            .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
+
+        // Act
+        var result = await handler.PrepareInlineSubmissionAsync(session, queueEntry, CancellationToken.None);
 
         // Assert
         Assert.True(result.IsSuccess);
-        Assert.NotNull(result.Value);
+        Assert.Equal(ScoreTaskType.Submission, result.Value.TaskType);
+        Assert.Equal(user.Id, result.Value.User.Id);
+        Assert.Equal(user.Id, result.Value.UserStats.UserId);
+        Assert.Equal(user.Id, result.Value.UserGrades.UserId);
+    }
+
+    [Fact]
+    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryAchievesMedals()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.DoubleTime;
+
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
+
+        // Act
+        await handler.ExecuteInlineSubmission(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        var userMedals = await Database.Users.Medals.GetUserMedals(user.Id, GameMode.Standard);
+
+        Assert.NotNull(userMedals);
+        Assert.NotNull(userMedals.FirstOrDefault(m => m.MedalId == 92)); // Intro Medal for the DoubleTime mod
+    }
+
+    [Fact]
+    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryPersistsScoreAndReturnsScoreStringForScoreableScore()
+    {
+        // Arrange
+        var (session, user) = await CreateTestSession();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
+
+        // Act
+        var executeInlineSubmissionResult = await handler.ExecuteInlineSubmission(session, queueEntry, CancellationToken.None);
+
+        // Assert
+        Assert.True(executeInlineSubmissionResult.IsSuccess);
 
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(persistedScore);
         Assert.Equal(user.Id, persistedScore.UserId);
-        Assert.Equal(250, persistedScore.PerformancePoints);
+
+        executeInlineSubmissionResult.Value.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task TestProcessInlineSubmissionWithFailedScoreReturnsSuccessWithNullResponse()
+    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryPersistsScoreAndReturnsNullForNonScoreableScore()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
-        var (replay, beatmapId) = GetValidTestReplay();
-        var score = replay.GetScore();
-        score.BeatmapId = beatmapId;
-        score.EnrichWithSessionData(session);
-        score.IsPassed = false;
-        score.Grade = "F";
-        score.Mods = Mods.None;
-        score.SubmissionStatus = SubmissionStatus.Failed;
-        score.CountMiss = Math.Max(score.CountMiss, 1);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
 
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        beatmapSet.IgnoreBeatmapRanking();
-        var beatmap = beatmapSet.Beatmaps!.First();
-        beatmap.EnrichWithScoreData(score);
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+        await _mocker.Beatmap.MockGraveyardBeatmapWithSetForScore(score); // Overrides scoreable score status
 
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: null);
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
-        using var scope = Scope;
-        var handler = scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
-        App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 25);
+        var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         // Act
-        var result = await handler.ExecuteInlineSubmission(BaseSession.GenerateServerSession(), queueEntry, CancellationToken.None);
+        var executeInlineSubmissionResult = await handler.ExecuteInlineSubmission(session, queueEntry, CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.Null(result.Value);
+        Assert.True(executeInlineSubmissionResult.IsSuccess);
 
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(persistedScore);
-        Assert.False(persistedScore.IsPassed);
+        Assert.Equal(user.Id, persistedScore.UserId);
+
+        executeInlineSubmissionResult.Value.Should().BeNull();
     }
 
     [Fact]
-    public async Task TestProcessInlineSubmissionWithDuplicateScoreReturnsDuplicateScoreError()
+    public async Task TestExecuteInlineSubmissionWithDuplicateScoreReturnsDuplicateScoreError()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
@@ -460,41 +677,5 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         Assert.True(duplicateResult.IsFailure);
         Assert.Equal(ScoreProcessingErrorCode.DuplicateScore, duplicateResult.Error.Code);
         Assert.Equal("Score with same hash already exists", duplicateResult.Error.Message);
-    }
-
-    [Fact]
-    public async Task TestProcessInlineSubmissionWithInvalidChecksumsRestrictsUserAndReturnsInvalidChecksums()
-    {
-        // Arrange
-        var (session, user) = await CreateTestSession();
-        var (replay, beatmapId) = GetValidTestReplay();
-        var score = replay.GetScore();
-        score.BeatmapId = beatmapId;
-        score.EnrichWithSessionData(session);
-
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        beatmapSet.IgnoreBeatmapRanking();
-        var beatmap = beatmapSet.Beatmaps!.First();
-        beatmap.EnrichWithScoreData(score);
-
-        var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        queueEntry.UserHash = "other-user-hash";
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-
-        using var scope = Scope;
-        var handler = scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
-
-        // Act
-        var result = await handler.ExecuteInlineSubmission(BaseSession.GenerateServerSession(), queueEntry, CancellationToken.None);
-
-        // Assert
-        Assert.True(result.IsFailure);
-        Assert.Equal(ScoreProcessingErrorCode.InvalidChecksums, result.Error.Code);
-
-        var refreshedUser = await Database.Users.GetUser(user.Id);
-        Assert.NotNull(refreshedUser);
-        Assert.Equal(UserAccountStatus.Restricted, refreshedUser.AccountStatus);
     }
 }
