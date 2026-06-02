@@ -135,6 +135,11 @@ public class ScoreSubmissionHandler(
 
         var newAchievements = await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndReturnNewAchievements(BaseSession.GenerateServerSession(), ctx, ct);
 
+        var shouldReturnScoreResponseString = ctx.Beatmap?.IsScoreable ?? false;
+
+        if (!shouldReturnScoreResponseString)
+            return null;
+
         var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(ctx, newAchievements, _prevUserStatsSnapshot!, ct);
 
         return responseString;
