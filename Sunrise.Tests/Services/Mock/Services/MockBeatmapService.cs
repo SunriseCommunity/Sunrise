@@ -150,7 +150,23 @@ public class MockBeatmapService(MockService service)
         beatmap.EnrichWithScoreData(score);
         beatmap.Ranked = (int)BeatmapStatusWeb.Ranked;
         beatmap.StatusString = "ranked";
-        
+
+        await service.Beatmap.MockBeatmapSet(beatmapSet);
+
+        return (beatmapSet, beatmap);
+    }
+
+    public async Task<(BeatmapSet, Beatmap)> MockGraveyardBeatmapWithSetForScore(Score score)
+    {
+        var beatmapSet = service.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Ranked = (int)BeatmapStatusWeb.Graveyard;
+        beatmapSet.StatusString = "graveyard";
+
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(score);
+        beatmap.Ranked = (int)BeatmapStatusWeb.Graveyard;
+        beatmap.StatusString = "graveyard";
+
         await service.Beatmap.MockBeatmapSet(beatmapSet);
 
         return (beatmapSet, beatmap);

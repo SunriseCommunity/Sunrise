@@ -53,7 +53,7 @@ public class ScoreSubmissionHandler(
         return prepareInlineSubmissionCtxAsync;
     }
 
-    private async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
+    internal async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
         BaseSession beatmapRatelimitSession,
         ScoreProcessingQueue queueEntry, CancellationToken ct)
     {
