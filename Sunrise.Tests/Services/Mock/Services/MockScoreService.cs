@@ -2,6 +2,7 @@
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Utils;
 using Sunrise.Tests.Extensions;
@@ -52,6 +53,34 @@ public class MockScoreService(MockService service)
         return score;
     }
 
+    public SubmittedScore GetRandomSubmittedScore(Score score)
+    {
+        var submittedScore = new SubmittedScore
+        {
+            PlayerUsername = service.GetRandomString(),
+            Count300 = score.Count300,
+            Count100 = score.Count100,
+            Count50 = score.Count50,
+            CountGeki = score.CountGeki,
+            CountKatu = score.CountKatu,
+            CountMiss = score.CountMiss,
+            Grade = score.Grade,
+            Accuracy = score.Accuracy,
+            Perfect = score.Perfect,
+            GameMode = score.GameMode,
+            Mods = score.Mods,
+            IsPassed = score.IsPassed,
+            BeatmapHash = score.BeatmapHash,
+            MaxCombo = score.MaxCombo,
+            ScoreHash = score.ScoreHash,
+            TotalScore = score.TotalScore,
+            WhenPlayed = score.WhenPlayed,
+            ClientTime = score.ClientTime,
+            OsuVersion = score.OsuVersion
+        };
+
+        return submittedScore;
+    }
 
     public PerformanceAttributes GetRandomPerformanceAttributes()
     {

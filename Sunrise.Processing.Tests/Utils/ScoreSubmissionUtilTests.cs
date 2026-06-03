@@ -1,19 +1,16 @@
 ﻿using Sunrise.Processing.Utils;
 using Sunrise.Shared.Application;
-using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Utils.Converters;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Xunit;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
-using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using Mods = osu.Shared.Mods;
 
 namespace Sunrise.Processing.Tests.Utils;
@@ -60,7 +57,10 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestUpdateSubmissionStatusWithFailedScoreReturnsFailedStatus()
     {
         // Arrange
-        var score = CreateScore(isPassed: false, mods: Mods.None);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+
+        score.IsPassed = false;
+        score.Mods = Mods.None;
 
         // Act
         score.UpdateSubmissionStatus(null);
@@ -73,7 +73,10 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestUpdateSubmissionStatusWithUnscoreableScoreReturnsSubmittedStatus()
     {
         // Arrange
-        var score = CreateScore(isScoreable: false, beatmapStatus: BeatmapStatus.Pending);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+
+        score.IsScoreable = false;
+        score.BeatmapStatus = BeatmapStatus.Pending;
 
         // Act
         score.UpdateSubmissionStatus(null);
@@ -86,7 +89,7 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestUpdateSubmissionStatusWithFirstScoreReturnsBestStatus()
     {
         // Arrange
-        var score = CreateScore(totalScore: 1500, submissionStatus: SubmissionStatus.Unknown);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
 
         // Act
         score.UpdateSubmissionStatus(null);
@@ -99,8 +102,38 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestUpdateSubmissionStatusWithWorseScoreReturnsSubmittedStatus()
     {
         // Arrange
-        var score = CreateScore(totalScore: 900, submissionStatus: SubmissionStatus.Unknown);
-        var previousBest = CreateScore(totalScore: 1000, submissionStatus: SubmissionStatus.Best);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.None;
+        score.TotalScore = 500;
+
+        var previousBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousBest.GameMode = GameMode.Standard;
+        previousBest.Mods = Mods.None;
+        previousBest.TotalScore = 1000;
+
+        // Act
+        score.UpdateSubmissionStatus(previousBest);
+
+        // Assert
+        Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
+    }
+
+    [Fact]
+    public void TestUpdateSubmissionStatusWithWorsePerformanceForSpecialGameModesReturnsSubmittedStatus()
+    {
+        // Arrange
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = GameMode.RelaxStandard;
+        score.Mods = Mods.Relax;
+        score.PerformancePoints = 500;
+        score.TotalScore = 1000;
+
+        var previousBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousBest.GameMode = GameMode.RelaxStandard;
+        previousBest.Mods = Mods.Relax;
+        previousBest.PerformancePoints = 1000;
+        previousBest.TotalScore = 500;
 
         // Act
         score.UpdateSubmissionStatus(previousBest);
@@ -113,23 +146,49 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestGetScoreSubmitResponseWithRankedBeatmapReturnsExpectedResponse()
     {
         // Arrange
-        var beatmap = CreateBeatmap();
-        var previousBeatmapBest = CreateScore(44, 1000, 300, 97, 90, leaderboardPosition: 5);
-        var previousPerformanceBest = CreateScore(45, 950, 290, 96, 90, leaderboardPosition: 6);
-        var newScore = CreateScore(55, 1200, leaderboardPosition: 1);
+        var user = _mocker.User.GetRandomUser();
+        user.Id = 1;
 
-        var prevUserStats = CreateUserStats(5000, 1000, 300, 95, 200, 10);
-        var userStats = CreateUserStats(6200, 1200, 400, 96, 210, 8);
+        var newScore = _mocker.Score.GetBestScoreableRandomScore();
+        newScore.EnrichWithUserData(user);
+        newScore.PerformancePoints = 200;
+        newScore.LocalProperties.LeaderboardPosition = 1;
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(newScore);
+
+        var previousBeatmapBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousBeatmapBest.EnrichWithBeatmapData(beatmap);
+        previousBeatmapBest.EnrichWithUserData(user);
+        previousBeatmapBest.PerformancePoints = 50;
+        previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
+
+        var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousPerformanceBest.EnrichWithBeatmapData(beatmap);
+        previousPerformanceBest.EnrichWithUserData(user);
+        previousPerformanceBest.PerformancePoints = 100;
+        previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;
+
+        var userStats = _mocker.User.GetRandomUserStats();
+        userStats.EnrichWithUserData(user);
+
+
+        var prevUserStats = _mocker.User.GetRandomUserStats();
+        prevUserStats.EnrichWithUserData(user);
 
         var previousPersonalBestScores = new UserPersonalBestScores(previousBeatmapBest, previousPerformanceBest);
 
+        var newAchievements = "new-achievements";
+
         var expectedResponse =
-            $"beatmapId:11|beatmapSetId:22|beatmapPlaycount:33|beatmapPasscount:44|approvedDate:2026-01-02\n" +
-            $"chartId:beatmap|chartUrl:https://example/map|chartName:Beatmap Ranking|rankBefore:5|rankAfter:1|rankedScoreBefore:1000|rankedScoreAfter:1200|totalScoreBefore:1000|totalScoreAfter:1200|maxComboBefore:300|maxComboAfter:400|accuracyBefore:97|accuracyAfter:99|ppBefore:90|ppAfter:100|onlineScoreId:55\n" +
-            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/77|chartName:Overall Ranking|rankBefore:10|rankAfter:8|rankedScoreBefore:1000|rankedScoreAfter:1200|totalScoreBefore:5000|totalScoreAfter:6200|maxComboBefore:300|maxComboAfter:400|accuracyBefore:95|accuracyAfter:96|ppBefore:200|ppAfter:210|achievements-new:new-medal";
+            $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}\n" +
+            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:{previousBeatmapBest.LocalProperties.LeaderboardPosition}|rankAfter:{newScore.LocalProperties.LeaderboardPosition}|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{previousBeatmapBest.PerformancePoints}|ppAfter:{newScore.PerformancePoints}|onlineScoreId:{newScore.Id}\n" +
+            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:{prevUserStats.LocalProperties.Rank}|rankAfter:{userStats.LocalProperties.Rank}|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
 
         // Act
-        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores, "new-medal");
+        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores, newAchievements);
 
         // Assert
         Assert.Equal(expectedResponse, result);
@@ -139,23 +198,57 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestGetScoreSubmitResponseWithLovedBeatmapHidesBeatmapPpValues()
     {
         // Arrange
-        var beatmap = CreateBeatmap("loved");
-        var previousBeatmapBest = CreateScore(44, 1000, 300, 97, 90, leaderboardPosition: 5);
-        var previousPerformanceBest = CreateScore(45, 950, 290, 96, 90, leaderboardPosition: 6);
-        var newScore = CreateScore(55, 1200, leaderboardPosition: 1);
+        var user = _mocker.User.GetRandomUser();
+        user.Id = 1;
 
-        var prevUserStats = CreateUserStats(5000, 1000, 300, 95, 200, 10);
-        var userStats = CreateUserStats(6200, 1200, 400, 96, 210, 8);
+        var newScore = _mocker.Score.GetBestScoreableRandomScore();
+        newScore.EnrichWithUserData(user);
+        newScore.PerformancePoints = 200;
+        newScore.LocalProperties.LeaderboardPosition = 1;
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+
+        beatmapSet.Ranked = (int)BeatmapStatus.Loved;
+        beatmapSet.StatusString = "loved";
+
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(newScore);
+
+        beatmap.Ranked = (int)BeatmapStatus.Loved;
+        beatmap.StatusString = "loved";
+
+        var previousBeatmapBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousBeatmapBest.EnrichWithBeatmapData(beatmap);
+        previousBeatmapBest.EnrichWithUserData(user);
+        previousBeatmapBest.PerformancePoints = 50;
+        previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
+
+        var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousPerformanceBest.EnrichWithBeatmapData(beatmap);
+        previousPerformanceBest.EnrichWithUserData(user);
+        previousPerformanceBest.PerformancePoints = 100;
+        previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;
+
+        var userStats = _mocker.User.GetRandomUserStats();
+        userStats.EnrichWithUserData(user);
+
+
+        var prevUserStats = _mocker.User.GetRandomUserStats();
+        prevUserStats.EnrichWithUserData(user);
 
         var previousPersonalBestScores = new UserPersonalBestScores(previousBeatmapBest, previousPerformanceBest);
 
+        var newAchievements = "new-achievements";
+
+        var expectedPerformancePoints = "";
+
         var expectedResponse =
-            $"beatmapId:11|beatmapSetId:22|beatmapPlaycount:33|beatmapPasscount:44|approvedDate:2026-01-02\n" +
-            $"chartId:beatmap|chartUrl:https://example/map|chartName:Beatmap Ranking|rankBefore:5|rankAfter:1|rankedScoreBefore:1000|rankedScoreAfter:1200|totalScoreBefore:1000|totalScoreAfter:1200|maxComboBefore:300|maxComboAfter:400|accuracyBefore:97|accuracyAfter:99|ppBefore:|ppAfter:|onlineScoreId:55\n" +
-            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/77|chartName:Overall Ranking|rankBefore:10|rankAfter:8|rankedScoreBefore:1000|rankedScoreAfter:1200|totalScoreBefore:5000|totalScoreAfter:6200|maxComboBefore:300|maxComboAfter:400|accuracyBefore:95|accuracyAfter:96|ppBefore:200|ppAfter:210|achievements-new:";
+            $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}\n" +
+            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:{previousBeatmapBest.LocalProperties.LeaderboardPosition}|rankAfter:{newScore.LocalProperties.LeaderboardPosition}|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{expectedPerformancePoints}|ppAfter:{expectedPerformancePoints}|onlineScoreId:{newScore.Id}\n" +
+            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:{prevUserStats.LocalProperties.Rank}|rankAfter:{userStats.LocalProperties.Rank}|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
 
         // Act
-        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores);
+        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores, newAchievements);
 
         // Assert
         Assert.Equal(expectedResponse, result);
@@ -165,46 +258,68 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestGetTimeElapsedWithPassedScoreReturnsScoreTime()
     {
         // Arrange
-        var submittedScore = CreateSubmittedScore(true, Mods.None);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.IsPassed = true;
+
+        var submittedScore = _mocker.Score.GetRandomSubmittedScore(score);
+
+        var scoreTime = _mocker.GetRandomInteger();
+        var scoreFailTime = _mocker.GetRandomInteger();
 
         // Act
-        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, 123, 45);
+        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
 
         // Assert
-        Assert.Equal(123, result);
+        Assert.Equal(scoreTime, result);
     }
 
     [Fact]
     public void TestGetTimeElapsedWithFailedScoreReturnsFailTime()
     {
         // Arrange
-        var submittedScore = CreateSubmittedScore(false, Mods.None);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.Mods = Mods.None;
+        score.IsPassed = false;
+
+        var submittedScore = _mocker.Score.GetRandomSubmittedScore(score);
+
+        var scoreTime = _mocker.GetRandomInteger();
+        var scoreFailTime = _mocker.GetRandomInteger();
 
         // Act
-        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, 123, 45);
+        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
 
         // Assert
-        Assert.Equal(45, result);
+        Assert.Equal(scoreFailTime, result);
     }
 
     [Fact]
     public void TestGetTimeElapsedWithNoFailScoreReturnsScoreTime()
     {
         // Arrange
-        var submittedScore = CreateSubmittedScore(false, Mods.NoFail);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.Mods = Mods.NoFail;
+        score.IsPassed = false;
+
+        var submittedScore = _mocker.Score.GetRandomSubmittedScore(score);
+
+        var scoreTime = _mocker.GetRandomInteger();
+        var scoreFailTime = _mocker.GetRandomInteger();
 
         // Act
-        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, 123, 45);
+        var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
 
         // Assert
-        Assert.Equal(123, result);
+        Assert.Equal(scoreTime, result);
     }
 
     [Fact]
     public void TestIsScoreFailedWithFailedScoreReturnsTrue()
     {
         // Arrange
-        var score = CreateScore(isPassed: false, mods: Mods.None);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.Mods = Mods.None;
+        score.IsPassed = false;
 
         // Act
         var result = ScoreSubmissionUtil.IsScoreFailed(score);
@@ -217,138 +332,14 @@ public class ScoreSubmissionUtilTests : BaseTest
     public void TestIsScoreFailedWithNoFailScoreReturnsFalse()
     {
         // Arrange
-        var score = CreateScore(isPassed: false, mods: Mods.NoFail);
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.Mods = Mods.NoFail;
+        score.IsPassed = false;
 
         // Act
         var result = ScoreSubmissionUtil.IsScoreFailed(score);
 
         // Assert
         Assert.False(result);
-    }
-
-    private static Score CreateScore(
-        int id = 55,
-        long totalScore = 1000,
-        int maxCombo = 400,
-        double accuracy = 99,
-        double performancePoints = 100,
-        bool isPassed = true,
-        bool isScoreable = true,
-        Mods mods = Mods.None,
-        SubmissionStatus submissionStatus = SubmissionStatus.Submitted,
-        int? leaderboardPosition = null,
-        BeatmapStatus beatmapStatus = BeatmapStatus.Ranked)
-    {
-        var score = new Score
-        {
-            Id = id,
-            UserId = 77,
-            BeatmapId = 11,
-            BeatmapHash = "beatmap-hash",
-            ScoreHash = $"score-hash-{id}",
-            TotalScore = totalScore,
-            MaxCombo = maxCombo,
-            Count300 = 100,
-            Count100 = 10,
-            Count50 = 0,
-            CountMiss = 0,
-            CountKatu = 0,
-            CountGeki = 0,
-            Perfect = true,
-            Mods = mods,
-            Grade = "A",
-            IsPassed = isPassed,
-            IsScoreable = isScoreable,
-            SubmissionStatus = submissionStatus,
-            GameMode = GameMode.Standard,
-            WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
-            OsuVersion = "b20260101.1",
-            BeatmapStatus = beatmapStatus,
-            ClientTime = new DateTime(2026, 1, 2, 3, 4, 5),
-            Accuracy = accuracy,
-            PerformancePoints = performancePoints,
-            TimeElapsed = 120
-        };
-
-        score.LocalProperties = score.LocalProperties.FromScore(score);
-        score.LocalProperties.LeaderboardPosition = leaderboardPosition;
-        return score;
-    }
-
-    private static UserStats CreateUserStats(
-        long totalScore,
-        long rankedScore,
-        int maxCombo,
-        double accuracy,
-        double performancePoints,
-        long rank)
-    {
-        var userStats = new UserStats
-        {
-            UserId = 77,
-            GameMode = GameMode.Standard,
-            TotalScore = totalScore,
-            RankedScore = rankedScore,
-            MaxCombo = maxCombo,
-            Accuracy = accuracy,
-            PerformancePoints = performancePoints,
-            PlayCount = 1,
-            PlayTime = 120,
-            TotalHits = 110
-        };
-
-        userStats.LocalProperties.Rank = rank;
-        return userStats;
-    }
-
-    private static SubmittedScore CreateSubmittedScore(bool isPassed, Mods mods)
-    {
-        return new SubmittedScore
-        {
-            BeatmapHash = "beatmap-hash",
-            PlayerUsername = "player",
-            ScoreHash = "score-hash",
-            Count300 = 100,
-            Count100 = 10,
-            Count50 = 0,
-            CountGeki = 0,
-            CountKatu = 0,
-            CountMiss = 0,
-            TotalScore = 1000,
-            MaxCombo = 300,
-            Perfect = true,
-            Grade = "A",
-            Mods = mods,
-            IsPassed = isPassed,
-            GameMode = GameMode.Standard,
-            WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
-            OsuVersion = "b20260101.1",
-            ClientTime = new DateTime(2026, 1, 2, 3, 4, 5),
-            Accuracy = 99
-        };
-    }
-
-    private static Beatmap CreateBeatmap(string statusString = "ranked")
-    {
-        return new Beatmap
-        {
-            Id = 11,
-            BeatmapsetId = 22,
-            DifficultyRating = 5,
-            Mode = "osu",
-            StatusString = statusString,
-            TotalLength = 120,
-            UserId = 99,
-            Version = "Insane",
-            BPM = 180,
-            HitLength = 100,
-            LastUpdated = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc),
-            ModeInt = 0,
-            Passcount = 44,
-            Playcount = 33,
-            Ranked = statusString == "loved" ? (int)BeatmapStatus.Loved : (int)BeatmapStatus.Ranked,
-            Url = "https://example/map",
-            Checksum = "beatmap-hash"
-        };
     }
 }

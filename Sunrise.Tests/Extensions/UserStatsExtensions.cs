@@ -27,6 +27,11 @@ public static class UserStatsExtensions
             userStats.RankedScore += score.TotalScore;
     }
 
+    public static void EnrichWithUserData(this UserStats stats, User user)
+    {
+        stats.UserId = user.Id;
+    }
+
     private static void IncreaseTotalHits(UserStats userStats, Score score)
     {
         userStats.TotalHits += score.Count300 + score.Count100 + score.Count50;
