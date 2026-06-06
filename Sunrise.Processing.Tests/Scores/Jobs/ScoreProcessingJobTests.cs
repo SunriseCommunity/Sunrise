@@ -1,5 +1,4 @@
 using HOPEless.Bancho;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Processing.Scores.Jobs;
@@ -34,7 +33,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
             UserId = user.Id,
             ScoreHash = $"{Guid.NewGuid():N}",
             ScoreSerialized = "unused",
-            BeatmapHash = "missing-job-beatmap",
+            BeatmapHash = "missing-job-beatmap", // Beatmap that won't be found, causing a permanent failure
             TimeElapsed = 120,
             OsuVersion = "b20260101.1",
             ClientHash = "client-hash",
@@ -78,7 +77,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
         await Database.ScoreProcessingQueue.AddQueueEntry(payload);
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
-        App.MockHttpClient?.MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance, _ => throw new Exception("pp failed"));
+        App.MockHttpClient?.MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance, _ => throw new Exception("pp failed")); // Simulate a failure in performance calculation, which should be treated as a retryable error
 
         var task = await CreateTask(ScoreTaskType.Submission, scoreProcessingQueueId: payload.Id);
         var job = Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>();
@@ -104,7 +103,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
         var user = await CreateTestUser();
         var replayFileId = await CreateReplayFileId(user.Id);
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
+        score.EnrichWithUserData(user);
         score.ReplayFileId = replayFileId;
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -169,15 +168,6 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
 
         await Database.ScoreTaskQueue.AddQueueEntry(task);
         return task;
-    }
-
-    private async Task<int> CreateReplayFileId(int userId)
-    {
-        IFormFile replayFile = new FormFile(new MemoryStream(new byte[1024]), 0, 1024, "data", "job-score.osr");
-        var replayResult = await Database.Scores.Files.AddReplayFile(userId, replayFile);
-
-        Assert.True(replayResult.IsSuccess);
-        return replayResult.Value.Id;
     }
 
     private static List<BanchoPacket> GetSessionPackets(Session session)
