@@ -17,7 +17,8 @@ using Sunrise.Tests.Utils.Processing;
 
 namespace Sunrise.Tests.Abstracts;
 
-public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTest, IAsyncLifetime
+// TODO: Switch reuseScopeInContext to true and remove it after fixing tests who depends on EF Core context being clear
+public abstract class DatabaseTest(IntegrationDatabaseFixture fixture, bool reuseScopeInContext = false) : BaseTest, IAsyncLifetime
 {
     private readonly FileService _fileService = new();
     private readonly MockService _mocker = new();
@@ -25,7 +26,7 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
 
     protected SunriseServerFactory App => fixture.App;
 
-    protected IServiceScope Scope => _scope ??= App.Server.Services.CreateScope();
+    protected IServiceScope Scope => reuseScopeInContext ? _scope ??= App.Server.Services.CreateScope() : App.Server.Services.CreateScope();
 
     protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
     protected SessionRepository Sessions => Scope.ServiceProvider.GetRequiredService<SessionRepository>();
@@ -37,8 +38,12 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
 
     public Task DisposeAsync()
     {
-        _scope?.Dispose();
-        _scope = null;
+        if (!reuseScopeInContext)
+        {
+            _scope?.Dispose();
+            _scope = null;
+        }
+
         return Task.CompletedTask;
     }
 
