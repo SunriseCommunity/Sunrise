@@ -11,6 +11,7 @@ using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Calculators;
@@ -34,16 +35,14 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Arrange
         using var pipelineScope = App.Server.Services.CreateScope();
         var pipeline = CreatePipeline(pipelineScope.ServiceProvider);
-        var calculator = pipelineScope.ServiceProvider.GetRequiredService<CalculatorService>();
         var user = await CreateTestUser();
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
+        EnrichScore(score, user, beatmap);
         score.Grade = "A";
-        score.EnrichWithBeatmapData(beatmap);
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
         score.BeatmapStatus = BeatmapStatus.Pending;
@@ -90,8 +89,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps!.First();
 
-        var replacement = await CreatePersistedScore(user.Id, beatmap, 900, SubmissionStatus.Submitted, "S", 450);
-        var score = await CreatePersistedScore(user.Id, beatmap, 1000, SubmissionStatus.Best, "A", 500);
+        var replacement = await CreatePersistedScore(user, beatmap, 900, SubmissionStatus.Submitted, "S", 450);
+        var score = await CreatePersistedScore(user, beatmap, 1000, SubmissionStatus.Best, "A", 500);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         userGrades.CountA = 1;
@@ -128,8 +127,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps!.First();
 
-        var previousBest = await CreatePersistedScore(user.Id, beatmap, 900, SubmissionStatus.Best, "S", 450);
-        var score = await CreatePersistedScore(user.Id, beatmap, 1000, SubmissionStatus.Deleted, "A", 500);
+        var previousBest = await CreatePersistedScore(user, beatmap, 900, SubmissionStatus.Best, "S", 450);
+        var score = await CreatePersistedScore(user, beatmap, 1000, SubmissionStatus.Deleted, "A", 500);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         userGrades.CountS = 1;
@@ -167,8 +166,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
-        score.EnrichWithBeatmapData(beatmap);
+        EnrichScore(score, user, beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -217,8 +215,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var beatmap = beatmapSet.Beatmaps!.First();
 
         // Two best scores: deleting the higher one should reduce ranked score
-        var lowerScore = await CreatePersistedScore(user.Id, beatmap, 800, SubmissionStatus.Submitted, "B", 300);
-        var score = await CreatePersistedScore(user.Id, beatmap, 1200, SubmissionStatus.Best, "A", 500);
+        var lowerScore = await CreatePersistedScore(user, beatmap, 800, SubmissionStatus.Submitted, "B", 300);
+        var score = await CreatePersistedScore(user, beatmap, 1200, SubmissionStatus.Best, "A", 500);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         // Seed user stats as if the score was already counted
@@ -267,7 +265,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps!.First();
 
-        var score = await CreatePersistedScore(user.Id, beatmap, 1000, SubmissionStatus.Best, "A", 400);
+        var score = await CreatePersistedScore(user, beatmap, 1000, SubmissionStatus.Best, "A", 400);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         // Seed with old values so we can detect the refresh
@@ -306,25 +304,19 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var promotedPeer = _mocker.Score.GetBestScoreableRandomScore();
-        promotedPeer.UserId = user.Id;
-        promotedPeer.Mods = Mods.None;
+        EnrichScore(promotedPeer, user, beatmap);
         promotedPeer.TotalScore = 700;
         promotedPeer.PerformancePoints = 150;
         promotedPeer.MaxCombo = 300;
-        promotedPeer.EnrichWithBeatmapData(beatmap);
-        promotedPeer.GameMode = GameMode.Standard;
         promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
         promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
         promotedPeer = await CreateTestScore(promotedPeer);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
-        score.Mods = Mods.None;
+        EnrichScore(score, user, beatmap);
         score.TotalScore = 900;
         score.PerformancePoints = 200;
         score.MaxCombo = 350;
-        score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = GameMode.Standard;
         score.SubmissionStatus = SubmissionStatus.Best;
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
@@ -373,25 +365,19 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var promotedPeer = _mocker.Score.GetBestScoreableRandomScore();
-        promotedPeer.UserId = user.Id;
-        promotedPeer.Mods = Mods.None;
+        EnrichScore(promotedPeer, user, beatmap, Mods.Relax);
         promotedPeer.TotalScore = 700;
         promotedPeer.PerformancePoints = 150;
         promotedPeer.MaxCombo = 300;
-        promotedPeer.EnrichWithBeatmapData(beatmap);
-        promotedPeer.GameMode = GameMode.RelaxStandard;
         promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
         promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
         promotedPeer = await CreateTestScore(promotedPeer);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
-        score.Mods = Mods.None;
+        EnrichScore(score, user, beatmap, Mods.Relax);
         score.TotalScore = 900;
         score.PerformancePoints = 200;
         score.MaxCombo = 350;
-        score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = GameMode.RelaxStandard;
         score.SubmissionStatus = SubmissionStatus.Best;
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
@@ -437,10 +423,9 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = user.Id;
+        EnrichScore(score, user, beatmap);
         score.Grade = "S";
         score.PerformancePoints = 500;
-        score.EnrichWithBeatmapData(beatmap);
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
         score.BeatmapStatus = BeatmapStatus.Pending;
@@ -476,11 +461,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // Give User A a persisted score with 100pp
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
-        scoreA.UserId = userA.Id;
-        scoreA.Mods = Mods.None;
-        scoreA.GameMode = GameMode.Standard;
+        EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.EnrichWithBeatmapData(beatmap);
         scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
@@ -501,11 +483,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User B submits a score with higher PP (200) via pipeline
         var scoreB = _mocker.Score.GetBestScoreableRandomScore();
-        scoreB.UserId = userB.Id;
-        scoreB.Mods = Mods.None;
-        scoreB.GameMode = GameMode.Standard;
+        EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 200;
-        scoreB.EnrichWithBeatmapData(beatmap);
         scoreB.SubmissionStatus = SubmissionStatus.Submitted;
         scoreB.IsScoreable = false;
         scoreB.BeatmapStatus = BeatmapStatus.Pending;
@@ -552,30 +531,21 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User A: 100pp best score
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
-        scoreA.UserId = userA.Id;
-        scoreA.Mods = Mods.None;
-        scoreA.GameMode = GameMode.Standard;
+        EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.EnrichWithBeatmapData(beatmap);
         scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
         // User B: two scores - 200pp best and 50pp fallback on different beatmaps
         var scoreBLow = _mocker.Score.GetBestScoreableRandomScore();
-        scoreBLow.UserId = userB.Id;
-        scoreBLow.Mods = Mods.None;
-        scoreBLow.GameMode = GameMode.Standard;
+        EnrichScore(scoreBLow, userB, beatmap2);
         scoreBLow.PerformancePoints = 50;
-        scoreBLow.EnrichWithBeatmapData(beatmap2);
         scoreBLow.LocalProperties = scoreBLow.LocalProperties.FromScore(scoreBLow);
         await Database.Scores.AddScore(scoreBLow);
 
         var scoreBHigh = _mocker.Score.GetBestScoreableRandomScore();
-        scoreBHigh.UserId = userB.Id;
-        scoreBHigh.Mods = Mods.None;
-        scoreBHigh.GameMode = GameMode.Standard;
+        EnrichScore(scoreBHigh, userB, beatmap);
         scoreBHigh.PerformancePoints = 200;
-        scoreBHigh.EnrichWithBeatmapData(beatmap);
         scoreBHigh.LocalProperties = scoreBHigh.LocalProperties.FromScore(scoreBHigh);
         await Database.Scores.AddScore(scoreBHigh);
 
@@ -647,11 +617,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User A: 100pp best score (currently rank 1)
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
-        scoreA.UserId = userA.Id;
-        scoreA.Mods = Mods.None;
-        scoreA.GameMode = GameMode.Standard;
+        EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.EnrichWithBeatmapData(beatmap);
         scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
@@ -663,12 +630,9 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User B: has a deleted 200pp score (rank should be worse than A currently)
         var scoreB = _mocker.Score.GetBestScoreableRandomScore();
-        scoreB.UserId = userB.Id;
-        scoreB.Mods = Mods.None;
-        scoreB.GameMode = GameMode.Standard;
+        EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 200;
         scoreB.SubmissionStatus = SubmissionStatus.Deleted;
-        scoreB.EnrichWithBeatmapData(beatmap);
         scoreB.LocalProperties = scoreB.LocalProperties.FromScore(scoreB);
         await Database.Scores.AddScore(scoreB);
 
@@ -726,11 +690,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User A: 100pp score
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
-        scoreA.UserId = userA.Id;
-        scoreA.Mods = Mods.None;
-        scoreA.GameMode = GameMode.Standard;
+        EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.EnrichWithBeatmapData(beatmap);
         scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
@@ -742,11 +703,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         // User B: score persisted with 0pp (simulates pre-recalculation state)
         var scoreB = _mocker.Score.GetBestScoreableRandomScore();
-        scoreB.UserId = userB.Id;
-        scoreB.Mods = Mods.None;
-        scoreB.GameMode = GameMode.Standard;
+        EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 0;
-        scoreB.EnrichWithBeatmapData(beatmap);
         scoreB.LocalProperties = scoreB.LocalProperties.FromScore(scoreB);
         await Database.Scores.AddScore(scoreB);
 
@@ -855,7 +813,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
     }
 
     private async Task<Score> CreatePersistedScore(
-        int userId,
+        User user,
         Beatmap beatmap,
         long totalScore,
         SubmissionStatus submissionStatus,
@@ -864,12 +822,10 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         bool isPassed = true)
     {
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.UserId = userId;
-        score.Mods = Mods.None;
+        EnrichScore(score, user, beatmap);
         score.TotalScore = totalScore;
         score.Grade = grade;
         score.MaxCombo = maxCombo;
-        score.EnrichWithBeatmapData(beatmap);
         score.SubmissionStatus = submissionStatus;
 
         if (!isPassed)
@@ -881,5 +837,14 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
         return await CreateTestScore(score);
+    }
+
+    private static void EnrichScore(Score score, User user, Beatmap beatmap, Mods mods = Mods.None)
+    {
+        beatmap.ModeInt = (int)GameMode.Standard.ToVanillaGameMode();
+        score.Mods = mods;
+        score.EnrichWithUserData(user);
+        score.EnrichWithBeatmapData(beatmap);
+        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
     }
 }
