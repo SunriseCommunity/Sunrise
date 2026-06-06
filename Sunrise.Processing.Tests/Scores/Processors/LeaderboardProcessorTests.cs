@@ -2,10 +2,11 @@
 using Sunrise.Processing.Scores.Processors;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
-using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils.Processing;
 using Xunit;
 using Mods = osu.Shared.Mods;
@@ -17,14 +18,16 @@ namespace Sunrise.Processing.Tests.Scores.Processors;
 [Collection("Integration tests collection")]
 public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
+    private readonly MockService _mocker = new();
+
     [Fact]
     public async Task TestOnNewSubmissionWithBetterScoreReturnsBestAndDemotesPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 1200, SubmissionStatus.Submitted);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 1200, SubmissionStatus.Submitted);
         var context = await CreateContext(ScoreTaskType.Submission, score, user, previousBest, ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -42,10 +45,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnNewSubmissionWithWorseScoreReturnsSubmittedAndKeepsPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 900, SubmissionStatus.Submitted);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 900, SubmissionStatus.Submitted);
         var context = await CreateContext(ScoreTaskType.Submission, score, user, previousBest, ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -63,10 +66,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnRecalculationWithBetterScoreReturnsBestAndDemotesPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 1200, SubmissionStatus.Submitted);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 1200, SubmissionStatus.Submitted);
         var context = await CreateContext(ScoreTaskType.Recalculation, score, user, previousBest, ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -84,10 +87,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnRecalculationWithWorseScoreReturnsSubmittedAndKeepsPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 900, SubmissionStatus.Submitted);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 900, SubmissionStatus.Submitted);
         var context = await CreateContext(ScoreTaskType.Recalculation, score, user, previousBest, ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -105,10 +108,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnDeletionWithBestOriginalStatePromotesNextBestPeer()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var nextBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Submitted);
-        var score = CreateScore(user.Id, 1200, SubmissionStatus.Best);
+        var nextBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Submitted);
+        var score = CreateScore(user, 1200, SubmissionStatus.Best);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = await CreateContext(ScoreTaskType.Delete, score, user, nextBest, originalState);
 
@@ -127,10 +130,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnDeletionWithSubmittedOriginalStateKeepsPeerUnchanged()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var nextBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Submitted);
-        var score = CreateScore(user.Id, 900, SubmissionStatus.Submitted);
+        var nextBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Submitted);
+        var score = CreateScore(user, 900, SubmissionStatus.Submitted);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = await CreateContext(ScoreTaskType.Delete, score, user, nextBest, originalState);
 
@@ -149,10 +152,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnRestorationWithPassedBetterScoreReturnsBestAndDemotesPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 1200, SubmissionStatus.Deleted);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 1200, SubmissionStatus.Deleted);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = await CreateContext(ScoreTaskType.Restore, score, user, previousBest, originalState);
 
@@ -171,10 +174,10 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
     public async Task TestOnRestorationWithFailedScoreReturnsFailedAndKeepsPreviousBest()
     {
         // Arrange
-        var processor = CreateProcessor();
+        var processor = new LeaderboardProcessor(Database);
         var user = await CreateTestUser();
-        var previousBest = await CreatePersistedScore(user.Id, 1000, SubmissionStatus.Best);
-        var score = CreateScore(user.Id, 1200, SubmissionStatus.Deleted, false);
+        var previousBest = await CreatePersistedScore(user, 1000, SubmissionStatus.Best);
+        var score = CreateScore(user, 1200, SubmissionStatus.Deleted, false);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = await CreateContext(ScoreTaskType.Restore, score, user, previousBest, originalState);
 
@@ -209,19 +212,21 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         return ScoreCommitContextFactory.Create(taskType, score, user, userStats, userGrades, userPersonalBestScores: peers, originalState: originalState);
     }
 
-    private async Task<Score> CreatePersistedScore(int userId, long totalScore, SubmissionStatus submissionStatus, bool isPassed = true)
+    private async Task<Score> CreatePersistedScore(User user, long totalScore, SubmissionStatus submissionStatus, bool isPassed = true)
     {
-        var score = CreateScore(userId, totalScore, submissionStatus, isPassed);
+        var score = CreateScore(user, totalScore, submissionStatus, isPassed);
         return await CreateTestScore(score);
     }
 
-    private static Score CreateScore(int userId, long totalScore, SubmissionStatus submissionStatus, bool isPassed = true)
+    // TODO: Refactor this to proper fixture
+    private Score CreateScore(User user, long totalScore, SubmissionStatus submissionStatus, bool isPassed = true)
     {
+        var beatmap = _mocker.Beatmap.GetRandomBeatmap();
+        beatmap.StatusString = "ranked";
+        beatmap.ModeInt = (int)GameMode.Standard;
+
         var score = new Score
         {
-            UserId = userId,
-            BeatmapId = 11,
-            BeatmapHash = "leaderboard-beatmap-hash",
             ScoreHash = $"{Guid.NewGuid():N}",
             TotalScore = totalScore,
             MaxCombo = 100,
@@ -237,22 +242,17 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
             IsPassed = isPassed,
             IsScoreable = true,
             SubmissionStatus = submissionStatus,
-            GameMode = GameMode.Standard,
             WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
             OsuVersion = "b20260101.1",
-            BeatmapStatus = BeatmapStatus.Ranked,
             ClientTime = new DateTime(2026, 1, 2, 3, 4, 5),
             Accuracy = isPassed ? 98 : 50,
             PerformancePoints = totalScore,
             TimeElapsed = 120
         };
 
+        score.EnrichWithUserData(user);
+        score.EnrichWithBeatmapData(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
-    }
-
-    private LeaderboardProcessor CreateProcessor()
-    {
-        return new LeaderboardProcessor(Database);
     }
 }

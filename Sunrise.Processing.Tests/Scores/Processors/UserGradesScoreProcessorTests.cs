@@ -2,10 +2,11 @@ using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Processing.Scores.Processors;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
-using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
+using Sunrise.Tests.Extensions;
+using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils.Processing;
 using Xunit;
 using Mods = osu.Shared.Mods;
@@ -17,6 +18,8 @@ namespace Sunrise.Processing.Tests.Scores.Processors;
 [Collection("Integration tests collection")]
 public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
 {
+    private readonly MockService _mocker = new();
+
     [Fact]
     public async Task TestOnNewSubmissionWithBestScoreIncrementsMatchingGradeCount()
     {
@@ -31,7 +34,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             UserId = user.Id,
             GameMode = GameMode.Standard
         };
-        var score = CreateScore();
+        var score = CreateScore(user);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -56,8 +59,8 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountS = 1
         };
 
-        var previousBest = CreateScore("S", submissionStatus: SubmissionStatus.Best);
-        var score = CreateScore();
+        var previousBest = CreateScore(user, "S", submissionStatus: SubmissionStatus.Best);
+        var score = CreateScore(user);
 
         var context = ScoreCommitContextFactory.Create(
             ScoreTaskType.Submission,
@@ -91,10 +94,10 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountS = 1
         };
 
-        var existingOverallBest = CreateScore("S", submissionStatus: SubmissionStatus.Best);
+        var existingOverallBest = CreateScore(user, "S", submissionStatus: SubmissionStatus.Best);
         existingOverallBest.TotalScore = 1200;
 
-        var score = CreateScore();
+        var score = CreateScore(user);
         score.TotalScore = 1100;
 
         var context = ScoreCommitContextFactory.Create(
@@ -131,7 +134,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard,
             CountA = 2
         };
-        var score = CreateScore(isScoreable: isScoreable, isPassed: isPassed, submissionStatus: submissionStatus);
+        var score = CreateScore(user, isScoreable: isScoreable, isPassed: isPassed, submissionStatus: submissionStatus);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -155,7 +158,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard,
             CountA = 2
         };
-        var score = CreateScore();
+        var score = CreateScore(user);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Recalculation, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -179,7 +182,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard,
             CountA = 1
         };
-        var score = CreateScore();
+        var score = CreateScore(user);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Delete, score, user, userStats, userGrades, originalState: originalState);
 
@@ -205,8 +208,8 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountA = 1
         };
 
-        var promotedReplacement = CreateScore("S", submissionStatus: SubmissionStatus.Best);
-        var score = CreateScore();
+        var promotedReplacement = CreateScore(user, "S", submissionStatus: SubmissionStatus.Best);
+        var score = CreateScore(user);
         var originalState = ScoreStateSnapshot.Capture(score);
 
         var context = ScoreCommitContextFactory.Create(
@@ -240,7 +243,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard,
             CountA = 1
         };
-        var score = CreateScore(submissionStatus: SubmissionStatus.Submitted);
+        var score = CreateScore(user, submissionStatus: SubmissionStatus.Submitted);
         var originalState = ScoreStateSnapshot.Capture(score);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Delete, score, user, userStats, userGrades, originalState: originalState);
 
@@ -264,7 +267,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             UserId = user.Id,
             GameMode = GameMode.Standard
         };
-        var score = CreateScore();
+        var score = CreateScore(user);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Restore, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act
@@ -287,24 +290,27 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             UserId = user.Id,
             GameMode = GameMode.Standard
         };
-        var score = CreateScore("Z", submissionStatus: SubmissionStatus.Best);
+        var score = CreateScore(user, "Z", submissionStatus: SubmissionStatus.Best);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => processor.OnNewSubmission(context));
     }
 
-    private static Score CreateScore(
+    // TODO: Refactor this to proper fixture
+    private Score CreateScore(
+        User user,
         string grade = "A",
         bool isScoreable = true,
         bool isPassed = true,
         SubmissionStatus submissionStatus = SubmissionStatus.Best)
     {
+        var beatmap = _mocker.Beatmap.GetRandomBeatmap();
+        beatmap.StatusString = isScoreable ? "ranked" : "pending";
+        beatmap.ModeInt = (int)GameMode.Standard;
+
         var score = new Score
         {
-            UserId = 77,
-            BeatmapId = 11,
-            BeatmapHash = "grade-beatmap-hash",
             ScoreHash = $"{Guid.NewGuid():N}",
             TotalScore = 1000,
             MaxCombo = 100,
@@ -320,16 +326,16 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             IsPassed = isPassed,
             IsScoreable = isScoreable,
             SubmissionStatus = submissionStatus,
-            GameMode = GameMode.Standard,
             WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
             OsuVersion = "b20260101.1",
-            BeatmapStatus = isScoreable ? BeatmapStatus.Ranked : BeatmapStatus.Pending,
             ClientTime = new DateTime(2026, 1, 2, 3, 4, 5),
             Accuracy = isPassed ? 98 : 50,
             PerformancePoints = 100,
             TimeElapsed = 120
         };
 
+        score.EnrichWithUserData(user);
+        score.EnrichWithBeatmapData(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }
