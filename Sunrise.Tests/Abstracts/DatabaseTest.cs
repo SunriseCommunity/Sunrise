@@ -21,10 +21,11 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
 {
     private readonly FileService _fileService = new();
     private readonly MockService _mocker = new();
+    private IServiceScope? _scope;
 
     protected SunriseServerFactory App => fixture.App;
 
-    protected IServiceScope Scope => App.Server.Services.CreateScope();
+    protected IServiceScope Scope => _scope ??= App.Server.Services.CreateScope();
 
     protected DatabaseService Database => Scope.ServiceProvider.GetRequiredService<DatabaseService>();
     protected SessionRepository Sessions => Scope.ServiceProvider.GetRequiredService<SessionRepository>();
@@ -36,6 +37,8 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture) : BaseTes
 
     public Task DisposeAsync()
     {
+        _scope?.Dispose();
+        _scope = null;
         return Task.CompletedTask;
     }
 
