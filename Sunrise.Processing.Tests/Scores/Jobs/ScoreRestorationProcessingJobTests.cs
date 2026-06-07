@@ -32,7 +32,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = 999_999
@@ -58,7 +58,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = score.Id
@@ -83,7 +83,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = score.Id
@@ -129,7 +129,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = score.Id
@@ -176,7 +176,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = deletedWithHigherScoreScore.Id
@@ -210,7 +210,7 @@ public class ScoreRestorationProcessingJobTests(IntegrationDatabaseFixture fixtu
         var handler = new ScoreRestorationHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = deletedScoreWithLowerScore.Id

@@ -5,9 +5,9 @@ using Sunrise.Shared.Database.Models.Users;
 
 namespace Sunrise.Shared.Database.Models.Scores;
 
-[Table("score_processing_queue")]
+[Table("score_submission_request")]
 [Index(nameof(ScoreHash), IsUnique = true)]
-public class ScoreProcessingQueue
+public class ScoreSubmissionRequest
 {
     public int Id { get; set; }
 

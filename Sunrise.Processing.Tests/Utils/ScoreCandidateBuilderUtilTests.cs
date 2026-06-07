@@ -186,7 +186,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         Assert.Contains("index: 2", result.Error.Message);
     }
 
-    private (ScoreProcessingQueue QueueEntry, Score Score, Beatmap Beatmap, string Username, string ClientHash) CreateValidQueueEntry(
+    private (ScoreSubmissionRequest QueueEntry, Score Score, Beatmap Beatmap, string Username, string ClientHash) CreateValidQueueEntry(
         Mods mods = Mods.None,
         bool isPassed = true,
         int? replayFileId = 1,
@@ -207,7 +207,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         var clientHash = "client-hash";
         score.ScoreHash = score.ComputeOnlineHash(user.Username, clientHash, storyboardHash);
 
-        var queueEntry = new ScoreProcessingQueue
+        var queueEntry = new ScoreSubmissionRequest
         {
             UserId = user.Id,
             ScoreHash = score.ScoreHash,

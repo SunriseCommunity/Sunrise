@@ -23,7 +23,7 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Delete);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = 999_999
@@ -51,7 +51,7 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Delete);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id
@@ -79,7 +79,7 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Delete);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id

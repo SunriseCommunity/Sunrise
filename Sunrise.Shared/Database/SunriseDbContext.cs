@@ -6,7 +6,6 @@ using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
-using ScoreTaskQueueEntity = Sunrise.Shared.Database.Models.Scores.ScoreTaskQueue;
 
 namespace Sunrise.Shared.Database;
 
@@ -40,8 +39,8 @@ public class SunriseDbContext : DbContext
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
-    public DbSet<ScoreProcessingQueue> ScoreProcessingQueue { get; set; }
-    public DbSet<ScoreTaskQueue> ScoreTaskQueue { get; set; }
+    public DbSet<ScoreSubmissionRequest> ScoreSubmissionRequests { get; set; }
+    public DbSet<ScoreProcessingTask> ScoreProcessingTasks { get; set; }
 
     public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
@@ -50,10 +49,10 @@ public class SunriseDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        const string scoreTaskTypeColumn = nameof(ScoreTaskQueueEntity.TaskType);
-        const string scoreTaskScoreIdColumn = nameof(ScoreTaskQueueEntity.ScoreId);
-        const string scoreTaskPayloadIdColumn = nameof(ScoreTaskQueueEntity.ScoreProcessingQueueId);
-        const string scoreTaskStatusColumn = nameof(ScoreTaskQueueEntity.Status);
+        const string scoreTaskTypeColumn = nameof(ScoreProcessingTask.TaskType);
+        const string scoreTaskScoreIdColumn = nameof(ScoreProcessingTask.ScoreId);
+        const string scoreTaskPayloadIdColumn = nameof(ScoreProcessingTask.ScoreSubmissionRequestId);
+        const string scoreTaskStatusColumn = nameof(ScoreProcessingTask.Status);
 
         modelBuilder.Entity<User>()
             .Property(u => u.Username)
@@ -75,33 +74,33 @@ public class SunriseDbContext : DbContext
             .HasForeignKey(ur => ur.TargetId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<ScoreTaskQueue>()
+        modelBuilder.Entity<ScoreProcessingTask>()
             .ToTable(t => t.HasCheckConstraint(
-                "CK_score_task_queue_target",
+                "CK_score_processing_task_target",
                 $"(({scoreTaskTypeColumn} = {(int)ScoreTaskType.Submission} AND {scoreTaskPayloadIdColumn} IS NOT NULL AND {scoreTaskScoreIdColumn} IS NULL) " +
                 $"OR ({scoreTaskTypeColumn} <> {(int)ScoreTaskType.Submission} AND {scoreTaskPayloadIdColumn} IS NULL AND {scoreTaskScoreIdColumn} IS NOT NULL))"));
 
-        modelBuilder.Entity<ScoreTaskQueue>()
+        modelBuilder.Entity<ScoreProcessingTask>()
             .Property<int?>("ActiveScoreId")
             .HasComputedColumnSql(
                 $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskScoreIdColumn} ELSE NULL END",
                 true);
 
-        modelBuilder.Entity<ScoreTaskQueue>()
-            .Property<int?>("ActiveScoreProcessingQueueId")
+        modelBuilder.Entity<ScoreProcessingTask>()
+            .Property<int?>("ActiveScoreSubmissionRequestId")
             .HasComputedColumnSql(
                 $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskPayloadIdColumn} ELSE NULL END",
                 true);
 
-        modelBuilder.Entity<ScoreTaskQueue>()
+        modelBuilder.Entity<ScoreProcessingTask>()
             .HasIndex("ActiveScoreId")
             .IsUnique()
-            .HasDatabaseName("UX_score_task_queue_active_score");
+            .HasDatabaseName("UX_score_processing_task_active_score");
 
-        modelBuilder.Entity<ScoreTaskQueue>()
-            .HasIndex("ActiveScoreProcessingQueueId")
+        modelBuilder.Entity<ScoreProcessingTask>()
+            .HasIndex("ActiveScoreSubmissionRequestId")
             .IsUnique()
-            .HasDatabaseName("UX_score_task_queue_active_payload");
+            .HasDatabaseName("UX_score_processing_task_active_submission_request");
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

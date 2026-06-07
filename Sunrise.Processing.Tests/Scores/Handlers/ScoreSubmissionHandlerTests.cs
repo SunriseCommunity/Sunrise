@@ -29,10 +29,10 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission
+        },
             CancellationToken.None);
 
         // Assert
@@ -48,11 +48,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = 999_999
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = 999_999
+        },
             CancellationToken.None);
 
         // Assert
@@ -68,7 +68,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         App.MockHttpClient?.MockBeatmapSetByHashInternalServerError();
 
@@ -76,11 +76,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -96,7 +96,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         App.MockHttpClient?.MockBeatmapSetByBeatmapIdNotFound(score.BeatmapId);
 
@@ -104,11 +104,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -125,7 +125,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
 
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user, false);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user, false);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -133,11 +133,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -165,7 +165,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
 
         score.GameMode.EnrichWithMods(score.Mods);
 
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -173,11 +173,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -195,12 +195,12 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         score.EnrichWithUserData(user);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
 
         queueEntry.ClientHash = "invalid-client-hash";
         queueEntry.ScoreHash = "invalid-score-hash";
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -208,11 +208,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -228,7 +228,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -236,11 +236,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -258,7 +258,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         score.GameMode = GameMode.Standard;
         score.Mods = Mods.None;
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 999999);
@@ -267,11 +267,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -281,13 +281,13 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
     }
 
     [Fact]
-    public async Task TestPrepareAsyncWithSubmissionScoreProcessingQueueEntryReturnsSubmissionContext()
+    public async Task TestPrepareAsyncWithSubmissionRequestReturnsSubmissionContext()
     {
         // Arrange
         var user = await CreateTestUser();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -296,11 +296,11 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Restore,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Restore,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -312,7 +312,7 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
     }
 
     [Fact]
-    public async Task TestOnCommittedWithSubmissionScoreProcessingQueueEntryAchievesMedals()
+    public async Task TestOnCommittedWithSubmissionRequestAchievesMedals()
     {
         // Arrange
         var user = await CreateTestUser();
@@ -358,7 +358,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         App.MockHttpClient?.MockBeatmapSetByHashInternalServerError();
 
@@ -381,7 +381,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         App.MockHttpClient?.MockBeatmapSetByBeatmapIdNotFound(score.BeatmapId);
 
@@ -405,7 +405,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
 
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user, false);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user, false);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -440,7 +440,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
 
         score.GameMode.EnrichWithMods(score.Mods);
 
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -465,12 +465,12 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         score.EnrichWithUserData(user);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
 
         queueEntry.ClientHash = "invalid-client-hash";
         queueEntry.ScoreHash = "invalid-score-hash";
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -493,7 +493,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
 
@@ -518,7 +518,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         score.GameMode = GameMode.Standard;
         score.Mods = Mods.None;
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 999999);
@@ -536,13 +536,13 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
     }
 
     [Fact]
-    public async Task TestPrepareInlineSubmissionAsyncWithSubmissionScoreProcessingQueueEntryReturnsSubmissionContext()
+    public async Task TestPrepareInlineSubmissionAsyncWithSubmissionRequestReturnsSubmissionContext()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -562,7 +562,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
     }
 
     [Fact]
-    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryAchievesMedals()
+    public async Task TestExecuteInlineSubmissionWithSubmissionRequestAchievesMedals()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
@@ -571,7 +571,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         score.GameMode = GameMode.Standard;
         score.Mods = Mods.DoubleTime;
 
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -589,13 +589,13 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
     }
 
     [Fact]
-    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryPersistsScoreAndReturnsScoreStringForScoreableScore()
+    public async Task TestExecuteInlineSubmissionWithSubmissionRequestPersistsScoreAndReturnsScoreStringForScoreableScore()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -616,13 +616,13 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
     }
 
     [Fact]
-    public async Task TestExecuteInlineSubmissionWithSubmissionScoreProcessingQueueEntryPersistsScoreAndReturnsNullForNonScoreableScore()
+    public async Task TestExecuteInlineSubmissionWithSubmissionRequestPersistsScoreAndReturnsNullForNonScoreableScore()
     {
         // Arrange
         var (session, user) = await CreateTestSession();
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
-        var queueEntry = await CreateTestScoreProcessingQueue(score, user);
+        var queueEntry = await CreateTestScoreSubmissionRequest(score, user);
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
         await _mocker.Beatmap.MockGraveyardBeatmapWithSetForScore(score); // Overrides scoreable score status
@@ -660,7 +660,7 @@ public class ScoreSubmissionInlineHandlerTests(IntegrationDatabaseFixture fixtur
         beatmap.EnrichWithScoreData(score);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         using var scope = Scope;

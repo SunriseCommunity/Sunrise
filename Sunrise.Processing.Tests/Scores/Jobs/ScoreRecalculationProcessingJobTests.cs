@@ -43,7 +43,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -65,7 +65,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = 999_999
@@ -100,7 +100,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -145,7 +145,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -191,7 +191,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = submittedScore.Id
@@ -229,7 +229,7 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
             Scope.ServiceProvider.GetRequiredService<CalculatorService>());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id

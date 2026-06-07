@@ -79,7 +79,7 @@ public class RecalculateScoresCommand : IChatCommand
 
                     foreach (var score in pageScores)
                     {
-                        var queued = await database.ScoreTaskQueue.TryAddQueueEntry(new ScoreTaskQueue
+                        var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(new ScoreProcessingTask
                         {
                             TaskType = ScoreTaskType.Recalculation,
                             ScoreId = score.Id,

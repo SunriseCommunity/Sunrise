@@ -35,19 +35,19 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 300);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -79,8 +79,8 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var existingBest = _mocker.Score.GetBestScoreableRandomScore();
         existingBest.EnrichWithUserData(user);
@@ -98,11 +98,11 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 100);
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -135,8 +135,8 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var existingBest = _mocker.Score.GetBestScoreableRandomScore();
         existingBest.EnrichWithUserData(user);
@@ -152,11 +152,11 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 500);
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -191,8 +191,8 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         // Create an existing best score with lower total score, but different gamemode.
         var existingBest = _mocker.Score.GetBestScoreableRandomScore();
@@ -210,11 +210,11 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 500);
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -240,17 +240,17 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         score.BeatmapHash = "nonexistent-hash";
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -273,27 +273,27 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 200);
 
-        var firstResult = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var firstResult = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
         Assert.True(firstResult.IsSuccess);
 
         // Act
-        var duplicateResult = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var duplicateResult = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -324,19 +324,19 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         score.EnrichWithBeatmapData(beatmap);
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: null);
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: null);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 0);
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert
@@ -365,18 +365,18 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
         queueEntry.UserHash = "other-user-hash";
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
-            {
-                TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueueId = queueEntry.Id
-            },
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Submission,
+            ScoreSubmissionRequestId = queueEntry.Id
+        },
             CancellationToken.None);
 
         // Assert

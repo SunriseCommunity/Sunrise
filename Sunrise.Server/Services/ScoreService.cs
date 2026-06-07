@@ -59,7 +59,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var timeElapsed = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
 
-        var candidate = new ScoreProcessingQueue
+        var candidate = new ScoreSubmissionRequest
         {
             UserId = session.UserId,
             ScoreHash = submittedScore.ScoreHash,
@@ -175,19 +175,19 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         return string.Join("\n", responses);
     }
 
-    private async Task EnqueueForBackgroundRetry(ScoreProcessingQueue candidate, Session userSession, ScoreProcessingError? error = null)
+    private async Task EnqueueForBackgroundRetry(ScoreSubmissionRequest candidate, Session userSession, ScoreProcessingError? error = null)
     {
         var shouldParkAsFailed = error is { Disposition: ScoreProcessingDisposition.Permanent }
                                  || error.HasValue && Configuration.ScoreProcessingMaxRetries <= 0;
 
         var enqueueResult = await database.CommitAsTransactionAsync(async () =>
         {
-            await database.ScoreProcessingQueue.AddQueueEntry(candidate);
+            await database.ScoreSubmissionRequests.AddQueueEntry(candidate);
 
-            var task = new ScoreTaskQueue
+            var task = new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Submission,
-                ScoreProcessingQueue = candidate,
+                ScoreSubmissionRequest = candidate,
                 Priority = (int)ScoreProcessingPriority.High,
                 CreatedAt = DateTime.UtcNow
             };
@@ -200,7 +200,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
                 task.ErrorMessage = processingError.Message;
             }
 
-            await database.ScoreTaskQueue.AddQueueEntry(task);
+            await database.ScoreProcessingTasks.AddQueueEntry(task);
         });
 
         if (enqueueResult.IsFailure)

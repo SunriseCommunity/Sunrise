@@ -171,8 +171,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var payload = await CreatePayload(user.Id);
-        var persistedTask = await CreateTask(ScoreTaskType.Submission, scoreProcessingQueueId: payload.Id, claimToken: "expected-token", leaseExpiresAt: DateTime.UtcNow.AddMinutes(1));
-        var mismatchedTask = new ScoreTaskQueue
+        var persistedTask = await CreateTask(ScoreTaskType.Submission, scoreSubmissionRequestId: payload.Id, claimToken: "expected-token", leaseExpiresAt: DateTime.UtcNow.AddMinutes(1));
+        var mismatchedTask = new ScoreProcessingTask
         {
             Id = persistedTask.Id,
             TaskType = persistedTask.TaskType,
@@ -191,7 +191,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
         var persistedUserGrades = await Database.Users.Grades.GetUserGrades(user.Id, score.GameMode);
-        var refreshedTask = await Database.DbContext.ScoreTaskQueue.AsNoTracking().FirstAsync(x => x.Id == persistedTask.Id);
+        var refreshedTask = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().FirstAsync(x => x.Id == persistedTask.Id);
 
         Assert.Null(persistedScore);
         Assert.NotNull(persistedUserStats);
@@ -770,31 +770,31 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         return (userStats, userGrades);
     }
 
-    private async Task<ScoreTaskQueue> CreateTask(
+    private async Task<ScoreProcessingTask> CreateTask(
         ScoreTaskType taskType,
         int? scoreId = null,
-        int? scoreProcessingQueueId = null,
+        int? scoreSubmissionRequestId = null,
         string? claimToken = null,
         DateTime? leaseExpiresAt = null)
     {
-        var task = new ScoreTaskQueue
+        var task = new ScoreProcessingTask
         {
             TaskType = taskType,
             ScoreId = scoreId,
-            ScoreProcessingQueueId = scoreProcessingQueueId,
+            ScoreSubmissionRequestId = scoreSubmissionRequestId,
             Status = ScoreProcessingStatus.Failed,
             ClaimToken = claimToken,
             LeaseExpiresAt = leaseExpiresAt,
             CreatedAt = DateTime.UtcNow
         };
 
-        await Database.ScoreTaskQueue.AddQueueEntry(task);
+        await Database.ScoreProcessingTasks.AddQueueEntry(task);
         return task;
     }
 
-    private async Task<ScoreProcessingQueue> CreatePayload(int userId)
+    private async Task<ScoreSubmissionRequest> CreatePayload(int userId)
     {
-        var payload = new ScoreProcessingQueue
+        var payload = new ScoreSubmissionRequest
         {
             UserId = userId,
             ScoreHash = $"{Guid.NewGuid():N}",
@@ -808,7 +808,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
             WhenPlayed = DateTime.UtcNow
         };
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(payload);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(payload);
         return payload;
     }
 

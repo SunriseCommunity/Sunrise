@@ -47,7 +47,7 @@ public class DeleteScoreCommand : IChatCommand
                     return;
                 }
 
-                var queued = await database.ScoreTaskQueue.TryAddQueueEntry(new ScoreTaskQueue
+                var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(new ScoreProcessingTask
                     {
                         TaskType = ScoreTaskType.Delete,
                         ScoreId = score.Id,

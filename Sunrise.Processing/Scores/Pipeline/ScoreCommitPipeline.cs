@@ -25,7 +25,7 @@ public class ScoreCommitPipeline
 
     public async Task<Result> Commit(
         ScoreCommitContext ctx,
-        ScoreTaskQueue? task,
+        ScoreProcessingTask? task,
         CancellationToken ct)
     {
         return await _database.CommitAsTransactionAsync(async () => { await ExecuteCommitAsync(ctx, task, ct); }, ct);
@@ -33,7 +33,7 @@ public class ScoreCommitPipeline
 
     private async Task ExecuteCommitAsync(
         ScoreCommitContext ctx,
-        ScoreTaskQueue? task,
+        ScoreProcessingTask? task,
         CancellationToken ct)
     {
         var score = ctx.Score;
@@ -78,14 +78,14 @@ public class ScoreCommitPipeline
         score.LocalProperties = score.LocalProperties.FromScore(score);
     }
 
-    private async Task<UnitResult<string>> TryRefreshClaimLease(ScoreTaskQueue? task, CancellationToken ct)
+    private async Task<UnitResult<string>> TryRefreshClaimLease(ScoreProcessingTask? task, CancellationToken ct)
     {
         if (task == null || string.IsNullOrWhiteSpace(task.ClaimToken))
             return UnitResult.Success<string>();
 
         var claimToken = task.ClaimToken;
         var leaseUntil = DateTime.UtcNow + Configuration.ScoreProcessingBatchLease;
-        var rowsAffected = await _database.ScoreTaskQueue.RefreshClaimLease(task.Id, claimToken, leaseUntil, ct);
+        var rowsAffected = await _database.ScoreProcessingTasks.RefreshClaimLease(task.Id, claimToken, leaseUntil, ct);
 
         return rowsAffected == 0
             ? UnitResult.Failure($"Task {task.Id} claim lost; rolling back")

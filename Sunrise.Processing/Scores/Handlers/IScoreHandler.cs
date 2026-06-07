@@ -6,5 +6,5 @@ namespace Sunrise.Processing.Scores.Handlers;
 
 public interface IScoreHandler
 {
-    Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreTaskQueue task, CancellationToken ct);
+    Task<UnitResult<ScoreProcessingError>> ExecuteAsync(ScoreProcessingTask task, CancellationToken ct);
 }

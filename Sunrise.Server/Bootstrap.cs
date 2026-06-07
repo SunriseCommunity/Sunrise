@@ -443,8 +443,8 @@ public static class Bootstrap
         builder.Services.AddScoped<BeatmapEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
-        builder.Services.AddScoped<ScoreProcessingQueueRepository>();
-        builder.Services.AddScoped<ScoreTaskQueueRepository>();
+        builder.Services.AddScoped<ScoreSubmissionRequestRepository>();
+        builder.Services.AddScoped<ScoreProcessingTaskRepository>();
         builder.Services.AddScoped<ScoreFileService>();
 
         builder.Services.AddScoped<OsuVersionRepository>();

@@ -2076,14 +2076,14 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Assert
         Assert.Equal("error: no", resultString);
 
-        var queueEntry = await Database.DbContext.ScoreTaskQueue
+        var queueEntry = await Database.DbContext.ScoreProcessingTasks
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
 
         Assert.NotNull(queueEntry);
         Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
         Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
-        Assert.NotNull(queueEntry.ScoreProcessingQueueId);
+        Assert.NotNull(queueEntry.ScoreSubmissionRequestId);
     }
 
     [Fact]
@@ -2156,13 +2156,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Assert
         Assert.Equal("error: no", resultString);
 
-        var queueEntry = await Database.DbContext.ScoreTaskQueue
+        var queueEntry = await Database.DbContext.ScoreProcessingTasks
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
 
         Assert.NotNull(queueEntry);
         Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
         Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
-        Assert.NotNull(queueEntry.ScoreProcessingQueueId);
+        Assert.NotNull(queueEntry.ScoreSubmissionRequestId);
     }
 }

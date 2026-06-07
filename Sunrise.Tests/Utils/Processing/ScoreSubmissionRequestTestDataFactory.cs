@@ -4,9 +4,9 @@ using Sunrise.Shared.Extensions.Scores;
 
 namespace Sunrise.Tests.Utils.Processing;
 
-public static class ScoreProcessingTestDataFactory
+public static class ScoreSubmissionRequestTestDataFactory
 {
-    public static ScoreProcessingQueue CreateQueueEntry(
+    public static ScoreSubmissionRequest CreateQueueEntry(
         Score score,
         string username = "player",
         string clientHash = "client-hash",
@@ -15,7 +15,7 @@ public static class ScoreProcessingTestDataFactory
     {
         score.ScoreHash = score.ComputeOnlineHash(username, clientHash, storyboardHash);
 
-        return new ScoreProcessingQueue
+        return new ScoreSubmissionRequest
         {
             UserId = score.UserId,
             ScoreHash = score.ScoreHash,

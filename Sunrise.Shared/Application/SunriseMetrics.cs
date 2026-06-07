@@ -197,7 +197,7 @@ public class SunriseMetrics
         var totalUsers = await database.Users.CountUsers();
         var restrictedUsers = await database.Users.CountRestrictedUsers();
         var scoresByMode = await database.Scores.CountScoresByGameMode();
-        var queueDepth = await database.ScoreTaskQueue.CountByStatus();
+        var queueDepth = await database.ScoreProcessingTasks.CountByStatus();
 
         _cachedTotalUsers = totalUsers;
         _cachedTotalRestrictedUsers = restrictedUsers;

@@ -14,7 +14,7 @@ namespace Sunrise.Processing.Utils;
 
 public static class ScoreCandidateBuilderUtil
 {
-    public static Result<(SubmittedScore submittedScore, Score score), ScoreProcessingError> Build(ScoreProcessingQueue queueEntry, Beatmap beatmap)
+    public static Result<(SubmittedScore submittedScore, Score score), ScoreProcessingError> Build(ScoreSubmissionRequest queueEntry, Beatmap beatmap)
     {
         var parsedScoreResult = queueEntry.ScoreSerialized.TryParseBaseScore(queueEntry.WhenPlayed);
 
@@ -33,7 +33,7 @@ public static class ScoreCandidateBuilderUtil
         return (submittedScore, score);
     }
 
-    public static UnitResult<ScoreProcessingError> ValidateBuiltScore(ScoreProcessingQueue queueEntry, Score score, SubmittedScore submittedScore, string onlineBeatmapChecksum)
+    public static UnitResult<ScoreProcessingError> ValidateBuiltScore(ScoreSubmissionRequest queueEntry, Score score, SubmittedScore submittedScore, string onlineBeatmapChecksum)
     {
         var failureValidators = new[]
         {

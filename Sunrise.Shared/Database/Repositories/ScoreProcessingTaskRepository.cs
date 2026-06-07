@@ -7,19 +7,19 @@ using Sunrise.Shared.Objects;
 
 namespace Sunrise.Shared.Database.Repositories;
 
-public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
+public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 {
-    public async Task AddQueueEntry(ScoreTaskQueue task, CancellationToken ct = default)
+    public async Task AddQueueEntry(ScoreProcessingTask task, CancellationToken ct = default)
     {
-        dbContext.ScoreTaskQueue.Add(task);
+        dbContext.ScoreProcessingTasks.Add(task);
         await dbContext.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> TryAddQueueEntry(ScoreTaskQueue task, CancellationToken ct = default)
+    public async Task<bool> TryAddQueueEntry(ScoreProcessingTask task, CancellationToken ct = default)
     {
         try
         {
-            dbContext.ScoreTaskQueue.Add(task);
+            dbContext.ScoreProcessingTasks.Add(task);
             await dbContext.SaveChangesAsync(ct);
             return true;
         }
@@ -32,16 +32,16 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
         }
     }
 
-    public async Task<List<ScoreTaskQueue>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default)
+    public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default)
     {
         var claimToken = Guid.NewGuid().ToString("N");
         var leaseUntil = DateTime.UtcNow.Add(lease);
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
-            UPDATE score_task_queue AS target
+            UPDATE score_processing_task AS target
             JOIN (
                 SELECT Id
-                FROM score_task_queue
+                FROM score_processing_task
                 WHERE (
                         Status = {(int)ScoreProcessingStatus.Pending}
                         OR (Status = {(int)ScoreProcessingStatus.Processing} AND LeaseExpiresAt < UTC_TIMESTAMP())
@@ -55,7 +55,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
                 target.LeaseExpiresAt = {leaseUntil}",
             ct);
 
-        return await dbContext.ScoreTaskQueue
+        return await dbContext.ScoreProcessingTasks
             .AsNoTracking()
             .Where(task => task.ClaimToken == claimToken)
             .OrderByDescending(task => task.Priority)
@@ -65,14 +65,14 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
     public async Task MarkForDeletion(int taskId, CancellationToken ct = default)
     {
-        await dbContext.ScoreTaskQueue
+        await dbContext.ScoreProcessingTasks
             .Where(task => task.Id == taskId)
             .ExecuteDeleteAsync(ct);
     }
 
     public async Task MarkAsFailed(int taskId, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreTaskQueue.FindAsync([taskId], ct);
+        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
         if (task == null)
             return;
 
@@ -98,7 +98,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
     public async Task<UnitResult<string>> CancelTask(int taskId, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreTaskQueue.FindAsync([taskId], ct);
+        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
         if (task == null)
             return UnitResult.Failure($"Score task {taskId} was not found.");
 
@@ -122,7 +122,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
     public async Task<bool> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreTaskQueue.FindAsync([taskId], ct);
+        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
         if (task is not { Status: ScoreProcessingStatus.Failed })
             return false;
 
@@ -152,7 +152,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
         if (taskIds == null)
         {
-            ids = await dbContext.ScoreTaskQueue
+            ids = await dbContext.ScoreProcessingTasks
                 .Where(task => task.Status == ScoreProcessingStatus.Failed)
                 .Select(task => task.Id)
                 .ToListAsync(ct);
@@ -180,7 +180,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
     public async Task<Dictionary<ScoreProcessingStatus, long>> CountByStatus(CancellationToken ct = default)
     {
-        var grouped = await dbContext.ScoreTaskQueue
+        var grouped = await dbContext.ScoreProcessingTasks
             .AsNoTracking()
             .GroupBy(task => task.Status)
             .Select(group => new
@@ -195,7 +195,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
 
     public async Task<int> RefreshClaimLease(int taskId, string claimToken, DateTime leaseUntil, CancellationToken ct = default)
     {
-        return await dbContext.ScoreTaskQueue
+        return await dbContext.ScoreProcessingTasks
             .Where(task => task.Id == taskId && task.ClaimToken == claimToken)
             .ExecuteUpdateAsync(setters => setters
                     .SetProperty(task => task.LeaseExpiresAt, leaseUntil),
@@ -206,7 +206,7 @@ public class ScoreTaskQueueRepository(SunriseDbContext dbContext)
     {
         var message = ex.InnerException?.Message ?? ex.Message;
 
-        return message.Contains("UX_score_task_queue_active_score", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("UX_score_task_queue_active_payload", StringComparison.OrdinalIgnoreCase);
+         return message.Contains("UX_score_processing_task_active_score", StringComparison.OrdinalIgnoreCase)
+             || message.Contains("UX_score_processing_task_active_submission_request", StringComparison.OrdinalIgnoreCase);
     }
 }

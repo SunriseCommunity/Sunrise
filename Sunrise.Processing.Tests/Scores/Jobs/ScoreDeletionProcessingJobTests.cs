@@ -32,7 +32,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = 999_999
@@ -59,7 +59,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id
@@ -102,7 +102,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id
@@ -149,7 +149,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id
@@ -182,7 +182,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = standardScore.Id
@@ -216,7 +216,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = bestScore.Id
@@ -253,7 +253,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = submittedScore.Id
@@ -285,7 +285,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var handler = new ScoreDeletionHandler(Database, CreatePipeline());
 
         // Act
-        var result = await handler.ExecuteAsync(new ScoreTaskQueue
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Delete,
                 ScoreId = score.Id

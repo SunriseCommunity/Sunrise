@@ -222,12 +222,12 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture, bool reus
         return replayResult.Value.Id;
     }
 
-    protected async Task<ScoreProcessingQueue> CreateTestScoreProcessingQueue(Score score, User user, bool withReplay = true)
+    protected async Task<ScoreSubmissionRequest> CreateTestScoreSubmissionRequest(Score score, User user, bool withReplay = true)
     {
         int? replayFileId = withReplay ? await CreateReplayFileId(user.Id) : null;
-        var queueEntry = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(queueEntry);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
 
         return queueEntry;
     }

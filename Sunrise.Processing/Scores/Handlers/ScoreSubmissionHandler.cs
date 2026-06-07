@@ -29,19 +29,19 @@ public class ScoreSubmissionHandler(
     private UserStats? _prevUserStatsSnapshot;
 
     internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
-        ScoreTaskQueue task, CancellationToken ct)
+        ScoreProcessingTask task, CancellationToken ct)
     {
-        if (!task.ScoreProcessingQueueId.HasValue)
+        if (!task.ScoreSubmissionRequestId.HasValue)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,
                     $"Submission task {task.Id} is missing its payload reference")
                 .ToResult<ScoreCommitContext>();
 
-        var payload = await Database.ScoreProcessingQueue.GetById(task.ScoreProcessingQueueId.Value, ct);
+        var payload = await Database.ScoreSubmissionRequests.GetById(task.ScoreSubmissionRequestId.Value, ct);
         if (payload == null)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,
-                    $"Submission payload {task.ScoreProcessingQueueId.Value} was not found for task {task.Id}")
+                    $"Submission payload {task.ScoreSubmissionRequestId.Value} was not found for task {task.Id}")
                 .ToResult<ScoreCommitContext>();
 
         var beatmapRatelimitSession = BaseSession.GenerateServerSession();
@@ -55,7 +55,7 @@ public class ScoreSubmissionHandler(
 
     internal async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
         BaseSession beatmapRatelimitSession,
-        ScoreProcessingQueue queueEntry, CancellationToken ct)
+        ScoreSubmissionRequest queueEntry, CancellationToken ct)
     {
         var loadBeatmapResult = await ResolveBeatmap(beatmapService, beatmapRatelimitSession, queueEntry.BeatmapHash, ct);
         if (loadBeatmapResult.IsFailure)
@@ -119,9 +119,9 @@ public class ScoreSubmissionHandler(
 
     public async Task<Result<string?, ScoreProcessingError>> ExecuteInlineSubmission(
         BaseSession beatmapRatelimitSession,
-        ScoreProcessingQueue queueEntry,
+        ScoreSubmissionRequest queueEntry,
         CancellationToken ct,
-        ScoreTaskQueue? task = null)
+        ScoreProcessingTask? task = null)
     {
         var prepareResult = await PrepareInlineSubmissionAsync(beatmapRatelimitSession, queueEntry, ct);
         if (prepareResult.IsFailure)

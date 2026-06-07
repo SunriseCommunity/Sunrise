@@ -22,7 +22,7 @@ public class ScoreRestorationHandlerTests(IntegrationDatabaseFixture fixture) : 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Restore);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = 999_999
@@ -50,7 +50,7 @@ public class ScoreRestorationHandlerTests(IntegrationDatabaseFixture fixture) : 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Restore);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = score.Id
@@ -78,7 +78,7 @@ public class ScoreRestorationHandlerTests(IntegrationDatabaseFixture fixture) : 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Restore);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Restore,
                 ScoreId = score.Id

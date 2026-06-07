@@ -22,7 +22,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = 999_999
@@ -51,7 +51,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -79,7 +79,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -107,7 +107,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -135,7 +135,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id
@@ -167,7 +167,7 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
             .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Recalculation);
 
         // Act
-        var result = await handler.PrepareAsync(new ScoreTaskQueue
+        var result = await handler.PrepareAsync(new ScoreProcessingTask
             {
                 TaskType = ScoreTaskType.Recalculation,
                 ScoreId = score.Id

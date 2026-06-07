@@ -28,7 +28,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         var session = CreateTestSession(user);
         session.GetContent();
 
-        var payload = new ScoreProcessingQueue
+        var payload = new ScoreSubmissionRequest
         {
             UserId = user.Id,
             ScoreHash = $"{Guid.NewGuid():N}",
@@ -41,9 +41,9 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
             WhenPlayed = DateTime.UtcNow
         };
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(payload);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(payload);
 
-        var task = await CreateTask(ScoreTaskType.Submission, scoreProcessingQueueId: payload.Id);
+        var task = await CreateTask(ScoreTaskType.Submission, scoreSubmissionRequestId: payload.Id);
 
         var job = Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>();
 
@@ -51,7 +51,7 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         await job.ProcessQueue(CancellationToken.None);
 
         // Assert
-        var refreshedTask = await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleAsync(x => x.Id == task.Id);
+        var refreshedTask = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleAsync(x => x.Id == task.Id);
         Assert.Equal(ScoreProcessingStatus.Failed, refreshedTask.Status);
         Assert.Equal(ScoreProcessingErrorCode.BeatmapNotFound, refreshedTask.ErrorCode);
         Assert.Null(refreshedTask.NextRetryAt);
@@ -73,26 +73,26 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         beatmap.EnrichWithScoreData(score);
 
         var replayFileId = await CreateReplayFileId(user.Id);
-        var payload = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
-        await Database.ScoreProcessingQueue.AddQueueEntry(payload);
+        var payload = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(payload);
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance, _ => throw new Exception("pp failed")); // Simulate a failure in performance calculation, which should be treated as a retryable error
 
-        var task = await CreateTask(ScoreTaskType.Submission, scoreProcessingQueueId: payload.Id);
+        var task = await CreateTask(ScoreTaskType.Submission, scoreSubmissionRequestId: payload.Id);
         var job = Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>();
 
         // Act
         await job.ProcessQueue(CancellationToken.None);
 
         // Assert
-        var refreshedTask = await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleAsync(x => x.Id == task.Id);
+        var refreshedTask = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleAsync(x => x.Id == task.Id);
         Assert.Equal(ScoreProcessingStatus.Pending, refreshedTask.Status);
         Assert.Equal(ScoreProcessingErrorCode.PpCalculationFailed, refreshedTask.ErrorCode);
         Assert.NotNull(refreshedTask.NextRetryAt);
         Assert.Equal(1, refreshedTask.RetryCount);
 
-        var refreshedPayload = await Database.ScoreProcessingQueue.GetById(payload.Id);
+        var refreshedPayload = await Database.ScoreSubmissionRequests.GetById(payload.Id);
         Assert.NotNull(refreshedPayload);
     }
 
@@ -110,16 +110,16 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         var beatmap = beatmapSet.Beatmaps!.First();
         beatmap.EnrichWithScoreData(score);
 
-        var payload = ScoreProcessingTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        var payload = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
         score.ScoreHash = payload.ScoreHash;
         score = await CreateTestScore(score);
 
-        await Database.ScoreProcessingQueue.AddQueueEntry(payload);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(payload);
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 200);
 
-        var task = await CreateTask(ScoreTaskType.Submission, scoreProcessingQueueId: payload.Id);
+        var task = await CreateTask(ScoreTaskType.Submission, scoreSubmissionRequestId: payload.Id);
         var job = Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>();
 
         // Act
@@ -128,8 +128,8 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         Database.DbContext.ChangeTracker.Clear();
 
         // Assert
-        Assert.Null(await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.Id));
-        Assert.Null(await Database.ScoreProcessingQueue.GetById(payload.Id));
+        Assert.Null(await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.Id));
+        Assert.Null(await Database.ScoreSubmissionRequests.GetById(payload.Id));
 
         var persistedScore = await Database.Scores.GetScore(score.Id, filterValidScores: false);
         Assert.NotNull(persistedScore);
@@ -151,24 +151,24 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool re
         await job.ProcessQueue(CancellationToken.None);
 
         // Assert
-        var refreshedTask = await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleAsync(x => x.Id == task.Id);
+        var refreshedTask = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleAsync(x => x.Id == task.Id);
         Assert.Equal(ScoreProcessingStatus.Pending, refreshedTask.Status);
         Assert.Equal(ScoreProcessingErrorCode.Unexpected, refreshedTask.ErrorCode);
         Assert.NotNull(refreshedTask.NextRetryAt);
         Assert.Equal(1, refreshedTask.RetryCount);
     }
 
-    private async Task<ScoreTaskQueue> CreateTask(ScoreTaskType taskType, int? scoreId = null, int? scoreProcessingQueueId = null)
+    private async Task<ScoreProcessingTask> CreateTask(ScoreTaskType taskType, int? scoreId = null, int? scoreSubmissionRequestId = null)
     {
-        var task = new ScoreTaskQueue
+        var task = new ScoreProcessingTask
         {
             TaskType = taskType,
             ScoreId = scoreId,
-            ScoreProcessingQueueId = scoreProcessingQueueId,
+            ScoreSubmissionRequestId = scoreSubmissionRequestId,
             CreatedAt = DateTime.UtcNow
         };
 
-        await Database.ScoreTaskQueue.AddQueueEntry(task);
+        await Database.ScoreProcessingTasks.AddQueueEntry(task);
         return task;
     }
 

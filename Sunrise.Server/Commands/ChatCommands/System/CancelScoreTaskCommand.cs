@@ -23,7 +23,7 @@ public class CancelScoreTaskCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var cancelResult = await database.ScoreTaskQueue.CancelTask(taskId);
+        var cancelResult = await database.ScoreProcessingTasks.CancelTask(taskId);
         if (cancelResult.IsFailure)
         {
             ChatCommandRepository.SendMessage(session, cancelResult.Error);

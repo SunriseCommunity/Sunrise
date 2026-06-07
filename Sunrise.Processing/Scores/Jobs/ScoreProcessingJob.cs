@@ -35,12 +35,12 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         {
             while (!token.IsCancellationRequested)
             {
-                List<ScoreTaskQueue> claimed;
+                List<ScoreProcessingTask> claimed;
 
                 using (var claimScope = scopeFactory.CreateScope())
                 {
                     var database = claimScope.ServiceProvider.GetRequiredService<DatabaseService>();
-                    claimed = await database.ScoreTaskQueue.ClaimPendingBatch(
+                    claimed = await database.ScoreProcessingTasks.ClaimPendingBatch(
                         Configuration.ScoreProcessingMaxConcurrency,
                         Configuration.ScoreProcessingBatchLease,
                         token);
@@ -93,7 +93,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
     }
 
-    private async Task ProcessEntry(ScoreTaskQueue task, CancellationToken ct)
+    private async Task ProcessEntry(ScoreProcessingTask task, CancellationToken ct)
     {
         using var entryScope = scopeFactory.CreateScope();
         var entryDatabase = entryScope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -128,7 +128,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 return;
             }
 
-            await bookkeepingDatabase.ScoreTaskQueue.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
+            await bookkeepingDatabase.ScoreProcessingTasks.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
 
             var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
 
@@ -157,7 +157,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
     }
 
-    private static void NotifyUserOfPermanentFailure(SessionRepository sessions, ScoreTaskQueue task, int? affectedUserId)
+    private static void NotifyUserOfPermanentFailure(SessionRepository sessions, ScoreProcessingTask task, int? affectedUserId)
     {
         Log.Warning("Score processing permanently failed for submission task {TaskId}, user {UserId}", task.Id, affectedUserId);
 
@@ -165,14 +165,14 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             userSession.SendNotification($"One of your submitted scores couldn't be processed. If you think this is a mistake, please contact the support with task ID: {task.Id}");
     }
 
-    private static async Task CleanupCompletedTask(DatabaseService database, ScoreTaskQueue task, CancellationToken ct)
+    private static async Task CleanupCompletedTask(DatabaseService database, ScoreProcessingTask task, CancellationToken ct)
     {
-        if (task is { TaskType: ScoreTaskType.Submission, ScoreProcessingQueueId: not null })
+        if (task is { TaskType: ScoreTaskType.Submission, ScoreSubmissionRequestId: not null })
         {
             var cleanupResult = await database.CommitAsTransactionAsync(async () =>
                 {
-                    await database.ScoreTaskQueue.MarkForDeletion(task.Id, ct);
-                    await database.ScoreProcessingQueue.DeleteById(task.ScoreProcessingQueueId.Value, ct);
+                    await database.ScoreProcessingTasks.MarkForDeletion(task.Id, ct);
+                    await database.ScoreSubmissionRequests.DeleteById(task.ScoreSubmissionRequestId.Value, ct);
                 },
                 ct);
 
@@ -182,10 +182,10 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             return;
         }
 
-        await database.ScoreTaskQueue.MarkForDeletion(task.Id, ct);
+        await database.ScoreProcessingTasks.MarkForDeletion(task.Id, ct);
     }
 
-    private async Task HandleUnexpectedEntryException(ScoreTaskQueue task, int? affectedUserId, Exception ex)
+    private async Task HandleUnexpectedEntryException(ScoreProcessingTask task, int? affectedUserId, Exception ex)
     {
         Log.Error(ex, "Unexpected exception while processing score task {TaskId} ({TaskType}) for user {UserId}", task.Id, task.TaskType, affectedUserId);
         SunriseMetrics.ScoreProcessingEntryCounterInc("unexpected", task.TaskType, ScoreProcessingErrorCode.Unexpected);
@@ -196,7 +196,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             var failureDatabase = failureScope.ServiceProvider.GetRequiredService<DatabaseService>();
             var unexpectedError = new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, ex.Message, ScoreProcessingDisposition.Retryable);
 
-            await failureDatabase.ScoreTaskQueue.MarkAsFailed(task.Id, unexpectedError, GetBackoffDelay(task.RetryCount));
+            await failureDatabase.ScoreProcessingTasks.MarkAsFailed(task.Id, unexpectedError, GetBackoffDelay(task.RetryCount));
         }
         catch (Exception markFailedException)
         {
@@ -207,10 +207,10 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
     }
 
-    private static async Task<int?> ResolveAffectedUserId(DatabaseService database, ScoreTaskQueue task, CancellationToken ct)
+    private static async Task<int?> ResolveAffectedUserId(DatabaseService database, ScoreProcessingTask task, CancellationToken ct)
     {
-        if (task.ScoreProcessingQueueId.HasValue)
-            return await database.ScoreProcessingQueue.GetUserIdByPayloadId(task.ScoreProcessingQueueId.Value, ct);
+        if (task.ScoreSubmissionRequestId.HasValue)
+            return await database.ScoreSubmissionRequests.GetUserIdByPayloadId(task.ScoreSubmissionRequestId.Value, ct);
 
         if (task.ScoreId.HasValue)
             return await database.Scores.GetUserIdByScoreId(task.ScoreId.Value, ct);
