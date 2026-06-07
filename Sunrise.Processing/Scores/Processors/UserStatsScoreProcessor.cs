@@ -114,8 +114,7 @@ public class UserStatsScoreProcessor(
         if (score.MaxCombo == userStats.MaxCombo)
         {
             var fallbackMax = await database.Scores.GetUserMaxComboExcluding(score.UserId, score.GameMode, score.Id);
-            if (fallbackMax.HasValue && fallbackMax.Value < userStats.MaxCombo)
-                userStats.MaxCombo = fallbackMax.Value;
+            userStats.MaxCombo = fallbackMax ?? 0;
         }
 
 
