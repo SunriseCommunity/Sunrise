@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Processing.Scores.Handlers;
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Processing.Scores.Processors;
-using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
@@ -11,6 +10,7 @@ using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -126,14 +126,13 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         Assert.Equal(0, userGrades.GetGradeCount(score.Grade));
         Assert.Equal(1, userGrades.GetGradeCount(peerReplacement.Grade));
 
-        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, peerReplacement.GameMode);
+        var (expectedWeightedPerformancePoints, expectedWeightedAccuracy) = (PerformanceCalculator.CalculateUserWeightedPerformance([peerReplacement]), PerformanceCalculator.CalculateUserWeightedAccuracy([peerReplacement]));
 
         Assert.Equal(peerReplacement.TotalScore, userStats.TotalScore);
         Assert.Equal(peerReplacement.MaxCombo, userStats.MaxCombo);
         Assert.Equal(peerReplacement.TotalScore, userStats.RankedScore);
-        Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
-        Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+        Assert.Equal(expectedWeightedPerformancePoints, userStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeightedAccuracy, userStats.Accuracy, 6);
     }
 
     [Fact]
@@ -303,13 +302,11 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
 
     private ScoreCommitPipeline CreatePipeline()
     {
-        var database = Scope.ServiceProvider.GetRequiredService<DatabaseService>();
-
-        return new ScoreCommitPipeline(database,
+        return new ScoreCommitPipeline(Database,
         [
-            new LeaderboardProcessor(database),
-            new UserGradesScoreProcessor(database),
-            new UserStatsScoreProcessor(database, Scope.ServiceProvider.GetRequiredService<CalculatorService>())
+            new LeaderboardProcessor(Database),
+            new UserGradesScoreProcessor(Database),
+            new UserStatsScoreProcessor(Database, Scope.ServiceProvider.GetRequiredService<CalculatorService>())
         ]);
     }
 

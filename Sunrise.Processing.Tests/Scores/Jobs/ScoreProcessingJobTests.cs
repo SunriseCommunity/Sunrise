@@ -16,7 +16,7 @@ using Xunit;
 namespace Sunrise.Processing.Tests.Scores.Jobs;
 
 [Collection("Integration tests collection")]
-public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
+public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool reuseScopeInContext = true) : DatabaseTest(fixture, reuseScopeInContext)
 {
     private readonly MockService _mocker = new();
 
@@ -124,6 +124,8 @@ public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : Datab
 
         // Act
         await job.ProcessQueue(CancellationToken.None);
+
+        Database.DbContext.ChangeTracker.Clear();
 
         // Assert
         Assert.Null(await Database.DbContext.ScoreTaskQueue.AsNoTracking().SingleOrDefaultAsync(x => x.Id == task.Id));

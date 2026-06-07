@@ -11,6 +11,9 @@ public static class UserStatsExtensions
 {
     public static void UpdateWithDbScore(this UserStats userStats, Score score)
     {
+        if (score.SubmissionStatus == SubmissionStatus.Deleted)
+            return;
+
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
         userStats.TotalScore += score.TotalScore;
