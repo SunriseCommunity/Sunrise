@@ -21,7 +21,7 @@ using Mods = osu.Shared.Mods;
 namespace Sunrise.Processing.Tests.Services;
 
 [Collection("Integration tests collection")]
-public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture)
+public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fixture, bool reuseScopeInContext = true) : DatabaseTest(fixture, reuseScopeInContext)
 {
     private readonly MockService _mocker = new();
 
@@ -45,7 +45,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
                 CancellationToken.None));
 
         // Assert
-        Assert.Equal("Cannot publish side effects without beatmap and beatmap set on context.", exception.Message);
+        Assert.Equal("Beatmap and beatmap set must be present in context to publish score side effects.", exception.Message);
     }
 
     [Fact]
@@ -134,6 +134,74 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = 1000;
+        score.EnrichWithBeatmapData(beatmap);
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+        score = await CreateTestScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        ApplyScoreToUserStats(userStats, score);
+
+        var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
+
+        // Act
+        _ = await service.PublishScoreSideEffectsAndReturnNewAchievements(
+            BaseSession.GenerateServerSession(),
+            ctx,
+            CancellationToken.None);
+
+        // Assert
+        Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerChatMessage);
+    }
+
+    [Fact]
+    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithRelaxFirstPlaceUsesScoreValueComparison()
+    {
+        // Arrange
+        using var scope = Scope;
+        var service = scope.ServiceProvider.GetRequiredService<ScoreSideEffectsPublisherService>();
+        var channels = scope.ServiceProvider.GetRequiredService<ChatChannelRepository>();
+
+        var user = await CreateTestUser();
+        var session = CreateTestSession(user);
+        channels.JoinChannel("#announce", session);
+        session.GetContent();
+
+        var otherUser = await CreateTestUser();
+
+        var otherBeatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        otherBeatmapSet.IgnoreBeatmapRanking();
+        var otherBeatmap = otherBeatmapSet.Beatmaps!.First();
+
+        var overallBest = _mocker.Score.GetBestScoreableRandomScore();
+        overallBest.EnrichWithUserData(user);
+        overallBest.GameMode = GameMode.Standard;
+        overallBest.Mods = Mods.Relax;
+        overallBest.TotalScore = 1000;
+        overallBest.PerformancePoints = 150;
+        overallBest.EnrichWithBeatmapData(otherBeatmap);
+        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
+        await CreateTestScore(overallBest);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+
+        var secondPlace = _mocker.Score.GetBestScoreableRandomScore();
+        secondPlace.EnrichWithUserData(otherUser);
+        secondPlace.GameMode = GameMode.Standard;
+        secondPlace.Mods = Mods.Relax;
+        secondPlace.TotalScore = 5000;
+        secondPlace.PerformancePoints = 140;
+        secondPlace.EnrichWithBeatmapData(beatmap);
+        secondPlace.LocalProperties = secondPlace.LocalProperties.FromScore(secondPlace);
+        await CreateTestScore(secondPlace);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        score.GameMode = GameMode.Standard;
+        score.Mods = Mods.Relax;
+        score.TotalScore = 1200;
+        score.PerformancePoints = 160;
         score.EnrichWithBeatmapData(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);

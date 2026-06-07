@@ -118,7 +118,6 @@ public class ScoreSideEffectsPublisherService(
 
         var secondBeatmapsBestFromDifferentUser = globalScores.Find(s => s.UserId != score.UserId);
 
-        // TODO: Is checking by BestScoreByScoreValue correct here?
         var isPeerWasFirstPlace = IsOverallBestScore(ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue, secondBeatmapsBestFromDifferentUser);
 
         var shouldAnnounceNewFirstPlace = isScoreFirstPlace && !isPeerWasFirstPlace;
