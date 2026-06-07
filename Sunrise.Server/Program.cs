@@ -35,11 +35,12 @@ builder.Configure();
 
 var app = builder.Build();
 
-app.UseHangfireDashboard("/hangfire",
-    new DashboardOptions
-    {
-        Authorization = [new HangfireAuthorizationFilter()]
-    });
+// TODO: Authorisation doesn't work correctly, for security reasons I'm going to disable it completely for now. Thanks to vertexxdev for reporting this.
+// app.UseHangfireDashboard("/hangfire",
+//     new DashboardOptions
+//     {
+//         Authorization = [new HangfireAuthorizationFilter()]
+//     });
 
 app.Setup();
 app.UseHealthChecks("/health");

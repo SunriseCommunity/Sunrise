@@ -5,8 +5,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            **/bin/
+            **/obj/
+          retention-days: 1
+
   test:
     name: Test Group ${{ matrix.group }}
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -37,18 +67,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
       - name: Docker compose test environment
-        run: docker compose -f docker-compose.tests.yml up -d
-      - name: Wait for MySQL to be ready
-        run: |
-          while ! docker compose -f docker-compose.tests.yml ps | grep "healthy"; do
-            echo "Waiting for MySQL..."
-            sleep 5
-          done
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
+        run: docker compose -f docker-compose.tests.yml up -d --wait
       - name: Run tests (Group ${{ matrix.group }}/16)
         env:
           TEST_GROUP: ${{ matrix.group }}
