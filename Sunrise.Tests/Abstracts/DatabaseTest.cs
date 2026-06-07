@@ -18,6 +18,14 @@ using Sunrise.Tests.Utils.Processing;
 namespace Sunrise.Tests.Abstracts;
 
 // TODO: Switch reuseScopeInContext to true and remove it after fixing tests who depends on EF Core context being clear
+// - Okay, this is actually might be the heated topic, so I will clarify some things about this
+// New scope was always almost fine for us, since we were refetching the entities with new DB call, not EF native reload
+// But if we are going to try to use services like Database inside the test method, they are going to be working incorrectly, since the context is expected to be the sape per HTTP call
+// Not to mention that it should be actually expected to have the same scope during the test suite execution, since we are testing the database, and not the scope itself
+// BUT! Since for the HTTP calls we create new scope, after any HTTP call execution any of our EF core internal entities would be outdated
+// The problem is that EF Core is lazy and will get the element directly after the HTTP call execution instead of going to the database, which is probably outdated. The only way to fix this is to manually clear tracking for entities AFAIK.
+// We *could* clear the tracking automatically after the HTTP calls, but I'm afraid it's not the better solution than just to recreate the scope on each call.
+// For now, this is actually kinda works, but this is a technical debt :/
 public abstract class DatabaseTest(IntegrationDatabaseFixture fixture, bool reuseScopeInContext = false) : BaseTest, IAsyncLifetime
 {
     private readonly FileService _fileService = new();
