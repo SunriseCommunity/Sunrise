@@ -30,7 +30,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
                 options.EnableServiceProviderCaching(false);
                 options.EnableSensitiveDataLogging();
 
-                options.UseMySQL(Configuration.DatabaseConnectionString);
+                options.UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
             });
 
             var httpClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(HttpClientService));

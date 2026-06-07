@@ -350,7 +350,7 @@ public static class Bootstrap
                 .AddInterceptors(new SlowQueryLoggerInterceptor());
 
             optionsBuilder
-                .UseMySQL(Configuration.DatabaseConnectionString);
+                .UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
         });
     }
 

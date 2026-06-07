@@ -107,7 +107,7 @@ public class SunriseDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseMySQL(Configuration.DatabaseConnectionString);
+            optionsBuilder.UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
         }
     }
 }
