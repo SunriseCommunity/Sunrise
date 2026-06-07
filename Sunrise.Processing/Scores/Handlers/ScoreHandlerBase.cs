@@ -143,10 +143,13 @@ public abstract class ScoreHandlerBase(
         }
 
         var beatmapSet = beatmapSetResult.Value;
-        var beatmap = beatmapSet?.Beatmaps?.FirstOrDefault(x => x.Checksum == beatmapHash);
+        if (beatmapSet == null)
+            throw new InvalidOperationException("BeatmapSet returned as success but value was null from GetBeatmapSet.");
 
-        if (beatmapSet == null || beatmap == null)
-            return new ScoreProcessingError(ScoreProcessingErrorCode.BeatmapNotFound, "BeatmapSet not found")
+        var beatmap = beatmapSet.Beatmaps?.FirstOrDefault(x => x.Checksum == beatmapHash);
+
+        if (beatmap == null)
+            return new ScoreProcessingError(ScoreProcessingErrorCode.BeatmapNotFound, $"Beatmap with hash {beatmapHash} not found in fetched beatmap set {beatmapSet.Id}")
                 .ToResult<(BeatmapSet, Beatmap)>();
 
         return (beatmapSet, beatmap);
