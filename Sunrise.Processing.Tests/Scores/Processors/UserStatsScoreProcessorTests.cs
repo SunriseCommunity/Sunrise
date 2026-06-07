@@ -385,6 +385,132 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
+    public async Task TestOnDeletionWithBestButNotGloballyBestRankedScoreKeepsRankedScoreUnchanged()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var globalBestScore = await CreatePersistedScore(user, 2000, 120, 600, mods: Mods.Hidden);
+        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, submissionStatus: SubmissionStatus.Best);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        userStats.TotalScore = globalBestScore.TotalScore + score.TotalScore;
+        userStats.TotalHits = GetTotalHitsDelta(globalBestScore) + GetTotalHitsDelta(score);
+        userStats.PlayTime = globalBestScore.TimeElapsed + score.TimeElapsed;
+        userStats.PlayCount = 2;
+        userStats.RankedScore = globalBestScore.TotalScore;
+        userStats.MaxCombo = globalBestScore.MaxCombo;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(globalBestScore)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore, userStats.RankedScore);
+    }
+
+    [Fact]
+    public async Task TestOnDeletionWithGloballyBestButUnrankedScoreKeepsRankedScoreUnchanged()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var previousBest = await CreatePersistedScore(user, 1200, 90, 450);
+        var score = CreateScore(
+            user,
+            totalScore: 1800,
+            performancePoints: 110,
+            maxCombo: 500,
+            submissionStatus: SubmissionStatus.Best,
+            beatmapStatus: BeatmapStatus.Loved,
+            isScoreable: true);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        userStats.TotalScore = previousBest.TotalScore + score.TotalScore;
+        userStats.TotalHits = GetTotalHitsDelta(previousBest) + GetTotalHitsDelta(score);
+        userStats.PlayTime = previousBest.TimeElapsed + score.TimeElapsed;
+        userStats.PlayCount = 2;
+        userStats.RankedScore = previousBest.TotalScore;
+        userStats.MaxCombo = previousBest.MaxCombo;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(previousBest)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore, userStats.RankedScore);
+    }
+
+    [Fact]
+    public async Task TestOnDeletionWithRelaxStandardBestScoreUpdatesRankedScoreAndRefreshesWeightedValues()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var promotedPeer = await CreatePersistedScore(user, 1200, 90, 450, gameMode: GameMode.Standard, mods: Mods.Relax);
+        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, gameMode: GameMode.Standard, mods: Mods.Relax, submissionStatus: SubmissionStatus.Best);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        Assert.Equal(GameMode.RelaxStandard, score.GameMode);
+        Assert.True(score.GameMode.IsGameModeWithoutScoreMultiplier());
+
+        userStats.TotalScore = score.TotalScore + promotedPeer.TotalScore;
+        userStats.TotalHits = GetTotalHitsDelta(score) + GetTotalHitsDelta(promotedPeer);
+        userStats.PlayTime = score.TimeElapsed + promotedPeer.TimeElapsed;
+        userStats.PlayCount = 2;
+        userStats.RankedScore = score.TotalScore;
+        userStats.PerformancePoints = 999;
+        userStats.Accuracy = 88;
+
+        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(new UserPersonalBestScores(promotedPeer), new UserPersonalBestScores(promotedPeer)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore - (score.TotalScore - promotedPeer.TotalScore), userStats.RankedScore);
+        Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+    }
+
+    [Fact]
     public async Task TestOnRecalculationWithRankedPassedScoreRefreshesWeightedValues()
     {
         // Arrange
@@ -464,6 +590,117 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         AssertIncrementedCoreStats(previousStats, userStats, score);
         Assert.Equal(previousStats.RankedScore + score.TotalScore, userStats.RankedScore);
         Assert.Equal(score.MaxCombo, userStats.MaxCombo);
+        Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
+        Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+    }
+
+    [Fact]
+    public async Task TestOnRestorationWithBestButNotGloballyBestRankedScoreKeepsRankedScoreUnchanged()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var globalBestScore = await CreatePersistedScore(user, 2000, 120, 600, mods: Mods.Hidden);
+        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, submissionStatus: SubmissionStatus.Best);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        userStats.RankedScore = globalBestScore.TotalScore;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Restore,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(globalBestScore)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnRestoration(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore, userStats.RankedScore);
+    }
+
+    [Fact]
+    public async Task TestOnRestorationWithGloballyBestButUnrankedScoreKeepsRankedScoreUnchanged()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var previousBest = await CreatePersistedScore(user, 1200, 90, 450);
+        var score = CreateScore(
+            user,
+            totalScore: 1800,
+            performancePoints: 110,
+            maxCombo: 500,
+            submissionStatus: SubmissionStatus.Best,
+            beatmapStatus: BeatmapStatus.Loved,
+            isScoreable: true);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        userStats.RankedScore = previousBest.TotalScore;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Restore,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(previousBest)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnRestoration(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore, userStats.RankedScore);
+    }
+
+    [Fact]
+    public async Task TestOnRestorationWithRelaxStandardBestScoreUpdatesRankedScoreAndRefreshesWeightedValues()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var existingBest = await CreatePersistedScore(user, 1200, 90, 450, gameMode: GameMode.Standard, mods: Mods.Relax);
+        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, gameMode: GameMode.Standard, mods: Mods.Relax, submissionStatus: SubmissionStatus.Best);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        Assert.Equal(GameMode.RelaxStandard, score.GameMode);
+        Assert.True(score.GameMode.IsGameModeWithoutScoreMultiplier());
+
+        userStats.RankedScore = existingBest.TotalScore;
+        userStats.PerformancePoints = 60;
+        userStats.Accuracy = 80;
+        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Restore,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(existingBest)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnRestoration(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore + (score.TotalScore - existingBest.TotalScore), userStats.RankedScore);
         Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
         Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
     }

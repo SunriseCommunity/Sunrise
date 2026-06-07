@@ -6,6 +6,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -51,10 +52,13 @@ public class UserStatsScoreProcessor(
         var score = ctx.Score;
         var userStats = ctx.UserStats;
         var personalBestScores = ctx.UserPersonalBestScores?.OverallPeer;
+        var currentBest = personalBestScores?.BestScoreBasedByTotalScore;
 
-        var isFirstBeatmapScore = personalBestScores == null;
+        var isFirstBeatmapScore = currentBest == null;
 
-        var isBetterTotalScoreValue = isFirstBeatmapScore || score.TotalScore > personalBestScores?.BestScoreBasedByTotalScore.TotalScore;
+        var isBestScoreValue = IsBestByScoreValue(score, currentBest);
+
+        var isBetterTotalScoreValue = isFirstBeatmapScore || isBestScoreValue;
         var isBetterPerformanceValue = isFirstBeatmapScore || (
             Configuration.UseNewPerformanceCalculationAlgorithm
                 ? score.PerformancePoints > personalBestScores?.BestScoreForPerformanceCalculation.PerformancePoints
@@ -72,14 +76,17 @@ public class UserStatsScoreProcessor(
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (isBetterTotalScoreValue && score.LocalProperties.IsRanked)
+        if (!score.LocalProperties.IsRanked)
+            return;
+
+        if (isBetterTotalScoreValue)
         {
             userStats.RankedScore += isFirstBeatmapScore
                 ? score.TotalScore
-                : score.TotalScore - personalBestScores!.BestScoreBasedByTotalScore.TotalScore;
+                : score.TotalScore - currentBest!.TotalScore;
         }
 
-        if (isBetterPerformanceValue && score.LocalProperties.IsRanked)
+        if (isBetterPerformanceValue)
         {
             (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
         }
@@ -90,6 +97,9 @@ public class UserStatsScoreProcessor(
         var score = ctx.Score;
         var userStats = ctx.UserStats;
         var original = ctx.OriginalState;
+
+        var overallPeer = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
+        var isGloballyBestTotalScore = IsBestByScoreValue(score, overallPeer);
 
         var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
@@ -108,7 +118,11 @@ public class UserStatsScoreProcessor(
                 userStats.MaxCombo = fallbackMax.Value;
         }
 
-        if (original is { SubmissionStatus: SubmissionStatus.Best, IsRanked: true })
+
+        if (!original.IsRanked)
+            return;
+
+        if (original is { SubmissionStatus: SubmissionStatus.Best } && isGloballyBestTotalScore)
         {
             var promotedPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreBasedByTotalScore;
             var rankedDecrement = promotedPeer != null
@@ -118,10 +132,17 @@ public class UserStatsScoreProcessor(
             userStats.RankedScore = Math.Max(0, userStats.RankedScore - rankedDecrement);
         }
 
-        if (!original.IsRanked)
-            return;
-
         (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
+    }
+
+    private static bool IsBestByScoreValue(Score score, Score? competingScore)
+    {
+        if (competingScore == null)
+            return true;
+
+        return new List<Score> { score, competingScore }
+            .SortScoresByTheirScoreValue()
+            .First().Id == score.Id;
     }
 
     private async Task ApplyWeightedRefresh(ScoreCommitContext ctx)
