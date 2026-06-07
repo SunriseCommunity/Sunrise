@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Linq.Dynamic.Core;
 using osu.Shared;
+using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
@@ -9,18 +9,50 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Seeders;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
+using Sunrise.Shared.Objects.Serializable;
 
-namespace Sunrise.Server.Services;
+namespace Sunrise.Processing.Scores.Processors;
 
-public class MedalService(DatabaseService database)
+[TraceExecution]
+public class MedalScoreProcessor(DatabaseService database) : ScoreEntityProcessorBase
 {
-    private static readonly ActivitySource ActivitySource = new("Sunrise.MedalService");
+    public override int Priority => 300;
 
-    [TraceExecution]
-    public async Task<string> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
+    protected override async Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
-        if (!score.IsPassed || !beatmap.Status.IsScoreable()) return string.Empty;
+        if (!ctx.Score.IsScoreable)
+            return;
+
+        if (ctx.Beatmap == null)
+            throw new InvalidOperationException("Beatmap must be present in context to unlock medals.");
+
+        ctx.UnlockedMedals = await UnlockAndGetNewMedals(ctx.Score, ctx.Beatmap, ctx.UserStats);
+    }
+
+    protected override async Task OnRecalculationInternal(ScoreCommitContext ctx)
+    {
+        if (!ctx.Score.IsScoreable)
+            return;
+
+        if (ctx.Beatmap == null)
+            throw new InvalidOperationException("Beatmap must be present in context to unlock medals.");
+
+        ctx.UnlockedMedals = await UnlockAndGetNewMedals(ctx.Score, ctx.Beatmap, ctx.UserStats);
+    }
+
+    protected override Task OnDeletionInternal(ScoreCommitContext ctx)
+    {
+        return Task.CompletedTask;
+    }
+
+    protected override Task OnRestorationInternal(ScoreCommitContext ctx)
+    {
+        return Task.CompletedTask;
+    }
+
+    private async Task<List<Medal>> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
+    {
+        if (!score.IsPassed || !beatmap.Status.IsScoreable()) return [];
 
         var medals = await database.Medals.GetMedals(score.GameMode);
         var userMedals = await database.Users.Medals.GetUserMedals(userStats.UserId);
@@ -40,14 +72,14 @@ public class MedalService(DatabaseService database)
         );
 
         var newMedalsIds = eligibleMedals.Select(m => m.Id).ToList();
-        await database.Users.Medals.UnlockMedals(userStats.UserId, newMedalsIds);
+        var unlockMedalsResult = await database.Users.Medals.UnlockMedals(userStats.UserId, newMedalsIds);
+        if (unlockMedalsResult.IsFailure)
+            throw new ApplicationException("Failed to unlock medals: " + unlockMedalsResult.Error);
 
-        return string.Join("/", eligibleMedals.Select(GetMedalString));
+        return eligibleMedals.ToList();
 
         ValueTask EvaluateMedal(Medal medal)
         {
-            using var activity = ActivitySource.StartActivity($"Evaluating medal {medal.Id}");
-
             var isConditionsAreMet = Evaluate(new MedalConditionContext
                 {
                     user = userStats,
@@ -77,10 +109,5 @@ public class MedalService(DatabaseService database)
             obj
         }.AsQueryable();
         return objQueryable.Any(expression);
-    }
-
-    private static string GetMedalString(Medal medal)
-    {
-        return $"{medal.Id}+{medal.Name}+{medal.Description}";
     }
 }

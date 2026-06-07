@@ -14,6 +14,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Commands.ChatCommands.System;
 
+[Obsolete("While this is very optimised for recalcualtion, I will prefer to deprecate this in favour of a single all score recalcualtions for consistency and to reduce the amount of code that needs to be maintained. This will be removed in a future update.")]
 [ChatCommand("recalculateusergrades", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserGradesCommand : IChatCommand
 {

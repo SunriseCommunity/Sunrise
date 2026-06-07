@@ -1,7 +1,10 @@
 ﻿using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Utils;
 using Sunrise.Tests.Extensions;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -18,7 +21,7 @@ public class MockScoreService(MockService service)
     /// </summary>
     public Score GetRandomScore()
     {
-        return new Score
+        var score = new Score
         {
             UserId = service.GetRandomInteger(length: 6),
             BeatmapId = service.GetRandomInteger(length: 6),
@@ -30,7 +33,6 @@ public class MockScoreService(MockService service)
             CountMiss = service.GetRandomInteger(length: 3),
             Grade = GetRandomBeatmapGrade(),
             IsScoreable = service.GetRandomBoolean(),
-            Mods = GetRandomMods(),
             Accuracy = service.GetRandomInteger(length: 2),
             Perfect = service.GetRandomBoolean(),
             GameMode = GetRandomGameMode(),
@@ -45,8 +47,40 @@ public class MockScoreService(MockService service)
             ClientTime = service.GetRandomDateTime(),
             OsuVersion = service.GetRandomInteger(length: 6).ToString()
         };
+
+        score.Mods = GetRandomMods(score.GameMode);
+
+        return score;
     }
 
+    public SubmittedScore GetRandomSubmittedScore(Score score)
+    {
+        var submittedScore = new SubmittedScore
+        {
+            PlayerUsername = service.GetRandomString(),
+            Count300 = score.Count300,
+            Count100 = score.Count100,
+            Count50 = score.Count50,
+            CountGeki = score.CountGeki,
+            CountKatu = score.CountKatu,
+            CountMiss = score.CountMiss,
+            Grade = score.Grade,
+            Accuracy = score.Accuracy,
+            Perfect = score.Perfect,
+            GameMode = score.GameMode,
+            Mods = score.Mods,
+            IsPassed = score.IsPassed,
+            BeatmapHash = score.BeatmapHash,
+            MaxCombo = score.MaxCombo,
+            ScoreHash = score.ScoreHash,
+            TotalScore = score.TotalScore,
+            WhenPlayed = score.WhenPlayed,
+            ClientTime = score.ClientTime,
+            OsuVersion = score.OsuVersion
+        };
+
+        return submittedScore;
+    }
 
     public PerformanceAttributes GetRandomPerformanceAttributes()
     {
@@ -129,10 +163,18 @@ public class MockScoreService(MockService service)
         return BeatmapGradeChars[new Random().Next(0, BeatmapGradeChars.Length)];
     }
 
-    public Mods GetRandomMods()
+    public Mods GetRandomMods(GameMode gameMode)
     {
         var random = new Random();
         var values = Enum.GetValues(typeof(Mods));
-        return (Mods)values.GetValue(random.Next(values.Length))!;
+
+        var mods = (Mods)values.GetValue(random.Next(values.Length))!;
+
+        if (ModsValidationUtil.ValidateMods(mods, gameMode.ToVanillaGameMode()).IsFailure)
+        {
+            return GetRandomMods(gameMode); // TODO: Please just make it generate the valid mods combination from the first time. 
+        }
+
+        return mods;
     }
 }

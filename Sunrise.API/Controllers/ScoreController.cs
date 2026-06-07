@@ -37,7 +37,7 @@ public class ScoreController(DatabaseService database, SessionRepository session
             {
                 QueryModifier = query => query.Cast<Score>().IncludeUser()
             },
-            ct);
+            ct: ct);
 
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
@@ -58,10 +58,12 @@ public class ScoreController(DatabaseService database, SessionRepository session
     {
         var session = HttpContext.GetCurrentSession();
 
-        var score = await database.Scores.GetScore(id, new QueryOptions(true)
-        {
-            QueryModifier = query => query.Cast<Score>().IncludeUser()
-        }, ct);
+        var score = await database.Scores.GetScore(id,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            },
+            ct: ct);
 
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);

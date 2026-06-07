@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
@@ -16,21 +17,26 @@ namespace Sunrise.Shared.Database.Models;
 [Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
 [Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
+[Index(nameof(ScoreHash), IsUnique = true)]
 public class Score
 {
     public Score()
     {
+        // TODO: This doesn't work without explicit call. Please let's deprecate it in favour of dynamic values
         LocalProperties = new LocalProperties().FromScore(this);
     }
 
     public int Id { get; set; }
 
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; }
+    public User? User { get; set; }
 
     public int UserId { get; set; }
     public int BeatmapId { get; set; }
+
+    [MaxLength(32)]
     public string ScoreHash { get; set; }
+
     public string BeatmapHash { get; set; }
 
     [ForeignKey("ReplayFileId")]
@@ -51,7 +57,10 @@ public class Score
     public bool Perfect { get; set; }
     public Mods Mods { get; set; }
     public string Grade { get; set; }
+
     public bool IsPassed { get; set; }
+
+    // TODO: Drop persisted IsScoreable once all score reads derive it from BeatmapStatus.
     public bool IsScoreable { get; set; }
     public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.Unknown;
     public GameMode GameMode { get; set; }
@@ -61,6 +70,7 @@ public class Score
     public DateTime ClientTime { get; set; }
     public double Accuracy { get; set; }
     public double PerformancePoints { get; set; }
+    public int TimeElapsed { get; set; }
 
     [NotMapped]
     public LocalProperties LocalProperties { get; set; }
@@ -78,8 +88,8 @@ public class LocalProperties
      */
     public Mods SerializedMods { get; set; }
 
-    public bool IsRanked { get; set; }
-    public int? LeaderboardPosition { get; set; }
+    public bool IsRanked { get; set; } // TODO: Questionable to removal
+    public int? LeaderboardPosition { get; set; } // TODO: Badly called from the graph creation for score submissiion result. Ideally remove
 
     public LocalProperties FromScore(Score score)
     {

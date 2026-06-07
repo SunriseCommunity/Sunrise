@@ -31,6 +31,11 @@ using Serilog.Sinks.Grafana.Loki;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Processing.Scores.Handlers;
+using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Processing.Scores.Processors;
+using Sunrise.Processing.Services;
 using Sunrise.Server.Middlewares;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -42,6 +47,7 @@ using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Repositories;
@@ -126,7 +132,7 @@ public static class Bootstrap
 
     public static void AddTelemetry(this WebApplicationBuilder builder)
     {
-        if (string.IsNullOrEmpty(Configuration.TempoUri) && Configuration.UseMetrics == false)
+        if (string.IsNullOrEmpty(Configuration.TempoUri) && !Configuration.UseMetrics)
             return;
 
         var openTelemetryBuilder = builder.Services
@@ -437,6 +443,8 @@ public static class Bootstrap
         builder.Services.AddScoped<BeatmapEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
+        builder.Services.AddScoped<ScoreSubmissionRequestRepository>();
+        builder.Services.AddScoped<ScoreProcessingTaskRepository>();
         builder.Services.AddScoped<ScoreFileService>();
 
         builder.Services.AddScoped<OsuVersionRepository>();
@@ -446,7 +454,6 @@ public static class Bootstrap
     public static void AddServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddScoped<DirectService>();
-        builder.Services.AddScoped<MedalService>();
         builder.Services.AddScoped<AssetBanchoService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
@@ -454,9 +461,19 @@ public static class Bootstrap
         builder.Services.AddScoped<OsuVersionService>();
 
         builder.Services.AddScoped<ScoreService>();
+        builder.Services.AddScoped<ScoreCommitPipeline>();
+        builder.Services.AddScoped<IScoreEntityProcessor, LeaderboardProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserStatsScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserGradesScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, MedalScoreProcessor>();
+        builder.Services.AddScoped<ScoreSideEffectsPublisherService>();
+        builder.Services.AddScoped<ScoreSubmissionHandler>();
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreSubmissionHandler>(ScoreTaskType.Submission);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRecalculationHandler>(ScoreTaskType.Recalculation);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreDeletionHandler>(ScoreTaskType.Delete);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRestorationHandler>(ScoreTaskType.Restore);
+        builder.Services.AddScoped<ScoreProcessingJob>();
         builder.Services.AddScoped<UserBanchoService>();
-
-        builder.Services.AddScoped<Services.AuthService>();
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();

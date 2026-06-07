@@ -150,7 +150,7 @@ public class UserService(
 
         if (!isSet || error != null)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, eventAction.TargetUserId, error);
             return new ObjectResult(new ProblemDetails
             {
                 Title = ApiErrorResponse.Title.UnableToChangeAvatar,
@@ -185,7 +185,7 @@ public class UserService(
 
         if (!isSet || error != null)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, eventAction.TargetUserId, error);
             return new ObjectResult(new ProblemDetails
             {
                 Title = ApiErrorResponse.Title.UnableToChangeBanner,

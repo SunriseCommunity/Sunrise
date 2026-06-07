@@ -27,11 +27,10 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
             Mods = score.Mods.IgnoreNotStandardModsForRecalculation()
         };
 
-        // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
-        // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
-        using var timeoutCts = retryCount == int.MaxValue
-            ? new CancellationTokenSource()
-            : new CancellationTokenSource(TimeSpan.FromMinutes(10));
+        if (retryCount > 3)
+            throw new ArgumentException("Retry count cannot be greater than 3 to avoid excessively long-running requests.", nameof(retryCount));
+
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
         var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
@@ -111,7 +110,7 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         return (performances[0], performances[1], performances[2], performances[3]);
     }
 
-    public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedAccuracy(User user, GameMode mode)
     {
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
@@ -121,17 +120,36 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
                 IgnoreCountQueryIfExists = true
             });
 
-        return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores, score);
+        return PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores);
     }
 
-    public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode, Score? score = null)
+    public async Task<double> CalculateUserWeightedPerformance(User user, GameMode mode)
     {
         var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
             mode,
             ScoreTableType.Best,
-            new QueryOptions(true, new Pagination(1, 100)));
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
 
-        return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores, score);
+        return PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores);
+    }
+
+    public async Task<(double PerformancePoints, double Accuracy)> CalculateUserWeightedStats(User user, GameMode mode)
+    {
+        var (userBestScores, _) = await database.Value.Scores.GetUserScores(user.Id,
+            mode,
+            ScoreTableType.Best,
+            new QueryOptions(true, new Pagination(1, 100))
+            {
+                IgnoreCountQueryIfExists = true
+            });
+
+        var pp = PerformanceCalculator.CalculateUserWeightedPerformance(userBestScores);
+        var accuracy = PerformanceCalculator.CalculateUserWeightedAccuracy(userBestScores);
+
+        return (pp, accuracy);
     }
 
     private bool IsValidResult<T>(Result<T, ErrorMessage> result)

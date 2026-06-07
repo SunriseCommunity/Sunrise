@@ -1,3 +1,4 @@
+using CSharpFunctionalExtensions;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
@@ -18,31 +19,31 @@ public static class ScoreExtensions
 {
     public static UserPersonalBestScores? GetUserPersonalBestScores(this List<Score> scores, int userId)
     {
-        var personalBestByTotalScore = scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
-        if (personalBestByTotalScore == null)
+        var personalBestByScoreValue = scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
+        if (personalBestByScoreValue == null)
             return null;
 
         var personalBestByPerformancePoints =
             Configuration.UseNewPerformanceCalculationAlgorithm ? scores.GetScoresGroupedByUsersBest(basedByPerformance: true).Find(x => x.UserId == userId) : null;
 
-        return new UserPersonalBestScores(personalBestByTotalScore, personalBestByPerformancePoints);
+        return new UserPersonalBestScores(personalBestByScoreValue, personalBestByPerformancePoints);
     }
 
     public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores, bool? basedByPerformance = null) where T : Score
     {
-        return GroupScoresByUserId(scores)
+        return scores.GroupScoresByUserId()
             .Select(x => x.ToList()
                 .GroupScoresByBeatmapId()
-                .Select(y => y.OrderByDescending(z => basedByPerformance == true || z.GameMode.IsGameModeWithoutScoreMultiplier() ? z.PerformancePoints : z.TotalScore)
-                    .First()))
+                .Select(y =>
+                {
+                    var groupedScores = y.ToList();
+
+                    return basedByPerformance == true
+                        ? groupedScores.SortScoresByPerformancePoints().First()
+                        : groupedScores.SortScoresByTheirScoreValue().First();
+                }))
             .SelectMany(x => x)
             .ToList();
-    }
-
-    public static List<T> GetScoresGroupedByBeatmapBest<T>(this List<T> scores) where T : Score
-    {
-        return GroupScoresByBeatmapId(scores)
-            .Select(x => x.OrderByDescending(y => y.GameMode.IsGameModeWithoutScoreMultiplier() ? y.PerformancePoints : y.TotalScore).First()).ToList();
     }
 
     public static IEnumerable<IGrouping<int, T>> GroupScoresByBeatmapId<T>(this List<T> scores) where T : Score
@@ -91,60 +92,86 @@ public static class ScoreExtensions
             : scores.SortScoresByTotalScore();
     }
 
-    public static List<T> UpsertUserScoreToSortedScores<T>(this List<T> scores, T score) where T : Score
+    public static Score ToScore(this SubmittedScore baseScore, int userId, Beatmap beatmap, int timeElapsed)
     {
-        var leaderboard = GetScoresGroupedByUsersBest(scores);
-
-        var oldScores = leaderboard.FindAll(x => x.UserId == score.UserId && x.BeatmapHash == score.BeatmapHash && x.GameMode == score.GameMode);
-
-        foreach (var oldScore in oldScores)
-        {
-            leaderboard.Remove(oldScore);
-        }
-
-        leaderboard.Add(score);
-        leaderboard = GetScoresGroupedByUsersBest(leaderboard);
-        leaderboard = leaderboard.SortScoresByTheirScoreValue();
-        leaderboard = leaderboard.EnrichWithLeaderboardPositions();
-
-        return leaderboard.ToList();
-    }
-
-    public static (Score, string) TryParseToSubmittedScore(this string scoreString, Session session, Beatmap beatmap, DateTime scoreSubmittedAt)
-    {
-        var split = scoreString.Split(':');
-
         var score = new Score
         {
-            BeatmapHash = split[0],
-            UserId = session.UserId,
+            BeatmapHash = baseScore.BeatmapHash,
+            UserId = userId,
             BeatmapId = beatmap.Id,
-            ScoreHash = split[2],
-            Count300 = int.Parse(split[3]),
-            Count100 = int.Parse(split[4]),
-            Count50 = int.Parse(split[5]),
-            CountGeki = int.Parse(split[6]),
-            CountKatu = int.Parse(split[7]),
-            CountMiss = int.Parse(split[8]),
-            TotalScore = long.Parse(split[9]),
-            MaxCombo = int.Parse(split[10]),
-            Perfect = bool.Parse(split[11]),
-            Grade = split[12],
-            Mods = (Mods)int.Parse(split[13]),
-            IsPassed = bool.Parse(split[14]),
+            ScoreHash = baseScore.ScoreHash,
+            Count300 = baseScore.Count300,
+            Count100 = baseScore.Count100,
+            Count50 = baseScore.Count50,
+            CountGeki = baseScore.CountGeki,
+            CountKatu = baseScore.CountKatu,
+            CountMiss = baseScore.CountMiss,
+            TotalScore = baseScore.TotalScore,
+            MaxCombo = baseScore.MaxCombo,
+            Perfect = baseScore.Perfect,
+            Grade = baseScore.Grade,
+            Mods = baseScore.Mods,
+            IsPassed = baseScore.IsPassed,
             IsScoreable = beatmap.IsScoreable,
-            GameMode = (GameMode)int.Parse(split[15]),
-            WhenPlayed = scoreSubmittedAt,
-            OsuVersion = split[17].Trim(),
+            GameMode = baseScore.GameMode,
+            WhenPlayed = baseScore.WhenPlayed,
+            OsuVersion = baseScore.OsuVersion,
             BeatmapStatus = beatmap.Status,
-            ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null)
+            ClientTime = baseScore.ClientTime,
+            Accuracy = baseScore.Accuracy,
+            TimeElapsed = timeElapsed
         };
 
         score.LocalProperties = score.LocalProperties.FromScore(score);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
-        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
 
-        return (score, split[1]);
+        return score;
+    }
+
+    public static Result<SubmittedScore> TryParseBaseScore(this string scoreString, DateTime scoreSubmittedAt)
+    {
+        if (string.IsNullOrWhiteSpace(scoreString) || !scoreString.Contains(':'))
+            return Result.Failure<SubmittedScore>("Invalid score string format");
+
+        var split = scoreString.Split(':');
+
+        if (split.Length < 18)
+            return Result.Failure<SubmittedScore>("Invalid score string format");
+
+        try
+        {
+            var score = new SubmittedScore
+            {
+                BeatmapHash = string.IsNullOrWhiteSpace(split[0]) ? throw new Exception("Beatmap hash is empty") : split[0],
+                PlayerUsername = string.IsNullOrWhiteSpace(split[1]) ? throw new Exception("Player username is empty") : split[1],
+                ScoreHash = string.IsNullOrWhiteSpace(split[2]) ? throw new Exception("Score hash is empty") : split[2],
+                Count300 = int.Parse(split[3]),
+                Count100 = int.Parse(split[4]),
+                Count50 = int.Parse(split[5]),
+                CountGeki = int.Parse(split[6]),
+                CountKatu = int.Parse(split[7]),
+                CountMiss = int.Parse(split[8]),
+                TotalScore = long.Parse(split[9]),
+                MaxCombo = int.Parse(split[10]),
+                Perfect = bool.Parse(split[11]),
+                Grade = string.IsNullOrWhiteSpace(split[12]) ? throw new Exception("Grade is empty") : split[12], // TODO: This probably should be validated more strictly.
+                Mods = (Mods)int.Parse(split[13]),
+                IsPassed = bool.Parse(split[14]),
+                GameMode = (GameMode)int.Parse(split[15]),
+                WhenPlayed = scoreSubmittedAt,
+                OsuVersion = string.IsNullOrWhiteSpace(split[17]) ? throw new Exception("Osu version is empty") : split[17].Trim(),
+                ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null),
+                Accuracy = 0
+            };
+
+            score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+            score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+
+            return score;
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<SubmittedScore>($"Error parsing score string: {ex.Message}");
+        }
     }
 
     public static string ToScoreString(this Score score, string userUsername)
@@ -223,7 +250,7 @@ public static class ScoreExtensions
             storyboardHash).ToHash();
     }
 
-    public static async Task<string> GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, Session session)
+    public static async Task<string> GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, BaseSession session)
     {
         var beatmap = beatmapSet.Beatmaps.FirstOrDefault(b => b.Id == score.BeatmapId);
         if (beatmap == null)
@@ -238,7 +265,7 @@ public static class ScoreExtensions
 
             if (recalculateBeatmapResult.IsFailure)
             {
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error.Message);
+                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, score.UserId, recalculateBeatmapResult.Error.Message);
             }
             else
             {
@@ -246,6 +273,11 @@ public static class ScoreExtensions
             }
         }
 
+        return score.GetBeatmapInGameChatString(beatmapSet, beatmap);
+    }
+
+    public static string GetBeatmapInGameChatString(this Score score, BeatmapSet beatmapSet, Beatmap beatmap)
+    {
         return $"{beatmap.GetBeatmapInGameChatString(beatmapSet)} {score.Mods.GetModsString()}| GameMode: {score.GameMode.ToVanillaGameMode()} | Acc: {score.Accuracy:0.00}% | {score.PerformancePoints:0.00}pp | {TimeConverter.SecondsToString(beatmap.TotalLength)} | {beatmap.DifficultyRating:0.00} ★";
     }
 }

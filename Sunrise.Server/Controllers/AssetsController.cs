@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
 using Sunrise.Shared.Application;
@@ -24,7 +25,7 @@ public class AssetsController(BanchoService banchoService, AssetBanchoService as
         if (getAvatarResult.IsFailure)
         {
             if (fallToDefault is true)
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetAvatar, null, getAvatarResult.Error);
+                Log.Warning("Failed to get avatar {AvatarId}: {Error}", id, getAvatarResult.Error);
 
             return NotFound();
         }
@@ -40,7 +41,7 @@ public class AssetsController(BanchoService banchoService, AssetBanchoService as
         if (getBannerResult.IsFailure)
         {
             if (fallToDefault is true)
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.GetBanner, null, getBannerResult.Error);
+                Log.Warning("Failed to get banner {BannerId}: {Error}", id, getBannerResult.Error);
 
             return NotFound();
         }
@@ -56,7 +57,7 @@ public class AssetsController(BanchoService banchoService, AssetBanchoService as
 
         if (getScreenshotResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, null, getScreenshotResult.Error);
+            Log.Warning("Failed to get screenshot {ScoreId}: {Error}", id, getScreenshotResult.Error);
             return NotFound();
         }
 

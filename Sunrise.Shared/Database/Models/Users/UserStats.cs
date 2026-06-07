@@ -17,7 +17,7 @@ public class UserStats
     public int Id { get; set; }
 
     [ForeignKey("UserId")]
-    public User User { get; set; }
+    public User? User { get; set; }
 
     public int UserId { get; set; }
     public GameMode GameMode { get; set; }

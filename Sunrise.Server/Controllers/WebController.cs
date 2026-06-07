@@ -31,7 +31,7 @@ public class WebController(DatabaseService database, SessionRepository sessions,
 
         if (saveScreenshotResult.IsFailure)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session, saveScreenshotResult.Error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuScreenshot, session.UserId, saveScreenshotResult.Error);
             return BadRequest(saveScreenshotResult.Error);
         }
 

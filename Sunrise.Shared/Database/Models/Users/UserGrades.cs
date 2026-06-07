@@ -24,4 +24,20 @@ public class UserGrades
     public int CountB { get; set; } = 0;
     public int CountC { get; set; } = 0;
     public int CountD { get; set; } = 0;
+
+    public int GetGradeCount(string grade)
+    {
+        return grade switch
+        {
+            "XH" => CountXH,
+            "X" => CountX,
+            "SH" => CountSH,
+            "S" => CountS,
+            "A" => CountA,
+            "B" => CountB,
+            "C" => CountC,
+            "D" => CountD,
+            _ => throw new ArgumentOutOfRangeException($"Unknown grade: {grade} while getting")
+        };
+    }
 }

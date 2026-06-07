@@ -6,6 +6,7 @@ using osu.Shared;
 using Serilog;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
@@ -32,6 +33,38 @@ public class SunriseMetrics
     private static readonly Counter<long> ScoresSubmittedCounter = SunriseMeter.CreateCounter<long>(
         "scores_submitted_total",
         description: "Counts the total number of successfully submitted scores");
+
+    private static readonly Counter<long> ScoreProcessingPollerRunsCounter = SunriseMeter.CreateCounter<long>(
+        "score_processing_poller_runs_total",
+        description: "Counts each Hangfire ProcessQueue tick, tagged by outcome (empty, drained, cancelled, error)");
+
+    private static readonly Counter<long> ScoreProcessingEntriesCounter = SunriseMeter.CreateCounter<long>(
+        "score_processing_entries_total",
+        description: "Counts individual queue-entry outcomes, tagged by outcome (success, permanent_failure, retryable_failure, unexpected)");
+
+    private static readonly ObservableGauge<long> ScoreProcessingQueueDepthPendingGauge = SunriseMeter.CreateObservableGauge(
+        "score_processing_queue_depth_pending",
+        () => _cachedQueueDepthByStatus?.GetValueOrDefault(ScoreProcessingStatus.Pending, 0) ?? 0,
+        "entries",
+        "Current number of queue rows in Pending status");
+
+    private static readonly ObservableGauge<long> ScoreProcessingQueueDepthProcessingGauge = SunriseMeter.CreateObservableGauge(
+        "score_processing_queue_depth_processing",
+        () => _cachedQueueDepthByStatus?.GetValueOrDefault(ScoreProcessingStatus.Processing, 0) ?? 0,
+        "entries",
+        "Current number of queue rows in Processing status");
+
+    private static readonly ObservableGauge<long> ScoreProcessingQueueDepthFailedGauge = SunriseMeter.CreateObservableGauge(
+        "score_processing_queue_depth_failed",
+        () => _cachedQueueDepthByStatus?.GetValueOrDefault(ScoreProcessingStatus.Failed, 0) ?? 0,
+        "entries",
+        "Current number of queue rows in Failed status (exhausted retries)");
+
+    private static readonly ObservableGauge<long> ScoreProcessingLastRunSecondsGauge = SunriseMeter.CreateObservableGauge(
+        "score_processing_last_run_age_seconds",
+        GetSecondsSinceLastPollerRun,
+        "seconds",
+        "Seconds since the Hangfire ProcessQueue job last completed; alert if this grows unbounded");
 
     private static readonly ObservableGauge<int> CurrentMatchesGauge = SunriseMeter.CreateObservableGauge(
         "current_matches_count",
@@ -145,6 +178,8 @@ public class SunriseMetrics
     private static int _cachedTotalUsers;
     private static int _cachedTotalRestrictedUsers;
     private static Dictionary<GameMode, long> _cachedScoresByGameMode = new();
+    private static Dictionary<ScoreProcessingStatus, long> _cachedQueueDepthByStatus = new();
+    private static DateTime? _lastPollerRunCompletedAt;
 
     public SunriseMetrics()
     {
@@ -162,10 +197,36 @@ public class SunriseMetrics
         var totalUsers = await database.Users.CountUsers();
         var restrictedUsers = await database.Users.CountRestrictedUsers();
         var scoresByMode = await database.Scores.CountScoresByGameMode();
+        var queueDepth = await database.ScoreProcessingTasks.CountByStatus();
 
         _cachedTotalUsers = totalUsers;
         _cachedTotalRestrictedUsers = restrictedUsers;
         _cachedScoresByGameMode = scoresByMode;
+        _cachedQueueDepthByStatus = queueDepth;
+    }
+
+    public static void ScoreProcessingPollerRunCounterInc(string outcome, int batchCount)
+    {
+        _lastPollerRunCompletedAt = DateTime.UtcNow;
+        ScoreProcessingPollerRunsCounter.Add(1,
+            new KeyValuePair<string, object?>("outcome", outcome),
+            new KeyValuePair<string, object?>("batch_count", batchCount));
+    }
+
+    public static void ScoreProcessingEntryCounterInc(string outcome, ScoreTaskType taskType, ScoreProcessingErrorCode? code = null)
+    {
+        ScoreProcessingEntriesCounter.Add(1,
+            new KeyValuePair<string, object?>("outcome", outcome),
+            new KeyValuePair<string, object?>("task_type", taskType.ToString()),
+            new KeyValuePair<string, object?>("error_code", code?.ToString() ?? "none"));
+    }
+
+    private static long GetSecondsSinceLastPollerRun()
+    {
+        if (_lastPollerRunCompletedAt == null)
+            return -1;
+
+        return (long)(DateTime.UtcNow - _lastPollerRunCompletedAt.Value).TotalSeconds;
     }
 
     public static void PacketHandlingCounterInc(BanchoPacket packet, Session session)
@@ -183,22 +244,23 @@ public class SunriseMetrics
             new KeyValuePair<string, object?>("user_id", session.UserId.ToString()));
     }
 
-    public static void RequestReturnedErrorCounterInc(string requestType, Session? session, string? errorMessage)
+    [Obsolete("Please use logger instead")]
+    public static void RequestReturnedErrorCounterInc(string requestType, int userId, string? errorMessage)
     {
         RequestReturnedErrorCounter.Add(1,
             new KeyValuePair<string, object?>("request_type", requestType),
-            new KeyValuePair<string, object?>("user_id", session?.UserId.ToString() ?? "-1"));
+            new KeyValuePair<string, object?>("user_id", userId.ToString()));
 
         Log.Error("Request {RequestType} by (user id: {UserId}) returned error: {ErrorMessage}",
             requestType,
-            session?.UserId.ToString() ?? "-1",
+            userId.ToString(),
             errorMessage ?? "Not specified");
     }
 
-    public static void ScoreSubmittedCounterInc(Session session, int beatmapId, GameMode gameMode, Mods mods, double pp,  int scoreId)
+    public static void ScoreSubmittedCounterInc(int userId, int beatmapId, GameMode gameMode, Mods mods, double pp, int scoreId)
     {
         ScoresSubmittedCounter.Add(1,
-            new KeyValuePair<string, object?>("user_id", session.UserId.ToString()),
+            new KeyValuePair<string, object?>("user_id", userId.ToString()),
             new KeyValuePair<string, object?>("beatmap_id", beatmapId.ToString()),
             new KeyValuePair<string, object?>("game_mode", gameMode.ToString()),
             new KeyValuePair<string, object?>("mods", mods.ToString()),

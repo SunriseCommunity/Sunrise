@@ -21,6 +21,8 @@ public sealed class DatabaseService(
     EventRepository eventRepository,
     ScoreRepository scoreRepository,
     MedalRepository medalRepository,
+    ScoreSubmissionRequestRepository scoreSubmissionRequestRepository,
+    ScoreProcessingTaskRepository scoreProcessingTaskRepository,
     IEFCacheServiceProvider? cacheProvider = null)
 {
 
@@ -30,6 +32,8 @@ public sealed class DatabaseService(
     public readonly MedalRepository Medals = medalRepository;
     public readonly RedisRepository Redis = redis;
     public readonly ScoreRepository Scores = scoreRepository;
+    public readonly ScoreSubmissionRequestRepository ScoreSubmissionRequests = scoreSubmissionRequestRepository;
+    public readonly ScoreProcessingTaskRepository ScoreProcessingTasks = scoreProcessingTaskRepository;
     public readonly UserRepository Users = userRepository;
 
     public async Task FlushAndUpdateRedisCache(bool isSoftFlush = true)
