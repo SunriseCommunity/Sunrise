@@ -18,9 +18,9 @@ public static class ScoreExtensions
         score.UserId = session.UserId;
 
         using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
-        var user = database.Users.GetUser(id: session.UserId).Result;
+        var user = dbContext.Users.FirstOrDefault(u => u.Id == session.UserId);
         if (user == null)
             throw new NullReferenceException("User not found");
 

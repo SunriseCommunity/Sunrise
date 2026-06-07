@@ -234,9 +234,9 @@ public class Session : BaseSession
     private User? GetSessionUser()
     {
         using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
-        var user = database.Users.GetUser(UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+        var user = dbContext.Users.FirstOrDefault(u => u.Id == UserId);
 
         if (user == null)
             throw new ApplicationException($"User with id {UserId} not found");

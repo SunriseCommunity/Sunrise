@@ -525,7 +525,7 @@ public static class Bootstrap
         };
     }
 
-    public static void ApplyDatabaseBootstrapping(this WebApplication app)
+    public static async Task ApplyDatabaseBootstrapping(this WebApplication app)
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -533,7 +533,7 @@ public static class Bootstrap
         if (!Configuration.IsTestingEnv)
             database.DbContext.Database.Migrate();
 
-        DatabaseSeeder.UseAsyncSeeding(database.DbContext).Wait();
+        await DatabaseSeeder.UseAsyncSeeding(database.DbContext);
     }
 
     public static void UseStaticBackgrounds(this WebApplication app)
@@ -607,7 +607,7 @@ public static class Bootstrap
         Configuration.Initialize();
     }
 
-    private class LazilyResolved<T> : Lazy<T>
+    private class LazilyResolved<T> : Lazy<T> where T : notnull
     {
         public LazilyResolved(IServiceProvider serviceProvider)
             : base(serviceProvider.GetRequiredService<T>)

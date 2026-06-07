@@ -183,7 +183,17 @@ public class SunriseMetrics
 
     public SunriseMetrics()
     {
-        _ = RefreshDatabaseMetricsAsync();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await RefreshDatabaseMetricsAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to refresh database metrics during startup.");
+            }
+        });
 
         RecurringJob.AddOrUpdate("Fetch database metrics", () => RefreshDatabaseMetricsAsync(), "*/1 * * * *");
     }
