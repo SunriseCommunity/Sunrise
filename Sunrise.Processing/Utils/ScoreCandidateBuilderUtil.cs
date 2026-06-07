@@ -1,5 +1,4 @@
 using CSharpFunctionalExtensions;
-using osu.Shared;
 using Serilog;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
@@ -105,23 +104,14 @@ public static class ScoreCandidateBuilderUtil
 
     private static UnitResult<ScoreProcessingError> AssertScoreMods(Score score, string scoreSerialized)
     {
-        if (ModsValidationUtil.IsModeCombinationInvalid(score.Mods, score.GameMode.ToVanillaGameMode()))
+        var validateScoreModsResult = ModsValidationUtil.ValidateMods(score.Mods, score.GameMode.ToVanillaGameMode());
+
+        if (validateScoreModsResult.IsFailure)
         {
-            Log.Warning("Invalid mods found on score {score}", scoreSerialized);
-            return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidMods, "Invalid mods").ToUnit();
+            Log.Warning("Invalid mods found on score {score}, {errorMsg}", scoreSerialized, validateScoreModsResult.Error);
+            return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidMods, validateScoreModsResult.Error).ToUnit();
         }
 
-        // TODO: Is this branch dead (covered by the method above)? Please validate
-
-        var notStandardMods = score.Mods.TryGetSelectedNotStandardMods();
-        var hasNonStandardMods = notStandardMods is not Mods.None;
-        var hasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
-        var hasNonSupportedNonStandardMod = (int)score.GameMode < 4 && hasNonStandardMods;
-
-        if (!hasMoreThanOneNotStandardMod && !hasNonSupportedNonStandardMod)
-            return UnitResult.Success<ScoreProcessingError>();
-
-        Log.Error("Includes non-standard mod(s), which is not supported for this game mode on score {score}", scoreSerialized);
-        return new ScoreProcessingError(ScoreProcessingErrorCode.NonStandardModsUnsupported, "Non-standard mods not supported").ToUnit();
+        return UnitResult.Success<ScoreProcessingError>();
     }
 }

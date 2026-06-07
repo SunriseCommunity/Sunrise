@@ -170,7 +170,7 @@ public class MockScoreService(MockService service)
 
         var mods = (Mods)values.GetValue(random.Next(values.Length))!;
 
-        if (ModsValidationUtil.IsModeCombinationInvalid(mods, gameMode.ToVanillaGameMode()))
+        if (ModsValidationUtil.ValidateMods(mods, gameMode.ToVanillaGameMode()).IsFailure)
         {
             return GetRandomMods(gameMode); // TODO: Please just make it generate the valid mods combination from the first time. 
         }

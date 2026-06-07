@@ -13,23 +13,23 @@ public class ModsValidationUtilTests : BaseTest
     [InlineData(Mods.KeyCoop)]
     [InlineData(Mods.Cinema)]
     [InlineData(Mods.Autoplay)]
-    public void TestIsModeCombinationInvalidWithForbiddenModsReturnsTrue(Mods mods)
+    public void TestIsModeCombinationInvalidWithForbiddenModsReturnsSuccess(Mods mods)
     {
         // Arrange & Act
-        var result = ModsValidationUtil.IsModeCombinationInvalid(mods, GameMode.Standard);
+        var result = ModsValidationUtil.ValidateMods(mods, GameMode.Standard);
 
         // Assert
-        Assert.True(result);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public void TestIsModeCombinationInvalidWithAllowedModsReturnsFalse()
+    public void TestIsModeCombinationInvalidWithAllowedModsReturnsFailure()
     {
         // Arrange & Act
-        var result = ModsValidationUtil.IsModeCombinationInvalid(Mods.Hidden | Mods.HardRock, GameMode.Standard);
+        var result = ModsValidationUtil.ValidateMods(Mods.Hidden | Mods.HardRock, GameMode.Standard);
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.IsFailure);
     }
 
     // TODO: Add more test suites
