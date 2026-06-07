@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Linq.Dynamic.Core;
 using osu.Shared;
 using Sunrise.Shared.Attributes;
@@ -15,8 +14,6 @@ namespace Sunrise.Processing.Services;
 
 public class MedalService(DatabaseService database)
 {
-    private static readonly ActivitySource ActivitySource = new("Sunrise.Processing.Services.MedalService");
-
     [TraceExecution]
     public async Task<string> UnlockAndGetNewMedals(Score score, Beatmap beatmap, UserStats userStats)
     {
@@ -46,8 +43,6 @@ public class MedalService(DatabaseService database)
 
         ValueTask EvaluateMedal(Medal medal)
         {
-            using var activity = ActivitySource.StartActivity($"Evaluating medal {medal.Id}");
-
             var isConditionsAreMet = Evaluate(new MedalConditionContext
                 {
                     user = userStats,
