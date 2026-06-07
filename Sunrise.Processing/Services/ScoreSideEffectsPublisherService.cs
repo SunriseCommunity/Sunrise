@@ -44,7 +44,7 @@ public class ScoreSideEffectsPublisherService(
         var scoresWithLeaderboardPosition = await database.Scores.EnrichScoresWithLeaderboardPosition(new List<Score?>
             {
                 ctx.Score,
-                ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore,
+                ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue,
                 ctx.UserPersonalBestScores?.OverallPeer?.BestScoreForPerformanceCalculation
             }.Where(s => s != null).Cast<Score>().ToList(),
             ct);
@@ -56,8 +56,8 @@ public class ScoreSideEffectsPublisherService(
                 ctx.Score.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
             else if (ctx.UserPersonalBestScores?.OverallPeer != null)
             {
-                if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreBasedByTotalScore.Id)
-                    ctx.UserPersonalBestScores.OverallPeer.BestScoreBasedByTotalScore.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
+                if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreByScoreValue.Id)
+                    ctx.UserPersonalBestScores.OverallPeer.BestScoreByScoreValue.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
                 else if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.Id)
                     ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
             }
@@ -118,8 +118,8 @@ public class ScoreSideEffectsPublisherService(
 
         var secondBeatmapsBestFromDifferentUser = globalScores.Find(s => s.UserId != score.UserId);
 
-        // TODO: Is checking by BestScoreBasedByTotalScore correct here?
-        var isPeerWasFirstPlace = IsOverallBestScore(ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore, secondBeatmapsBestFromDifferentUser);
+        // TODO: Is checking by BestScoreByScoreValue correct here?
+        var isPeerWasFirstPlace = IsOverallBestScore(ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue, secondBeatmapsBestFromDifferentUser);
 
         var shouldAnnounceNewFirstPlace = isScoreFirstPlace && !isPeerWasFirstPlace;
 

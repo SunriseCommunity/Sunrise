@@ -162,7 +162,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var userPersonalBestScores = scores.GetUserPersonalBestScores(session.UserId);
 
-        var personalBest = userPersonalBestScores?.BestScoreBasedByTotalScore;
+        var personalBest = userPersonalBestScores?.BestScoreByScoreValue;
         responses.Add(personalBest != null ? personalBest.GetString() : "");
 
         var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);

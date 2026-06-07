@@ -52,7 +52,7 @@ public class UserStatsScoreProcessor(
         var score = ctx.Score;
         var userStats = ctx.UserStats;
         var personalBestScores = ctx.UserPersonalBestScores?.OverallPeer;
-        var currentBest = personalBestScores?.BestScoreBasedByTotalScore;
+        var currentBest = personalBestScores?.BestScoreByScoreValue;
 
         var isFirstBeatmapScore = currentBest == null;
 
@@ -98,7 +98,7 @@ public class UserStatsScoreProcessor(
         var userStats = ctx.UserStats;
         var original = ctx.OriginalState;
 
-        var overallPeer = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
+        var overallPeer = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
         var isGloballyBestTotalScore = IsBestByScoreValue(score, overallPeer);
 
         var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
@@ -124,7 +124,7 @@ public class UserStatsScoreProcessor(
 
         if (original is { SubmissionStatus: SubmissionStatus.Best } && isGloballyBestTotalScore)
         {
-            var promotedPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreBasedByTotalScore;
+            var promotedPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue;
             var rankedDecrement = promotedPeer != null
                 ? score.TotalScore - promotedPeer.TotalScore
                 : score.TotalScore;
@@ -140,7 +140,11 @@ public class UserStatsScoreProcessor(
         if (competingScore == null)
             return true;
 
-        return new List<Score> { score, competingScore }
+        return new List<Score>
+            {
+                score,
+                competingScore
+            }
             .SortScoresByTheirScoreValue()
             .First().Id == score.Id;
     }

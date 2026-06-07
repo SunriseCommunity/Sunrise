@@ -19,14 +19,14 @@ public static class ScoreExtensions
 {
     public static UserPersonalBestScores? GetUserPersonalBestScores(this List<Score> scores, int userId)
     {
-        var personalBestByTotalScore = scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
-        if (personalBestByTotalScore == null)
+        var personalBestByScoreValue = scores.GetScoresGroupedByUsersBest().Find(x => x.UserId == userId);
+        if (personalBestByScoreValue == null)
             return null;
 
         var personalBestByPerformancePoints =
             Configuration.UseNewPerformanceCalculationAlgorithm ? scores.GetScoresGroupedByUsersBest(basedByPerformance: true).Find(x => x.UserId == userId) : null;
 
-        return new UserPersonalBestScores(personalBestByTotalScore, personalBestByPerformancePoints);
+        return new UserPersonalBestScores(personalBestByScoreValue, personalBestByPerformancePoints);
     }
 
     public static List<T> GetScoresGroupedByUsersBest<T>(this List<T> scores, bool? basedByPerformance = null) where T : Score

@@ -48,7 +48,7 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
     {
         var score = ctx.Score;
         var userGrades = ctx.UserGrades;
-        var previousOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
+        var previousOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
 
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
         if (isFailed || !score.IsScoreable || score.SubmissionStatus != SubmissionStatus.Best)
@@ -68,7 +68,7 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         var score = ctx.Score;
         var userGrades = ctx.UserGrades;
         var original = ctx.OriginalState;
-        var promotedOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreBasedByTotalScore;
+        var promotedOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
 
         var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
         if (isFailed || !original.IsScoreable || original.SubmissionStatus != SubmissionStatus.Best)

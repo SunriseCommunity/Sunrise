@@ -48,8 +48,8 @@ public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcess
     {
         database.DbContext.UpdateEntity(ctx.Score);
 
-        if (ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreBasedByTotalScore != null)
-            database.DbContext.UpdateEntity(ctx.UserPersonalBestScores.SameModsPeer.BestScoreBasedByTotalScore);
+        if (ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue != null)
+            database.DbContext.UpdateEntity(ctx.UserPersonalBestScores.SameModsPeer.BestScoreByScoreValue);
 
         await database.DbContext.SaveChangesAsync();
     }
@@ -58,7 +58,7 @@ public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcess
     {
         var score = ctx.Score;
 
-        var sameModsPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreBasedByTotalScore;
+        var sameModsPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue;
 
         if (score.SubmissionStatus != SubmissionStatus.Deleted)
             score.UpdateSubmissionStatus(sameModsPeer);

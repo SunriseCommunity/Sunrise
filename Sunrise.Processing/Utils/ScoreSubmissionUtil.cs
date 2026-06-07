@@ -65,7 +65,7 @@ public static class ScoreSubmissionUtil
         var beatmapInfo =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
-        var scoreInfo = string.Join("|", GetChart(prevUserPersonalBestScores?.BestScoreBasedByTotalScore, prevUserPersonalBestScores?.BestScoreForPerformanceCalculation, newScore, dontShowPp));
+        var scoreInfo = string.Join("|", GetChart(prevUserPersonalBestScores?.BestScoreByScoreValue, prevUserPersonalBestScores?.BestScoreForPerformanceCalculation, newScore, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
                          string.Join("|", GetChart(prevUserStats, null, userStats));
 
