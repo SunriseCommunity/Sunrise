@@ -18,6 +18,7 @@ public sealed class ScoreCommitContext(
     public ScoreTaskType TaskType { get; } = taskType;
     public ScoreStateSnapshot OriginalState { get; internal set; }
     public UserBeatmapPeers? UserPersonalBestScores { get; internal set; }
+    public List<Medal>? UnlockedMedals { get; internal set; }
 
     public Score Score { get; } = score;
     public User User { get; } = user;

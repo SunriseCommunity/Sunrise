@@ -133,21 +133,23 @@ public class ScoreSubmissionHandler(
         if (commitResult.IsFailure)
             return commitResult.Error;
 
-        var newAchievements = await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndReturnNewAchievements(BaseSession.GenerateServerSession(), ctx, ct);
+        await OnCommitted(commitResult.Value, ct);
 
         var shouldReturnScoreResponseString = ctx.Beatmap?.IsScoreable ?? false;
 
         if (!shouldReturnScoreResponseString)
             return null;
 
-        var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(ctx, newAchievements, _prevUserStatsSnapshot!, ct);
+        var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(ctx, _prevUserStatsSnapshot!, ct);
 
         return responseString;
     }
 
     internal override async Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)
     {
-        await scoreSideEffectsPublisherService.PublishScoreSideEffectsAndReturnNewAchievements(BaseSession.GenerateServerSession(), ctx, ct);
+        var publishSideEffectsResult = await scoreSideEffectsPublisherService.PublishScoreSubmissionSideEffects(BaseSession.GenerateServerSession(), ctx, ct);
+        if (publishSideEffectsResult.IsFailure)
+            Log.Warning("Failed to publish post-commit score side effects for score {ScoreId}: {Error}", ctx.Score.Id, publishSideEffectsResult.Error);
     }
 
     private UnitResult<ScoreProcessingError> ValidateScorePerformance(Score score, CancellationToken ct)

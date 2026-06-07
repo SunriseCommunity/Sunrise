@@ -26,7 +26,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
     private readonly MockService _mocker = new();
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithoutBeatmapThrows()
+    public async Task TestPublishScoreSubmissionSideEffectsWithoutBeatmapReturnsError()
     {
         // Arrange
         using var scope = Scope;
@@ -38,18 +38,19 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades);
 
         // Act
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.PublishScoreSideEffectsAndReturnNewAchievements(
-                BaseSession.GenerateServerSession(),
-                ctx,
-                CancellationToken.None));
+        var result = await service.PublishScoreSubmissionSideEffects(
+            BaseSession.GenerateServerSession(),
+            ctx,
+            CancellationToken.None);
 
         // Assert
-        Assert.Equal("Beatmap and beatmap set must be present in context to publish score side effects.", exception.Message);
+        Assert.NotEmpty(result.Error);
+
+        Assert.Equal("Beatmap and beatmap set must be present in context to publish score side effects.", result.Error);
     }
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithNewFirstPlaceSendsAnnouncement()
+    public async Task TestPublishScoreSubmissionSideEffectsWithNewFirstPlaceSendsAnnouncement()
     {
         // Arrange
         using var scope = Scope;
@@ -88,13 +89,13 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
 
         // Act
-        var response = await service.PublishScoreSideEffectsAndReturnNewAchievements(
+        var result = await service.PublishScoreSubmissionSideEffects(
             BaseSession.GenerateServerSession(),
             ctx,
             CancellationToken.None);
 
         // Assert
-        Assert.NotEmpty(response);
+        Assert.True(result.IsSuccess);
 
         var chatPacket = GetSessionPackets(session).FirstOrDefault(packet => packet.Type == PacketType.ServerChatMessage);
         Assert.NotNull(chatPacket);
@@ -106,7 +107,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
     }
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithoutLeaderboardTakeoverDoesNotSendAnnouncement()
+    public async Task TestPublishScoreSubmissionSideEffectsWithoutLeaderboardTakeoverDoesNotSendAnnouncement()
     {
         // Arrange
         using var scope = Scope;
@@ -144,17 +145,19 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
 
         // Act
-        _ = await service.PublishScoreSideEffectsAndReturnNewAchievements(
+        var result = await service.PublishScoreSubmissionSideEffects(
             BaseSession.GenerateServerSession(),
             ctx,
             CancellationToken.None);
 
         // Assert
+        Assert.True(result.IsSuccess);
+
         Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerChatMessage);
     }
 
     [Fact]
-    public async Task TestPublishScoreSideEffectsAndReturnNewAchievementsWithRelaxFirstPlaceUsesScoreValueComparison()
+    public async Task TestPublishScoreSubmissionSideEffectsWithRelaxFirstPlaceUsesScoreValueComparison()
     {
         // Arrange
         using var scope = Scope;
@@ -212,12 +215,14 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
 
         // Act
-        _ = await service.PublishScoreSideEffectsAndReturnNewAchievements(
+        var result = await service.PublishScoreSubmissionSideEffects(
             BaseSession.GenerateServerSession(),
             ctx,
             CancellationToken.None);
 
         // Assert
+        Assert.True(result.IsSuccess);
+
         Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerChatMessage);
     }
 

@@ -1,3 +1,4 @@
+using CSharpFunctionalExtensions;
 using Serilog;
 using Sunrise.API.Enums;
 using Sunrise.API.Objects;
@@ -12,7 +13,6 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
-using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -24,14 +24,12 @@ namespace Sunrise.Processing.Services;
 public class ScoreSideEffectsPublisherService(
     DatabaseService database,
     CalculatorService calculatorService,
-    MedalService medalService,
     WebSocketManager webSocketManager,
     SessionRepository sessions,
     ChatChannelRepository channels)
 {
     public async Task<string> BuildScoreSubmitResponse(
         ScoreCommitContext ctx,
-        string? newAchievements,
         UserStats prevUserStats,
         CancellationToken ct = default)
     {
@@ -63,24 +61,28 @@ public class ScoreSideEffectsPublisherService(
             }
         });
 
+        var newAchievements = ctx.UnlockedMedals != null ? string.Join("/", ctx.UnlockedMedals.Select(ScoreMedalUtil.GetMedalScoreSubmissionResultString)) : null;
+
         return ScoreSubmissionUtil.GetScoreSubmitResponse(ctx.Beatmap, ctx.UserStats, prevUserStats, ctx.Score, ctx.UserPersonalBestScores?.OverallPeer, newAchievements);
     }
 
-    public async Task<string?> PublishScoreSideEffectsAndReturnNewAchievements(
+    public async Task<Result> PublishScoreSubmissionSideEffects(
         BaseSession beatmapRatelimitSession,
         ScoreCommitContext ctx,
         CancellationToken ct = default)
     {
         var score = ctx.Score;
+        score.User ??= ctx.User;
+
         var beatmap = ctx.Beatmap;
         var beatmapSet = ctx.BeatmapSet;
 
         // If score is not scoreable - no side effects will be planned for it
         if (!IsScoreScoreable(score))
-            return null;
+            return Result.Success();
 
         if (beatmap == null || beatmapSet == null)
-            throw new InvalidOperationException("Beatmap and beatmap set must be present in context to publish score side effects.");
+            return Result.Failure("Beatmap and beatmap set must be present in context to publish score side effects.");
 
         SunriseMetrics.ScoreSubmittedCounterInc(score.UserId, beatmap.Id, score.GameMode, score.Mods, score.PerformancePoints, score.Id);
 
@@ -128,14 +130,7 @@ public class ScoreSideEffectsPublisherService(
                 ?.SendToChannel(ScoreSubmissionUtil.GetNewFirstPlaceString(score, beatmapSet, beatmap));
         }
 
-        var newAchievements = await UnlockMedalsAndGetNewlyUnlocked(score, beatmap, ctx.UserStats);
-
-        return newAchievements;
-    }
-
-    private async Task<string> UnlockMedalsAndGetNewlyUnlocked(Score score, Beatmap beatmap, UserStats userStats)
-    {
-        return await medalService.UnlockAndGetNewMedals(score, beatmap, userStats);
+        return Result.Success();
     }
 
     private static bool IsOverallBestScore(Score? scoreA, Score? scoreB)

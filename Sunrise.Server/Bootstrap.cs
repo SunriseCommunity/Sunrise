@@ -454,7 +454,6 @@ public static class Bootstrap
     public static void AddServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddScoped<DirectService>();
-        builder.Services.AddScoped<MedalService>();
         builder.Services.AddScoped<AssetBanchoService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
@@ -466,6 +465,7 @@ public static class Bootstrap
         builder.Services.AddScoped<IScoreEntityProcessor, LeaderboardProcessor>();
         builder.Services.AddScoped<IScoreEntityProcessor, UserStatsScoreProcessor>();
         builder.Services.AddScoped<IScoreEntityProcessor, UserGradesScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, MedalScoreProcessor>();
         builder.Services.AddScoped<ScoreSideEffectsPublisherService>();
         builder.Services.AddScoped<ScoreSubmissionHandler>();
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreSubmissionHandler>(ScoreTaskType.Submission);
