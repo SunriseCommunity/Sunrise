@@ -12,6 +12,7 @@ using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -176,7 +177,7 @@ public class ApiUserCountryChangeTests(IntegrationDatabaseFixture fixture) : Api
             var gamemodeUserStats = user.UserStats.First(s => s.GameMode == GameMode.Standard);
 
             gamemodeUserStats.UpdateWithDbScore(newScore);
-            (gamemodeUserStats.PerformancePoints, gamemodeUserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(user, newScore.GameMode, newScore);
+            (gamemodeUserStats.PerformancePoints, gamemodeUserStats.Accuracy) = PerformanceCalculator.CalculateUserWeightedStats([newScore]);
 
             var updateUserStatsResult = await Database.Users.Stats.UpdateUserStats(gamemodeUserStats, user);
             if (updateUserStatsResult.IsFailure)

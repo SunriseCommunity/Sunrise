@@ -8,6 +8,14 @@ namespace Sunrise.Shared.Utils.Calculators;
 
 public static class PerformanceCalculator
 {
+    public static (double PerformancePoints, double Accuracy) CalculateUserWeightedStats(List<Score> userBestScores)
+    {
+        var pp = CalculateUserWeightedPerformance(userBestScores);
+        var accuracy = CalculateUserWeightedAccuracy(userBestScores);
+
+        return (pp, accuracy);
+    }
+
     public static double CalculateUserWeightedAccuracy(List<Score> userBestScores)
     {
         if (userBestScores.Count == 0) return 0;

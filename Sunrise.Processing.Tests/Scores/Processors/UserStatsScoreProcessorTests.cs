@@ -37,7 +37,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var score = await CreateTestScore(user);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var previousStats = userStats.Clone();
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
 
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
@@ -68,7 +68,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         userStats.UpdateWithDbScore(oldScore);
 
         var previousStats = userStats.Clone();
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
 
         var context = ScoreCommitContextFactory.Create(
             ScoreTaskType.Submission,
@@ -186,7 +186,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         userStats.UpdateWithDbScore(oldScore);
 
         var previousStats = userStats.Clone();
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
 
         var context = ScoreCommitContextFactory.Create(
             ScoreTaskType.Submission,
@@ -647,7 +647,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var previousStats = userStats.Clone();
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
 
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Restore, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
@@ -752,7 +752,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         userStats.RankedScore = existingBest.TotalScore;
         userStats.PerformancePoints = 60;
         userStats.Accuracy = 80;
-        var expectedWeighted = await calculator.CalculateUserWeightedStats(user, score.GameMode, score);
+        var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
         var previousStats = userStats.Clone();
 
         var context = ScoreCommitContextFactory.Create(
