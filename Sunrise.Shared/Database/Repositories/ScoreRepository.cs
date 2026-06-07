@@ -258,14 +258,15 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
         var scoresIds = string.Join(",", scores.Select(s => s.Id));
 
-        await using var connection = dbContext.Database.GetDbConnection();
-        await connection.OpenAsync(ct);
+        var connection = dbContext.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
 
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
 
         var orderByValue = gameModesWithoutScoreMultiplier.Contains(scores.FirstOrDefault()?.GameMode ?? GameMode.Standard) ? nameof(Score.PerformancePoints) : nameof(Score.TotalScore);
 
-        var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = $"""
 
                                        SELECT Id,
