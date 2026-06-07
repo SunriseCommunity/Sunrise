@@ -8,14 +8,13 @@ public enum ScoreProcessingErrorCode
     PpCalculationFailed = 3,
     ReplayMissing = 4,
     InvalidMods = 5,
-    NonStandardModsUnsupported = 6,
-    BannablePpThreshold = 7,
-    InvalidChecksums = 8,
-    UserNotFound = 9,
-    UserStatsNotFound = 10,
-    UserGradesNotFound = 11,
-    TransactionFailed = 12,
-    ParsedScoreInvalid = 13,
-    CancelledByOperator = 14,
-    InvalidScoreState = 15
+    BannablePpThreshold = 6,
+    InvalidChecksums = 7,
+    UserNotFound = 8,
+    UserStatsNotFound = 9,
+    UserGradesNotFound = 10,
+    TransactionFailed = 11,
+    ParsedScoreInvalid = 12,
+    CancelledByOperator = 13,
+    InvalidScoreState = 14
 }

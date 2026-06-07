@@ -116,7 +116,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestValidateBuiltScoreWithMultipleNonStandardModsReturnsNonStandardModsUnsupportedError()
+    public void TestValidateBuiltScoreWithMultipleNonStandardModsReturnsInvalidModsError()
     {
         // Arrange
         var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry(Mods.ScoreV2 | Mods.Relax);
@@ -128,7 +128,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         // Assert
         Assert.True(result.IsFailure);
 
-        Assert.Equal(ScoreProcessingErrorCode.NonStandardModsUnsupported, result.Error.Code);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidMods, result.Error.Code);
     }
 
     [Fact]
