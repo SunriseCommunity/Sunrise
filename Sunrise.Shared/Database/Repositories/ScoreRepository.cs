@@ -366,11 +366,9 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
     {
         var query = dbContext.Scores
             .AsNoTracking()
-            .Where(s => s.UserId == userId
-                        && s.GameMode == gameMode
-                        && s.SubmissionStatus == SubmissionStatus.Best
-                        && s.IsScoreable
-                        && s.IsPassed);
+            .FilterValidScores()
+            .FilterPassedScoreableScores()
+            .Where(s => s.UserId == userId && s.GameMode == gameMode);
 
         if (excludeScoreId.HasValue)
         {

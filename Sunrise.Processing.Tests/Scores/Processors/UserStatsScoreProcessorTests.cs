@@ -376,9 +376,42 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         await processor.OnDeletion(context);
 
         // Assert
-
         Assert.Equal(score.MaxCombo, previousStats.MaxCombo);
         Assert.Equal(0, userStats.MaxCombo);
+    }
+
+    [Fact]
+    public async Task TestOnDeletionFallbacksToSubmittedScoresEvenIfTheyAreNotTheBest()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var peerSubmittedScore = await CreatePersistedScore(user, 900, 90, 450, SubmissionStatus.Submitted, gameMode: GameMode.Standard);
+
+        var score = CreateScore(user, 1234, 1000, 100, 500, submissionStatus: SubmissionStatus.Best, gameMode: GameMode.Standard);
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+
+        userStats.UpdateWithDbScore(score);
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: null,
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(score.MaxCombo, previousStats.MaxCombo);
+        Assert.Equal(peerSubmittedScore.MaxCombo, userStats.MaxCombo);
     }
 
     [Fact]
