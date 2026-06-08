@@ -13,6 +13,7 @@ public class MultiplayerTimer
     private readonly Func<MultiplayerMatch, Task>? _onFinish;
 
     private readonly Timer _timer;
+    private int _isFinished;
 
     private int _seconds;
 
@@ -42,6 +43,9 @@ public class MultiplayerTimer
 
     private void Tick(object? state)
     {
+        if (Interlocked.Exchange(ref _isFinished, 1) == 1)
+            return;
+
         _seconds--;
 
         if (_seconds > 0)
@@ -52,10 +56,13 @@ public class MultiplayerTimer
             {
                 _onAlert?.Invoke(_match, string.Format(_alertMessage, TimeConverter.SecondsToMinutes(_seconds)));
             }
+
+            Interlocked.Exchange(ref _isFinished, 0);
+            return;
         }
-        else
-        {
-            _onFinish?.Invoke(_match);
-        }
+
+        _onFinish?.Invoke(_match);
+
+        Stop();
     }
 }
