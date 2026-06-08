@@ -32,7 +32,7 @@ public static class UsernameExtensions
             return (false, "Username contains unallowed strings, please remove them and try again.");
         }
 
-        if (IsUsernameDisallowed(str).Result)
+        if (IsUsernameDisallowed(str))
         {
             return (false, "Username contains unallowed strings, try to come up with a harmless and original nickname.");
         }
@@ -55,7 +55,7 @@ public static class UsernameExtensions
         return Regex.IsMatch(str, @"^[1-9 0-\[\]a-zA-Z_-]+$");
     }
 
-    private static async Task<bool> IsUsernameDisallowed(string str)
+    private static bool IsUsernameDisallowed(string str)
     {
         var path = Path.Combine(Configuration.DataPath, Configuration.BannedUsernamesName);
 
@@ -64,7 +64,7 @@ public static class UsernameExtensions
             return false;
         }
 
-        var bannedUsernames = await File.ReadAllLinesAsync(path, Encoding.UTF8);
+        var bannedUsernames = File.ReadAllLines(path, Encoding.UTF8);
 
         for (var i = 0; i < bannedUsernames.Length; i++)
         {

@@ -308,7 +308,7 @@ public class RecurringJobs
             ct);
 
         if (await Task.WhenAny(backupDatabaseTask, Task.Delay(60_000, ct)) == backupDatabaseTask)
-            return backupDatabaseTask.Result;
+            return await backupDatabaseTask;
 
         return Result.Failure<string>("Database backup operation timed out");
     }

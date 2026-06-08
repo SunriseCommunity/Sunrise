@@ -95,13 +95,13 @@ public class ChatChannelRepository
         {
             return _channels.Values.Where(x => x.IsPublic).ToList();
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
         var sessionPrivilege = UserPrivilege.User;
 
-        var user = database.Users.GetUser(id: session.UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+        var user = dbContext.Users.FirstOrDefault(u => u.Id == session.UserId);
         if (user != null)
             sessionPrivilege = user.Privilege;
 

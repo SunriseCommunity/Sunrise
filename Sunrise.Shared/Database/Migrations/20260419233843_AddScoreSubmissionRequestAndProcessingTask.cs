@@ -1,6 +1,6 @@
 using System;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
-using MySql.EntityFrameworkCore.Metadata;
 
 #nullable disable
 
@@ -25,7 +25,7 @@ namespace Sunrise.Shared.Database.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     ScoreHash = table.Column<string>(type: "varchar(255)", nullable: false),
                     ScoreSerialized = table.Column<string>(type: "longtext", nullable: false),
@@ -53,14 +53,14 @@ namespace Sunrise.Shared.Database.Migrations
                         principalTable: "user_file",
                         principalColumn: "Id");
                 })
-                .Annotation("MySQL:Charset", "utf8mb4");
+                .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
                 name: "score_processing_task",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     TaskType = table.Column<int>(type: "int", nullable: false),
                     ScoreSubmissionRequestId = table.Column<int>(type: "int", nullable: true),
                     ScoreId = table.Column<int>(type: "int", nullable: true),
@@ -91,7 +91,7 @@ namespace Sunrise.Shared.Database.Migrations
                         principalTable: "score_submission_request",
                         principalColumn: "Id");
                 })
-                .Annotation("MySQL:Charset", "utf8mb4");
+                .Annotation("MySql:CharSet", "utf8mb4");
             
             migrationBuilder.CreateIndex(
                 name: "IX_score_ScoreHash_Status_Id",

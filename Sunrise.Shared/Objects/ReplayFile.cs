@@ -27,8 +27,8 @@ public class ReplayFile
         if (user == null)
         {
             using var scope = ServicesProviderHolder.CreateScope();
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-            User = database.Users.GetUser(score.UserId).Result;
+            var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
+            User = dbContext.Users.FirstOrDefault(u => u.Id == score.UserId);
         }
 
         if (User == null)

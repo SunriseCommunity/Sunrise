@@ -408,7 +408,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page, limit)), ct);
 
-        var parsedBeatmaps = beatmapsIds.Select(async pair =>
+        var parsedBeatmapsTasks = beatmapsIds.Select(async pair =>
         {
             var bId = pair.Key;
             var count = pair.Value;
@@ -419,10 +419,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
             var beatmapSet = beatmapSetResult.Value;
 
-            var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
+            var beatmap = beatmapSet?.Beatmaps?.FirstOrDefault(b => b.Id == bId);
 
             return beatmap == null ? null : new MostPlayedBeatmapResponse(sessions, beatmap, count, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+        });
+
+        var parsedBeatmaps = (await Task.WhenAll(parsedBeatmapsTasks)).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new MostPlayedResponse(parsedBeatmaps, totalIdsCount));
     }
@@ -451,7 +453,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var (favourites, favouritesCount) = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)), ct);
 
-        var parsedFavourites = favourites.Select(async setId =>
+        var parsedFavouritesTasks = favourites.Select(async setId =>
         {
             var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, ct: ct);
             if (beatmapSetResult.IsFailure)
@@ -460,7 +462,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             var beatmapSet = beatmapSetResult.Value;
 
             return beatmapSet == null ? null : new BeatmapSetResponse(sessions, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+        });
+
+        var parsedFavourites = (await Task.WhenAll(parsedFavouritesTasks)).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
     }
@@ -912,7 +916,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -931,7 +935,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -955,7 +959,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -974,7 +978,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)

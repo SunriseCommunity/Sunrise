@@ -37,10 +37,11 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
         var clientHash = ServerParsers.ParseRijndaelString(osuVersion, iv, clientHashEncoded);
         var username = scoreSerialized.Split(':')[1].Trim();
 
-        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+        var session = await sessions.TryGetSessionAsync(username, passhash);
+
+        if (session == null)
         {
             Log.Error("Failed to authenticate score submission for user {Username}. Invalid session.", username);
-
             return Ok("error: pass");
         }
 
@@ -75,7 +76,8 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
         if (fromEditor == "1" || leaderboardVersion != "4")
             return Ok("error: pass");
 
-        if (!sessions.TryGetSession(username, passhash, out var session) || session == null)
+        var session = await sessions.TryGetSessionAsync(username, passhash);
+        if (session == null)
             return Ok("error: pass");
 
         var result =
@@ -86,9 +88,15 @@ public class ScoreController(ScoreService scoreService, AssetBanchoService asset
 
     [HttpGet(RequestType.OsuGetReplay)]
     public async Task<IActionResult> GetReplay(
+        [FromQuery(Name = "u")] string username,
+        [FromQuery(Name = "h")] string passhash,
         [FromQuery(Name = "c")] int scoreId, CancellationToken ct = default
     )
     {
+        var session = await sessions.TryGetSessionAsync(username, passhash);
+        if (session == null)
+            return Ok("error: pass");
+
         var getReplayResult = await assetBanchoService.GetOsuReplayBytes(scoreId, ct);
         if (getReplayResult.IsFailure)
             return Ok("error: no-replay");
