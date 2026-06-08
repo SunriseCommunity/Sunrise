@@ -1,4 +1,6 @@
+using System.Data;
 using CSharpFunctionalExtensions;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using osu.Shared;
@@ -14,7 +16,6 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Utils;
-using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Database.Repositories;
@@ -259,7 +260,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         var scoresIds = string.Join(",", scores.Select(s => s.Id));
 
         var connection = dbContext.Database.GetDbConnection();
-        if (connection.State != System.Data.ConnectionState.Open)
+        if (connection.State != ConnectionState.Open)
             await connection.OpenAsync(ct);
 
         var gameModesWithoutScoreMultiplier = GameModeExtensions.GetGameModesWithoutScoreMultiplier();
@@ -326,23 +327,12 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
     {
         var excludeId = excludeScoreId ?? 0;
 
-        // TODO: Use EntityFrameworkCore.Locking.MySql instead after move to Pomelo MySQL provider
-        // TODO: Use FilterPassedScoreableScores to filter scoreable scores
         var scores = await dbContext.Scores
-            .FromSqlInterpolated($"""
-                                  SELECT * FROM score
-                                  WHERE UserId = {userId}
-                                    AND BeatmapHash = {beatmapHash}
-                                    AND GameMode = {(int)gameMode}
-                                    AND IsScoreable = TRUE
-                                    AND IsPassed = TRUE
-                                    AND SubmissionStatus != {(int)SubmissionStatus.Failed}
-                                    AND SubmissionStatus != {(int)SubmissionStatus.Deleted}
-                                    AND SubmissionStatus != {(int)SubmissionStatus.Unknown}
-                                    AND Id != {excludeId}
-                                  FOR UPDATE
-                                  """)
+            .FilterValidScores()
+            .FilterPassedScoreableScores()
+            .Where(s => s.UserId == userId && s.BeatmapHash == beatmapHash && s.GameMode == gameMode && s.Id != excludeId)
             .AsNoTracking()
+            .ForUpdate()
             .ToListAsync(ct);
 
         foreach (var score in scores)

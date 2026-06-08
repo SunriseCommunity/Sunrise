@@ -1,3 +1,4 @@
+using EntityFrameworkCore.Locking.MySql;
 using Hangfire;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -29,6 +30,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             {
                 options.EnableServiceProviderCaching(false);
                 options.EnableSensitiveDataLogging();
+                options.UseLocking();
 
                 options.UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
             });
@@ -58,7 +60,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing == false)
+        if (!disposing)
         {
             base.Dispose(disposing);
             return;

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Authentication;
 using System.Transactions;
 using EFCoreSecondLevelCacheInterceptor;
+using EntityFrameworkCore.Locking.MySql;
 using Hangfire;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -348,6 +349,9 @@ public static class Bootstrap
 
             optionsBuilder
                 .AddInterceptors(new SlowQueryLoggerInterceptor());
+
+            optionsBuilder
+                .UseLocking();
 
             optionsBuilder
                 .UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
