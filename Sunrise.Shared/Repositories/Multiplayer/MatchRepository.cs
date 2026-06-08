@@ -42,6 +42,11 @@ public class MatchRepository
         _sessionsInLobby.TryRemove(session.UserId, out _);
     }
 
+    public int GetLobbySessionCount()
+    {
+        return _sessionsInLobby.Count;
+    }
+
     public bool CreateMatchWithHost(Session session, BanchoMultiplayerMatch match)
     {
         var multiplayerMatch = new MultiplayerMatch(this, match)

@@ -14,17 +14,20 @@ using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories.Multiplayer;
 
 namespace Sunrise.Shared.Repositories;
 
 public class SessionRepository
 {
     private readonly ChatChannelRepository _channels;
+    private readonly MatchRepository _matches;
     private readonly ConcurrentDictionary<string, Session> _sessions = new();
 
-    public SessionRepository(ChatChannelRepository channels, IRecurringJobManager recurringJobManager)
+    public SessionRepository(ChatChannelRepository channels, MatchRepository matches, IRecurringJobManager recurringJobManager)
     {
         _channels = channels;
+        _matches = matches;
 
         recurringJobManager.AddOrUpdate("ClearInactiveSessions", () => ClearInactiveSessions(), "*/1 * * * *");
     }
@@ -62,14 +65,17 @@ public class SessionRepository
     public async Task SoftRemoveSession(Session session)
     {
         session.Match?.RemovePlayer(session);
+        _matches.LeaveLobby(session);
 
         session.Spectating?.RemoveSpectator(session);
         session.Spectating = null;
 
-        foreach (var channel in _channels.GetChannels())
+        foreach (var spectator in session.Spectators.Values.ToList())
         {
-            channel.RemoveUser(session.UserId);
+            session.RemoveSpectator(spectator);
         }
+
+        _channels.RemoveUserFromAllChannels(session.UserId);
 
         session.WritePacket(PacketType.ServerLoginReply, (int)LoginResponse.InvalidCredentials);
 
