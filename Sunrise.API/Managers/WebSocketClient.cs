@@ -33,14 +33,26 @@ public class WebSocketClient(WebSocket webSocket)
 
     public async Task ProcessWebSocketMessagesAsync(CancellationToken cancellationToken)
     {
-        _pushMessagesTask = Task.Run(async () => await PushPendingMessagesAsync(cancellationToken), cancellationToken);
+        using var internalCts = new CancellationTokenSource();
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            internalCts.Token
+        );
 
-        while (!cancellationToken.IsCancellationRequested && webSocket.State == WebSocketState.Open)
+        var pushTask = PushPendingMessagesAsync(linkedCts.Token);
+
+        try
         {
-            await HandleClientMessageAsync(cancellationToken);
+            while (!linkedCts.Token.IsCancellationRequested && webSocket.State == WebSocketState.Open)
+            {
+                await HandleClientMessageAsync(linkedCts.Token);
+            }
         }
-
-        await _pushMessagesTask;
+        finally
+        {
+            await internalCts.CancelAsync();
+            await pushTask;
+        }
     }
 
     public async Task PushPendingMessagesAsync(CancellationToken cancellationToken)
