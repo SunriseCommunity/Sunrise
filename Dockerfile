@@ -7,6 +7,7 @@ WORKDIR /src
 COPY ["Sunrise.Server/", "Sunrise.Server/"]
 COPY ["Sunrise.API/", "Sunrise.API/"]
 COPY ["Sunrise.Shared/", "Sunrise.Shared/"]
+COPY ["Sunrise.Processing/", "Sunrise.Processing/"]
 
 RUN dotnet restore "Sunrise.Server/Sunrise.Server.csproj"
 
