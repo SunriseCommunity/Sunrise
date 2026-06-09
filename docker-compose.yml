@@ -30,8 +30,8 @@ services:
       HANGFIRE_PORT: ${HANGFIRE_PORT}
       HANGFIRE_USER: ${MYSQL_USER}
       HANGFIRE_PASSWORD: ${MYSQL_PASSWORD}
-      DOTNET_GCHeapHardLimitPercent: 60
-      DOTNET_GCConserveMemory: 5
+      DOTNET_GCHeapHardLimitPercent: 70
+      DOTNET_GCConserveMemory: 1
     networks:
       - container_network
     depends_on:
