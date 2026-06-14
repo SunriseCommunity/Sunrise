@@ -42,6 +42,8 @@ public class UserStatsScoreProcessor(
 
     protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
+        // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
+        // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
         var updateUserStatsResult = await database.Users.Stats.UpdateUserStats(ctx.UserStats, ctx.User);
         if (updateUserStatsResult.IsFailure)
             throw new ApplicationException("Failed to persist user stats: " + updateUserStatsResult.Error);

@@ -230,6 +230,41 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
     }
 
     [Fact]
+    public async Task TestOnDeletionWithPromotedReplacementWithSameGradeNoChangesRequired()
+    {
+        // Arrange
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
+        var userGrades = new UserGrades
+        {
+            UserId = user.Id,
+            GameMode = GameMode.Standard,
+            CountA = 1
+        };
+
+        var promotedReplacement = CreateScore(user, submissionStatus: SubmissionStatus.Best);
+        var score = CreateScore(user);
+        var originalState = ScoreStateSnapshot.Capture(score);
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(new UserPersonalBestScores(promotedReplacement), new UserPersonalBestScores(promotedReplacement)),
+            originalState: originalState);
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(1, userGrades.CountA);
+    }
+
+    [Fact]
     public async Task TestOnDeletionWithNonBestOriginalStateKeepsGradesUnchanged()
     {
         // Arrange

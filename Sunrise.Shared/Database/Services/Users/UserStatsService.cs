@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;
@@ -35,16 +36,29 @@ public class UserStatsService(
         });
     }
 
-    public async Task<Result> UpdateUserStats(UserStats stats, User user)
+    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
-            if (addOrUpdateUserRanksResult.IsFailure)
-                throw new ApplicationException(addOrUpdateUserRanksResult.Error);
-
             dbContext.UpdateEntity(stats);
-            await dbContext.SaveChangesAsync();
+
+            if (dbContext.Database.CurrentTransaction != null)
+            {
+                databaseService.Value.RegisterAfterCommitAction(async () =>
+                {
+                    var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+                    if (addOrUpdateUserRanksResult.IsFailure)
+                        _logger.LogWarning("Failed to update user ranks after stats update: {Error}", addOrUpdateUserRanksResult.Error);
+                });
+
+                return;
+            }
+
+            await dbContext.SaveChangesAsync(ct);
+
+            var updateRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+            if (updateRanksResult.IsFailure)
+                throw new ApplicationException(updateRanksResult.Error);
         });
     }
 
@@ -69,6 +83,22 @@ public class UserStatsService(
         }
 
         return stats;
+    }
+
+    public async Task LockAndRefreshUserStats(UserStats stats, CancellationToken ct = default)
+    {
+        var lockedStats = await dbContext.UserStats
+            .AsNoTracking()
+            .Where(us => stats.Id != 0
+                ? us.Id == stats.Id
+                : us.UserId == stats.UserId && us.GameMode == stats.GameMode)
+            .ForUpdate()
+            .SingleOrDefaultAsync(ct);
+
+        if (lockedStats == null)
+            return;
+
+        CopyUserStatsValues(lockedStats, stats);
     }
 
     public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true, CancellationToken ct = default)
@@ -127,5 +157,27 @@ public class UserStatsService(
         }
 
         return stats;
+    }
+
+    private static void CopyUserStatsValues(UserStats source, UserStats target)
+    {
+        var rank = target.LocalProperties.Rank;
+
+        target.Id = source.Id;
+        target.UserId = source.UserId;
+        target.GameMode = source.GameMode;
+        target.Accuracy = source.Accuracy;
+        target.TotalScore = source.TotalScore;
+        target.RankedScore = source.RankedScore;
+        target.PlayCount = source.PlayCount;
+        target.PerformancePoints = source.PerformancePoints;
+        target.MaxCombo = source.MaxCombo;
+        target.PlayTime = source.PlayTime;
+        target.TotalHits = source.TotalHits;
+        target.BestGlobalRank = source.BestGlobalRank;
+        target.BestGlobalRankDate = source.BestGlobalRankDate;
+        target.BestCountryRank = source.BestCountryRank;
+        target.BestCountryRankDate = source.BestCountryRankDate;
+        target.LocalProperties.Rank = rank;
     }
 }

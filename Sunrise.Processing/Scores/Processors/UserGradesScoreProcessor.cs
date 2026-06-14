@@ -39,6 +39,8 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
 
     protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
+        // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
+        // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
         var updateUserGradesResult = await database.Users.Grades.UpdateUserGrades(ctx.UserGrades);
         if (updateUserGradesResult.IsFailure)
             throw new ApplicationException("Failed to persist user grades: " + updateUserGradesResult.Error);
@@ -55,6 +57,10 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             return;
 
         if (!IsOverallBestScore(score, previousOverallBest))
+            return;
+
+        // If the grade hasn't changed, we can return early and skip any DB calls.
+        if (previousOverallBest?.Grade == score.Grade)
             return;
 
         if (previousOverallBest != null)
@@ -77,10 +83,14 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         if (!IsOverallBestScore(score, promotedOverallBest))
             return;
 
-        UpdateUserGradesCount(userGrades, score.Grade, -1);
+        // If the grade hasn't changed, we can return early and skip any DB calls.
+        if (promotedOverallBest?.Grade == score.Grade)
+            return;
 
         if (promotedOverallBest != null)
             UpdateUserGradesCount(userGrades, promotedOverallBest.Grade, 1);
+
+        UpdateUserGradesCount(userGrades, score.Grade, -1);
     }
 
     private static bool IsOverallBestScore(Score score, Score? peer)
@@ -99,6 +109,9 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
 
     private static void UpdateUserGradesCount(UserGrades userGrades, string grade, int delta)
     {
+        if (delta is > 1 or < -1)
+            throw new ArgumentOutOfRangeException(nameof(delta));
+
         switch (grade)
         {
             case "XH": userGrades.CountXH = Math.Max(0, userGrades.CountXH + delta); break;
