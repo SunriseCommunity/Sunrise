@@ -25,13 +25,18 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore
+      - name: Pack build artifacts
+        run: |
+          while IFS= read -r -d '' PROJECT; do
+            PROJECT_DIR=$(dirname "$PROJECT")
+            [ -d "$PROJECT_DIR/bin" ] && printf '%s\0' "$PROJECT_DIR/bin"
+            [ -d "$PROJECT_DIR/obj" ] && printf '%s\0' "$PROJECT_DIR/obj"
+          done < <(find . -name '*.csproj' -print0) | tar --null -czf build-artifacts.tar.gz --files-from -
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: |
-            **/bin/
-            **/obj/
+          path: build-artifacts.tar.gz
           retention-days: 1
 
   test:
@@ -67,10 +72,21 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+      - name: Restore test dependencies
+        run: dotnet restore
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
+      - name: Extract build artifacts
+        run: tar -xzf build-artifacts.tar.gz
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d --wait
       - name: Run tests (Group ${{ matrix.group }}/16)
@@ -116,16 +132,40 @@ jobs:
           echo ""
           
           FAILED=0
+          readarray -t TEST_PROJECTS < <(find . -maxdepth 2 -path './*.Tests/*.csproj' -printf '%P\n' | sort)
           
-          echo "=== Running Sunrise.Shared.Tests ==="
-          if ! dotnet test Sunrise.Shared.Tests/Sunrise.Shared.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
-            FAILED=1
-          fi
-          
-          echo ""
-          echo "=== Running Sunrise.Server.Tests ==="
-          if ! dotnet test Sunrise.Server.Tests/Sunrise.Server.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
-            FAILED=1
-          fi
+          for TEST_PROJECT in "${TEST_PROJECTS[@]}"; do
+            PROJECT_DIR=$(dirname "$TEST_PROJECT")
+            PROJECT_FILTER=""
+
+            for i in "${!FILES_ARRAY[@]}"; do
+              if [ $(( (i % TEST_TOTAL_GROUPS) + 1 )) -ne $TEST_GROUP ]; then
+                continue
+              fi
+
+              FILE="${FILES_ARRAY[$i]}"
+              if [[ "$FILE" != "./$PROJECT_DIR/"* ]]; then
+                continue
+              fi
+
+              CLASS=$(basename "$FILE" .cs)
+              if [ -z "$PROJECT_FILTER" ]; then
+                PROJECT_FILTER="FullyQualifiedName~$CLASS"
+              else
+                PROJECT_FILTER="$PROJECT_FILTER|FullyQualifiedName~$CLASS"
+              fi
+            done
+
+            echo ""
+            echo "=== Running $PROJECT_DIR ==="
+            if [ -z "$PROJECT_FILTER" ]; then
+              echo "No tests assigned to $PROJECT_DIR in group $TEST_GROUP"
+              continue
+            fi
+
+            if ! dotnet test "$TEST_PROJECT" --no-build --no-restore --verbosity normal --filter "$PROJECT_FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+              FAILED=1
+            fi
+          done
           
           exit $FAILED
