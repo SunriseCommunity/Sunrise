@@ -38,6 +38,19 @@ public class ScoreCommitPipeline
     {
         var score = ctx.Score;
 
+        await _database.Users.Stats.LockAndRefreshUserStats(ctx.UserStats, ct);
+        await _database.Users.Grades.LockAndRefreshUserGrades(ctx.UserGrades, ct);
+
+        if (ctx.TaskType != ScoreTaskType.Submission)
+        {
+            var newPerformancePoints = score.PerformancePoints;
+            var locked = await _database.Scores.LockAndRefreshScore(score, ct); // TODO: This will cause the deadlocks, since we are first locking the main score and then peers. I'm partially fine with this since we have retries, but we will need to refactor this system some day for one single lock.
+            if (!locked)
+                throw new ApplicationException($"Score {score.Id} was not found while locking score commit target");
+
+            score.PerformancePoints = newPerformancePoints;
+        }
+
         score.LocalProperties = new LocalProperties().FromScore(score);
 
         ctx.OriginalState = ScoreStateSnapshot.Capture(score);
@@ -55,9 +68,6 @@ public class ScoreCommitPipeline
             ct);
 
         ctx.UserPersonalBestScores = peers;
-
-        await _database.Users.Stats.LockAndRefreshUserStats(ctx.UserStats, ct);
-        await _database.Users.Grades.LockAndRefreshUserGrades(ctx.UserGrades, ct);
 
         foreach (var processor in _processors)
         {
