@@ -43,6 +43,24 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         });
     }
 
+    public async Task<bool> LockAndRefreshScore(Score score, CancellationToken ct = default)
+    {
+        if (score.Id == 0)
+            return false;
+
+        var lockedScore = await dbContext.Scores
+            .AsNoTracking()
+            .Where(s => s.Id == score.Id)
+            .ForUpdate()
+            .SingleOrDefaultAsync(ct);
+
+        if (lockedScore == null)
+            return false;
+
+        CopyScoreValues(lockedScore, score);
+        return true;
+    }
+
     public async Task<(List<Score>, int)> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
         var groupedBestScores = dbContext.Scores
@@ -76,6 +94,38 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .Where(s => s.Id == id)
             .UseQueryOptions(options)
             .FirstOrDefaultAsync(cancellationToken: ct);
+    }
+
+    private static void CopyScoreValues(Score source, Score target)
+    {
+        target.Id = source.Id;
+        target.UserId = source.UserId;
+        target.BeatmapId = source.BeatmapId;
+        target.ScoreHash = source.ScoreHash;
+        target.BeatmapHash = source.BeatmapHash;
+        target.ReplayFileId = source.ReplayFileId;
+        target.TotalScore = source.TotalScore;
+        target.MaxCombo = source.MaxCombo;
+        target.Count300 = source.Count300;
+        target.Count100 = source.Count100;
+        target.Count50 = source.Count50;
+        target.CountMiss = source.CountMiss;
+        target.CountKatu = source.CountKatu;
+        target.CountGeki = source.CountGeki;
+        target.Perfect = source.Perfect;
+        target.Mods = source.Mods;
+        target.Grade = source.Grade;
+        target.IsPassed = source.IsPassed;
+        target.IsScoreable = source.IsScoreable;
+        target.SubmissionStatus = source.SubmissionStatus;
+        target.GameMode = source.GameMode;
+        target.WhenPlayed = source.WhenPlayed;
+        target.OsuVersion = source.OsuVersion;
+        target.BeatmapStatus = source.BeatmapStatus;
+        target.ClientTime = source.ClientTime;
+        target.Accuracy = source.Accuracy;
+        target.PerformancePoints = source.PerformancePoints;
+        target.TimeElapsed = source.TimeElapsed;
     }
 
     public async Task<Score?> GetScore(string scoreHash, QueryOptions? options = null, CancellationToken ct = default)
