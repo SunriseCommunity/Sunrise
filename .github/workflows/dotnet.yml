@@ -37,22 +37,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Restore test dependencies
-        run: dotnet restore
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-      - name: Extract build artifacts
-        run: tar -xzf build-artifacts.tar.gz
-      - name: Download Docker test images
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-test-images
-      - name: Load Docker test images
-        run: docker load --input docker-test-images.tar.gz
       - name: Docker compose test environment
-        run: docker compose -f docker-compose.tests.yml up -d --wait
+        run: docker compose -f docker-compose.tests.yml up -d
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
       - name: Run tests (Group ${{ matrix.group }}/16)
         env:
           TEST_GROUP: ${{ matrix.group }}
