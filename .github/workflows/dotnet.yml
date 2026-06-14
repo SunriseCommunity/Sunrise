@@ -5,66 +5,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-      - name: Restore dependencies
-        run: dotnet restore
-      - name: Build
-        run: dotnet build --no-restore
-      - name: Pack build artifacts
-        run: |
-          while IFS= read -r -d '' PROJECT; do
-            PROJECT_DIR=$(dirname "$PROJECT")
-            [ -d "$PROJECT_DIR/bin" ] && printf '%s\0' "$PROJECT_DIR/bin"
-            [ -d "$PROJECT_DIR/obj" ] && printf '%s\0' "$PROJECT_DIR/obj"
-          done < <(find . -name '*.csproj' -print0) | tar --null -czf build-artifacts.tar.gz --files-from -
-      - name: Pack Docker test images
-        run: |
-          readarray -t DOCKER_IMAGES < <(docker compose -f docker-compose.tests.yml config --images | sort -u)
-
-          if [ "${#DOCKER_IMAGES[@]}" -eq 0 ]; then
-            echo "::error title=No Docker images found::docker-compose.tests.yml did not resolve any images"
-            exit 1
-          fi
-
-          echo "Docker test images:"
-          printf '  %s\n' "${DOCKER_IMAGES[@]}"
-
-          for IMAGE in "${DOCKER_IMAGES[@]}"; do
-            docker pull "$IMAGE"
-          done
-
-          docker save "${DOCKER_IMAGES[@]}" | gzip > docker-test-images.tar.gz
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: build-artifacts.tar.gz
-          retention-days: 1
-      - name: Upload Docker test images
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-test-images
-          path: docker-test-images.tar.gz
-          retention-days: 1
-
   test:
     name: Test Group ${{ matrix.group }}
-    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -95,13 +37,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
       - name: Restore test dependencies
         run: dotnet restore
       - name: Download build artifacts
@@ -117,7 +52,7 @@ jobs:
       - name: Load Docker test images
         run: docker load --input docker-test-images.tar.gz
       - name: Docker compose test environment
-        run: docker compose -f docker-compose.tests.yml up -d --wait --pull never
+        run: docker compose -f docker-compose.tests.yml up -d --wait
       - name: Run tests (Group ${{ matrix.group }}/16)
         env:
           TEST_GROUP: ${{ matrix.group }}
@@ -132,38 +67,25 @@ jobs:
           
           echo "Found $TOTAL test files total"
           
-          # Build filters for this group's test classes, grouped by owning test project.
+          # Build filter for this group's test classes
           FILTER=""
-          ASSIGNED_COUNT=0
-          declare -A PROJECT_FILTERS
-
           for i in "${!FILES_ARRAY[@]}"; do
             if [ $(( (i % TEST_TOTAL_GROUPS) + 1 )) -eq $TEST_GROUP ]; then
               FILE="${FILES_ARRAY[$i]}"
+              # Extract class name from filename
               CLASS=$(basename "$FILE" .cs)
-              PROJECT_DIR=${FILE#./}
-              PROJECT_DIR=${PROJECT_DIR%%/*}
-
               if [ -n "$CLASS" ]; then
                 echo "  - $CLASS"
-                ASSIGNED_COUNT=$((ASSIGNED_COUNT + 1))
-
                 if [ -z "$FILTER" ]; then
                   FILTER="FullyQualifiedName~$CLASS"
                 else
                   FILTER="$FILTER|FullyQualifiedName~$CLASS"
                 fi
-
-                if [ -z "${PROJECT_FILTERS[$PROJECT_DIR]:-}" ]; then
-                  PROJECT_FILTERS[$PROJECT_DIR]="FullyQualifiedName~$CLASS"
-                else
-                  PROJECT_FILTERS[$PROJECT_DIR]="${PROJECT_FILTERS[$PROJECT_DIR]}|FullyQualifiedName~$CLASS"
-                fi
               fi
             fi
           done
           
-          if [ "$ASSIGNED_COUNT" -eq 0 ]; then
+          if [ -z "$FILTER" ]; then
             echo "No tests assigned to group $TEST_GROUP"
             exit 0
           fi
@@ -175,39 +97,15 @@ jobs:
           
           FAILED=0
           
-          for PROJECT_DIR in $(printf '%s\n' "${!PROJECT_FILTERS[@]}" | sort); do
-            TEST_PROJECT=$(find "$PROJECT_DIR" -maxdepth 1 -name '*.csproj' -print -quit)
-            PROJECT_FILTER=${PROJECT_FILTERS[$PROJECT_DIR]}
-
-            echo ""
-            echo "=== Running $PROJECT_DIR ==="
-
-            if [ -z "$TEST_PROJECT" ]; then
-              echo "::error title=Missing test project::No .csproj found for assigned test directory $PROJECT_DIR"
-              FAILED=1
-              continue
-            fi
-
-            echo "Project filter: $PROJECT_FILTER"
-
-            if dotnet test "$TEST_PROJECT" --no-build --no-restore --verbosity normal --filter "$PROJECT_FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
-              TEST_EXIT=0
-            else
-              TEST_EXIT=$?
-            fi
-
-            echo "$PROJECT_DIR dotnet test exit code: $TEST_EXIT"
-
-            if [ "$TEST_EXIT" -ne 0 ]; then
-              echo "::error title=dotnet test failed::$PROJECT_DIR exited with code $TEST_EXIT"
-              FAILED=1
-            fi
-          done
-
-          if [ "$FAILED" -ne 0 ]; then
-            echo "One or more assigned test projects failed."
-          else
-            echo "All assigned test projects passed."
+          echo "=== Running Sunrise.Shared.Tests ==="
+          if ! dotnet test Sunrise.Shared.Tests/Sunrise.Shared.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
+          fi
+          
+          echo ""
+          echo "=== Running Sunrise.Server.Tests ==="
+          if ! dotnet test Sunrise.Server.Tests/Sunrise.Server.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
           fi
           
           exit $FAILED
