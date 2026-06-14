@@ -59,6 +59,10 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         if (!IsOverallBestScore(score, previousOverallBest))
             return;
 
+        // If the grade hasn't changed, we can return early and skip any DB calls.
+        if (previousOverallBest?.Grade == score.Grade)
+            return;
+
         if (previousOverallBest != null)
             UpdateUserGradesCount(userGrades, previousOverallBest.Grade, -1);
 
@@ -77,6 +81,10 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             return;
 
         if (!IsOverallBestScore(score, promotedOverallBest))
+            return;
+
+        // If the grade hasn't changed, we can return early and skip any DB calls.
+        if (promotedOverallBest?.Grade == score.Grade)
             return;
 
         if (promotedOverallBest != null)
