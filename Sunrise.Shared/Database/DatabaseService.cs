@@ -35,6 +35,12 @@ public sealed class DatabaseService(
     public readonly ScoreSubmissionRequestRepository ScoreSubmissionRequests = scoreSubmissionRequestRepository;
     public readonly ScoreProcessingTaskRepository ScoreProcessingTasks = scoreProcessingTaskRepository;
     public readonly UserRepository Users = userRepository;
+    private readonly List<Func<Task>> _afterCommitActions = [];
+
+    public void RegisterAfterCommitAction(Func<Task> action)
+    {
+        _afterCommitActions.Add(action);
+    }
 
     public async Task FlushAndUpdateRedisCache(bool isSoftFlush = true)
     {
@@ -100,7 +106,10 @@ public sealed class DatabaseService(
             await DbContext.SaveChangesAsync();
 
             if (!isCurrentlyInOtherTransactionScope && transaction != null)
+            {
                 await transaction.CommitAsync(ct);
+                await RunAfterCommitActions();
+            }
 
             return Result.Success();
         }
@@ -109,12 +118,18 @@ public sealed class DatabaseService(
             if (!isCurrentlyInOtherTransactionScope && transaction != null)
                 await transaction.RollbackAsync(ct);
 
+            if (!isCurrentlyInOtherTransactionScope)
+                _afterCommitActions.Clear();
+
             return Result.Failure($"{ex.Message}\n{ex.InnerException?.Message}");
         }
         catch (Exception ex)
         {
             if (!isCurrentlyInOtherTransactionScope && transaction != null)
                 await transaction.RollbackAsync(ct);
+
+            if (!isCurrentlyInOtherTransactionScope)
+                _afterCommitActions.Clear();
 
             logger.LogWarning(ex, "Failed to process db transaction");
 
@@ -147,6 +162,24 @@ public sealed class DatabaseService(
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Failed to invalidate cache after db transaction, affected tables: {AffectedTables}", string.Join(", ", affectedTables));
+            }
+        }
+    }
+
+    private async Task RunAfterCommitActions()
+    {
+        var actions = _afterCommitActions.ToArray();
+        _afterCommitActions.Clear();
+
+        foreach (var action in actions)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to run after-commit database action");
             }
         }
     }

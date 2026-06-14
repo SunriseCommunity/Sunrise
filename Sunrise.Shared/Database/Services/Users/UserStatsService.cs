@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;
@@ -35,16 +36,29 @@ public class UserStatsService(
         });
     }
 
-    public async Task<Result> UpdateUserStats(UserStats stats, User user)
+    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
-            if (addOrUpdateUserRanksResult.IsFailure)
-                throw new ApplicationException(addOrUpdateUserRanksResult.Error);
-
             dbContext.UpdateEntity(stats);
-            await dbContext.SaveChangesAsync();
+
+            if (dbContext.Database.CurrentTransaction != null)
+            {
+                databaseService.Value.RegisterAfterCommitAction(async () =>
+                {
+                    var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+                    if (addOrUpdateUserRanksResult.IsFailure)
+                        _logger.LogWarning("Failed to update user ranks after stats update: {Error}", addOrUpdateUserRanksResult.Error);
+                });
+
+                return;
+            }
+
+            await dbContext.SaveChangesAsync(ct);
+
+            var updateRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+            if (updateRanksResult.IsFailure)
+                throw new ApplicationException(updateRanksResult.Error);
         });
     }
 
