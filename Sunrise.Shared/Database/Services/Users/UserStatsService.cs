@@ -71,6 +71,22 @@ public class UserStatsService(
         return stats;
     }
 
+    public async Task LockAndRefreshUserStats(UserStats stats, CancellationToken ct = default)
+    {
+        var lockedStats = await dbContext.UserStats
+            .AsNoTracking()
+            .Where(us => stats.Id != 0
+                ? us.Id == stats.Id
+                : us.UserId == stats.UserId && us.GameMode == stats.GameMode)
+            .ForUpdate()
+            .SingleOrDefaultAsync(ct);
+
+        if (lockedStats == null)
+            return;
+
+        CopyUserStatsValues(lockedStats, stats);
+    }
+
     public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true, CancellationToken ct = default)
     {
         var statsQuery = dbContext.UserStats.Where(e => e.GameMode == mode);
@@ -127,5 +143,27 @@ public class UserStatsService(
         }
 
         return stats;
+    }
+
+    private static void CopyUserStatsValues(UserStats source, UserStats target)
+    {
+        var rank = target.LocalProperties.Rank;
+
+        target.Id = source.Id;
+        target.UserId = source.UserId;
+        target.GameMode = source.GameMode;
+        target.Accuracy = source.Accuracy;
+        target.TotalScore = source.TotalScore;
+        target.RankedScore = source.RankedScore;
+        target.PlayCount = source.PlayCount;
+        target.PerformancePoints = source.PerformancePoints;
+        target.MaxCombo = source.MaxCombo;
+        target.PlayTime = source.PlayTime;
+        target.TotalHits = source.TotalHits;
+        target.BestGlobalRank = source.BestGlobalRank;
+        target.BestGlobalRankDate = source.BestGlobalRankDate;
+        target.BestCountryRank = source.BestCountryRank;
+        target.BestCountryRankDate = source.BestCountryRankDate;
+        target.LocalProperties.Rank = rank;
     }
 }

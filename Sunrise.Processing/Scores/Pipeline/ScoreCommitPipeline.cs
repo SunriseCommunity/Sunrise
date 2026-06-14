@@ -56,6 +56,9 @@ public class ScoreCommitPipeline
 
         ctx.UserPersonalBestScores = peers;
 
+        await _database.Users.Stats.LockAndRefreshUserStats(ctx.UserStats, ct);
+        await _database.Users.Grades.LockAndRefreshUserGrades(ctx.UserGrades, ct);
+
         foreach (var processor in _processors)
         {
             await DispatchProcessor(processor, ctx);
