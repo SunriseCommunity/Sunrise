@@ -140,6 +140,7 @@ public static class Configuration
     public static bool EnforceLatestClientVersion { get; set; } =
         Config.GetSection("General").GetValue<bool?>("EnforceLatestClientVersion") ?? false;
 
+    public static string BeatmapSetDownloadMirrorUrl { get; } = Config.GetSection("General").GetValue<string?>("BeatmapSetDownloadMirrorUrl") ?? "https://osu.direct/d/";
 
 
     // Beatmap hype
