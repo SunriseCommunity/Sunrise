@@ -15,7 +15,8 @@
       "QueueLimit": 20
     },
     "UseNewPerformanceCalculationAlgorithm": true,
-    "EnforceLatestClientVersion": true
+    "EnforceLatestClientVersion": true,
+    "BeatmapSetDownloadMirrorUrl": "https://osu.direct/d/"
   },
   "BeatmapHype": {
     "UserHypesWeekly": 10,
