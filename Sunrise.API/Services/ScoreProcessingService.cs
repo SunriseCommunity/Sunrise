@@ -54,7 +54,14 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
 
     public async Task<IActionResult> GetTask(int taskId, CancellationToken ct = default)
     {
-        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct);
+        var task = await database.ScoreProcessingTasks.GetTaskById(taskId,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<ScoreProcessingTask>()
+                    .Include(t => t.Score)
+                    .Include(t => t.Score!.User)
+            },
+            ct);
 
         if (task == null)
             return ApiErrorResponse.Detail.ScoreTaskNotFound.ToProblemResult(HttpStatusCode.NotFound);
@@ -109,9 +116,19 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
 
         await database.Events.ScoreProcessing.AddActionRequestedEvent(executorId, score.Id, task.Id, action, task.Priority, ct);
 
-        var created = await database.ScoreProcessingTasks.GetTaskById(task.Id, ct);
+        var created = await database.ScoreProcessingTasks.GetTaskById(task.Id,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<ScoreProcessingTask>()
+                    .Include(t => t.Score)
+                    .Include(t => t.Score!.User)
+            },
+            ct);
 
-        return new ObjectResult(new ScoreProcessingTaskResponse(sessions, created ?? task))
+        if (created == null)
+            return ApiErrorResponse.Detail.ScoreTaskNotFound.ToProblemResult(HttpStatusCode.NotFound);
+
+        return new ObjectResult(new ScoreProcessingTaskResponse(sessions, created))
         {
             StatusCode = StatusCodes.Status201Created
         };
@@ -119,7 +136,7 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
 
     public async Task<IActionResult> CancelTask(int executorId, int taskId, CancellationToken ct = default)
     {
-        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct);
+        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct: ct);
 
         if (task == null)
             return ApiErrorResponse.Detail.ScoreTaskNotFound.ToProblemResult(HttpStatusCode.NotFound);
@@ -136,7 +153,7 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
 
     public async Task<IActionResult> Requeue(int executorId, int taskId, CancellationToken ct = default)
     {
-        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct);
+        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct: ct);
 
         if (task == null)
             return ApiErrorResponse.Detail.ScoreTaskNotFound.ToProblemResult(HttpStatusCode.NotFound);
@@ -178,18 +195,17 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         if (!AllowedActions.Contains(request.Action))
             return ApiErrorResponse.Detail.InvalidScoreProcessingAction.ToProblemResult(HttpStatusCode.BadRequest, ApiErrorResponse.Title.UnableToQueueScoreProcessing);
 
-        BackgroundJob.Enqueue<BulkScoreProcessingJob>("enqueue_scores_for_processing_by_filter",
-            service => service.EnqueueByFilter(
-                executorId,
-                request.Action,
-                request.UserId,
-                request.Mode,
-                request.Mods,
-                request.SubmissionStatus,
-                request.BeatmapStatus,
-                request.SubmittedFrom,
-                request.SubmittedTo,
-                CancellationToken.None));
+        BackgroundJob.Enqueue<BulkScoreProcessingJob>(service => service.EnqueueByFilter(
+            executorId,
+            request.Action,
+            request.UserId,
+            request.Mode,
+            request.Mods,
+            request.SubmissionStatus,
+            request.BeatmapStatus,
+            request.SubmittedFrom,
+            request.SubmittedTo,
+            CancellationToken.None));
 
         return new OkResult();
     }

@@ -171,9 +171,10 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return (tasks, totalCount);
     }
 
-    public async Task<ScoreProcessingTask?> GetTaskById(int id, CancellationToken ct = default)
+    public async Task<ScoreProcessingTask?> GetTaskById(int id, QueryOptions? options = null, CancellationToken ct = default)
     {
         return await dbContext.ScoreProcessingTasks
+            .UseQueryOptions(options)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
     }
 

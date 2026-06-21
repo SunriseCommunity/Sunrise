@@ -108,7 +108,7 @@ public class ScoreProcessingController(ScoreProcessingService scoreProcessingSer
 
     [HttpPost("bulk-by-filter")]
     [EndpointDescription("Queue an action for every score matching the filter for a user (runs in background)")]
-    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult BulkByFilter([FromBody] BulkScoreProcessingByFilterRequest request)
     {
         var executorId = HttpContext.GetCurrentUserOrThrow().Id;
