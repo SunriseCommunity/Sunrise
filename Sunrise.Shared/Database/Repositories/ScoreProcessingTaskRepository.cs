@@ -214,30 +214,35 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
     }
 
-    public async Task<bool> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
+    public async Task<UnitResult<string>> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
-        if (task is not { Status: ScoreProcessingStatus.Failed })
-            return false;
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Failed)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.Status, ScoreProcessingStatus.Pending)
+                    .SetProperty(t => t.RetryCount, 0)
+                    .SetProperty(t => t.NextRetryAt, (DateTime?)null)
+                    .SetProperty(t => t.ClaimToken, (string?)null)
+                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
+                    .SetProperty(t => t.ErrorCode, (ScoreProcessingErrorCode?)null)
+                    .SetProperty(t => t.ErrorMessage, (string?)null),
+                ct);
 
-        task.Status = ScoreProcessingStatus.Pending;
-        task.RetryCount = 0;
-        task.NextRetryAt = null;
-        task.ClaimToken = null;
-        task.LeaseExpiresAt = null;
-        task.ErrorCode = null;
-        task.ErrorMessage = null;
+        if (affected == 1)
+            return UnitResult.Success<string>();
 
-        try
-        {
-            await dbContext.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException ex) when (IsActiveTaskConflict(ex))
-        {
-            await dbContext.Entry(task).ReloadAsync(ct);
-            return false;
-        }
+        var task = await dbContext.ScoreProcessingTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
+
+        if (task == null)
+            return UnitResult.Failure($"Score task {taskId} was not found.");
+
+        if (task.Status != ScoreProcessingStatus.Failed)
+            return UnitResult.Failure($"Score task {taskId} is not in a failed state and cannot be requeued.");
+
+        if (task.Status == ScoreProcessingStatus.Processing)
+            return UnitResult.Failure($"Score task {taskId} is currently being processed and cannot be requeued.");
+
+        return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
     }
 
     public async Task<int> TryRequeueFailedTasks(IEnumerable<int>? taskIds = null, CancellationToken ct = default)
@@ -265,7 +270,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
         foreach (var id in ids)
         {
-            if (await TryRequeueFailedTask(id, ct))
+            if ((await TryRequeueFailedTask(id, ct)).IsSuccess)
                 requeuedCount++;
         }
 

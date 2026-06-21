@@ -161,10 +161,10 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         var priorErrorCode = task.ErrorCode;
         var priorErrorMessage = task.ErrorMessage;
 
-        var requeued = await database.ScoreProcessingTasks.TryRequeueFailedTask(taskId, ct);
+        var result = await database.ScoreProcessingTasks.TryRequeueFailedTask(taskId, ct);
 
-        if (!requeued)
-            return $"Score task {taskId} is not in a failed state and cannot be requeued.".ToProblemResult(HttpStatusCode.Conflict, ApiErrorResponse.Title.UnableToRequeueScoreTask);
+        if (result.IsFailure)
+            return result.Error.ToProblemResult(HttpStatusCode.Conflict, ApiErrorResponse.Title.UnableToRequeueScoreTask);
 
         await database.Events.ScoreProcessing.AddRequeuedEvent(executorId, taskId, task.ScoreId, priorErrorCode, priorErrorMessage, ct);
 
