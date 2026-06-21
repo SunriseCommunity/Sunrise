@@ -1,4 +1,3 @@
-using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
@@ -16,8 +15,6 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
 {
     private const int PageSize = 100;
 
-    [DisableConcurrentExecution(timeoutInSeconds: 120)]
-    [AutomaticRetry(Attempts = 0)]
     public async Task EnqueueByFilter(
         int? executorId,
         ScoreTaskType action,
