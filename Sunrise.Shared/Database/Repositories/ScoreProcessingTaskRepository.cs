@@ -1,15 +1,11 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
-using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
-using BeatmapStatus = Sunrise.Shared.Enums.Beatmaps.BeatmapStatus;
-using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
-using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Shared.Database.Repositories;
 
@@ -111,38 +107,6 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .OrderByDescending(task => task.Priority)
             .ThenBy(task => task.CreatedAt)
             .ToListAsync(ct);
-    }
-
-    public async Task<(List<ScoreProcessingTask>, int)> GetExistingScoreTasks(
-        QueryOptions? options = null,
-        ScoreProcessingStatus? status = null,
-        ScoreTaskType? taskType = null,
-        int? scoreId = null,
-        GameMode? mode = null,
-        Mods? mods = null,
-        SubmissionStatus? submissionStatus = null,
-        BeatmapStatus? beatmapStatus = null,
-        CancellationToken ct = default)
-    {
-        var query = dbContext.ScoreProcessingTasks.Where(t => t.ScoreId != null);
-
-        if (status != null) query = query.Where(t => t.Status == status);
-        if (taskType != null) query = query.Where(t => t.TaskType == taskType);
-        if (scoreId != null) query = query.Where(t => t.ScoreId == scoreId);
-        if (mode != null) query = query.Where(t => t.Score!.GameMode == mode);
-        if (submissionStatus != null) query = query.Where(t => t.Score!.SubmissionStatus == submissionStatus);
-        if (beatmapStatus != null) query = query.Where(t => t.Score!.BeatmapStatus == beatmapStatus);
-        if (mods != null) query = query.Where(t => t.Score!.Mods == EF.Constant(mods.Value));
-
-        query = query.OrderByDescending(t => t.Id);
-
-        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await query.CountAsync(ct);
-
-        var tasks = await query
-            .UseQueryOptions(options)
-            .ToListAsync(ct);
-
-        return (tasks, totalCount);
     }
 
     public async Task<(List<ScoreProcessingTask>, int)> GetTasks(
