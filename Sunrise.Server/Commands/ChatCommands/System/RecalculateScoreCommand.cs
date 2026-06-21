@@ -47,20 +47,23 @@ public class RecalculateScoreCommand : IChatCommand
                     return;
                 }
 
-                var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(new ScoreProcessingTask
-                    {
-                        TaskType = ScoreTaskType.Recalculation,
-                        ScoreId = score.Id,
-                        Priority = (int)ScoreProcessingPriority.Normal,
-                        CreatedAt = DateTime.UtcNow
-                    },
-                    ct);
+                var task = new ScoreProcessingTask
+                {
+                    TaskType = ScoreTaskType.Recalculation,
+                    ScoreId = score.Id,
+                    Priority = (int)ScoreProcessingPriority.Normal,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(task, ct);
 
                 if (!queued)
                 {
                     ChatCommandRepository.TrySendMessage(userId, $"Score {scoreId} already has an active queued task.");
                     return;
                 }
+
+                await database.Events.ScoreProcessing.AddActionRequestedEvent(userId, score.Id, task.Id, ScoreTaskType.Recalculation, task.Priority, ct);
 
                 ChatCommandRepository.TrySendMessage(userId, $"Score {scoreId} was queued for recalculation.");
             },

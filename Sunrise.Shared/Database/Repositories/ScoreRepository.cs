@@ -11,12 +11,15 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Shared.Database.Repositories;
 
@@ -287,12 +290,37 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
             .ToDictionaryAsync(x => x.Date, x => x.Count, ct);
     }
 
-    public async Task<(List<Score>, int)> GetScores(GameMode? mode = null, QueryOptions? options = null, int? startFromId = null, CancellationToken ct = default)
+    public async Task<(List<Score>, int)> GetScores(
+        GameMode? mode = null,
+        int? startFromId = null,
+        int? userId = null,
+        Mods? mods = null,
+        SubmissionStatus? submissionStatus = null,
+        BeatmapStatus? beatmapStatus = null,
+        DateTime? submittedFrom = null,
+        DateTime? submittedTo = null,
+        ScoreSortType? sort = null,
+        bool filterValidScores = true,
+        QueryOptions? options = null,
+        CancellationToken ct = default)
     {
-        var scoresQuery = dbContext.Scores.FilterValidScores();
+        var scoresQuery = filterValidScores ? dbContext.Scores.FilterValidScores() : dbContext.Scores.AsQueryable();
 
         if (mode != null) scoresQuery = scoresQuery.Where(s => s.GameMode == mode);
         if (startFromId != null) scoresQuery = scoresQuery.Where(s => s.Id >= startFromId);
+        if (userId != null) scoresQuery = scoresQuery.Where(s => s.UserId == userId);
+        if (submissionStatus != null) scoresQuery = scoresQuery.Where(s => s.SubmissionStatus == submissionStatus);
+        if (beatmapStatus != null) scoresQuery = scoresQuery.Where(s => s.BeatmapStatus == beatmapStatus);
+        if (submittedFrom != null) scoresQuery = scoresQuery.Where(s => s.WhenPlayed >= submittedFrom);
+        if (submittedTo != null) scoresQuery = scoresQuery.Where(s => s.WhenPlayed <= submittedTo);
+        if (mods != null) scoresQuery = scoresQuery.Where(s => s.Mods == EF.Constant(mods.Value));
+
+        scoresQuery = sort switch
+        {
+            ScoreSortType.Performance => scoresQuery.OrderByDescending(s => s.PerformancePoints).ThenByDescending(s => s.WhenPlayed),
+            ScoreSortType.Date => scoresQuery.OrderByDescending(s => s.WhenPlayed),
+            _ => scoresQuery
+        };
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 

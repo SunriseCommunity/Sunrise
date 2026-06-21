@@ -36,6 +36,7 @@ public class SunriseDbContext : DbContext
 
     public DbSet<EventBeatmap> EventBeatmaps { get; set; }
     public DbSet<EventUser> EventUsers { get; set; }
+    public DbSet<EventScoreProcessing> EventScoreProcessings { get; set; }
     public DbSet<Restriction> Restrictions { get; set; }
 
     public DbSet<Score> Scores { get; set; }
