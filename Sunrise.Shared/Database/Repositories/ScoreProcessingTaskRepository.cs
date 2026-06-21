@@ -150,6 +150,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         ScoreProcessingStatus? status = null,
         ScoreTaskType? taskType = null,
         int? scoreId = null,
+        int? taskId = null,
         CancellationToken ct = default)
     {
         var query = dbContext.ScoreProcessingTasks.AsQueryable();
@@ -157,6 +158,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         if (status != null) query = query.Where(t => t.Status == status);
         if (taskType != null) query = query.Where(t => t.TaskType == taskType);
         if (scoreId != null) query = query.Where(t => t.ScoreId == scoreId);
+        if (taskId != null) query = query.Where(t => t.Id == taskId);
 
         query = query.OrderByDescending(t => t.Id);
 

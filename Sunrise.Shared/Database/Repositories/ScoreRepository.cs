@@ -292,6 +292,7 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
 
     public async Task<(List<Score>, int)> GetScores(
         GameMode? mode = null,
+        QueryOptions? options = null,
         int? startFromId = null,
         int? userId = null,
         Mods? mods = null,
@@ -301,7 +302,6 @@ public class ScoreRepository(ILogger<ScoreRepository> logger, SunriseDbContext d
         DateTime? submittedTo = null,
         ScoreSortType? sort = null,
         bool filterValidScores = true,
-        QueryOptions? options = null,
         CancellationToken ct = default)
     {
         var scoresQuery = filterValidScores ? dbContext.Scores.FilterValidScores() : dbContext.Scores.AsQueryable();
