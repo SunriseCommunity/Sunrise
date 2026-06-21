@@ -49,9 +49,8 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .ToListAsync(ct);
 
         var alreadyActiveScoreIds = await dbContext.ScoreProcessingTasks
-            .Where(task => task.ScoreId != null
-                           && scoreIds.Contains(task.ScoreId.Value)
-                           && (task.Status == ScoreProcessingStatus.Pending || task.Status == ScoreProcessingStatus.Processing))
+            .Where(task => task.ScoreId != null && scoreIds.Contains(task.ScoreId.Value))
+            .FilterInProgressTasks()
             .Select(task => task.ScoreId!.Value)
             .ToListAsync(ct);
 
