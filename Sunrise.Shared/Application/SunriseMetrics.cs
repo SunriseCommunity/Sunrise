@@ -42,6 +42,10 @@ public class SunriseMetrics
         "score_processing_entries_total",
         description: "Counts individual queue-entry outcomes, tagged by outcome (success, permanent_failure, retryable_failure, unexpected)");
 
+    public static readonly Histogram<double> ScoreProcessingTaskDurationHistogram = SunriseMeter.CreateHistogram<double>(
+        "score_processing_task_duration_seconds",
+        description: "Measures the duration of individual score processing tasks");
+
     private static readonly ObservableGauge<long> ScoreProcessingQueueDepthPendingGauge = SunriseMeter.CreateObservableGauge(
         "score_processing_queue_depth_pending",
         () => _cachedQueueDepthByStatus?.GetValueOrDefault(ScoreProcessingStatus.Pending, 0) ?? 0,
@@ -180,6 +184,7 @@ public class SunriseMetrics
     private static Dictionary<GameMode, long> _cachedScoresByGameMode = new();
     private static Dictionary<ScoreProcessingStatus, long> _cachedQueueDepthByStatus = new();
     private static DateTime? _lastPollerRunCompletedAt;
+    private static double _cachedAverageTaskDurationSeconds;
 
     public SunriseMetrics()
     {
@@ -229,6 +234,19 @@ public class SunriseMetrics
             new KeyValuePair<string, object?>("outcome", outcome),
             new KeyValuePair<string, object?>("task_type", taskType.ToString()),
             new KeyValuePair<string, object?>("error_code", code?.ToString() ?? "none"));
+    }
+
+    public static void RecordScoreProcessingTaskDuration(double seconds, ScoreTaskType taskType)
+    {
+        ScoreProcessingTaskDurationHistogram.Record(seconds,
+            new KeyValuePair<string, object?>("task_type", taskType.ToString()));
+
+        _cachedAverageTaskDurationSeconds = _cachedAverageTaskDurationSeconds * 0.8 + seconds * 0.2;
+    }
+
+    public static double GetEstimatedAverageTaskDurationSeconds()
+    {
+        return _cachedAverageTaskDurationSeconds > 0 ? _cachedAverageTaskDurationSeconds : 0;
     }
 
     private static long GetSecondsSinceLastPollerRun()
