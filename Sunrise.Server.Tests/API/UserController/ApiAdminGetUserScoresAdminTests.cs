@@ -1,11 +1,12 @@
 using System.Net;
+using osu.Shared;
 using Sunrise.API.Serializable.Response;
-using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -121,15 +122,15 @@ public class ApiAdminGetUserScoresAdminTests(IntegrationDatabaseFixture fixture)
 
         var hiddenScore = _mocker.Score.GetBestScoreableRandomScore();
         hiddenScore.EnrichWithUserData(targetUser);
-        hiddenScore.Mods = osu.Shared.Mods.Hidden | osu.Shared.Mods.HardRock;
+        hiddenScore.Mods = Mods.Hidden;
         await Database.Scores.AddScore(hiddenScore);
 
         var noModScore = _mocker.Score.GetBestScoreableRandomScore();
         noModScore.EnrichWithUserData(targetUser);
-        noModScore.Mods = osu.Shared.Mods.None;
+        noModScore.Mods = Mods.None;
         await Database.Scores.AddScore(noModScore);
 
-        var hiddenBit = (int)osu.Shared.Mods.Hidden;
+        var hiddenBit = (int)Mods.Hidden;
 
         // Act
         var response = await client.GetAsync($"user/{targetUser.Id}/scores/admin?mods={hiddenBit}");
