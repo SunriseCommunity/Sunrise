@@ -178,7 +178,7 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         if (!AllowedActions.Contains(request.Action))
             return ApiErrorResponse.Detail.InvalidScoreProcessingAction.ToProblemResult(HttpStatusCode.BadRequest, ApiErrorResponse.Title.UnableToQueueScoreProcessing);
 
-        BackgroundJob.Enqueue<BulkScoreProcessingJob>("Enqueue score ids to be processed by filter",
+        BackgroundJob.Enqueue<BulkScoreProcessingJob>("enqueue_scores_for_processing_by_filter",
             service => service.EnqueueByFilter(
                 executorId,
                 request.Action,
