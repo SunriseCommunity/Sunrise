@@ -203,7 +203,7 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
             request.Action,
             request.UserId,
             request.Mode,
-            modsEnum,
+            request.Mods != null ? modsEnum : null,
             request.SubmissionStatus,
             request.BeatmapStatus,
             request.SubmittedFrom,

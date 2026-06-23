@@ -423,7 +423,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             },
             null,
             user.Id,
-            modsEnum,
+            mods != null ? modsEnum : null,
             submissionStatus,
             beatmapStatus,
             submittedFrom,
