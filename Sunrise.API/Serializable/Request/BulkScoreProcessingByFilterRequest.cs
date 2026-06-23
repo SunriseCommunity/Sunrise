@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using osu.Shared;
 using Sunrise.Shared.Enums.Scores;
 using BeatmapStatus = Sunrise.Shared.Enums.Beatmaps.BeatmapStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.API.Serializable.Request;
 
@@ -21,7 +23,7 @@ public class BulkScoreProcessingByFilterRequest
     public GameMode? Mode { get; set; }
 
     [JsonPropertyName("mods")]
-    public int? Mods { get; set; }
+    public IEnumerable<Mods>? Mods { get; set; }
 
     [JsonPropertyName("submission_status")]
     public SubmissionStatus? SubmissionStatus { get; set; }

@@ -396,7 +396,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     public async Task<IActionResult> GetUserScoresAdmin(
         [Range(1, int.MaxValue)] int id,
         [FromQuery(Name = "mode")] GameMode? mode = null,
-        [FromQuery(Name = "mods")] int? mods = null,
+        [FromQuery(Name = "mods")] IEnumerable<Mods>? mods = null,
         [FromQuery(Name = "submission_status")]
         SubmissionStatus? submissionStatus = null,
         [FromQuery(Name = "beatmap_status")] BeatmapStatus? beatmapStatus = null,
@@ -413,7 +413,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         if (user == null)
             return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        var modsFilter = mods.HasValue ? (Mods?)mods.Value : null;
+        var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
 
         var (scores, totalCount) = await database.Scores.GetScores(
             mode,
@@ -423,7 +423,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             },
             null,
             user.Id,
-            modsFilter,
+            modsEnum,
             submissionStatus,
             beatmapStatus,
             submittedFrom,

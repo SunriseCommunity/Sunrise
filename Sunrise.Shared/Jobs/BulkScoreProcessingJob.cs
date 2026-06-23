@@ -20,7 +20,7 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
         ScoreTaskType action,
         int userId,
         GameMode? mode,
-        int? mods,
+        Mods? mods,
         SubmissionStatus? submissionStatus,
         BeatmapStatus? beatmapStatus,
         DateTime? submittedFrom,
@@ -29,8 +29,6 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
     {
         await BackgroundTaskService.ExecuteBackgroundTask<BulkScoreProcessingJob>(async () =>
         {
-            var modsFilter = mods.HasValue ? (Mods?)(Mods)mods.Value : null;
-
             var matched = 0;
             var queued = 0;
             var skipped = 0;
@@ -48,7 +46,7 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
                     },
                     null,
                     userId,
-                    modsFilter,
+                    mods,
                     submissionStatus,
                     beatmapStatus,
                     submittedFrom,

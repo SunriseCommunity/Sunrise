@@ -3,6 +3,7 @@ using Hangfire;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using osu.Shared;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
 using Sunrise.API.Serializable.Request;
@@ -195,12 +196,14 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         if (!AllowedActions.Contains(request.Action))
             return ApiErrorResponse.Detail.InvalidScoreProcessingAction.ToProblemResult(HttpStatusCode.BadRequest, ApiErrorResponse.Title.UnableToQueueScoreProcessing);
 
+        var modsEnum = (request.Mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
+
         BackgroundJob.Enqueue<BulkScoreProcessingJob>(service => service.EnqueueByFilter(
             executorId,
             request.Action,
             request.UserId,
             request.Mode,
-            request.Mods,
+            modsEnum,
             request.SubmissionStatus,
             request.BeatmapStatus,
             request.SubmittedFrom,
