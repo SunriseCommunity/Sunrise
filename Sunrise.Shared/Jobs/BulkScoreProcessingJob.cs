@@ -1,8 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
-using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Services;
 using BeatmapStatus = Sunrise.Shared.Enums.Beatmaps.BeatmapStatus;
@@ -32,27 +30,23 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
             var matched = 0;
             var queued = 0;
             var skipped = 0;
+            int? lastScoreId = null;
 
-            for (var page = 1;; page++)
+            while (true)
             {
-                using var scope = ServicesProviderHolder.CreateScope();
+                using var scope = scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                var (pageScores, _) = await database.Scores.GetScores(
+                var pageScores = await database.Scores.GetScoresForBulkProcessing(
                     mode,
-                    new QueryOptions(new Pagination(page, PageSize))
-                    {
-                        IgnoreCountQueryIfExists = true
-                    },
-                    null,
                     userId,
                     mods,
                     submissionStatus,
                     beatmapStatus,
                     submittedFrom,
                     submittedTo,
-                    null,
-                    false,
+                    lastScoreId != null ? lastScoreId + 1 : null,
+                    PageSize,
                     ct);
 
                 if (pageScores.Count == 0)
@@ -60,6 +54,7 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
                 var scoreIds = pageScores.Select(score => score.Id).ToList();
                 var queuedTasks = await database.ScoreProcessingTasks.BulkAddScoreTasks(scoreIds, action, ScoreProcessingPriority.Low, ct);
+                lastScoreId = scoreIds[^1];
 
                 matched += pageScores.Count;
                 queued += queuedTasks.Count;
