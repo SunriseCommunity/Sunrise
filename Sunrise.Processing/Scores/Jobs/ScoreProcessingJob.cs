@@ -95,6 +95,8 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
     private async Task ProcessEntry(ScoreProcessingTask task, CancellationToken ct)
     {
+        var startTime = DateTime.UtcNow;
+
         using var entryScope = scopeFactory.CreateScope();
         var entryDatabase = entryScope.ServiceProvider.GetRequiredService<DatabaseService>();
         int? affectedUserId = null;
@@ -154,6 +156,10 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         catch (Exception ex)
         {
             await HandleUnexpectedEntryException(task, affectedUserId, ex);
+        }
+        finally
+        {
+            RecordTaskDuration(task.TaskType, startTime);
         }
     }
 
@@ -226,5 +232,11 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
         var index = Math.Min(retryCount, schedule.Length - 1);
         return schedule[index];
+    }
+
+    private static void RecordTaskDuration(ScoreTaskType taskType, DateTime startTime)
+    {
+        var duration = (DateTime.UtcNow - startTime).TotalSeconds;
+        SunriseMetrics.RecordScoreProcessingTaskDuration(duration, taskType);
     }
 }

@@ -17,7 +17,7 @@ public class BeatmapSetResponse
         CreatorId = beatmapSet.UserId;
         Status = beatmapSet.StatusGeneric;
         LastUpdated = beatmapSet.LastUpdated;
-        SubmittedDate = beatmapSet.SubmittedDate;
+        SubmittedDate = beatmapSet.SubmittedDate ?? DateTime.MinValue;
         RankedDate = beatmapSet.RankedDate;
         HasVideo = beatmapSet.HasVideo;
         Beatmaps = beatmapSet.Beatmaps.Select(beatmap => new BeatmapResponse(sessions, beatmap, beatmapSet)).ToList();
@@ -58,9 +58,8 @@ public class BeatmapSetResponse
     public DateTime LastUpdated { get; set; }
 
     [JsonPropertyName("submitted_date")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]
-    public DateTime? SubmittedDate { get; set; }
+    public DateTime SubmittedDate { get; set; }
 
     [JsonPropertyName("ranked_date")]
     [JsonConverter(typeof(DateTimeWithTimezoneConverter))]

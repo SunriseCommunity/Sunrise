@@ -57,6 +57,7 @@ using Sunrise.Shared.Services;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using AssetService = Sunrise.API.Services.AssetService;
 using AuthService = Sunrise.API.Services.AuthService;
+using ScoreProcessingService = Sunrise.API.Services.ScoreProcessingService;
 using UserService = Sunrise.API.Services.UserService;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
@@ -408,6 +409,7 @@ public static class Bootstrap
         builder.Services.AddScoped<AuthService>();
         builder.Services.AddScoped<AssetService>();
         builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<ScoreProcessingService>();
     }
 
     public static void AddDatabaseServices(this WebApplicationBuilder builder)
@@ -445,6 +447,7 @@ public static class Bootstrap
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
         builder.Services.AddScoped<BeatmapEventService>();
+        builder.Services.AddScoped<ScoreProcessingEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
         builder.Services.AddScoped<ScoreSubmissionRequestRepository>();

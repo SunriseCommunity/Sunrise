@@ -1,7 +1,9 @@
 using CSharpFunctionalExtensions;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
+using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 
@@ -30,6 +32,49 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
             return false;
         }
+    }
+
+    public async Task<List<ScoreProcessingTask>> BulkAddScoreTasks(
+        List<int> scoreIds,
+        ScoreTaskType taskType,
+        ScoreProcessingPriority priority,
+        CancellationToken ct = default)
+    {
+        if (scoreIds.Count == 0)
+            return [];
+
+        var existingScoreIds = await dbContext.Scores
+            .Where(score => scoreIds.Contains(score.Id))
+            .Select(score => score.Id)
+            .ToListAsync(ct);
+
+        var alreadyActiveScoreIds = await dbContext.ScoreProcessingTasks
+            .Where(task => task.ScoreId != null && scoreIds.Contains(task.ScoreId.Value))
+            .FilterInProgressTasks()
+            .Select(task => task.ScoreId!.Value)
+            .ToListAsync(ct);
+
+        var skip = alreadyActiveScoreIds.ToHashSet();
+        var createdAt = DateTime.UtcNow;
+
+        var tasks = existingScoreIds
+            .Where(scoreId => !skip.Contains(scoreId))
+            .Select(scoreId => new ScoreProcessingTask
+            {
+                TaskType = taskType,
+                ScoreId = scoreId,
+                Priority = (int)priority,
+                CreatedAt = createdAt
+            })
+            .ToList();
+
+        if (tasks.Count == 0)
+            return tasks;
+
+        dbContext.ScoreProcessingTasks.AddRange(tasks);
+        await dbContext.SaveChangesAsync(ct);
+
+        return tasks;
     }
 
     public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default)
@@ -61,6 +106,48 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .OrderByDescending(task => task.Priority)
             .ThenBy(task => task.CreatedAt)
             .ToListAsync(ct);
+    }
+
+    public async Task<(List<ScoreProcessingTask>, int)> GetTasks(
+        QueryOptions? options = null,
+        ScoreProcessingStatus? status = null,
+        ScoreTaskType? taskType = null,
+        int? scoreId = null,
+        int? taskId = null,
+        CancellationToken ct = default)
+    {
+        var query = dbContext.ScoreProcessingTasks.AsQueryable();
+
+        if (status != null) query = query.Where(t => t.Status == status);
+        if (taskType != null) query = query.Where(t => t.TaskType == taskType);
+        if (scoreId != null) query = query.Where(t => t.ScoreId == scoreId);
+        if (taskId != null) query = query.Where(t => t.Id == taskId);
+
+        query = query.OrderByDescending(t => t.Id);
+
+        var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await query.CountAsync(ct);
+
+        var tasks = await query
+            .UseQueryOptions(options)
+            .ToListAsync(ct);
+
+        return (tasks, totalCount);
+    }
+
+    public async Task<ScoreProcessingTask?> GetTaskById(int id, QueryOptions? options = null, CancellationToken ct = default)
+    {
+        return await dbContext.ScoreProcessingTasks
+            .UseQueryOptions(options)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+    }
+
+    public async Task<ScoreProcessingTask?> GetActiveTaskByScoreId(int scoreId, CancellationToken ct = default)
+    {
+        return await dbContext.ScoreProcessingTasks
+            .Where(t => t.ScoreId == scoreId)
+            .FilterInProgressTasks()
+            .OrderByDescending(t => t.Id)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task MarkForDeletion(int taskId, CancellationToken ct = default)
@@ -98,52 +185,63 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
     public async Task<UnitResult<string>> CancelTask(int taskId, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Pending)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.Status, ScoreProcessingStatus.Failed)
+                    .SetProperty(t => t.ErrorCode, ScoreProcessingErrorCode.CancelledByOperator)
+                    .SetProperty(t => t.ErrorMessage, (string?)"Cancelled by operator")
+                    .SetProperty(t => t.NextRetryAt, (DateTime?)null)
+                    .SetProperty(t => t.ClaimToken, (string?)null)
+                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null),
+                ct);
+
+        if (affected == 1)
+            return UnitResult.Success<string>();
+
+        var task = await dbContext.ScoreProcessingTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
+
         if (task == null)
             return UnitResult.Failure($"Score task {taskId} was not found.");
 
         if (task.Status == ScoreProcessingStatus.Processing)
-            return UnitResult.Failure(
-                $"Score task {taskId} is currently being processed and cannot be cancelled.");
+            return UnitResult.Failure($"Score task {taskId} is currently being processed and cannot be cancelled.");
 
         if (task.Status == ScoreProcessingStatus.Failed)
             return UnitResult.Failure($"Score task {taskId} has already failed; nothing to cancel.");
 
-        task.Status = ScoreProcessingStatus.Failed;
-        task.NextRetryAt = null;
-        task.ClaimToken = null;
-        task.LeaseExpiresAt = null;
-        task.ErrorCode = ScoreProcessingErrorCode.CancelledByOperator;
-        task.ErrorMessage = "Cancelled by operator";
-
-        await dbContext.SaveChangesAsync(ct);
-        return UnitResult.Success<string>();
+        return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
     }
 
-    public async Task<bool> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
+    public async Task<UnitResult<string>> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
-        if (task is not { Status: ScoreProcessingStatus.Failed })
-            return false;
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Failed)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.Status, ScoreProcessingStatus.Pending)
+                    .SetProperty(t => t.RetryCount, 0)
+                    .SetProperty(t => t.NextRetryAt, (DateTime?)null)
+                    .SetProperty(t => t.ClaimToken, (string?)null)
+                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
+                    .SetProperty(t => t.ErrorCode, (ScoreProcessingErrorCode?)null)
+                    .SetProperty(t => t.ErrorMessage, (string?)null),
+                ct);
 
-        task.Status = ScoreProcessingStatus.Pending;
-        task.RetryCount = 0;
-        task.NextRetryAt = null;
-        task.ClaimToken = null;
-        task.LeaseExpiresAt = null;
-        task.ErrorCode = null;
-        task.ErrorMessage = null;
+        if (affected == 1)
+            return UnitResult.Success<string>();
 
-        try
-        {
-            await dbContext.SaveChangesAsync(ct);
-            return true;
-        }
-        catch (DbUpdateException ex) when (IsActiveTaskConflict(ex))
-        {
-            await dbContext.Entry(task).ReloadAsync(ct);
-            return false;
-        }
+        var task = await dbContext.ScoreProcessingTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
+
+        if (task == null)
+            return UnitResult.Failure($"Score task {taskId} was not found.");
+
+        if (task.Status != ScoreProcessingStatus.Failed)
+            return UnitResult.Failure($"Score task {taskId} is not in a failed state and cannot be requeued.");
+
+        if (task.Status == ScoreProcessingStatus.Processing)
+            return UnitResult.Failure($"Score task {taskId} is currently being processed and cannot be requeued.");
+
+        return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
     }
 
     public async Task<int> TryRequeueFailedTasks(IEnumerable<int>? taskIds = null, CancellationToken ct = default)
@@ -171,7 +269,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
         foreach (var id in ids)
         {
-            if (await TryRequeueFailedTask(id, ct))
+            if ((await TryRequeueFailedTask(id, ct)).IsSuccess)
                 requeuedCount++;
         }
 
@@ -206,7 +304,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
     {
         var message = ex.InnerException?.Message ?? ex.Message;
 
-         return message.Contains("UX_score_processing_task_active_score", StringComparison.OrdinalIgnoreCase)
-             || message.Contains("UX_score_processing_task_active_submission_request", StringComparison.OrdinalIgnoreCase);
+        return message.Contains("UX_score_processing_task_active_score", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("UX_score_processing_task_active_submission_request", StringComparison.OrdinalIgnoreCase);
     }
 }

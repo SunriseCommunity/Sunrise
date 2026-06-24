@@ -180,6 +180,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         var shouldParkAsFailed = error is { Disposition: ScoreProcessingDisposition.Permanent }
                                  || error.HasValue && Configuration.ScoreProcessingMaxRetries <= 0;
 
+        int? enqueuedTaskId = null;
+
         var enqueueResult = await database.CommitAsTransactionAsync(async () =>
         {
             await database.ScoreSubmissionRequests.AddQueueEntry(candidate);
@@ -201,10 +203,13 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             }
 
             await database.ScoreProcessingTasks.AddQueueEntry(task);
+            enqueuedTaskId = task.Id;
         });
 
         if (enqueueResult.IsFailure)
             throw new Exception($"Failed to enqueue score for background retry: {enqueueResult.Error}");
+
+        await database.Events.ScoreProcessing.AddSubmissionEnqueuedEvent(candidate.Id, candidate.UserId, enqueuedTaskId);
 
         if (!shouldParkAsFailed)
         {
