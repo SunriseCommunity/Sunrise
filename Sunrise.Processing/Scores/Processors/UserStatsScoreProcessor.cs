@@ -54,11 +54,11 @@ public class UserStatsScoreProcessor(
         var score = ctx.Score;
         var userStats = ctx.UserStats;
         var personalBestScores = ctx.UserPersonalBestScores?.OverallPeer;
-        var currentBest = personalBestScores?.BestScoreByScoreValue;
+        var currentOverallBest = personalBestScores?.BestScoreByScoreValue;
 
-        var isFirstBeatmapScore = currentBest == null;
+        var isFirstBeatmapScore = currentOverallBest == null;
 
-        var isBestScoreValue = IsBestByScoreValue(score, currentBest);
+        var isBestScoreValue = IsBestByScoreValue(score, currentOverallBest);
 
         var isBetterTotalScoreValue = isFirstBeatmapScore || isBestScoreValue;
         var isBetterPerformanceValue = isFirstBeatmapScore || (
@@ -85,7 +85,7 @@ public class UserStatsScoreProcessor(
         {
             userStats.RankedScore += isFirstBeatmapScore
                 ? score.TotalScore
-                : score.TotalScore - currentBest!.TotalScore;
+                : score.TotalScore - currentOverallBest!.TotalScore;
         }
 
         if (isBetterPerformanceValue)
@@ -100,8 +100,8 @@ public class UserStatsScoreProcessor(
         var userStats = ctx.UserStats;
         var original = ctx.OriginalState;
 
-        var overallPeer = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
-        var isGloballyBestTotalScore = IsBestByScoreValue(score, overallPeer);
+        var overallPeerForPromotion = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
+        var isGloballyBestTotalScore = IsBestByScoreValue(score, overallPeerForPromotion);
 
         var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
@@ -125,9 +125,8 @@ public class UserStatsScoreProcessor(
 
         if (original is { SubmissionStatus: SubmissionStatus.Best } && isGloballyBestTotalScore)
         {
-            var promotedPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue;
-            var rankedDecrement = promotedPeer != null
-                ? score.TotalScore - promotedPeer.TotalScore
+            var rankedDecrement = overallPeerForPromotion != null
+                ? score.TotalScore - overallPeerForPromotion.TotalScore
                 : score.TotalScore;
 
             userStats.RankedScore = Math.Max(0, userStats.RankedScore - rankedDecrement);
