@@ -1,4 +1,5 @@
-﻿using CSharpFunctionalExtensions;
+﻿using System.Data;
+using CSharpFunctionalExtensions;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,10 +77,14 @@ public sealed class DatabaseService(
     }
 
     [TraceExecution]
-    public async Task<Result> CommitAsTransactionAsync(Func<Task> action, CancellationToken ct = default)
+    public async Task<Result> CommitAsTransactionAsync(Func<Task> action, CancellationToken ct = default, IsolationLevel? isolationLevel = null)
     {
         var isCurrentlyInOtherTransactionScope = DbContext.Database.CurrentTransaction != null;
-        await using var transaction = isCurrentlyInOtherTransactionScope ? null : await DbContext.Database.BeginTransactionAsync(ct);
+        await using var transaction = isCurrentlyInOtherTransactionScope
+            ? null
+            : isolationLevel.HasValue
+                ? await DbContext.Database.BeginTransactionAsync(isolationLevel.Value, ct)
+                : await DbContext.Database.BeginTransactionAsync(ct);
 
         HashSet<string> affectedTables = [];
 

@@ -2,6 +2,7 @@ using CSharpFunctionalExtensions;
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -14,28 +15,22 @@ public class ScoreRestorationHandler(
     : ScoreHandlerBase(database, pipeline)
 {
 
-    internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal override async Task<Result<ScorePrepareContext, ScoreProcessingError>> PrepareAsync(
         ScoreProcessingTask task, CancellationToken ct)
     {
-        var score = await Database.Scores.GetScore(task.ScoreId!.Value, filterValidScores: false, ct: ct);
+        var score = await Database.Scores.GetScore(task.ScoreId!.Value, new QueryOptions(true), filterValidScores: false, ct: ct);
         if (score == null)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,
                     $"Score {task.ScoreId} not found")
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
         if (score.SubmissionStatus != SubmissionStatus.Deleted)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.InvalidScoreState,
                     $"Score {task.ScoreId} is not deleted")
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
-        var loadUserStateResult = await LoadUserState(score, ct);
-        if (loadUserStateResult.IsFailure)
-            return loadUserStateResult.Error.ToResult<ScoreCommitContext>();
-
-        var (user, userStats, userGrades) = loadUserStateResult.Value;
-        var ctx = new ScoreCommitContext(ScoreTaskType.Restore, score, user, userStats, userGrades);
-        return ctx;
+        return new ScorePrepareContext(ScoreTaskType.Restore, score);
     }
 }

@@ -88,9 +88,7 @@ public class ScoreRestorationHandlerTests(IntegrationDatabaseFixture fixture) : 
         // Assert
         Assert.True(result.IsSuccess);
         Assert.Equal(ScoreTaskType.Restore, result.Value.TaskType);
-        Assert.Equal(score.Id, result.Value.Score.Id);
-        Assert.Equal(user.Id, result.Value.User.Id);
-        Assert.Equal(user.Id, result.Value.UserStats.UserId);
-        Assert.Equal(user.Id, result.Value.UserGrades.UserId);
+        Assert.Equal(score.Id, result.Value.UntrackedScore!.Id);
+        Assert.Equal(user.Id, result.Value.UntrackedScore!.UserId);
     }
 }

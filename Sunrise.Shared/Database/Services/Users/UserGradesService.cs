@@ -34,20 +34,15 @@ public class UserGradesService(
         });
     }
 
-    public async Task LockAndRefreshUserGrades(UserGrades userGrades, CancellationToken ct = default)
+    public async Task<UserGrades?> LockUserGradesForUpdate(UserGrades userGrades, CancellationToken ct = default)
     {
-        var lockedUserGrades = await dbContext.UserGrades
-            .AsNoTracking()
+        dbContext.Entry(userGrades).State = EntityState.Detached;
+        return await dbContext.UserGrades
             .Where(ug => userGrades.Id != 0
                 ? ug.Id == userGrades.Id
                 : ug.UserId == userGrades.UserId && ug.GameMode == userGrades.GameMode)
             .ForUpdate()
             .SingleOrDefaultAsync(ct);
-
-        if (lockedUserGrades == null)
-            return;
-
-        CopyUserGradesValues(lockedUserGrades, userGrades);
     }
 
     public async Task<UserGrades?> GetUserGrades(int userId, GameMode mode, CancellationToken ct = default)
@@ -71,18 +66,5 @@ public class UserGradesService(
         }
 
         return grades;
-    }
-
-    private static void CopyUserGradesValues(UserGrades source, UserGrades target)
-    {
-        target.Id = source.Id;
-        target.CountXH = source.CountXH;
-        target.CountX = source.CountX;
-        target.CountSH = source.CountSH;
-        target.CountS = source.CountS;
-        target.CountA = source.CountA;
-        target.CountB = source.CountB;
-        target.CountC = source.CountC;
-        target.CountD = source.CountD;
     }
 }

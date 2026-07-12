@@ -88,9 +88,8 @@ public class ScoreDeletionHandlerTests(IntegrationDatabaseFixture fixture) : Dat
 
         // Assert
         Assert.True(result.IsSuccess);
-        Assert.Equal(score.Id, result.Value.Score.Id);
-        Assert.Equal(user.Id, result.Value.User.Id);
-        Assert.Equal(user.Id, result.Value.UserStats.UserId);
-        Assert.Equal(user.Id, result.Value.UserGrades.UserId);
+        Assert.Equal(ScoreTaskType.Delete, result.Value.TaskType);
+        Assert.Equal(score.Id, result.Value.UntrackedScore!.Id);
+        Assert.Equal(user.Id, result.Value.UntrackedScore!.UserId);
     }
 }

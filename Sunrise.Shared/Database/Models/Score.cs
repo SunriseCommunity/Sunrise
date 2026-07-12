@@ -75,38 +75,6 @@ public class Score
 
     [NotMapped]
     public LocalProperties LocalProperties { get; set; }
-
-    public void ApplyPreparedScoreState(Score preparedScore)
-    {
-        UserId = preparedScore.UserId;
-        BeatmapId = preparedScore.BeatmapId;
-        ScoreHash = preparedScore.ScoreHash;
-        BeatmapHash = preparedScore.BeatmapHash;
-        ReplayFileId = preparedScore.ReplayFileId;
-        TotalScore = preparedScore.TotalScore;
-        MaxCombo = preparedScore.MaxCombo;
-        Count300 = preparedScore.Count300;
-        Count100 = preparedScore.Count100;
-        Count50 = preparedScore.Count50;
-        CountMiss = preparedScore.CountMiss;
-        CountKatu = preparedScore.CountKatu;
-        CountGeki = preparedScore.CountGeki;
-        Perfect = preparedScore.Perfect;
-        Mods = preparedScore.Mods;
-        Grade = preparedScore.Grade;
-        IsPassed = preparedScore.IsPassed;
-        IsScoreable = preparedScore.IsScoreable;
-        SubmissionStatus = preparedScore.SubmissionStatus;
-        GameMode = preparedScore.GameMode;
-        WhenPlayed = preparedScore.WhenPlayed;
-        OsuVersion = preparedScore.OsuVersion;
-        BeatmapStatus = preparedScore.BeatmapStatus;
-        ClientTime = preparedScore.ClientTime;
-        Accuracy = preparedScore.Accuracy;
-        PerformancePoints = preparedScore.PerformancePoints;
-        TimeElapsed = preparedScore.TimeElapsed;
-        LocalProperties = new LocalProperties().FromScore(this);
-    }
 }
 
 public class LocalProperties

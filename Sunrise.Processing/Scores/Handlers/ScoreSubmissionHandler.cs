@@ -26,23 +26,21 @@ public class ScoreSubmissionHandler(
     ScoreSideEffectsPublisherService scoreSideEffectsPublisherService)
     : ScoreHandlerBase(database, pipeline)
 {
-    private UserStats? _prevUserStatsSnapshot;
-
-    internal override async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal override async Task<Result<ScorePrepareContext, ScoreProcessingError>> PrepareAsync(
         ScoreProcessingTask task, CancellationToken ct)
     {
         if (!task.ScoreSubmissionRequestId.HasValue)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,
                     $"Submission task {task.Id} is missing its payload reference")
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
         var payload = await Database.ScoreSubmissionRequests.GetById(task.ScoreSubmissionRequestId.Value, ct);
         if (payload == null)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.Unexpected,
                     $"Submission payload {task.ScoreSubmissionRequestId.Value} was not found for task {task.Id}")
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
         var beatmapRatelimitSession = BaseSession.GenerateServerSession();
 
@@ -53,7 +51,7 @@ public class ScoreSubmissionHandler(
         return prepareInlineSubmissionCtxAsync;
     }
 
-    internal async Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
+    internal async Task<Result<ScorePrepareContext, ScoreProcessingError>> PrepareInlineSubmissionAsync(
         BaseSession beatmapRatelimitSession,
         ScoreSubmissionRequest queueEntry, CancellationToken ct)
     {
@@ -65,7 +63,7 @@ public class ScoreSubmissionHandler(
 
         var buildScoreCandidateResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
         if (buildScoreCandidateResult.IsFailure)
-            return buildScoreCandidateResult.Error.ToResult<ScoreCommitContext>();
+            return buildScoreCandidateResult.Error.ToResult<ScorePrepareContext>();
 
         var (submittedScore, score) = buildScoreCandidateResult.Value;
 
@@ -77,7 +75,7 @@ public class ScoreSubmissionHandler(
         if (validateBuiltScoreResult.IsFailure)
         {
             await RestrictUserIfErrorCodeIsBannable(score.UserId, validateBuiltScoreResult.Error.Code);
-            return validateBuiltScoreResult.Error.ToResult<ScoreCommitContext>();
+            return validateBuiltScoreResult.Error.ToResult<ScorePrepareContext>();
         }
 
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
@@ -86,14 +84,14 @@ public class ScoreSubmissionHandler(
                     ScoreProcessingErrorCode.PpCalculationFailed,
                     "PP calculation failed: " + scorePerformanceResult.Error.Message,
                     ScoreProcessingDisposition.Retryable)
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
         if (scorePerformanceResult.Value == null)
             return new ScoreProcessingError(
                     ScoreProcessingErrorCode.PpCalculationFailed,
                     "Score performance calculation returned null",
                     ScoreProcessingDisposition.Retryable)
-                .ToResult<ScoreCommitContext>();
+                .ToResult<ScorePrepareContext>();
 
         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
 
@@ -102,19 +100,15 @@ public class ScoreSubmissionHandler(
         if (validateScorePerformanceResult.IsFailure)
         {
             await RestrictUserIfErrorCodeIsBannable(score.UserId, validateScorePerformanceResult.Error.Code);
-            return validateScorePerformanceResult.Error.ToResult<ScoreCommitContext>();
+            return validateScorePerformanceResult.Error.ToResult<ScorePrepareContext>();
         }
 
-        var loadUserStateResult = await LoadUserState(score, ct);
-        if (loadUserStateResult.IsFailure)
-            return loadUserStateResult.Error.ToResult<ScoreCommitContext>();
-
-        var (user, userStats, userGrades) = loadUserStateResult.Value;
-
-        _prevUserStatsSnapshot = userStats.Clone();
-
-        var ctx = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
-        return ctx;
+        return new ScorePrepareContext(
+            ScoreTaskType.Submission,
+            score,
+            scorePerformanceResult.Value.PerformancePoints,
+            beatmap,
+            beatmapSet);
     }
 
     public async Task<Result<string?, ScoreProcessingError>> ExecuteInlineSubmission(
@@ -127,20 +121,24 @@ public class ScoreSubmissionHandler(
         if (prepareResult.IsFailure)
             return prepareResult.Error;
 
-        var ctx = prepareResult.Value;
-
         var commitResult = await CommitAsync(prepareResult.Value, task, ct);
         if (commitResult.IsFailure)
             return commitResult.Error;
 
-        await OnCommitted(commitResult.Value, ct);
+        var committedCtx = commitResult.Value;
 
-        var shouldReturnScoreResponseString = ctx.Beatmap?.IsScoreable ?? false;
+        await OnCommitted(committedCtx, ct);
+
+        var shouldReturnScoreResponseString = committedCtx.Beatmap?.IsScoreable ?? false;
 
         if (!shouldReturnScoreResponseString)
             return null;
 
-        var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(ctx, _prevUserStatsSnapshot!, ct);
+        var prevUserStatsSnapshot = committedCtx.PreviousUserStatsSnapshot;
+        if (prevUserStatsSnapshot == null)
+            return "error: no";
+
+        var responseString = await scoreSideEffectsPublisherService.BuildScoreSubmitResponse(committedCtx, prevUserStatsSnapshot, ct);
 
         return responseString;
     }
