@@ -50,7 +50,14 @@ public class UserStats
 
     public UserStats Clone()
     {
-        return (UserStats)MemberwiseClone();
+        var clone = (UserStats)MemberwiseClone();
+
+        clone.LocalProperties = new LocalProperties
+        {
+            Rank = LocalProperties.Rank
+        };
+
+        return clone;
     }
 }
 

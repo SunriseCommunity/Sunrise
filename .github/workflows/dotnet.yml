@@ -97,5 +97,11 @@ jobs:
           if ! dotnet test Sunrise.Server.Tests/Sunrise.Server.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
             FAILED=1
           fi
+
+          echo ""
+          echo "=== Running Sunrise.Processing.Tests ==="
+          if ! dotnet test Sunrise.Processing.Tests/Sunrise.Processing.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
+          fi
           
           exit $FAILED

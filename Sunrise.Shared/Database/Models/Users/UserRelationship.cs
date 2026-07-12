@@ -5,7 +5,7 @@ using Sunrise.Shared.Enums.Users;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_relationship")]
-[Index(nameof(UserId), nameof(TargetId))]
+[Index(nameof(UserId), nameof(TargetId), Name = "UX_user_relationship_UserId_TargetId", IsUnique = true)]
 public class UserRelationship
 {
     public int Id { get; set; }

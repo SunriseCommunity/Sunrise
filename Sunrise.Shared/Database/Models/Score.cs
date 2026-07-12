@@ -17,6 +17,7 @@ namespace Sunrise.Shared.Database.Models;
 [Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
 [Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
+[Index(nameof(UserId), nameof(BeatmapHash), nameof(GameMode))]
 [Index(nameof(ScoreHash), IsUnique = true)]
 public class Score
 {

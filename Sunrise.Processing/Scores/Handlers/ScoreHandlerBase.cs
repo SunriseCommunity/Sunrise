@@ -39,18 +39,18 @@ public abstract class ScoreHandlerBase(
         return UnitResult.Success<ScoreProcessingError>();
     }
 
-    internal virtual Task<Result<ScoreCommitContext, ScoreProcessingError>> PrepareAsync(
+    internal virtual Task<Result<ScorePrepareContext, ScoreProcessingError>> PrepareAsync(
         ScoreProcessingTask task, CancellationToken ct)
     {
         throw new NotSupportedException($"{GetType().Name} does not implement PrepareAsync.");
     }
 
     protected async Task<Result<ScoreCommitContext, ScoreProcessingError>> CommitAsync(
-        ScoreCommitContext ctx,
+        ScorePrepareContext ctx,
         ScoreProcessingTask? task,
         CancellationToken ct)
     {
-        var commitResult = await pipeline.Commit(ctx, task, ct);
+        var commitResult = await pipeline.CommitPrepared(ctx, task, ct);
 
         if (commitResult.IsFailure)
         {
@@ -60,7 +60,7 @@ public abstract class ScoreHandlerBase(
 
             Log.Warning("Failed to commit score state mutation, reason: {Reason}, ScoreId: {ScoreId}",
                 commitResult.Error,
-                ctx.Score.Id);
+                ctx.UntrackedScore?.Id);
 
             return new ScoreProcessingError(
                 ScoreProcessingErrorCode.TransactionFailed,
@@ -68,7 +68,7 @@ public abstract class ScoreHandlerBase(
                 ScoreProcessingDisposition.Retryable);
         }
 
-        return ctx;
+        return commitResult.Value;
     }
 
     internal virtual Task OnCommitted(ScoreCommitContext ctx, CancellationToken ct)

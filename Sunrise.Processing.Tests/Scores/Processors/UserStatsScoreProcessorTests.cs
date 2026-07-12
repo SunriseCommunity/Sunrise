@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Services;
@@ -61,8 +62,8 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var oldScore = await CreatePersistedScore(user, 1000, 90, 300);
-        var score = CreateScore(user, totalScore: 1200, performancePoints: 100, maxCombo: 400);
+        var oldScore = await CreatePersistedScore(user, 1000, 90, 300, submissionStatus: SubmissionStatus.Submitted);
+        var score = await CreatePersistedScore(user, 1200, 100, 400, beatmapPeer: oldScore);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         userStats.UpdateWithDbScore(oldScore);
@@ -92,6 +93,58 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(score.MaxCombo, userStats.MaxCombo);
         Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
         Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+    }
+
+    [Fact]
+    public async Task TestOnNewSubmissionUsesOverallBestReplacementForRankedScore()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+
+        var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
+        sameModsBest.EnrichWithBeatmapData(beatmap);
+        sameModsBest.GameMode = sameModsBest.GameMode.EnrichWithMods(sameModsBest.Mods);
+        sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
+
+        var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
+        overallBest.EnrichWithBeatmapData(beatmap);
+        overallBest.GameMode = overallBest.GameMode.EnrichWithMods(overallBest.Mods);
+        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
+
+        var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
+        score.EnrichWithBeatmapData(beatmap);
+        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        userStats.RankedScore = overallBest.TotalScore;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Submission,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(
+                new UserPersonalBestScores(sameModsBest),
+                new UserPersonalBestScores(overallBest)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnNewSubmission(context);
+
+        // Assert
+        AssertIncrementedCoreStats(previousStats, userStats, score);
+        Assert.Equal(previousStats.RankedScore + (score.TotalScore - overallBest.TotalScore), userStats.RankedScore);
+        Assert.Equal(score.MaxCombo, userStats.MaxCombo);
     }
 
     [Fact]
@@ -180,8 +233,8 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var oldScore = await CreatePersistedScore(user, 1200, 100, 300);
-        var score = CreateScore(user, totalScore: 1100, performancePoints: 120, maxCombo: 400);
+        var oldScore = await CreatePersistedScore(user, 1200, 100, 300, submissionStatus: SubmissionStatus.Submitted);
+        var score = await CreatePersistedScore(user, 1100, 120, 400, beatmapPeer: oldScore);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         userStats.UpdateWithDbScore(oldScore);
 
@@ -344,6 +397,56 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(promotedPeer.MaxCombo, userStats.MaxCombo);
         Assert.Equal(expectedWeighted.PerformancePoints, userStats.PerformancePoints, 6);
         Assert.Equal(expectedWeighted.Accuracy, userStats.Accuracy, 6);
+    }
+
+    [Fact]
+    public async Task TestOnDeletionUsesOverallBestReplacementForRankedScore()
+    {
+        // Arrange
+        var user = await CreateTestUser();
+
+        var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
+        var processor = new UserStatsScoreProcessor(Database, calculator);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+
+        var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
+        sameModsBest.EnrichWithBeatmapData(beatmap);
+        sameModsBest.GameMode = sameModsBest.GameMode.EnrichWithMods(sameModsBest.Mods);
+        sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
+
+        var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
+        overallBest.EnrichWithBeatmapData(beatmap);
+        overallBest.GameMode = overallBest.GameMode.EnrichWithMods(overallBest.Mods);
+        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
+
+        var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
+        score.EnrichWithBeatmapData(beatmap);
+        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.LocalProperties = score.LocalProperties.FromScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        userStats.RankedScore = score.TotalScore;
+        var previousStats = userStats.Clone();
+
+        var context = ScoreCommitContextFactory.Create(
+            ScoreTaskType.Delete,
+            score,
+            user,
+            userStats,
+            userGrades,
+            userPersonalBestScores: new UserBeatmapPeers(
+                new UserPersonalBestScores(sameModsBest),
+                new UserPersonalBestScores(overallBest)),
+            originalState: ScoreStateSnapshot.Capture(score));
+
+        // Act
+        await processor.OnDeletion(context);
+
+        // Assert
+        Assert.Equal(previousStats.RankedScore - (score.TotalScore - overallBest.TotalScore), userStats.RankedScore);
     }
 
     [Fact]
@@ -644,7 +747,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
+        var score = await CreatePersistedScore(user, 1000, 100, 400);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var previousStats = userStats.Clone();
         var expectedWeighted = PerformanceCalculator.CalculateUserWeightedStats([score]);
@@ -742,8 +845,8 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var existingBest = await CreatePersistedScore(user, 1200, 90, 450, gameMode: GameMode.Standard, mods: Mods.Relax);
-        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, gameMode: GameMode.Standard, mods: Mods.Relax, submissionStatus: SubmissionStatus.Best);
+        var existingBest = await CreatePersistedScore(user, 1200, 90, 450, submissionStatus: SubmissionStatus.Submitted, gameMode: GameMode.Standard, mods: Mods.Relax);
+        var score = await CreatePersistedScore(user, 1500, 100, 500, gameMode: GameMode.Standard, mods: Mods.Relax, beatmapPeer: existingBest);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         Assert.Equal(GameMode.RelaxStandard, score.GameMode);
@@ -792,9 +895,17 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         SubmissionStatus submissionStatus = SubmissionStatus.Best,
         bool isPassed = true,
         GameMode gameMode = GameMode.Standard,
-        Mods mods = Mods.None)
+        Mods mods = Mods.None,
+        Score? beatmapPeer = null)
     {
         var score = CreateScore(user, totalScore: totalScore, performancePoints: performancePoints, maxCombo: maxCombo, submissionStatus: submissionStatus, isPassed: isPassed, gameMode: gameMode, mods: mods);
+
+        if (beatmapPeer != null)
+        {
+            score.BeatmapId = beatmapPeer.BeatmapId;
+            score.BeatmapHash = beatmapPeer.BeatmapHash;
+        }
+
         return await CreateTestScore(score);
     }
 

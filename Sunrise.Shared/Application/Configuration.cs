@@ -195,9 +195,8 @@ public static class Configuration
     public static int ScoreProcessingTimeoutSeconds =>
         Config.GetSection("ScoreProcessing").GetValue<int?>("TimeoutSeconds") ?? 10;
 
-    // NOTE: Concurrency is disabled by default. See https://github.com/SunriseCommunity/Sunrise/pull/127 for reason
     public static int ScoreProcessingMaxConcurrency =>
-        Config.GetSection("ScoreProcessing").GetValue<int?>("MaxConcurrency") ?? 1;
+        Config.GetSection("ScoreProcessing").GetValue<int?>("MaxConcurrency") ?? 8;
 
     public static int ScoreProcessingPollerInterBatchDelaySeconds =>
         Config.GetSection("ScoreProcessing").GetValue<int?>("PollerInterBatchDelaySeconds")

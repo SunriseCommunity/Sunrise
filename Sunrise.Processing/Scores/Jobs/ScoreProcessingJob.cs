@@ -113,7 +113,12 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
             if (result.IsSuccess)
             {
-                await CleanupCompletedTask(bookkeepingDatabase, task, ct);
+                if (!await CleanupCompletedTask(bookkeepingDatabase, task, ct))
+                {
+                    Log.Warning("Skipped completion cleanup for score task {TaskId} ({TaskType}) because its claim was lost", task.Id, task.TaskType);
+                    return;
+                }
+
                 Log.Information("Successfully processed score task {TaskId} ({TaskType}) for user {UserId}", task.Id, task.TaskType, affectedUserId);
                 SunriseMetrics.ScoreProcessingEntryCounterInc("success", task.TaskType);
                 return;
@@ -124,13 +129,29 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
             if (isDuplicateScore && task.TaskType == ScoreTaskType.Submission)
             {
-                await CleanupCompletedTask(bookkeepingDatabase, task, ct);
+                if (!await CleanupCompletedTask(bookkeepingDatabase, task, ct))
+                {
+                    Log.Warning("Skipped duplicate submission cleanup for score task {TaskId} because its claim was lost", task.Id);
+                    return;
+                }
+
                 Log.Information("Cleaned up duplicate submission task {TaskId} for user {UserId}", task.Id, affectedUserId);
                 SunriseMetrics.ScoreProcessingEntryCounterInc("success", task.TaskType, error.Code);
                 return;
             }
 
-            await bookkeepingDatabase.ScoreProcessingTasks.MarkAsFailed(task.Id, error, GetBackoffDelay(task.RetryCount), ct);
+            var claimToken = task.ClaimToken;
+            if (string.IsNullOrWhiteSpace(claimToken))
+            {
+                Log.Warning("Skipped failure bookkeeping for score task {TaskId} ({TaskType}) because it has no claim token", task.Id, task.TaskType);
+                return;
+            }
+
+            if (!await bookkeepingDatabase.ScoreProcessingTasks.TryMarkClaimedAsFailed(task.Id, claimToken, error, GetBackoffDelay(task.RetryCount), ct))
+            {
+                Log.Warning("Skipped failure bookkeeping for score task {TaskId} ({TaskType}) because its claim was lost", task.Id, task.TaskType);
+                return;
+            }
 
             var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
 
@@ -171,13 +192,21 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             userSession.SendNotification($"One of your submitted scores couldn't be processed. If you think this is a mistake, please contact the support with task ID: {task.Id}");
     }
 
-    private static async Task CleanupCompletedTask(DatabaseService database, ScoreProcessingTask task, CancellationToken ct)
+    private static async Task<bool> CleanupCompletedTask(DatabaseService database, ScoreProcessingTask task, CancellationToken ct)
     {
+        var claimToken = task.ClaimToken;
+        if (string.IsNullOrWhiteSpace(claimToken))
+            return false;
+
         if (task is { TaskType: ScoreTaskType.Submission, ScoreSubmissionRequestId: not null })
         {
+            var deletedTask = false;
             var cleanupResult = await database.CommitAsTransactionAsync(async () =>
                 {
-                    await database.ScoreProcessingTasks.MarkForDeletion(task.Id, ct);
+                    deletedTask = await database.ScoreProcessingTasks.TryMarkClaimedForDeletion(task.Id, claimToken, ct);
+                    if (!deletedTask)
+                        return;
+
                     await database.ScoreSubmissionRequests.DeleteById(task.ScoreSubmissionRequestId.Value, ct);
                 },
                 ct);
@@ -185,10 +214,10 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             if (cleanupResult.IsFailure)
                 throw new ApplicationException($"Failed to clean up completed submission task {task.Id}: {cleanupResult.Error}");
 
-            return;
+            return deletedTask;
         }
 
-        await database.ScoreProcessingTasks.MarkForDeletion(task.Id, ct);
+        return await database.ScoreProcessingTasks.TryMarkClaimedForDeletion(task.Id, claimToken, ct);
     }
 
     private async Task HandleUnexpectedEntryException(ScoreProcessingTask task, int? affectedUserId, Exception ex)
@@ -201,8 +230,18 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             using var failureScope = scopeFactory.CreateScope();
             var failureDatabase = failureScope.ServiceProvider.GetRequiredService<DatabaseService>();
             var unexpectedError = new ScoreProcessingError(ScoreProcessingErrorCode.Unexpected, ex.Message, ScoreProcessingDisposition.Retryable);
+            var claimToken = task.ClaimToken;
 
-            await failureDatabase.ScoreProcessingTasks.MarkAsFailed(task.Id, unexpectedError, GetBackoffDelay(task.RetryCount));
+            if (string.IsNullOrWhiteSpace(claimToken))
+            {
+                Log.Warning("Skipped unexpected-failure bookkeeping for score task {TaskId} ({TaskType}) because it has no claim token", task.Id, task.TaskType);
+                return;
+            }
+
+            if (!await failureDatabase.ScoreProcessingTasks.TryMarkClaimedAsFailed(task.Id, claimToken, unexpectedError, GetBackoffDelay(task.RetryCount)))
+            {
+                Log.Warning("Skipped unexpected-failure bookkeeping for score task {TaskId} ({TaskType}) because its claim was lost", task.Id, task.TaskType);
+            }
         }
         catch (Exception markFailedException)
         {

@@ -17,13 +17,14 @@ public sealed class ScoreCommitContext(
 {
     public ScoreTaskType TaskType { get; } = taskType;
     public ScoreStateSnapshot OriginalState { get; internal set; }
+    public UserStats? PreviousUserStatsSnapshot { get; internal set; }
     public UserBeatmapPeers? UserPersonalBestScores { get; internal set; }
     public List<Medal>? UnlockedMedals { get; internal set; }
 
-    public Score Score { get; } = score;
+    public Score Score { get; internal set; } = score;
     public User User { get; } = user;
-    public UserStats UserStats { get; } = userStats;
-    public UserGrades UserGrades { get; } = userGrades;
+    public UserStats UserStats { get; internal set; } = userStats;
+    public UserGrades UserGrades { get; internal set; } = userGrades;
     public Beatmap? Beatmap { get; } = beatmap;
     public BeatmapSet? BeatmapSet { get; } = beatmapSet;
 }

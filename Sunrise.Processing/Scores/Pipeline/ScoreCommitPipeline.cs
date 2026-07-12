@@ -1,3 +1,4 @@
+using System.Data;
 using CSharpFunctionalExtensions;
 using Sunrise.Processing.Scores.Processors;
 using Sunrise.Shared.Application;
@@ -5,9 +6,11 @@ using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
+using LocalProperties = Sunrise.Shared.Database.Models.LocalProperties;
 
 namespace Sunrise.Processing.Scores.Pipeline;
 
@@ -28,44 +31,129 @@ public class ScoreCommitPipeline
         ScoreProcessingTask? task,
         CancellationToken ct)
     {
-        return await _database.CommitAsTransactionAsync(async () => { await ExecuteCommitAsync(ctx, task, ct); }, ct);
+        var commitResult = await CommitPrepared(ScorePrepareContext.FromCommitContext(ctx), task, ct);
+        if (commitResult.IsFailure)
+            return Result.Failure(commitResult.Error);
+
+        var committed = commitResult.Value;
+        ctx.OriginalState = committed.OriginalState;
+        ctx.PreviousUserStatsSnapshot = committed.PreviousUserStatsSnapshot;
+        ctx.UserPersonalBestScores = committed.UserPersonalBestScores;
+        ctx.UnlockedMedals = committed.UnlockedMedals;
+        ctx.Score = committed.Score;
+        ctx.UserStats = committed.UserStats;
+        ctx.UserGrades = committed.UserGrades;
+
+        return Result.Success();
     }
 
-    private async Task ExecuteCommitAsync(
-        ScoreCommitContext ctx,
+    public async Task<Result<ScoreCommitContext>> CommitPrepared(
+        ScorePrepareContext prepareCtx,
         ScoreProcessingTask? task,
         CancellationToken ct)
     {
-        var score = ctx.Score;
+        ScoreCommitContext? committedCtx = null;
 
-        await _database.Users.Stats.LockAndRefreshUserStats(ctx.UserStats, ct);
-        await _database.Users.Grades.LockAndRefreshUserGrades(ctx.UserGrades, ct);
+        var transactionResult = await _database.CommitAsTransactionAsync(async () => { committedCtx = await ExecuteCommitAsync(prepareCtx, task, ct); },
+            ct,
+            IsolationLevel.ReadCommitted);
 
-        if (ctx.TaskType != ScoreTaskType.Submission)
+        if (transactionResult.IsFailure)
+            return Result.Failure<ScoreCommitContext>(transactionResult.Error);
+
+        if (committedCtx == null)
+            return Result.Failure<ScoreCommitContext>("Score commit context was not created during transaction.");
+
+        return committedCtx;
+    }
+
+    private async Task<ScoreCommitContext> ExecuteCommitAsync(
+        ScorePrepareContext prepareCtx,
+        ScoreProcessingTask? task,
+        CancellationToken ct)
+    {
+        var preparedScore = prepareCtx.UntrackedScore
+                            ?? throw new ApplicationException("Score prepare context did not contain an untracked score.");
+        var user = preparedScore.User ?? await _database.Users.GetUser(preparedScore.UserId, ct: ct)
+            ?? throw new ApplicationException($"User {preparedScore.UserId} was not found while locking score commit state");
+
+        var lockedStats = await _database.Users.Stats.LockUserStatsForUpdate(new UserStats
+            {
+                UserId = preparedScore.UserId,
+                GameMode = preparedScore.GameMode
+            },
+            ct);
+
+        if (lockedStats == null)
         {
-            var newPerformancePoints = score.PerformancePoints;
-            var locked = await _database.Scores.LockAndRefreshScore(score, ct); // TODO: This will cause the deadlocks, since we are first locking the main score and then peers. I'm partially fine with this since we have retries, but we will need to refactor this system some day for one single lock.
-            if (!locked)
-                throw new ApplicationException($"Score {score.Id} was not found while locking score commit target");
-
-            score.PerformancePoints = newPerformancePoints;
+            var createdStats = await _database.Users.Stats.GetUserStats(preparedScore.UserId, preparedScore.GameMode, ct);
+            if (createdStats != null)
+                lockedStats = await _database.Users.Stats.LockUserStatsForUpdate(createdStats, ct);
         }
+
+        if (lockedStats == null)
+        {
+            throw new ApplicationException(
+                $"User stats for user {preparedScore.UserId} and mode {preparedScore.GameMode} were not found while locking score commit state");
+        }
+
+        var lockedGrades = await _database.Users.Grades.LockUserGradesForUpdate(new UserGrades
+            {
+                UserId = preparedScore.UserId,
+                GameMode = preparedScore.GameMode
+            },
+            ct);
+
+        if (lockedGrades == null)
+        {
+            var createdGrades = await _database.Users.Grades.GetUserGrades(preparedScore.UserId, preparedScore.GameMode, ct);
+            if (createdGrades != null)
+                lockedGrades = await _database.Users.Grades.LockUserGradesForUpdate(createdGrades, ct);
+        }
+
+        if (lockedGrades == null)
+        {
+            throw new ApplicationException(
+                $"User grades for user {preparedScore.UserId} and mode {preparedScore.GameMode} were not found while locking score commit state");
+        }
+
+        var (currentRank, _) = await _database.Users.Stats.Ranks.GetUserRanks(user, lockedStats.GameMode, false, ct);
+        lockedStats.LocalProperties.Rank = currentRank;
+
+        var targetScoreId = prepareCtx.TaskType == ScoreTaskType.Submission ? (int?)null : preparedScore.Id;
+        var (lockedScore, peers) = await _database.Scores.GetUserScoreByIdWithBeatmapPeersForUpdate(
+            preparedScore.UserId,
+            preparedScore.BeatmapHash,
+            preparedScore.GameMode,
+            preparedScore.Mods,
+            targetScoreId,
+            ct);
+
+        var score = prepareCtx.TaskType == ScoreTaskType.Submission
+            ? preparedScore
+            : lockedScore ?? throw new ApplicationException($"Score {preparedScore.Id} was not found while locking score commit target");
+
+        var originalState = ScoreStateSnapshot.Capture(score);
+
+        if (prepareCtx.TaskType != ScoreTaskType.Submission && prepareCtx.NewScorePerformancePointsValue.HasValue)
+            score.PerformancePoints = prepareCtx.NewScorePerformancePointsValue.Value;
+
+        var ctx = new ScoreCommitContext(
+            prepareCtx.TaskType,
+            score,
+            user,
+            lockedStats,
+            lockedGrades,
+            prepareCtx.Beatmap,
+            prepareCtx.BeatmapSet)
+        {
+            OriginalState = originalState,
+            PreviousUserStatsSnapshot = lockedStats.Clone()
+        };
 
         score.LocalProperties = new LocalProperties().FromScore(score);
 
-        ctx.OriginalState = ScoreStateSnapshot.Capture(score);
-
         EnrichScoreWithBeatmapStatus(score, ctx.Beatmap);
-
-        var excludeScoreId = ctx.TaskType == ScoreTaskType.Submission ? (int?)null : score.Id;
-
-        var peers = await _database.Scores.GetUserBeatmapPeersForUpdate(
-            score.UserId,
-            score.BeatmapHash,
-            score.GameMode,
-            score.Mods,
-            excludeScoreId,
-            ct);
 
         ctx.UserPersonalBestScores = peers;
 
@@ -77,6 +165,8 @@ public class ScoreCommitPipeline
         var refreshClaimLeaseResult = await TryRefreshClaimLease(task, ct);
         if (refreshClaimLeaseResult.IsFailure)
             throw new ApplicationException(refreshClaimLeaseResult.Error);
+
+        return ctx;
     }
 
     private static void EnrichScoreWithBeatmapStatus(Score score, Beatmap? beatmap)

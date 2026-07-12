@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -11,9 +12,11 @@ using Sunrise.Shared.Database;
 namespace Sunrise.Shared.Database.Migrations
 {
     [DbContext(typeof(SunriseDbContext))]
-    partial class SunriseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260712192500_AddUserBeatmapHashGameModeIndexToScore")]
+    partial class AddUserBeatmapHashGameModeIndexToScore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -750,9 +753,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "MedalId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_user_medals_UserId_MedalId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("user_medals");
                 });
@@ -813,9 +814,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_user_metadata_UserId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("user_metadata");
                 });
@@ -841,9 +840,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("TargetId");
 
-                    b.HasIndex("UserId", "TargetId")
-                        .IsUnique()
-                        .HasDatabaseName("UX_user_relationship_UserId_TargetId");
+                    b.HasIndex("UserId", "TargetId");
 
                     b.ToTable("user_relationship");
                 });
@@ -928,9 +925,7 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "GameMode")
-                        .IsUnique()
-                        .HasDatabaseName("UX_user_stats_snapshot_UserId_GameMode");
+                    b.HasIndex("UserId", "GameMode");
 
                     b.ToTable("user_stats_snapshot");
                 });

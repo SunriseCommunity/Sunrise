@@ -150,37 +150,38 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task MarkForDeletion(int taskId, CancellationToken ct = default)
+    public async Task<bool> TryMarkClaimedForDeletion(int taskId, string claimToken, CancellationToken ct = default)
     {
-        await dbContext.ScoreProcessingTasks
-            .Where(task => task.Id == taskId)
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(task => task.Id == taskId && task.ClaimToken == claimToken)
             .ExecuteDeleteAsync(ct);
+
+        return affected == 1;
     }
 
-    public async Task MarkAsFailed(int taskId, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
+    public async Task<bool> TryMarkClaimedAsFailed(int taskId, string claimToken, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreProcessingTasks.FindAsync([taskId], ct);
-        if (task == null)
-            return;
+        var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
+        var maxRetries = Configuration.ScoreProcessingMaxRetries;
+        var nextRetryAt = DateTime.UtcNow + nextRetryDelay;
 
-        task.RetryCount++;
-        task.ErrorCode = error.Code;
-        task.ErrorMessage = error.Message;
-        task.ClaimToken = null;
-        task.LeaseExpiresAt = null;
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.ClaimToken == claimToken)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.RetryCount, t => t.RetryCount + 1)
+                    .SetProperty(t => t.ErrorCode, error.Code)
+                    .SetProperty(t => t.ErrorMessage, error.Message)
+                    .SetProperty(t => t.ClaimToken, (string?)null)
+                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
+                    .SetProperty(t => t.Status, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                        ? ScoreProcessingStatus.Failed
+                        : ScoreProcessingStatus.Pending)
+                    .SetProperty(t => t.NextRetryAt, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                        ? null
+                        : nextRetryAt),
+                ct);
 
-        if (error.Disposition == ScoreProcessingDisposition.Permanent || task.RetryCount >= Configuration.ScoreProcessingMaxRetries)
-        {
-            task.Status = ScoreProcessingStatus.Failed;
-            task.NextRetryAt = null;
-        }
-        else
-        {
-            task.Status = ScoreProcessingStatus.Pending;
-            task.NextRetryAt = DateTime.UtcNow + nextRetryDelay;
-        }
-
-        await dbContext.SaveChangesAsync(ct);
+        return affected == 1;
     }
 
     public async Task<UnitResult<string>> CancelTask(int taskId, CancellationToken ct = default)
@@ -215,21 +216,6 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
     public async Task<UnitResult<string>> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
     {
-        var affected = await dbContext.ScoreProcessingTasks
-            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Failed)
-            .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(t => t.Status, ScoreProcessingStatus.Pending)
-                    .SetProperty(t => t.RetryCount, 0)
-                    .SetProperty(t => t.NextRetryAt, (DateTime?)null)
-                    .SetProperty(t => t.ClaimToken, (string?)null)
-                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
-                    .SetProperty(t => t.ErrorCode, (ScoreProcessingErrorCode?)null)
-                    .SetProperty(t => t.ErrorMessage, (string?)null),
-                ct);
-
-        if (affected == 1)
-            return UnitResult.Success<string>();
-
         var task = await dbContext.ScoreProcessingTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);
 
         if (task == null)
@@ -238,10 +224,39 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         if (task.Status != ScoreProcessingStatus.Failed)
             return UnitResult.Failure($"Score task {taskId} is not in a failed state and cannot be requeued.");
 
-        if (task.Status == ScoreProcessingStatus.Processing)
-            return UnitResult.Failure($"Score task {taskId} is currently being processed and cannot be requeued.");
+        var activeTaskExists = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id != taskId)
+            .FilterInProgressTasks()
+            .AnyAsync(t =>
+                    (task.ScoreId != null && t.ScoreId == task.ScoreId)
+                    || (task.ScoreSubmissionRequestId != null && t.ScoreSubmissionRequestId == task.ScoreSubmissionRequestId),
+                ct);
 
-        return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
+        if (activeTaskExists)
+            return UnitResult.Failure($"Score task {taskId} cannot be requeued because the same target already has an active task.");
+
+        try
+        {
+            var affected = await dbContext.ScoreProcessingTasks
+                .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Failed)
+                .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(t => t.Status, ScoreProcessingStatus.Pending)
+                        .SetProperty(t => t.RetryCount, 0)
+                        .SetProperty(t => t.NextRetryAt, (DateTime?)null)
+                        .SetProperty(t => t.ClaimToken, (string?)null)
+                        .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
+                        .SetProperty(t => t.ErrorCode, (ScoreProcessingErrorCode?)null)
+                        .SetProperty(t => t.ErrorMessage, (string?)null),
+                    ct);
+
+            return affected == 1
+                ? UnitResult.Success<string>()
+                : UnitResult.Failure($"Score task {taskId} could not be requeued.");
+        }
+        catch (DbUpdateException ex) when (IsActiveTaskConflict(ex))
+        {
+            return UnitResult.Failure($"Score task {taskId} cannot be requeued because the same target already has an active task.");
+        }
     }
 
     public async Task<int> TryRequeueFailedTasks(IEnumerable<int>? taskIds = null, CancellationToken ct = default)
@@ -307,4 +322,5 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return message.Contains("UX_score_processing_task_active_score", StringComparison.OrdinalIgnoreCase)
                || message.Contains("UX_score_processing_task_active_submission_request", StringComparison.OrdinalIgnoreCase);
     }
+
 }

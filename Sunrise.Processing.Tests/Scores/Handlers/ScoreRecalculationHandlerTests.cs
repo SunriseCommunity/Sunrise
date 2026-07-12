@@ -178,8 +178,8 @@ public class ScoreRecalculationHandlerTests(IntegrationDatabaseFixture fixture) 
         Assert.True(result.IsSuccess);
 
         Assert.Equal(ScoreTaskType.Recalculation, result.Value.TaskType);
-        Assert.Equal(score.Id, result.Value.Score.Id);
-        Assert.Equal(321, result.Value.Score.PerformancePoints);
+        Assert.Equal(score.Id, result.Value.UntrackedScore!.Id);
+        Assert.Equal(321, result.Value.NewScorePerformancePointsValue);
 
         Assert.NotNull(result.Value.Beatmap);
         Assert.Equal(beatmap.Checksum, result.Value.Beatmap!.Checksum);

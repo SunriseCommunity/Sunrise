@@ -231,6 +231,9 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         userStats.Accuracy = seededWeighted.Accuracy;
         userGrades.CountA = 1;
 
+        await Database.Users.Stats.UpdateUserStats(userStats, user);
+        await Database.Users.Grades.UpdateUserGrades(userGrades);
+
         var rankedScoreBefore = userStats.RankedScore;
         var playCountBefore = userStats.PlayCount;
 
