@@ -750,7 +750,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "MedalId")
+                        .IsUnique();
 
                     b.ToTable("user_medals");
                 });
@@ -811,7 +812,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .IsUnique();
 
                     b.ToTable("user_metadata");
                 });
@@ -837,7 +839,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("TargetId");
 
-                    b.HasIndex("UserId", "TargetId");
+                    b.HasIndex("UserId", "TargetId")
+                        .IsUnique();
 
                     b.ToTable("user_relationship");
                 });
@@ -922,7 +925,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "GameMode");
+                    b.HasIndex("UserId", "GameMode")
+                        .IsUnique();
 
                     b.ToTable("user_stats_snapshot");
                 });

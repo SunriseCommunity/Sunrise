@@ -6,7 +6,7 @@ using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_stats_snapshot")]
-[Index(nameof(UserId), nameof(GameMode))]
+[Index(nameof(UserId), nameof(GameMode), IsUnique = true)]
 public class UserStatsSnapshot
 {
     public int Id { get; set; }

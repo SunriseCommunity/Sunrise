@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_medals")]
-[Index(nameof(UserId))]
+[Index(nameof(UserId), nameof(MedalId), IsUnique = true)]
 public class UserMedals
 {
     public int Id { get; set; }

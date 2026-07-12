@@ -6,7 +6,7 @@ using Sunrise.Shared.Enums.Users;
 namespace Sunrise.Shared.Database.Models.Users;
 
 [Table("user_metadata")]
-[Index(nameof(UserId))]
+[Index(nameof(UserId), IsUnique = true)]
 public class UserMetadata
 {
     public int Id { get; set; }
