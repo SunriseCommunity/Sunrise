@@ -46,43 +46,38 @@ public partial class AddUniqueUserDomainIndexes : Migration
                 AND duplicate.Id < original.Id;
             """);
 
-        migrationBuilder.DropIndex(name: "IX_user_medals_UserId", table: "user_medals");
-        migrationBuilder.DropIndex(name: "IX_user_metadata_UserId", table: "user_metadata");
-        migrationBuilder.DropIndex(name: "IX_user_relationship_UserId_TargetId", table: "user_relationship");
-        migrationBuilder.DropIndex(name: "IX_user_stats_snapshot_UserId_GameMode", table: "user_stats_snapshot");
-
         migrationBuilder.CreateIndex(
-            name: "IX_user_medals_UserId_MedalId",
+            name: "UX_user_medals_UserId_MedalId",
             table: "user_medals",
             columns: new[] { "UserId", "MedalId" },
             unique: true);
 
         migrationBuilder.CreateIndex(
-            name: "IX_user_metadata_UserId",
+            name: "UX_user_metadata_UserId",
             table: "user_metadata",
             column: "UserId",
             unique: true);
 
         migrationBuilder.CreateIndex(
-            name: "IX_user_relationship_UserId_TargetId",
+            name: "UX_user_relationship_UserId_TargetId",
             table: "user_relationship",
             columns: new[] { "UserId", "TargetId" },
             unique: true);
 
         migrationBuilder.CreateIndex(
-            name: "IX_user_stats_snapshot_UserId_GameMode",
+            name: "UX_user_stats_snapshot_UserId_GameMode",
             table: "user_stats_snapshot",
             columns: new[] { "UserId", "GameMode" },
             unique: true);
+
+        migrationBuilder.DropIndex(name: "IX_user_medals_UserId", table: "user_medals");
+        migrationBuilder.DropIndex(name: "IX_user_metadata_UserId", table: "user_metadata");
+        migrationBuilder.DropIndex(name: "IX_user_relationship_UserId_TargetId", table: "user_relationship");
+        migrationBuilder.DropIndex(name: "IX_user_stats_snapshot_UserId_GameMode", table: "user_stats_snapshot");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropIndex(name: "IX_user_medals_UserId_MedalId", table: "user_medals");
-        migrationBuilder.DropIndex(name: "IX_user_metadata_UserId", table: "user_metadata");
-        migrationBuilder.DropIndex(name: "IX_user_relationship_UserId_TargetId", table: "user_relationship");
-        migrationBuilder.DropIndex(name: "IX_user_stats_snapshot_UserId_GameMode", table: "user_stats_snapshot");
-
         migrationBuilder.CreateIndex(name: "IX_user_medals_UserId", table: "user_medals", column: "UserId");
         migrationBuilder.CreateIndex(name: "IX_user_metadata_UserId", table: "user_metadata", column: "UserId");
         migrationBuilder.CreateIndex(
@@ -93,5 +88,10 @@ public partial class AddUniqueUserDomainIndexes : Migration
             name: "IX_user_stats_snapshot_UserId_GameMode",
             table: "user_stats_snapshot",
             columns: new[] { "UserId", "GameMode" });
+
+        migrationBuilder.DropIndex(name: "UX_user_medals_UserId_MedalId", table: "user_medals");
+        migrationBuilder.DropIndex(name: "UX_user_metadata_UserId", table: "user_metadata");
+        migrationBuilder.DropIndex(name: "UX_user_relationship_UserId_TargetId", table: "user_relationship");
+        migrationBuilder.DropIndex(name: "UX_user_stats_snapshot_UserId_GameMode", table: "user_stats_snapshot");
     }
 }
