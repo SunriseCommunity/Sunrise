@@ -58,7 +58,17 @@ public class UserRelationshipService(
                 TargetId = target.Id,
             };
 
-            await AddUserRelationship(relationship);
+            var addResult = await AddUserRelationship(relationship);
+            if (addResult.IsFailure)
+            {
+                dbContext.Entry(relationship).State = EntityState.Detached;
+                relationship = await dbContext.UserRelationships.FirstOrDefaultAsync(
+                    r => r.UserId == userId && r.TargetId == targetId,
+                    ct);
+
+                if (relationship == null)
+                    throw new ApplicationException(addResult.Error);
+            }
         }
 
         return relationship;
