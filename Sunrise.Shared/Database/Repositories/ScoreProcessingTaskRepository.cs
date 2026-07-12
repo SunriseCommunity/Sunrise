@@ -161,13 +161,27 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
     public async Task<bool> TryMarkClaimedAsFailed(int taskId, string claimToken, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
     {
-        var task = await dbContext.ScoreProcessingTasks.FirstOrDefaultAsync(t => t.Id == taskId && t.ClaimToken == claimToken, ct);
-        if (task == null)
-            return false;
+        var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
+        var maxRetries = Configuration.ScoreProcessingMaxRetries;
+        var nextRetryAt = DateTime.UtcNow + nextRetryDelay;
 
-        ApplyFailure(task, error, nextRetryDelay);
-        await dbContext.SaveChangesAsync(ct);
-        return true;
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.ClaimToken == claimToken)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.RetryCount, t => t.RetryCount + 1)
+                    .SetProperty(t => t.ErrorCode, error.Code)
+                    .SetProperty(t => t.ErrorMessage, error.Message)
+                    .SetProperty(t => t.ClaimToken, (string?)null)
+                    .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
+                    .SetProperty(t => t.Status, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                        ? ScoreProcessingStatus.Failed
+                        : ScoreProcessingStatus.Pending)
+                    .SetProperty(t => t.NextRetryAt, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                        ? null
+                        : nextRetryAt),
+                ct);
+
+        return affected == 1;
     }
 
     public async Task<UnitResult<string>> CancelTask(int taskId, CancellationToken ct = default)
@@ -309,22 +323,4 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
                || message.Contains("UX_score_processing_task_active_submission_request", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void ApplyFailure(ScoreProcessingTask task, ScoreProcessingError error, TimeSpan nextRetryDelay)
-    {
-        task.RetryCount++;
-        task.ErrorCode = error.Code;
-        task.ErrorMessage = error.Message;
-        task.ClaimToken = null;
-        task.LeaseExpiresAt = null;
-
-        if (error.Disposition == ScoreProcessingDisposition.Permanent || task.RetryCount >= Configuration.ScoreProcessingMaxRetries)
-        {
-            task.Status = ScoreProcessingStatus.Failed;
-            task.NextRetryAt = null;
-            return;
-        }
-
-        task.Status = ScoreProcessingStatus.Pending;
-        task.NextRetryAt = DateTime.UtcNow + nextRetryDelay;
-    }
 }
