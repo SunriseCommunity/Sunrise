@@ -310,41 +310,6 @@ public class ScoreSubmissionHandlerTests(IntegrationDatabaseFixture fixture) : D
         Assert.NotNull(result.Value.Beatmap);
         Assert.NotNull(result.Value.BeatmapSet);
     }
-
-    // TODO: Fix. Expects medals to be achieved even while we moved them into processers. 
-    // [Fact]
-    // public async Task TestOnCommittedWithSubmissionRequestAchievesMedals()
-    // {
-    //     // Arrange
-    //     var user = await CreateTestUser();
-    //     var score = _mocker.Score.GetBestScoreableRandomScore();
-    //     score.EnrichWithUserData(user);
-    //     score.GameMode = GameMode.Standard;
-    //     score.Mods = Mods.DoubleTime;
-    //     var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
-    //     Assert.NotNull(userStats);
-    //     var userGrades = await Database.Users.Grades.GetUserGrades(user.Id, GameMode.Standard);
-    //     Assert.NotNull(userGrades);
-    //     var (beatmapSet, beatmap) = await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
-    //
-    //     var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
-    //
-    //     await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
-    //     App.MockHttpClient?.MockPerformanceCalculation();
-    //
-    //
-    //     var handler = (ScoreSubmissionHandler)Scope.ServiceProvider
-    //         .GetRequiredKeyedService<IScoreHandler>(ScoreTaskType.Submission);
-    //
-    //     // Act
-    //     await handler.OnCommitted(ctx, CancellationToken.None);
-    //
-    //     // Assert
-    //     var userMedals = await Database.Users.Medals.GetUserMedals(user.Id, GameMode.Standard);
-    //
-    //     Assert.NotNull(userMedals);
-    //     Assert.NotNull(userMedals.FirstOrDefault(m => m.MedalId == 92)); // Intro Medal for the DoubleTime mod
-    // }
 }
 
 [Collection("Integration tests collection")]
