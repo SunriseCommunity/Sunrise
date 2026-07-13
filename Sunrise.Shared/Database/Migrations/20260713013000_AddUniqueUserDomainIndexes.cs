@@ -1,12 +1,9 @@
 using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 
 #nullable disable
 
 namespace Sunrise.Shared.Database.Migrations;
 
-[DbContext(typeof(SunriseDbContext))]
-[Migration("20260713013000_AddUniqueUserDomainIndexes")]
 public partial class AddUniqueUserDomainIndexes : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
