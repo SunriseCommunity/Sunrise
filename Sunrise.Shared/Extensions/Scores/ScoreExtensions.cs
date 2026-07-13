@@ -9,6 +9,7 @@ using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils;
 using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Shared.Utils.Converters;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -153,7 +154,7 @@ public static class ScoreExtensions
                 TotalScore = long.Parse(split[9]),
                 MaxCombo = int.Parse(split[10]),
                 Perfect = bool.Parse(split[11]),
-                Grade = string.IsNullOrWhiteSpace(split[12]) ? throw new Exception("Grade is empty") : split[12], // TODO: This probably should be validated more strictly.
+                Grade = string.IsNullOrWhiteSpace(split[12]) ? throw new Exception("Grade is empty") : split[12],
                 Mods = (Mods)int.Parse(split[13]),
                 IsPassed = bool.Parse(split[14]),
                 GameMode = (GameMode)int.Parse(split[15]),
@@ -162,6 +163,19 @@ public static class ScoreExtensions
                 ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null),
                 Accuracy = 0
             };
+
+            if (score.Count300 < 0 || score.Count100 < 0 || score.Count50 < 0 || score.CountGeki < 0 ||
+                score.CountKatu < 0 || score.CountMiss < 0 || score.MaxCombo < 0 || score.TotalScore < 0)
+                throw new Exception("Score values must be within stable client bounds");
+
+            if (!Enum.IsDefined(typeof(GameMode), (byte)score.GameMode.ToVanillaGameMode()) || (int)score.GameMode > 3)
+                throw new Exception("Unsupported game mode");
+
+            if (!ScoreGradeUtil.TryParse(score.Grade, out _))
+                throw new Exception("Invalid grade");
+
+            if (!OsuVersion.IsValidClientVersion(score.OsuVersion))
+                throw new Exception("Invalid osu! version");
 
             score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
             score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
