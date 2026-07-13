@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using osu.Shared;
 using Serilog;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
@@ -36,7 +37,7 @@ public static class ScoreCandidateBuilderUtil
         {
             () => AssertPassedScoreHasReplay(score, queueEntry.ScoreSerialized),
             () => AssertScoreMods(score, queueEntry.ScoreSerialized),
-            () => AssertScoreState(score, submittedScore, beatmap),
+            () => AssertScoreState(score, beatmap),
             () => AssertGrade(score, submittedScore),
             () => AssertClientVersions(score.OsuVersion, queueEntry.OsuVersion),
             () => AssertScoreHashes(
@@ -66,7 +67,7 @@ public static class ScoreCandidateBuilderUtil
             : new ScoreProcessingError(ScoreProcessingErrorCode.InvalidClientVersion, "Invalid osu! client version").ToUnit();
     }
 
-    private static UnitResult<ScoreProcessingError> AssertGrade(Score score, SubmittedScore submittedScore)
+    public static UnitResult<ScoreProcessingError> AssertGrade(Score score, SubmittedScore submittedScore)
     {
         var expected = ScoreGradeUtil.Calculate(submittedScore).ToString();
         if (string.Equals(score.Grade, expected, StringComparison.Ordinal))
@@ -76,44 +77,33 @@ public static class ScoreCandidateBuilderUtil
         return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidGrade, $"Invalid grade; expected {expected}").ToUnit();
     }
 
-    private static UnitResult<ScoreProcessingError> AssertScoreState(Score score, SubmittedScore submittedScore, Beatmap beatmap)
+    public static UnitResult<ScoreProcessingError> AssertScoreState(Score score, Beatmap beatmap)
     {
         var mode = score.GameMode.ToVanillaGameMode();
         var primaryHits = mode switch
         {
-            osu.Shared.GameMode.Standard => score.Count300 + score.Count100 + score.Count50 + score.CountMiss,
-            osu.Shared.GameMode.Taiko => score.Count300 + score.Count100 + score.CountMiss,
-            osu.Shared.GameMode.CatchTheBeat => score.Count300 + score.Count100 + score.Count50 + score.CountKatu + score.CountMiss,
-            osu.Shared.GameMode.Mania => score.Count300 + score.Count100 + score.Count50 + score.CountGeki + score.CountKatu + score.CountMiss,
+            GameMode.Standard => score.Count300 + score.Count100 + score.Count50 + score.CountMiss,
+            GameMode.Taiko => score.Count300 + score.Count100 + score.CountMiss,
+            GameMode.CatchTheBeat => score.Count300 + score.Count100 + score.Count50 + score.CountKatu + score.CountMiss,
+            GameMode.Mania => score.Count300 + score.Count100 + score.Count50 + score.CountGeki + score.CountKatu + score.CountMiss,
             _ => -1
         };
 
         string? error = null;
+
         if (primaryHits <= 0)
             error = "Score has no judgments";
-        else if (beatmap.MaxCombo is > 0 && score.MaxCombo > beatmap.MaxCombo)
+        else if (!beatmap.Convert && beatmap.MaxCombo is > 0 && score.MaxCombo > beatmap.MaxCombo)
             error = "Maximum combo exceeds beatmap maximum combo";
-        else if (score.MaxCombo > primaryHits && mode is not osu.Shared.GameMode.CatchTheBeat)
-            error = "Maximum combo exceeds submitted judgments";
-        else if (score.Perfect && (score.CountMiss != 0 || beatmap.MaxCombo is > 0 && score.MaxCombo != beatmap.MaxCombo))
-            error = "Perfect flag is inconsistent with misses or beatmap maximum combo";
-        else if (mode == osu.Shared.GameMode.Taiko && (score.Count50 != 0 || score.CountGeki != 0 || score.CountKatu != 0))
-            error = "Taiko score contains unused judgments";
-        else if (mode == osu.Shared.GameMode.CatchTheBeat && score.CountGeki != 0)
-            error = "Catch score contains unused judgments";
-        else if (mode == osu.Shared.GameMode.Standard && !beatmap.Convert)
+        else if (mode == GameMode.Standard && !beatmap.Convert)
         {
             var objectCount = beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners;
             if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
                 error = "Standard judgment count does not match beatmap object count";
         }
-        else if (mode == osu.Shared.GameMode.Taiko && !beatmap.Convert && beatmap.CountCircles > 0 &&
-                 (primaryHits > beatmap.CountCircles || score.IsPassed && primaryHits != beatmap.CountCircles))
-            error = "Taiko judgment count does not match beatmap note count";
-
         if (error == null) return UnitResult.Success<ScoreProcessingError>();
 
-        Log.Warning("Invalid score state for user {UserId}: {Error}; score={Score}", score.UserId, error, submittedScore);
+        Log.Warning("Invalid score state for user {UserId}: {Error}; score={ScoreId}", score.UserId, error, score.Id);
         return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidScoreState, error).ToUnit();
     }
 

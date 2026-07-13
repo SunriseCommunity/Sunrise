@@ -70,6 +70,117 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
+    public void TestValidateBuiltScoreWithInvalidGradeReturnsFailure()
+    {
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        buildResult.Value.score.Grade = "D";
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidGrade, result.Error.Code);
+    }
+
+    [Fact]
+    public void TestValidateBuiltScoreWithInvalidScoreStateReturnsFailure()
+    {
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        buildResult.Value.score.Count300 = 0;
+        buildResult.Value.score.Count100 = 0;
+        buildResult.Value.score.Count50 = 0;
+        buildResult.Value.score.CountMiss = 0;
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsStandardSliderComboAboveJudgmentCount()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.MaxCombo = 200;
+        beatmap.MaxCombo = 200;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsManiaHoldComboAboveJudgmentCount()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Mania;
+        score.MaxCombo = 105;
+        beatmap.MaxCombo = 105;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsTaikoAuxiliaryJudgments()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Taiko;
+        score.Count300 = 303;
+        score.Count100 = 24;
+        score.Count50 = 0;
+        score.CountMiss = 0;
+        score.CountGeki = 1;
+        score.CountKatu = 0;
+        score.MaxCombo = 327;
+        beatmap.CountCircles = 327;
+        beatmap.MaxCombo = 327;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateDoesNotCompareTaikoJudgmentsWithCircleCount()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Taiko;
+        score.Count300 = 433;
+        score.Count100 = 105;
+        score.CountMiss = 2;
+        score.MaxCombo = 329;
+        beatmap.CountCircles = 500;
+        beatmap.MaxCombo = 592;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsConvertedManiaComboAboveOriginalMaximum()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Mania;
+        score.MaxCombo = 299;
+        beatmap.MaxCombo = 200;
+        beatmap.Convert = true;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsCatchPerfectWithDifferentBeatmapCombo()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.CatchTheBeat;
+        score.Count300 = 62;
+        score.Count100 = 57;
+        score.Count50 = 78;
+        score.CountMiss = 0;
+        score.MaxCombo = 119;
+        score.Perfect = true;
+        beatmap.MaxCombo = 197;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
     public void TestValidateBuiltScoreWithPassedScoreWithoutReplayReturnsReplayMissingError()
     {
         // Arrange

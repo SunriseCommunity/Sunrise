@@ -80,8 +80,8 @@ public static class ReplayValidationUtil
 
             var rate = score.Mods.HasFlag(Mods.DoubleTime) || score.Mods.HasFlag(Mods.Nightcore) ? 1.5 :
                 score.Mods.HasFlag(Mods.HalfTime) ? 0.75 : 1;
-            var maximumDuration = beatmap.TotalLength * 1000d / rate + 30_000;
-            if (duration < 0 || duration > maximumDuration || score.TimeElapsed > 0 && Math.Abs(duration - score.TimeElapsed) > 60_000)
+            var maximumDuration = beatmap.TotalLength * 1000d + 30_000;
+            if (duration < 0 || duration > maximumDuration || score.TimeElapsed > 0 && Math.Abs(duration / rate - score.TimeElapsed) > 60_000)
                 return Failure("Replay duration is inconsistent with the submitted play");
 
             Log.Information("Validated replay for user {UserId}: compressed={CompressedBytes}, decompressed={DecompressedBytes}, frames={Frames}, elapsedMs={ElapsedMs}",

@@ -40,18 +40,12 @@ public static class ScoreGradeUtil
         if (total == 0) return ScoreGrade.D;
         if (score.Count300 == total) return ScoreGrade.X;
 
-        var ratio300 = score.Count300 * 100d / total;
-        var ratio50 = score.Count50 * 100d / total;
-        return ratio300 switch
-        {
-            > 90 when ratio50 <= 1 && score.CountMiss == 0 => ScoreGrade.S,
-            > 90 => ScoreGrade.A,
-            > 80 when score.CountMiss == 0 => ScoreGrade.A,
-            > 80 => ScoreGrade.B,
-            > 70 when score.CountMiss == 0 => ScoreGrade.B,
-            > 60 => ScoreGrade.C,
-            _ => ScoreGrade.D
-        };
+        var ratio300 = (float)score.Count300 / total;
+        var ratio50 = (float)score.Count50 / total;
+        if (ratio300 > .9 && ratio50 <= .01 && score.CountMiss == 0) return ScoreGrade.S;
+        if (ratio300 > .9 || ratio300 > .8 && score.CountMiss == 0) return ScoreGrade.A;
+        if (ratio300 > .8 || ratio300 > .7 && score.CountMiss == 0) return ScoreGrade.B;
+        return ratio300 > .6 ? ScoreGrade.C : ScoreGrade.D;
     }
 
     private static ScoreGrade CalculateTaiko(SubmittedScore score)
@@ -60,22 +54,16 @@ public static class ScoreGradeUtil
         if (total == 0) return ScoreGrade.D;
         if (score.Count300 == total) return ScoreGrade.X;
 
-        var great = score.Count300 * 100d / total;
-        return great switch
-        {
-            > 90 when score.CountMiss == 0 => ScoreGrade.S,
-            > 90 => ScoreGrade.A,
-            > 80 when score.CountMiss == 0 => ScoreGrade.A,
-            > 80 => ScoreGrade.B,
-            > 70 when score.CountMiss == 0 => ScoreGrade.B,
-            > 60 => ScoreGrade.C,
-            _ => ScoreGrade.D
-        };
+        var great = (float)score.Count300 / total;
+        if (great > .9 && score.CountMiss == 0) return ScoreGrade.S;
+        if (great > .9 || great > .8 && score.CountMiss == 0) return ScoreGrade.A;
+        if (great > .8 || great > .7 && score.CountMiss == 0) return ScoreGrade.B;
+        return great > .6 ? ScoreGrade.C : ScoreGrade.D;
     }
 
     private static ScoreGrade CalculateAccuracyGrade(double accuracy, double s, double a, double b, double c)
     {
-        if (Math.Abs(accuracy - 100) < 0.0001) return ScoreGrade.X;
+        if (accuracy == 100) return ScoreGrade.X;
         return accuracy > s ? ScoreGrade.S : accuracy > a ? ScoreGrade.A : accuracy > b ? ScoreGrade.B : accuracy > c ? ScoreGrade.C : ScoreGrade.D;
     }
 }

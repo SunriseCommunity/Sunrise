@@ -55,15 +55,39 @@ public class ScoreSubmissionValidationTests
         Assert.Equal(ScoreGrade.F, ScoreGradeUtil.Calculate(score));
     }
 
+    [Fact]
+    public void StandardExactEightyPercentWithMissesCalculatesB()
+    {
+        var score = CreateSubmittedScore(count300: 76, count100: 14, count50: 1, countMiss: 4);
+        Assert.Equal(ScoreGrade.B, ScoreGradeUtil.Calculate(score));
+    }
+
+    [Theory]
+    [InlineData(GameMode.CatchTheBeat, 100, ScoreGrade.X)]
+    [InlineData(GameMode.CatchTheBeat, 98, ScoreGrade.A)]
+    [InlineData(GameMode.CatchTheBeat, 94, ScoreGrade.B)]
+    [InlineData(GameMode.CatchTheBeat, 90, ScoreGrade.C)]
+    [InlineData(GameMode.CatchTheBeat, 85, ScoreGrade.D)]
+    [InlineData(GameMode.Mania, 100, ScoreGrade.X)]
+    [InlineData(GameMode.Mania, 95, ScoreGrade.A)]
+    [InlineData(GameMode.Mania, 90, ScoreGrade.B)]
+    [InlineData(GameMode.Mania, 80, ScoreGrade.C)]
+    [InlineData(GameMode.Mania, 70, ScoreGrade.D)]
+    public void AccuracyGradeThresholdsAreStrict(GameMode mode, double accuracy, ScoreGrade expected)
+    {
+        Assert.Equal(expected, ScoreGradeUtil.Calculate(CreateSubmittedScore(gameMode: mode, accuracy: accuracy)));
+    }
+
     private static string ValidScoreString() =>
         "0123456789abcdef0123456789abcdef:player:abcdef0123456789abcdef0123456789:100:0:0:0:0:0:1000000:100:True:X:0:True:0:240101120000:b20240101";
 
-    private static SubmittedScore CreateSubmittedScore(Mods mods = Mods.None, bool isPassed = true) => new()
+    private static SubmittedScore CreateSubmittedScore(Mods mods = Mods.None, bool isPassed = true, int count300 = 100,
+        int count100 = 0, int count50 = 0, int countMiss = 0, GameMode gameMode = GameMode.Standard, double accuracy = 100) => new()
     {
         PlayerUsername = "player", ScoreHash = "hash", BeatmapHash = "map", TotalScore = 1_000_000,
-        MaxCombo = 100, Count300 = 100, Count100 = 0, Count50 = 0, CountMiss = 0, CountKatu = 0,
+        MaxCombo = 100, Count300 = count300, Count100 = count100, Count50 = count50, CountMiss = countMiss, CountKatu = 0,
         CountGeki = 0, Perfect = true, Mods = mods, Grade = "X", IsPassed = isPassed,
-        GameMode = GameMode.Standard, WhenPlayed = DateTime.UtcNow, OsuVersion = "b20240101",
-        ClientTime = DateTime.UtcNow, Accuracy = 100
+        GameMode = gameMode, WhenPlayed = DateTime.UtcNow, OsuVersion = "b20240101",
+        ClientTime = DateTime.UtcNow, Accuracy = accuracy
     };
 }
