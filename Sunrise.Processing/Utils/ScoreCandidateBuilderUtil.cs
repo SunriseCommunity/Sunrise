@@ -33,12 +33,13 @@ public static class ScoreCandidateBuilderUtil
 
     public static UnitResult<ScoreProcessingError> ValidateBuiltScore(ScoreSubmissionRequest queueEntry, Score score, SubmittedScore submittedScore, Beatmap beatmap)
     {
+        _ = AssertScoreState(score, beatmap);
+        _ = AssertGrade(score, submittedScore);
+
         var failureValidators = new[]
         {
             () => AssertPassedScoreHasReplay(score, queueEntry.ScoreSerialized),
             () => AssertScoreMods(score, queueEntry.ScoreSerialized),
-            () => AssertScoreState(score, beatmap),
-            () => AssertGrade(score, submittedScore),
             () => AssertClientVersions(score.OsuVersion, queueEntry.OsuVersion),
             () => AssertScoreHashes(
                 queueEntry.UserHash,

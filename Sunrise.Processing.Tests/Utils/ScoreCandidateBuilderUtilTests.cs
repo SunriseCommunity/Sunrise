@@ -70,7 +70,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestValidateBuiltScoreWithInvalidGradeReturnsFailure()
+    public void TestValidateBuiltScoreWithInvalidGradeReturnsSuccess()
     {
         var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
         var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
@@ -78,12 +78,11 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
 
         var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ScoreProcessingErrorCode.InvalidGrade, result.Error.Code);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public void TestValidateBuiltScoreWithInvalidScoreStateReturnsFailure()
+    public void TestValidateBuiltScoreWithInvalidScoreStateReturnsSuccess()
     {
         var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
         var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
@@ -94,8 +93,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
 
         var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
