@@ -8,7 +8,6 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
-using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
@@ -70,12 +69,31 @@ public class ScoreSubmissionHandler(
         if (Configuration.EnforceLatestClientVersion)
             await CheckScoreClientVersion(score.OsuVersion, queueEntry.OsuVersion, ct);
 
-        var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap.Checksum ?? string.Empty);
+        var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap);
 
         if (validateBuiltScoreResult.IsFailure)
         {
             await RestrictUserIfErrorCodeIsBannable(score.UserId, validateBuiltScoreResult.Error.Code);
             return validateBuiltScoreResult.Error.ToResult<ScorePrepareContext>();
+        }
+
+        if (score is { IsPassed: true, ReplayFileId: not null })
+        {
+            var replay = await Database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
+            if (replay == null)
+                return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidReplay, "Replay file could not be loaded").ToResult<ScorePrepareContext>();
+
+            var replayValidation = ReplayValidationUtil.Validate(replay, beatmap, score);
+
+            if (replayValidation.IsFailure)
+            {
+                Log.Warning("Replay validation failed for score {ScoreId} submitted by user {UserId} on beatmap {BeatmapHash}: {Error}",
+                    score.Id,
+                    score.UserId,
+                    score.BeatmapHash,
+                    replayValidation.Error);
+                // return replayValidation.Error.ToResult<ScorePrepareContext>(); TODO: Reject invalid replays. I don't have full data if the implementation is correct right now, so I will just log it for now. This is a temporary measure until I can verify the replay validation logic is correct.
+            }
         }
 
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
@@ -118,12 +136,27 @@ public class ScoreSubmissionHandler(
         ScoreProcessingTask? task = null)
     {
         var prepareResult = await PrepareInlineSubmissionAsync(beatmapRatelimitSession, queueEntry, ct);
+
         if (prepareResult.IsFailure)
+        {
+            Log.Error("Failed to prepare inline score submission for user {UserId} on beatmap {BeatmapHash}: {Error}",
+                queueEntry.UserId,
+                queueEntry.BeatmapHash,
+                prepareResult.Error);
             return prepareResult.Error;
+        }
+
 
         var commitResult = await CommitAsync(prepareResult.Value, task, ct);
+
         if (commitResult.IsFailure)
+        {
+            Log.Error("Failed to commit inline score submission for user {UserId} on beatmap {BeatmapHash}: {Error}",
+                queueEntry.UserId,
+                queueEntry.BeatmapHash,
+                commitResult.Error);
             return commitResult.Error;
+        }
 
         var committedCtx = commitResult.Value;
 
