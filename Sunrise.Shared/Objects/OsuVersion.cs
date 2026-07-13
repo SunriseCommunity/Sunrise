@@ -26,7 +26,7 @@ public partial class OsuVersion
             stream = "cuttingedge";
             raw = raw[..^"cuttingedge".Length];
         }
-        
+
         if (raw.EndsWith("beta", StringComparison.OrdinalIgnoreCase))
         {
             stream = "stable40";
@@ -34,6 +34,14 @@ public partial class OsuVersion
         }
 
         return ParseFromRaw(stream, raw);
+    }
+
+    public static bool IsValidClientVersion(string versionString)
+    {
+        return !string.IsNullOrWhiteSpace(versionString) && ClientVersionPattern().IsMatch(versionString) &&
+               TryParse(versionString.StartsWith(VersionPrefix, StringComparison.OrdinalIgnoreCase)
+                   ? VersionPrefix + versionString[1..]
+                   : VersionPrefix + versionString) != null;
     }
 
     public static OsuVersion? Parse(string stream, string versionString)
@@ -98,4 +106,8 @@ public partial class OsuVersion
 
     [GeneratedRegex(@"^\d+")]
     private static partial Regex LeadingDigits();
+
+    // NOTE: This might need only accept numbers, as all score submitted versions I have in yyyymmdd format. But this will do for now. 
+    [GeneratedRegex(@"^b?\d{8}(?:\.\d+)?(?:beta|cuttingedge)?$", RegexOptions.IgnoreCase)]
+    private static partial Regex ClientVersionPattern();
 }
