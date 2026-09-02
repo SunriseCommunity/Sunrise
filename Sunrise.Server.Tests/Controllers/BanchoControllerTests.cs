@@ -3,6 +3,7 @@ using HOPEless.Bancho;
 using HOPEless.Bancho.Objects;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Repositories;
@@ -118,7 +119,7 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
         var serverLoginReplyPacket = responsePackets.FirstOrDefault(x => x.Type == PacketType.ServerLoginReply);
         Assert.NotNull(serverLoginReplyPacket);
 
-        var isLoginShouldFail = privilege.HasFlag(UserPrivilege.SuperUser) == false;
+        var isLoginShouldFail = !privilege.HasFlag(UserPrivilege.SuperUser);
         var isLoginFailed = new BanchoInt(serverLoginReplyPacket.Data).Value == (int)LoginResponse.ServerError;
         Assert.Equal(isLoginShouldFail, isLoginFailed);
 
@@ -317,6 +318,46 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
 
         var presenceData = new BanchoUserPresence(serverOtherPlayerPresencePacket.Data);
         Assert.Equal(otherPlayerUser.Id, presenceData.UserId);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task TestUserJoinedPresenceShowsCountryDependingOnUseUserProfileCountryIfLocationHiddenConfig(bool shouldShowUserProfileCountry)
+    {
+        // Arrange
+        var client = App.CreateClient().UseClient("c");
+
+        EnvManager.Set("General:UseUserProfileCountryIfLocationHidden", shouldShowUserProfileCountry.ToString());
+
+        var user = _mocker.User.GetRandomUser();
+        user.Country = CountryCode.CA;
+        await CreateTestUser(user);
+
+        var requestCountry = CountryCode.US;
+
+        App.MockHttpClient!.MockResponse<Location>(ApiType.GetIPLocation,
+            _ => new Location
+            {
+                Country = nameof(CountryCode.US)
+            });
+
+        var loginRequest = _mocker.User.GetUserLoginRequest(user);
+        loginRequest.ShowCityLocation = false;
+
+        // Act
+        var response = await client.PostAsync("/", new StringContent(GetUserBodyLoginRequest(loginRequest)));
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+
+        var responsePackets = await GetResponsePackets(response);
+        var presencePacket = responsePackets.FirstOrDefault(x =>
+            x.Type == PacketType.ServerUserPresence && new BanchoUserPresence(x.Data).UserId == user.Id);
+
+        Assert.NotNull(presencePacket);
+
+        Assert.Equal(new BanchoUserPresence(presencePacket.Data).CountryCode, (byte)(shouldShowUserProfileCountry ? user.Country : requestCountry));
     }
 
     [Fact]

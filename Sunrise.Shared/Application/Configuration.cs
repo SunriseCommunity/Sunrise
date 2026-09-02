@@ -48,6 +48,9 @@ public static class Configuration
     public static bool GetUserLocationUsingCloudflareHeaders =>
         Environment.GetEnvironmentVariable("USE_CLOUDFLARE_HEADERS_FOR_GEOLOCATION") == "true";
 
+    public static bool UseUserProfileCountryIfLocationHidden =>
+        Config.GetSection("General").GetValue<bool?>("UseUserProfileCountryIfLocationHidden") ?? true;
+
     public static bool DemoteSuperUserOnStartup =>
         Environment.GetEnvironmentVariable("DEMOTE_SUPERUSER_ON_STARTUP_USE_THIS_IF_SOMEONE_STOLEN_YOUR_SUPERUSER_ACCOUNT") == "true";
 
