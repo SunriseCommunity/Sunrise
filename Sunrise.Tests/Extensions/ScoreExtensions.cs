@@ -148,7 +148,7 @@ public static class ScoreExtensions
         score.CountMiss = 0;
         score.Count50 = 0;
         score.Count100 = 0;
-        score.Count300 = int.MaxValue;
-        score.MaxCombo = int.MaxValue;
+        score.Count300 = ushort.MaxValue;
+        score.MaxCombo = ushort.MaxValue;
     }
 }
