@@ -377,7 +377,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
+        score.Grade = ScoreGrade.S;
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
 
@@ -1080,7 +1080,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
@@ -1109,7 +1109,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Submitted,
@@ -1153,7 +1153,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
             IsScoreable = true,
             GameMode = gameMode,
@@ -1249,7 +1249,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
@@ -1278,7 +1278,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Failed,
@@ -1322,7 +1322,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
             IsScoreable = true,
             GameMode = gameMode,
@@ -1376,7 +1376,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
-        oldScore.Grade = "A";
+        oldScore.Grade = ScoreGrade.A;
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.None;
@@ -1402,7 +1402,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = oldScore.Mods;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = "B";
+        score.Grade = ScoreGrade.B;
 
         score.TotalScore = oldScore.TotalScore + 1;
 
@@ -1453,7 +1453,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
-        oldScore.Grade = "A";
+        oldScore.Grade = ScoreGrade.A;
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.Hidden;
@@ -1479,7 +1479,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = Mods.DoubleTime;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = "B";
+        score.Grade = ScoreGrade.B;
 
         score.TotalScore = oldScore.TotalScore - 1;
 
@@ -1653,7 +1653,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
-        moddedBestScore.Grade = "S";
+        moddedBestScore.Grade = ScoreGrade.S;
         moddedBestScore.SubmissionStatus = SubmissionStatus.Best;
         moddedBestScore.Mods = Mods.None;
         moddedBestScore.GameMode = GameMode.Standard;
@@ -1670,7 +1670,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
+        score.Grade = ScoreGrade.S;
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
 

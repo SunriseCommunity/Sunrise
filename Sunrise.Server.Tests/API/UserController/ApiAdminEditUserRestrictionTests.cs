@@ -11,6 +11,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
@@ -267,7 +268,7 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             CountGeki = 17,
             Perfect = false,
             Mods = mods,
-            Grade = "B",
+            Grade = ScoreGrade.B,
             IsPassed = true,
             IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,
@@ -462,7 +463,7 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             CountGeki = 17,
             Perfect = false,
             Mods = mods,
-            Grade = "B",
+            Grade = ScoreGrade.B,
             IsPassed = true,
             IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,

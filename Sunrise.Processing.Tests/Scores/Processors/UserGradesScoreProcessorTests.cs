@@ -325,7 +325,8 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             UserId = user.Id,
             GameMode = GameMode.Standard
         };
-        var score = CreateScore(user, "Z", submissionStatus: SubmissionStatus.Best);
+        var score = CreateScore(user, submissionStatus: SubmissionStatus.Best);
+        score.Grade = (ScoreGrade)999;
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
         // Act & Assert
@@ -357,7 +358,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountGeki = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = grade,
+            Grade = Enum.Parse<ScoreGrade>(grade),
             IsPassed = isPassed,
             IsScoreable = isScoreable,
             SubmissionStatus = submissionStatus,
@@ -371,6 +372,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
 
         score.EnrichWithUserData(user);
         score.EnrichWithBeatmapData(beatmap);
+        score.ReconcileModsAndGameMode(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }

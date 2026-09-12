@@ -160,13 +160,13 @@ public class ScoreSubmissionUtilTests : BaseTest
         beatmap.EnrichWithScoreData(newScore);
 
         var previousBeatmapBest = _mocker.Score.GetBestScoreableRandomScore();
-        previousBeatmapBest.EnrichWithBeatmapData(beatmap);
+        previousBeatmapBest.PrepareForSubmission(beatmap);
         previousBeatmapBest.EnrichWithUserData(user);
         previousBeatmapBest.PerformancePoints = 50;
         previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
 
         var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
-        previousPerformanceBest.EnrichWithBeatmapData(beatmap);
+        previousPerformanceBest.PrepareForSubmission(beatmap);
         previousPerformanceBest.EnrichWithUserData(user);
         previousPerformanceBest.PerformancePoints = 100;
         previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;
@@ -218,13 +218,13 @@ public class ScoreSubmissionUtilTests : BaseTest
         beatmap.StatusString = "loved";
 
         var previousBeatmapBest = _mocker.Score.GetBestScoreableRandomScore();
-        previousBeatmapBest.EnrichWithBeatmapData(beatmap);
+        previousBeatmapBest.PrepareForSubmission(beatmap);
         previousBeatmapBest.EnrichWithUserData(user);
         previousBeatmapBest.PerformancePoints = 50;
         previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
 
         var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
-        previousPerformanceBest.EnrichWithBeatmapData(beatmap);
+        previousPerformanceBest.PrepareForSubmission(beatmap);
         previousPerformanceBest.EnrichWithUserData(user);
         previousPerformanceBest.PerformancePoints = 100;
         previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;

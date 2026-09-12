@@ -322,11 +322,11 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.EnrichWithUserData(user);
         score.TotalScore = totalScore;
-        score.Grade = grade;
+        score.Grade = Enum.Parse<ScoreGrade>(grade);
         score.MaxCombo = maxCombo;
         score.Mods = mods;
         score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.ReconcileModsAndGameMode(beatmap);
         score.SubmissionStatus = submissionStatus;
         score.LocalProperties = score.LocalProperties.FromScore(score);
 

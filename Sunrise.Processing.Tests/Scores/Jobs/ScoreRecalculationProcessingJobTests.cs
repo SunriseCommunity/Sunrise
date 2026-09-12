@@ -263,9 +263,10 @@ public class ScoreRecalculationProcessingJobTests(IntegrationDatabaseFixture fix
         score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = totalScore;
-        score.Grade = grade;
+        score.Grade = Enum.Parse<ScoreGrade>(grade);
         score.MaxCombo = maxCombo;
         score.EnrichWithBeatmapData(beatmap);
+        score.ReconcileModsAndGameMode(beatmap);
         score.SubmissionStatus = submissionStatus;
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
