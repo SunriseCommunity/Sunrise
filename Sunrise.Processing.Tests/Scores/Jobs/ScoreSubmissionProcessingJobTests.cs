@@ -51,7 +51,7 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
             CancellationToken.None);
 
         // Assert
-        Assert.True(result.IsSuccess);
+        Assert.True(result.IsSuccess, result.IsFailure ? result.Error.ToString() : null);
 
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(persistedScore);
@@ -85,6 +85,7 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         var existingBest = _mocker.Score.GetBestScoreableRandomScore();
         existingBest.EnrichWithUserData(user);
         existingBest.Mods = score.Mods;
+        existingBest.GameMode = score.GameMode;
         existingBest.PrepareForSubmission(beatmap);
 
         existingBest.TotalScore = score.TotalScore + 1000;
@@ -142,6 +143,7 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         existingBest.EnrichWithUserData(user);
         existingBest.TotalScore = score.TotalScore - 100;
         existingBest.Mods = score.Mods;
+        existingBest.GameMode = score.GameMode;
         existingBest.PrepareForSubmission(beatmap);
         existingBest.SubmissionStatus = SubmissionStatus.Best;
         existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);

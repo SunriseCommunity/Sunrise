@@ -325,6 +325,7 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         score.Grade = Enum.Parse<ScoreGrade>(grade);
         score.MaxCombo = maxCombo;
         score.Mods = mods;
+        score.GameMode = score.GameMode.EnrichWithMods(mods);
         score.EnrichWithBeatmapData(beatmap);
         score.ReconcileModsAndGameMode(beatmap);
         score.SubmissionStatus = submissionStatus;
