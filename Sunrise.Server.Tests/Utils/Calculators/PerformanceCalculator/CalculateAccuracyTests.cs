@@ -1,5 +1,6 @@
 ﻿using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Tests.Abstracts;
 using Mods = osu.Shared.Mods;
@@ -164,7 +165,7 @@ public class CalculateAccuracyTests : BaseTest
             MaxCombo = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,
@@ -199,7 +200,7 @@ public class CalculateAccuracyTests : BaseTest
             MaxCombo = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,
@@ -236,7 +237,7 @@ public class CalculateAccuracyTests : BaseTest
             MaxCombo = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,
@@ -271,7 +272,7 @@ public class CalculateAccuracyTests : BaseTest
             MaxCombo = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,
@@ -306,7 +307,7 @@ public class CalculateAccuracyTests : BaseTest
             MaxCombo = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,
@@ -341,7 +342,7 @@ public class CalculateAccuracyTests : BaseTest
             TotalScore = 0,
             MaxCombo = 0,
             Perfect = false,
-            Grade = null,
+            Grade = ScoreGrade.X,
             IsPassed = false,
             WhenPlayed = default,
             OsuVersion = null,

@@ -9,31 +9,105 @@ namespace Sunrise.Shared.Tests.Utils;
 
 public class ScoreSubmissionValidationTests
 {
-    [Theory]
-    [InlineData("b20240101")]
-    [InlineData("20260412")]
-    [InlineData("b20240101.2")]
-    [InlineData("b20240101beta")]
-    [InlineData("b20240101.12cuttingedge")]
-    public void ClientVersionPatternAcceptsStableFormats(string version)
-    {
-        Assert.True(OsuVersion.IsValidClientVersion(version));
-    }
-
-    [Theory]
-    [InlineData("2024010")]
-    [InlineData("b202401")]
-    [InlineData("b20240101.2junk")]
-    [InlineData("b20241340")]
-    public void ClientVersionPatternRejectsMalformedFormats(string version)
-    {
-        Assert.False(OsuVersion.IsValidClientVersion(version));
-    }
-
     [Fact]
-    public void ParserRejectsUnknownGrade()
+    public void ParserAcceptsSerializedScoreVersionAsCalendarDate()
     {
-        var score = ValidScoreString().Replace(":X:0:", ":Z:0:");
+        var result = ValidScoreString().TryParseBaseScore(DateTime.UtcNow);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("20260412", result.Value.OsuVersion);
+    }
+
+    [Theory]
+    [InlineData("b20260412")]
+    [InlineData("20260412.1")]
+    [InlineData("20260412beta")]
+    [InlineData("20260412cuttingedge")]
+    [InlineData("20260229")]
+    [InlineData("20261301")]
+    [InlineData("2026041")]
+    public void ParserRejectsMalformedSerializedScoreVersion(string version)
+    {
+        var score = ReplaceField(ValidScoreString(), 17, version);
+
+        Assert.True(score.TryParseBaseScore(DateTime.UtcNow).IsFailure);
+    }
+
+    [Theory]
+    [InlineData("Z")]
+    [InlineData("0")]
+    [InlineData("x")]
+    public void ParserRejectsUnknownGrade(string grade)
+    {
+        var score = ReplaceField(ValidScoreString(), 12, grade);
+        Assert.True(score.TryParseBaseScore(DateTime.UtcNow).IsFailure);
+    }
+
+    [Theory]
+    [InlineData(3, "-1")]
+    [InlineData(3, "65536")]
+    [InlineData(4, "-1")]
+    [InlineData(4, "65536")]
+    [InlineData(5, "-1")]
+    [InlineData(5, "65536")]
+    [InlineData(6, "-1")]
+    [InlineData(6, "65536")]
+    [InlineData(7, "-1")]
+    [InlineData(7, "65536")]
+    [InlineData(8, "-1")]
+    [InlineData(8, "65536")]
+    [InlineData(10, "-1")]
+    [InlineData(10, "65536")]
+    [InlineData(9, "-1")]
+    [InlineData(9, "2147483648")]
+    public void ParserRejectsValuesOutsideStableNumericRanges(int field, string value)
+    {
+        var score = ReplaceField(ValidScoreString(), field, value);
+
+        Assert.True(score.TryParseBaseScore(DateTime.UtcNow).IsFailure);
+    }
+
+    [Theory]
+    [InlineData("XH")]
+    [InlineData("X")]
+    [InlineData("SH")]
+    [InlineData("S")]
+    [InlineData("A")]
+    [InlineData("B")]
+    [InlineData("C")]
+    [InlineData("D")]
+    [InlineData("F")]
+    public void GradeRoundTripsAsCanonicalToken(string token)
+    {
+        var parsed = ReplaceField(ValidScoreString(), 12, token).TryParseBaseScore(DateTime.UtcNow);
+        var persisted = new Sunrise.Shared.Database.Models.Score { Grade = parsed.Value.Grade };
+
+        Assert.True(parsed.IsSuccess);
+        Assert.Equal(token, parsed.Value.Grade.ToString());
+        Assert.Equal(token, persisted.ToScoreString("player").Split(':')[12]);
+    }
+
+    [Theory]
+    [InlineData(0, Mods.Relax, GameMode.RelaxStandard)]
+    [InlineData(1, Mods.ScoreV2, GameMode.ScoreV2Taiko)]
+    public void ParserTransformsVanillaWireModeUsingMods(int wireMode, Mods mods, GameMode expected)
+    {
+        var score = ReplaceField(ReplaceField(ValidScoreString(), 13, ((int)mods).ToString()), 15, wireMode.ToString());
+
+        var parsed = score.TryParseBaseScore(DateTime.UtcNow);
+
+        Assert.True(parsed.IsSuccess);
+        Assert.Equal(expected, parsed.Value.GameMode);
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("4")]
+    [InlineData("12")]
+    public void ParserRejectsGameModeOutsideVanillaWireRange(string wireMode)
+    {
+        var score = ReplaceField(ValidScoreString(), 15, wireMode);
+
         Assert.True(score.TryParseBaseScore(DateTime.UtcNow).IsFailure);
     }
 
@@ -76,7 +150,14 @@ public class ScoreSubmissionValidationTests
 
     private static string ValidScoreString()
     {
-        return "0123456789abcdef0123456789abcdef:player:abcdef0123456789abcdef0123456789:100:0:0:0:0:0:1000000:100:True:X:0:True:0:240101120000:b20240101";
+        return "0123456789abcdef0123456789abcdef:player:abcdef0123456789abcdef0123456789:100:0:0:0:0:0:1000000:100:True:X:0:True:0:240101120000:20260412";
+    }
+
+    private static string ReplaceField(string score, int index, string value)
+    {
+        var fields = score.Split(':');
+        fields[index] = value;
+        return string.Join(':', fields);
     }
 
     private static SubmittedScore CreateSubmittedScore(Mods mods = Mods.None, bool isPassed = true, int count300 = 100,
@@ -97,11 +178,11 @@ public class ScoreSubmissionValidationTests
             CountGeki = 0,
             Perfect = true,
             Mods = mods,
-            Grade = "X",
+            Grade = ScoreGrade.X,
             IsPassed = isPassed,
             GameMode = gameMode,
             WhenPlayed = DateTime.UtcNow,
-            OsuVersion = "b20240101",
+            OsuVersion = "20260412",
             ClientTime = DateTime.UtcNow,
             Accuracy = accuracy
         };

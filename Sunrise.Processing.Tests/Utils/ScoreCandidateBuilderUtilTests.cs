@@ -69,12 +69,37 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         Assert.True(result.IsSuccess);
     }
 
+    [Theory]
+    [InlineData("b20260412", "b20260412")]
+    [InlineData("20260412.1", "20260412.1")]
+    [InlineData("20260412", "20260413")]
+    [InlineData("20260412", null)]
+    public void TestValidateBuiltScoreWithInvalidOrMismatchedSubmissionVersionsReturnsInvalidClientVersion(
+        string scoreVersion, string? formVersion)
+    {
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        buildResult.Value.score.OsuVersion = scoreVersion;
+        queueEntry.OsuVersion = formVersion!;
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(
+            queueEntry,
+            buildResult.Value.score,
+            buildResult.Value.submittedScore,
+            beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidClientVersion, result.Error.Code);
+    }
+
     [Fact]
     public void TestValidateBuiltScoreWithInvalidGradeReturnsSuccess()
     {
         var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
         var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
-        buildResult.Value.score.Grade = "D";
+        buildResult.Value.score.Grade = ScoreGrade.D;
+        buildResult.Value.score.ScoreHash = buildResult.Value.score.ComputeOnlineHash(
+            buildResult.Value.submittedScore.PlayerUsername.Trim(), queueEntry.ClientHash, queueEntry.StoryboardHash);
 
         var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
 
@@ -82,24 +107,49 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestValidateBuiltScoreWithInvalidScoreStateReturnsSuccess()
+    public void TestValidateBuiltScoreWithValidNativeStandardScoreReturnsSuccess()
     {
         var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
         var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
-        buildResult.Value.score.Count300 = 0;
-        buildResult.Value.score.Count100 = 0;
-        buildResult.Value.score.Count50 = 0;
-        buildResult.Value.score.CountMiss = 0;
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 10;
+        beatmap.MaxCombo = 150;
 
         var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
 
         Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public void TestValidateBuiltScoreWithPassedNativeStandardJudgmentMismatchReturnsInvalidScoreStateFirst()
+    {
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry(replayFileId: null);
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 11;
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+        Assert.Equal(ScoreProcessingDisposition.Permanent, result.Error.Disposition);
     }
 
     [Fact]
     public void TestAssertScoreStateAllowsStandardSliderComboAboveJudgmentCount()
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 10;
         score.MaxCombo = 200;
         beatmap.MaxCombo = 200;
 
@@ -107,75 +157,121 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestAssertScoreStateAllowsManiaHoldComboAboveJudgmentCount()
+    public void TestAssertScoreStateAllowsFailedNativeStandardJudgmentPrefix()
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
-        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Mania;
-        score.MaxCombo = 105;
-        beatmap.MaxCombo = 105;
+        score.IsPassed = false;
+        score.Perfect = false;
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 11;
 
         Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
     }
 
     [Fact]
-    public void TestAssertScoreStateAllowsTaikoAuxiliaryJudgments()
+    public void TestAssertScoreStateRejectsFailedNativeStandardJudgmentExcess()
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
-        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Taiko;
-        score.Count300 = 303;
-        score.Count100 = 24;
-        score.Count50 = 0;
-        score.CountMiss = 0;
+        score.IsPassed = false;
+        score.Perfect = false;
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 9;
+
+        var result = ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateRejectsNativeStandardComboAboveMetadataMaximum()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 10;
+        beatmap.MaxCombo = 99;
+
+        var result = ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAllowsNativeStandardComboWhenMetadataMaximumIsUnavailable()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 10;
+        beatmap.MaxCombo = 0;
+        score.MaxCombo = 100;
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateRejectsUnusedNativeStandardJudgments()
+    {
+        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
+        beatmap.Convert = false;
+        beatmap.ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
+        beatmap.CountCircles = 40;
+        beatmap.CountSliders = 50;
+        beatmap.CountSpinners = 10;
         score.CountGeki = 1;
-        score.CountKatu = 0;
-        score.MaxCombo = 327;
-        beatmap.CountCircles = 327;
-        beatmap.MaxCombo = 327;
 
-        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+        var result = ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
     }
 
-    [Fact]
-    public void TestAssertScoreStateDoesNotCompareTaikoJudgmentsWithCircleCount()
+    [Theory]
+    [InlineData(Sunrise.Shared.Enums.Beatmaps.GameMode.Standard, true, 0)]
+    [InlineData(Sunrise.Shared.Enums.Beatmaps.GameMode.Taiko, false, 1)]
+    [InlineData(Sunrise.Shared.Enums.Beatmaps.GameMode.CatchTheBeat, false, 2)]
+    [InlineData(Sunrise.Shared.Enums.Beatmaps.GameMode.Mania, false, 3)]
+    public void TestAssertScoreStateSkipsNativeStandardMapChecksForConversionsAndOtherModes(
+        Sunrise.Shared.Enums.Beatmaps.GameMode scoreMode, bool convert, int beatmapMode)
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
-        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Taiko;
-        score.Count300 = 433;
-        score.Count100 = 105;
-        score.CountMiss = 2;
-        score.MaxCombo = 329;
-        beatmap.CountCircles = 500;
-        beatmap.MaxCombo = 592;
+        score.GameMode = scoreMode;
+        score.MaxCombo = 500;
+        beatmap.Convert = convert;
+        beatmap.ModeInt = beatmapMode;
+        beatmap.CountCircles = 1;
+        beatmap.CountSliders = 1;
+        beatmap.CountSpinners = 1;
+        beatmap.MaxCombo = 10;
 
         Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
     }
 
     [Fact]
-    public void TestAssertScoreStateAllowsConvertedManiaComboAboveOriginalMaximum()
+    public void TestAssertScoreStateRejectsPerfectScoreWithMissInAnyMode()
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
         score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Mania;
-        score.MaxCombo = 299;
-        beatmap.MaxCombo = 200;
+        score.CountMiss = 1;
+        score.Perfect = true;
         beatmap.Convert = true;
 
-        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
-    }
+        var result = ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap);
 
-    [Fact]
-    public void TestAssertScoreStateAllowsCatchPerfectWithDifferentBeatmapCombo()
-    {
-        var (_, score, beatmap, _, _) = CreateValidQueueEntry();
-        score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.CatchTheBeat;
-        score.Count300 = 62;
-        score.Count100 = 57;
-        score.Count50 = 78;
-        score.CountMiss = 0;
-        score.MaxCombo = 119;
-        score.Perfect = true;
-        beatmap.MaxCombo = 197;
-
-        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
     }
 
     [Fact]
@@ -307,7 +403,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         var score = _mocker.Score.GetBestScoreableRandomScore();
 
         score.EnrichWithUserData(user);
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
         score.GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Standard;
         beatmap.Convert = true;
         beatmap.MaxCombo = null;
@@ -316,8 +412,8 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         score.CountGeki = score.CountKatu = 0;
         score.MaxCombo = 100;
         score.Perfect = true;
-        score.Grade = isPassed ? "X" : "F";
-        score.OsuVersion = "b20240101";
+        score.Grade = isPassed ? ScoreGrade.X : ScoreGrade.F;
+        score.OsuVersion = "20260412";
         score.IsScoreable = true;
         score.IsPassed = isPassed;
         score.Mods = mods;
