@@ -66,9 +66,6 @@ public class ScoreSubmissionHandler(
 
         var (submittedScore, score) = buildScoreCandidateResult.Value;
 
-        if (Configuration.EnforceLatestClientVersion)
-            await CheckScoreClientVersion(score.OsuVersion, queueEntry.OsuVersion, ct);
-
         var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap);
 
         if (validateBuiltScoreResult.IsFailure)
@@ -77,24 +74,8 @@ public class ScoreSubmissionHandler(
             return validateBuiltScoreResult.Error.ToResult<ScorePrepareContext>();
         }
 
-        if (score is { IsPassed: true, ReplayFileId: not null })
-        {
-            var replay = await Database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
-            if (replay == null)
-                return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidReplay, "Replay file could not be loaded").ToResult<ScorePrepareContext>();
-
-            var replayValidation = ReplayValidationUtil.Validate(replay, beatmap, score);
-
-            if (replayValidation.IsFailure)
-            {
-                Log.Warning("Replay validation failed for score {ScoreId} submitted by user {UserId} on beatmap {BeatmapHash}: {Error}",
-                    score.Id,
-                    score.UserId,
-                    score.BeatmapHash,
-                    replayValidation.Error);
-                // return replayValidation.Error.ToResult<ScorePrepareContext>(); TODO: Reject invalid replays. I don't have full data if the implementation is correct right now, so I will just log it for now. This is a temporary measure until I can verify the replay validation logic is correct.
-            }
-        }
+        if (Configuration.EnforceLatestClientVersion)
+            await CheckScoreClientVersion(score.OsuVersion, ct);
 
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
         if (scorePerformanceResult.IsFailure)
@@ -196,12 +177,11 @@ public class ScoreSubmissionHandler(
         return UnitResult.Success<ScoreProcessingError>();
     }
 
-    private async Task CheckScoreClientVersion(string scoreOsuVersion, string formOsuVersion, CancellationToken ct)
+    private async Task CheckScoreClientVersion(string scoreOsuVersion, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
-        var versionString = !string.IsNullOrWhiteSpace(scoreOsuVersion) ? scoreOsuVersion : formOsuVersion;
-        var clientVersion = OsuVersion.TryParse(versionString);
+        var clientVersion = OsuVersion.TryParse($"b{scoreOsuVersion}");
         if (clientVersion == null)
             return;
 
