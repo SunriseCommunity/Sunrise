@@ -27,7 +27,7 @@ public class ScoreResponse
         CountMiss = score.CountMiss;
         GameMode = (GameMode)score.GameMode.ToVanillaGameMode();
         GameModeExtended = score.GameMode;
-        Grade = score.Grade;
+        Grade = score.Grade.ToString();
         Id = score.Id;
         IsPassed = score.IsPassed;
         HasReplay = score.ReplayFileId != null;

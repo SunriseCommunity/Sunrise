@@ -64,9 +64,9 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             return;
 
         if (previousOverallBest != null)
-            UpdateUserGradesCount(userGrades, previousOverallBest.Grade, -1);
+            userGrades.UpdateGradeCount(previousOverallBest.Grade, -1);
 
-        UpdateUserGradesCount(userGrades, score.Grade, 1);
+        userGrades.UpdateGradeCount(score.Grade, 1);
     }
 
     private static void DecrementWithScore(ScoreCommitContext ctx)
@@ -88,9 +88,9 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             return;
 
         if (promotedOverallBest != null)
-            UpdateUserGradesCount(userGrades, promotedOverallBest.Grade, 1);
+            userGrades.UpdateGradeCount(promotedOverallBest.Grade, 1);
 
-        UpdateUserGradesCount(userGrades, score.Grade, -1);
+        userGrades.UpdateGradeCount(score.Grade, -1);
     }
 
     private static bool IsOverallBestScore(Score score, Score? peer)
@@ -107,23 +107,4 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             .First() == score;
     }
 
-    private static void UpdateUserGradesCount(UserGrades userGrades, string grade, int delta)
-    {
-        if (delta is > 1 or < -1)
-            throw new ArgumentOutOfRangeException(nameof(delta));
-
-        switch (grade)
-        {
-            case "XH": userGrades.CountXH = Math.Max(0, userGrades.CountXH + delta); break;
-            case "X": userGrades.CountX = Math.Max(0, userGrades.CountX + delta); break;
-            case "SH": userGrades.CountSH = Math.Max(0, userGrades.CountSH + delta); break;
-            case "S": userGrades.CountS = Math.Max(0, userGrades.CountS + delta); break;
-            case "A": userGrades.CountA = Math.Max(0, userGrades.CountA + delta); break;
-            case "B": userGrades.CountB = Math.Max(0, userGrades.CountB + delta); break;
-            case "C": userGrades.CountC = Math.Max(0, userGrades.CountC + delta); break;
-            case "D": userGrades.CountD = Math.Max(0, userGrades.CountD + delta); break;
-            case "F": break;
-            default: throw new ArgumentOutOfRangeException($"Unknown grade: {grade} while updating user grades with score.");
-        }
-    }
 }
