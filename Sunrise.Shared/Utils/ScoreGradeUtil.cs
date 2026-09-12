@@ -1,31 +1,41 @@
 using osu.Shared;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
-using GameMode = osu.Shared.GameMode;
+using InternalGameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using OsuGameMode = osu.Shared.GameMode;
 
 namespace Sunrise.Shared.Utils;
 
 // https://osu.ppy.sh/wiki/en/Gameplay/Grade
 public static class ScoreGradeUtil
 {
-    public static bool TryParse(string value, out ScoreGrade grade) => Enum.TryParse(value, false, out grade) && Enum.IsDefined(grade);
+    public static bool TryParse(string value, out ScoreGrade grade) =>
+        Enum.TryParse(value, false, out grade) && Enum.GetName(grade) == value;
 
-    public static ScoreGrade Calculate(SubmittedScore score)
+    public static ScoreGrade Calculate(SubmittedScore score) =>
+        Calculate(score.IsPassed, score.GameMode, score.Accuracy, score.Mods, score.Count300, score.Count100, score.Count50, score.CountMiss);
+
+    public static ScoreGrade Calculate(Score score) =>
+        Calculate(score.IsPassed, score.GameMode, score.Accuracy, score.Mods, score.Count300, score.Count100, score.Count50, score.CountMiss);
+
+    private static ScoreGrade Calculate(bool isPassed, InternalGameMode gameMode, double accuracy, Mods mods,
+        int count300, int count100, int count50, int countMiss)
     {
-        if (!score.IsPassed)
+        if (!isPassed)
             return ScoreGrade.F;
 
-        var grade = score.GameMode.ToVanillaGameMode() switch
+        var grade = gameMode.ToVanillaGameMode() switch
         {
-            GameMode.Standard => CalculateStandard(score),
-            GameMode.Taiko => CalculateTaiko(score),
-            GameMode.CatchTheBeat => CalculateAccuracyGrade(score.Accuracy, 98, 94, 90, 85),
-            GameMode.Mania => CalculateAccuracyGrade(score.Accuracy, 95, 90, 80, 70),
-            _ => throw new ArgumentOutOfRangeException(nameof(score.GameMode))
+            OsuGameMode.Standard => CalculateStandard(count300, count100, count50, countMiss),
+            OsuGameMode.Taiko => CalculateTaiko(count300, count100, countMiss),
+            OsuGameMode.CatchTheBeat => CalculateAccuracyGrade(accuracy, 98, 94, 90, 85),
+            OsuGameMode.Mania => CalculateAccuracyGrade(accuracy, 95, 90, 80, 70),
+            _ => throw new ArgumentOutOfRangeException(nameof(gameMode))
         };
 
-        var silver = score.Mods.HasFlag(Mods.Hidden) || score.Mods.HasFlag(Mods.Flashlight) || score.Mods.HasFlag(Mods.FadeIn);
+        var silver = mods.HasFlag(Mods.Hidden) || mods.HasFlag(Mods.Flashlight) || mods.HasFlag(Mods.FadeIn);
         return (grade, silver) switch
         {
             (ScoreGrade.X, true) => ScoreGrade.XH,
@@ -34,30 +44,30 @@ public static class ScoreGradeUtil
         };
     }
 
-    private static ScoreGrade CalculateStandard(SubmittedScore score)
+    private static ScoreGrade CalculateStandard(int count300, int count100, int count50, int countMiss)
     {
-        var total = score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
+        var total = count300 + count100 + count50 + countMiss;
         if (total == 0) return ScoreGrade.D;
-        if (score.Count300 == total) return ScoreGrade.X;
+        if (count300 == total) return ScoreGrade.X;
 
-        var ratio300 = (float)score.Count300 / total;
-        var ratio50 = (float)score.Count50 / total;
-        if (ratio300 > .9 && ratio50 <= .01 && score.CountMiss == 0) return ScoreGrade.S;
-        if (ratio300 > .9 || ratio300 > .8 && score.CountMiss == 0) return ScoreGrade.A;
-        if (ratio300 > .8 || ratio300 > .7 && score.CountMiss == 0) return ScoreGrade.B;
+        var ratio300 = (float)count300 / total;
+        var ratio50 = (float)count50 / total;
+        if (ratio300 > .9 && ratio50 <= .01 && countMiss == 0) return ScoreGrade.S;
+        if (ratio300 > .9 || ratio300 > .8 && countMiss == 0) return ScoreGrade.A;
+        if (ratio300 > .8 || ratio300 > .7 && countMiss == 0) return ScoreGrade.B;
         return ratio300 > .6 ? ScoreGrade.C : ScoreGrade.D;
     }
 
-    private static ScoreGrade CalculateTaiko(SubmittedScore score)
+    private static ScoreGrade CalculateTaiko(int count300, int count100, int countMiss)
     {
-        var total = score.Count300 + score.Count100 + score.CountMiss;
+        var total = count300 + count100 + countMiss;
         if (total == 0) return ScoreGrade.D;
-        if (score.Count300 == total) return ScoreGrade.X;
+        if (count300 == total) return ScoreGrade.X;
 
-        var great = (float)score.Count300 / total;
-        if (great > .9 && score.CountMiss == 0) return ScoreGrade.S;
-        if (great > .9 || great > .8 && score.CountMiss == 0) return ScoreGrade.A;
-        if (great > .8 || great > .7 && score.CountMiss == 0) return ScoreGrade.B;
+        var great = (float)count300 / total;
+        if (great > .9 && countMiss == 0) return ScoreGrade.S;
+        if (great > .9 || great > .8 && countMiss == 0) return ScoreGrade.A;
+        if (great > .8 || great > .7 && countMiss == 0) return ScoreGrade.B;
         return great > .6 ? ScoreGrade.C : ScoreGrade.D;
     }
 
