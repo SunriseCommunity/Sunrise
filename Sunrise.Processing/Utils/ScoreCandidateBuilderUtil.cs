@@ -1,6 +1,7 @@
 using CSharpFunctionalExtensions;
 using osu.Shared;
 using Serilog;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Scores;
@@ -33,11 +34,11 @@ public static class ScoreCandidateBuilderUtil
 
     public static UnitResult<ScoreProcessingError> ValidateBuiltScore(ScoreSubmissionRequest queueEntry, Score score, SubmittedScore submittedScore, Beatmap beatmap)
     {
-        _ = AssertScoreState(score, beatmap);
-        _ = AssertGrade(score, submittedScore);
+        AssertGrade(score, submittedScore); // Grade is an audit signal until historical data supports stricter enforcement.
 
         var failureValidators = new[]
         {
+            () => AssertScoreState(score, beatmap),
             () => AssertPassedScoreHasReplay(score, queueEntry.ScoreSerialized),
             () => AssertScoreMods(score, queueEntry.ScoreSerialized),
             () => AssertClientVersions(score.OsuVersion, queueEntry.OsuVersion),
@@ -63,45 +64,44 @@ public static class ScoreCandidateBuilderUtil
 
     private static UnitResult<ScoreProcessingError> AssertClientVersions(string scoreVersion, string formVersion)
     {
-        return OsuVersion.IsValidClientVersion(scoreVersion) && OsuVersion.IsValidClientVersion(formVersion)
+        return ScoreSubmissionVersionValidator.IsValid(scoreVersion) &&
+               ScoreSubmissionVersionValidator.IsValid(formVersion) &&
+               scoreVersion == formVersion
             ? UnitResult.Success<ScoreProcessingError>()
             : new ScoreProcessingError(ScoreProcessingErrorCode.InvalidClientVersion, "Invalid osu! client version").ToUnit();
     }
 
-    public static UnitResult<ScoreProcessingError> AssertGrade(Score score, SubmittedScore submittedScore)
+    public static void AssertGrade(Score score, SubmittedScore submittedScore)
     {
-        var expected = ScoreGradeUtil.Calculate(submittedScore).ToString();
-        if (string.Equals(score.Grade, expected, StringComparison.Ordinal))
-            return UnitResult.Success<ScoreProcessingError>();
+        var expected = ScoreGradeUtil.Calculate(submittedScore);
+        if (score.Grade == expected)
+            return;
 
+        SunriseMetrics.ScoreSubmissionGradeDiscrepancyCounterInc(score.GameMode, score.Grade, expected);
         Log.Warning("Invalid grade {Grade}; expected {ExpectedGrade} for submitted score by user {UserId}", score.Grade, expected, score.UserId);
-        return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidGrade, $"Invalid grade; expected {expected}").ToUnit();
     }
 
     public static UnitResult<ScoreProcessingError> AssertScoreState(Score score, Beatmap beatmap)
     {
         var mode = score.GameMode.ToVanillaGameMode();
-        var primaryHits = mode switch
-        {
-            GameMode.Standard => score.Count300 + score.Count100 + score.Count50 + score.CountMiss,
-            GameMode.Taiko => score.Count300 + score.Count100 + score.CountMiss,
-            GameMode.CatchTheBeat => score.Count300 + score.Count100 + score.Count50 + score.CountKatu + score.CountMiss,
-            GameMode.Mania => score.Count300 + score.Count100 + score.Count50 + score.CountGeki + score.CountKatu + score.CountMiss,
-            _ => -1
-        };
-
         string? error = null;
 
-        if (primaryHits <= 0)
-            error = "Score has no judgments";
-        else if (!beatmap.Convert && beatmap.MaxCombo is > 0 && score.MaxCombo > beatmap.MaxCombo)
-            error = "Maximum combo exceeds beatmap maximum combo";
-        else if (mode == GameMode.Standard && !beatmap.Convert)
+        if (score.Perfect && score.CountMiss > 0)
+            error = "Perfect score contains misses";
+        else if (mode == GameMode.Standard && beatmap.ModeInt == (int)GameMode.Standard && !beatmap.Convert)
         {
-            var objectCount = beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners;
-            if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
+            var primaryHits = (long)score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
+            var objectCount = (long)beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners;
+
+            if (score.CountGeki != 0 || score.CountKatu != 0)
+                error = "Standard score contains unused judgments";
+            else if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
                 error = "Standard judgment count does not match beatmap object count";
+            else if (beatmap.MaxCombo is > 0 and var maxCombo && (long)score.MaxCombo > maxCombo)
+                error = "Maximum combo exceeds beatmap maximum combo";
         }
+        // TODO: Add ruleset-specific validation for conversions and non-standard modes.
+
         if (error == null) return UnitResult.Success<ScoreProcessingError>();
 
         Log.Warning("Invalid score state for user {UserId}: {Error}; score={ScoreId}", score.UserId, error, score.Id);
