@@ -80,8 +80,6 @@ public static class ScoreExtensions
         var nativeStandard = vanillaMode == GameMode.Standard && beatmap.ModeInt == (int)osu.Shared.GameMode.Standard && !beatmap.Convert;
         if (nativeStandard)
         {
-            score.CountGeki = 0;
-            score.CountKatu = 0;
             var objectCount = Math.Max(0L, (long)beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners);
             var maximumRepresentableJudgments = 4L * ushort.MaxValue;
 

@@ -161,9 +161,6 @@ public class MockScoreService(MockService service)
 
         score.Normalize();
 
-        score.CountGeki = 0;
-        score.CountKatu = 0;
-
         score.OsuVersion = score.ClientTime.ToString("yyyyMMdd");
         if (score.CountMiss > 0)
             score.Perfect = false;

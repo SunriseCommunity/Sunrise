@@ -93,9 +93,7 @@ public static class ScoreCandidateBuilderUtil
             var primaryHits = (long)score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
             var objectCount = (long)beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners;
 
-            if (score.CountGeki != 0 || score.CountKatu != 0)
-                error = "Standard score contains unused judgments";
-            else if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
+            if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
                 error = "Standard judgment count does not match beatmap object count";
             else if (beatmap.MaxCombo is > 0 and var maxCombo && (long)score.MaxCombo > maxCombo)
                 error = "Maximum combo exceeds beatmap maximum combo";

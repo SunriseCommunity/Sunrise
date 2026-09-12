@@ -222,7 +222,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestAssertScoreStateRejectsUnusedNativeStandardJudgments()
+    public void TestAssertScoreStateIgnoresNativeStandardAuxiliaryJudgments()
     {
         var (_, score, beatmap, _, _) = CreateValidQueueEntry();
         beatmap.Convert = false;
@@ -231,11 +231,9 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         beatmap.CountSliders = 50;
         beatmap.CountSpinners = 10;
         score.CountGeki = 1;
+        score.CountKatu = 2;
 
-        var result = ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal(ScoreProcessingErrorCode.InvalidScoreState, result.Error.Code);
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
     }
 
     [Theory]

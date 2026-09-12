@@ -53,8 +53,8 @@ public class ScoreEnrichmentTests
         ScoreCandidateBuilderUtil.AssertGrade(score, submittedScore);
         Assert.Equal(ScoreGrade.X, score.Grade);
         Assert.Equal(InternalGameMode.ScoreV2Standard, score.GameMode);
-        Assert.Equal(0, score.CountGeki);
-        Assert.Equal(0, score.CountKatu);
+        Assert.Equal(10, score.CountGeki);
+        Assert.Equal(10, score.CountKatu);
     }
 
     [Fact]
