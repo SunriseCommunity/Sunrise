@@ -74,6 +74,25 @@ public class ScoreSubmissionHandler(
             return validateBuiltScoreResult.Error.ToResult<ScorePrepareContext>();
         }
 
+        if (score is { IsPassed: true, ReplayFileId: not null })
+        {
+            var replay = await Database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
+            if (replay == null)
+                return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidReplay, "Replay file could not be loaded").ToResult<ScorePrepareContext>();
+
+            var replayValidation = ReplayValidationUtil.ValidateHeader(replay);
+
+            if (replayValidation.IsFailure)
+            {
+                Log.Warning("Replay validation failed for score {ScoreId} submitted by user {UserId} on beatmap {BeatmapHash}: {Error}",
+                    score.Id,
+                    score.UserId,
+                    score.BeatmapHash,
+                    replayValidation.Error);
+                return replayValidation.Error.ToResult<ScorePrepareContext>();
+            }
+        }
+
         if (Configuration.EnforceLatestClientVersion)
             await CheckScoreClientVersion(score.OsuVersion, ct);
 
