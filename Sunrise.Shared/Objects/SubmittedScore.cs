@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Shared.Enums.Scores;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Objects;
@@ -18,7 +19,7 @@ public class SubmittedScore
     public required int CountGeki { get; init; }
     public required bool Perfect { get; init; }
     public required Mods Mods { get; init; }
-    public required string Grade { get; init; }
+    public required ScoreGrade Grade { get; init; }
     public required bool IsPassed { get; init; }
     public required GameMode GameMode { get; set; }
     public required DateTime WhenPlayed { get; init; }

@@ -5,6 +5,7 @@ using osu.Shared;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -57,7 +58,7 @@ public class Score
     public int CountGeki { get; set; }
     public bool Perfect { get; set; }
     public Mods Mods { get; set; }
-    public string Grade { get; set; }
+    public ScoreGrade Grade { get; set; }
 
     public bool IsPassed { get; set; }
 
