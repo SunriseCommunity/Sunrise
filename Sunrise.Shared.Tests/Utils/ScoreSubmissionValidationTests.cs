@@ -1,4 +1,5 @@
 using osu.Shared;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
@@ -45,19 +46,19 @@ public class ScoreSubmissionValidationTests
 
     [Theory]
     [InlineData(3, "-1")]
-    [InlineData(3, "65536")]
+    [InlineData(3, "2147483648")]
     [InlineData(4, "-1")]
-    [InlineData(4, "65536")]
+    [InlineData(4, "2147483648")]
     [InlineData(5, "-1")]
-    [InlineData(5, "65536")]
+    [InlineData(5, "2147483648")]
     [InlineData(6, "-1")]
-    [InlineData(6, "65536")]
+    [InlineData(6, "2147483648")]
     [InlineData(7, "-1")]
-    [InlineData(7, "65536")]
+    [InlineData(7, "2147483648")]
     [InlineData(8, "-1")]
-    [InlineData(8, "65536")]
+    [InlineData(8, "2147483648")]
     [InlineData(10, "-1")]
-    [InlineData(10, "65536")]
+    [InlineData(10, "2147483648")]
     [InlineData(9, "-1")]
     [InlineData(9, "2147483648")]
     public void ParserRejectsValuesOutsideStableNumericRanges(int field, string value)
@@ -80,7 +81,10 @@ public class ScoreSubmissionValidationTests
     public void GradeRoundTripsAsCanonicalToken(string token)
     {
         var parsed = ReplaceField(ValidScoreString(), 12, token).TryParseBaseScore(DateTime.UtcNow);
-        var persisted = new Sunrise.Shared.Database.Models.Score { Grade = parsed.Value.Grade };
+        var persisted = new Score
+        {
+            Grade = parsed.Value.Grade
+        };
 
         Assert.True(parsed.IsSuccess);
         Assert.Equal(token, parsed.Value.Grade.ToString());
