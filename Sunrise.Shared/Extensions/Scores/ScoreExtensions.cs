@@ -4,7 +4,6 @@ using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
@@ -146,14 +145,14 @@ public static class ScoreExtensions
                 BeatmapHash = string.IsNullOrWhiteSpace(split[0]) ? throw new Exception("Beatmap hash is empty") : split[0],
                 PlayerUsername = string.IsNullOrWhiteSpace(split[1]) ? throw new Exception("Player username is empty") : split[1],
                 ScoreHash = string.IsNullOrWhiteSpace(split[2]) ? throw new Exception("Score hash is empty") : split[2],
-                Count300 = ParseStableUShort(split[3], nameof(SubmittedScore.Count300)),
-                Count100 = ParseStableUShort(split[4], nameof(SubmittedScore.Count100)),
-                Count50 = ParseStableUShort(split[5], nameof(SubmittedScore.Count50)),
-                CountGeki = ParseStableUShort(split[6], nameof(SubmittedScore.CountGeki)),
-                CountKatu = ParseStableUShort(split[7], nameof(SubmittedScore.CountKatu)),
-                CountMiss = ParseStableUShort(split[8], nameof(SubmittedScore.CountMiss)),
+                Count300 = ParseStableInt(split[3], nameof(SubmittedScore.Count300)),
+                Count100 = ParseStableInt(split[4], nameof(SubmittedScore.Count100)),
+                Count50 = ParseStableInt(split[5], nameof(SubmittedScore.Count50)),
+                CountGeki = ParseStableInt(split[6], nameof(SubmittedScore.CountGeki)),
+                CountKatu = ParseStableInt(split[7], nameof(SubmittedScore.CountKatu)),
+                CountMiss = ParseStableInt(split[8], nameof(SubmittedScore.CountMiss)),
                 TotalScore = ParseStableInt(split[9], nameof(SubmittedScore.TotalScore)),
-                MaxCombo = ParseStableUShort(split[10], nameof(SubmittedScore.MaxCombo)),
+                MaxCombo = ParseStableInt(split[10], nameof(SubmittedScore.MaxCombo)),
                 Perfect = bool.Parse(split[11]),
                 Grade = ScoreGradeUtil.TryParse(split[12], out var grade) ? grade : throw new Exception("Invalid grade"),
                 Mods = (Mods)int.Parse(split[13]),
@@ -177,13 +176,6 @@ public static class ScoreExtensions
         {
             return Result.Failure<SubmittedScore>($"Error parsing score string: {ex.Message}");
         }
-    }
-
-    private static int ParseStableUShort(string value, string fieldName)
-    {
-        return ushort.TryParse(value, out var parsed)
-            ? parsed
-            : throw new Exception($"{fieldName} must be between 0 and {ushort.MaxValue}");
     }
 
     private static int ParseStableInt(string value, string fieldName)
