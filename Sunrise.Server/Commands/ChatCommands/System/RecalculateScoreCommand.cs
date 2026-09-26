@@ -20,19 +20,19 @@ public class RecalculateScoreCommand : IChatCommand
         if (args == null || args.Length < 1 || !int.TryParse(args[0], out var scoreId))
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}reprocessscore <scoreId>");
+                $"Usage: {Configuration.BotPrefix}recalculatescore <scoreId>; Example: {Configuration.BotPrefix}recalculatescore 1337");
             return Task.CompletedTask;
         }
 
         BackgroundTaskService.TryStartNewBackgroundJob<RecalculateScoreCommand>(
-            () => ReprocessScore(session.UserId, scoreId, CancellationToken.None),
+            () => RecalculateScore(session.UserId, scoreId, CancellationToken.None),
             message => ChatCommandRepository.TrySendMessage(session.UserId, message));
 
         return Task.CompletedTask;
     }
 
     [AutomaticRetry(Attempts = 0)]
-    public async Task ReprocessScore(int userId, int scoreId, CancellationToken ct)
+    public async Task RecalculateScore(int userId, int scoreId, CancellationToken ct)
     {
         await BackgroundTaskService.ExecuteBackgroundTask<RecalculateScoreCommand>(
             async () =>

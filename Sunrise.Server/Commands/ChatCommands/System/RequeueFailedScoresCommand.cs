@@ -30,9 +30,24 @@ public class RequeueFailedScoresCommand : IChatCommand
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var requeuedCount = taskId.HasValue
-            ? (await database.ScoreProcessingTasks.TryRequeueFailedTask(taskId.Value)).IsSuccess ? 1 : 0
-            : await database.ScoreProcessingTasks.TryRequeueFailedTasks();
+        int requeuedCount;
+
+        if (taskId.HasValue)
+        {
+            var requeueResult = await database.ScoreProcessingTasks.TryRequeueFailedTask(taskId.Value);
+
+            if (requeueResult.IsFailure)
+            {
+                ChatCommandRepository.SendMessage(session, requeueResult.Error);
+                return;
+            }
+
+            requeuedCount = 1;
+        }
+        else
+        {
+            requeuedCount = await database.ScoreProcessingTasks.TryRequeueFailedTasks();
+        }
 
         ChatCommandRepository.SendMessage(session, $"Requeued {requeuedCount} failed score-processing {(requeuedCount == 1 ? "task" : "tasks")}.");
     }

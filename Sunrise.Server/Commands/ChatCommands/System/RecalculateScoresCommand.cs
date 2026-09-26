@@ -19,10 +19,10 @@ public class RecalculateScoresCommand : IChatCommand
 {
     public Task Handle(Session session, ChatChannel? channel, string[]? args)
     {
-        if (args == null || args.Length < 3)
+        if (args == null || args.Length < 2)
         {
             ChatCommandRepository.SendMessage(session,
-                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum | all> <startFromId> <isStartMaintenance>; Example: {Configuration.BotPrefix}recalculatescores 0 10 true for osu std starting from score 10 with maintenance mode on.");
+                $"Usage: {Configuration.BotPrefix}recalculatescores <modeEnum | all> <startFromId> [isStartMaintenance]; Example: {Configuration.BotPrefix}recalculatescores 0 10 for osu std starting from score 10. The command only queues recalculations, so maintenance mode is optional.");
             return Task.CompletedTask;
         }
 
@@ -40,7 +40,9 @@ public class RecalculateScoresCommand : IChatCommand
             return Task.CompletedTask;
         }
 
-        if (!bool.TryParse(args[2], out var isStartMaintenance))
+        var isStartMaintenance = false;
+
+        if (args.Length >= 3 && !bool.TryParse(args[2], out isStartMaintenance))
         {
             ChatCommandRepository.SendMessage(session, "Invalid isStartMaintenance value.");
             return Task.CompletedTask;
@@ -79,6 +81,9 @@ public class RecalculateScoresCommand : IChatCommand
 
                     foreach (var score in pageScores)
                     {
+                        if (++scoresReviewedTotal % 100 == 0)
+                            ChatCommandRepository.TrySendMessage(userId, $"Scores reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
+
                         var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(new ScoreProcessingTask
                         {
                             TaskType = ScoreTaskType.Recalculation,
@@ -88,16 +93,9 @@ public class RecalculateScoresCommand : IChatCommand
                         }, ct);
 
                         ct.ThrowIfCancellationRequested();
-                        scoresReviewedTotal++;
 
                         if (!queued)
-                        {
                             scoresSkippedTotal++;
-                            continue;
-                        }
-
-                        if (scoresReviewedTotal % 100 == 0)
-                            ChatCommandRepository.TrySendMessage(userId, $"Scores reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
                     }
 
                     if (pageScores.Count < pageSize) break;
