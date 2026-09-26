@@ -37,33 +37,25 @@ public class ScoreSideEffectsPublisherService(
             throw new InvalidOperationException("Beatmap must be present in context to build score submit response.");
 
         var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(ctx.User, ctx.UserStats.GameMode, ct: ct);
-        ctx.UserStats.LocalProperties.Rank = newUserRank;
 
-        var scoresWithLeaderboardPosition = await database.Scores.EnrichScoresWithLeaderboardPosition(new List<Score?>
+        var scoresWithLeaderboardPosition = await database.Scores.GetScoresWithLeaderboardPositions(new List<Score?>
             {
                 ctx.Score,
                 ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue,
                 ctx.UserPersonalBestScores?.OverallPeer?.BestScoreForPerformanceCalculation
-            }.Where(s => s != null).Cast<Score>().ToList(),
+            }.Where(s => s != null).Cast<Score>().DistinctBy(s => s.Id).ToList(),
             ct);
 
-        // Fill leaderboard position for the graphs
-        scoresWithLeaderboardPosition.ForEach(s =>
-        {
-            if (s.Id == ctx.Score.Id)
-                ctx.Score.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
-            else if (ctx.UserPersonalBestScores?.OverallPeer != null)
-            {
-                if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreByScoreValue.Id)
-                    ctx.UserPersonalBestScores.OverallPeer.BestScoreByScoreValue.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
-                else if (s.Id == ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.Id)
-                    ctx.UserPersonalBestScores.OverallPeer.BestScoreForPerformanceCalculation.LocalProperties.LeaderboardPosition = s.LocalProperties.LeaderboardPosition;
-            }
-        });
+        var previousBestId = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue?.Id;
+        var previousScoreRank = scoresWithLeaderboardPosition
+            .FirstOrDefault(entry => entry.Score.Id == previousBestId).LeaderboardPosition;
+        var newScoreRank = scoresWithLeaderboardPosition
+            .FirstOrDefault(entry => entry.Score.Id == ctx.Score.Id).LeaderboardPosition;
 
         var newAchievements = ctx.UnlockedMedals != null ? string.Join("/", ctx.UnlockedMedals.Select(ScoreMedalUtil.GetMedalScoreSubmissionResultString)) : null;
 
-        return ScoreSubmissionUtil.GetScoreSubmitResponse(ctx.Beatmap, ctx.UserStats, prevUserStats, ctx.Score, ctx.UserPersonalBestScores?.OverallPeer, newAchievements);
+        return ScoreSubmissionUtil.GetScoreSubmitResponse(ctx.Beatmap, ctx.UserStats, prevUserStats, ctx.PreviousUserRank, newUserRank,
+            ctx.Score, previousScoreRank, newScoreRank, ctx.UserPersonalBestScores?.OverallPeer, newAchievements);
     }
 
     public async Task<Result> PublishScoreSubmissionSideEffects(

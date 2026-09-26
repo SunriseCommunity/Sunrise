@@ -110,15 +110,12 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
 
         var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
         sameModsBest.PrepareForSubmission(beatmap);
-        sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
 
         var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
         overallBest.PrepareForSubmission(beatmap);
-        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
 
         var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         userStats.RankedScore = overallBest.TotalScore;
@@ -411,15 +408,12 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
 
         var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
         sameModsBest.PrepareForSubmission(beatmap);
-        sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
 
         var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
         overallBest.PrepareForSubmission(beatmap);
-        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
 
         var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         userStats.RankedScore = score.TotalScore;
@@ -974,7 +968,6 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         score.EnrichWithUserData(user);
         score.EnrichWithBeatmapData(beatmap);
         score.ReconcileModsAndGameMode(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }
 }

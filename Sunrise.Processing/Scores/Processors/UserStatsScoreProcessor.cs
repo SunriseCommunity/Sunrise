@@ -78,7 +78,7 @@ public class UserStatsScoreProcessor(
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (!score.LocalProperties.IsRanked)
+        if (!score.BeatmapStatus.IsRanked())
             return;
 
         if (isBetterTotalScoreValue)
@@ -152,7 +152,7 @@ public class UserStatsScoreProcessor(
     private async Task ApplyWeightedRefresh(ScoreCommitContext ctx)
     {
         var score = ctx.Score;
-        if (!score.LocalProperties.IsRanked || !score.IsScoreable || !score.IsPassed)
+        if (!score.BeatmapStatus.IsRanked() || !score.IsScoreable || !score.IsPassed)
             return;
 
         (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);

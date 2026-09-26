@@ -425,7 +425,6 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
         score.EnrichWithUserData(user);
         score.EnrichWithBeatmapData(beatmap);
         score.ReconcileModsAndGameMode(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }
 }

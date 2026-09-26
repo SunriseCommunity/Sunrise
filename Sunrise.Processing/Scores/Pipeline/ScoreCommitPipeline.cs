@@ -10,7 +10,6 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
-using LocalProperties = Sunrise.Shared.Database.Models.LocalProperties;
 
 namespace Sunrise.Processing.Scores.Pipeline;
 
@@ -37,6 +36,7 @@ public class ScoreCommitPipeline
 
         var committed = commitResult.Value;
         ctx.OriginalState = committed.OriginalState;
+        ctx.PreviousUserRank = committed.PreviousUserRank;
         ctx.PreviousUserStatsSnapshot = committed.PreviousUserStatsSnapshot;
         ctx.UserPersonalBestScores = committed.UserPersonalBestScores;
         ctx.UnlockedMedals = committed.UnlockedMedals;
@@ -118,7 +118,6 @@ public class ScoreCommitPipeline
         }
 
         var (currentRank, _) = await _database.Users.Stats.Ranks.GetUserRanks(user, lockedStats.GameMode, false, ct);
-        lockedStats.LocalProperties.Rank = currentRank;
 
         var targetScoreId = prepareCtx.TaskType == ScoreTaskType.Submission ? (int?)null : preparedScore.Id;
         var (lockedScore, peers) = await _database.Scores.GetUserScoreByIdWithBeatmapPeersForUpdate(
@@ -148,10 +147,9 @@ public class ScoreCommitPipeline
             prepareCtx.BeatmapSet)
         {
             OriginalState = originalState,
+            PreviousUserRank = currentRank,
             PreviousUserStatsSnapshot = lockedStats.Clone()
         };
-
-        score.LocalProperties = new LocalProperties().FromScore(score);
 
         EnrichScoreWithBeatmapStatus(score, ctx.Beatmap);
 
@@ -178,7 +176,6 @@ public class ScoreCommitPipeline
 
         score.BeatmapStatus = newBeatmapStatus.Value;
         score.IsScoreable = newBeatmapStatus.Value.IsScoreable();
-        score.LocalProperties = score.LocalProperties.FromScore(score);
     }
 
     private async Task<UnitResult<string>> TryRefreshClaimLease(ScoreProcessingTask? task, CancellationToken ct)

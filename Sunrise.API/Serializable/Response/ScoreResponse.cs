@@ -16,7 +16,7 @@ public class ScoreResponse
     {
     }
 
-    public ScoreResponse(SessionRepository sessionRepository, Score score)
+    public ScoreResponse(SessionRepository sessionRepository, Score score, int? leaderboardRank = null)
     {
         BeatmapId = score.BeatmapId;
         Count100 = score.Count100;
@@ -31,7 +31,7 @@ public class ScoreResponse
         Id = score.Id;
         IsPassed = score.IsPassed;
         HasReplay = score.ReplayFileId != null;
-        LeaderboardRank = score.LocalProperties.LeaderboardPosition;
+        LeaderboardRank = leaderboardRank;
         MaxCombo = score.MaxCombo;
         Mods = score.Mods.GetModsString();
         ModsInt = (int)score.Mods;

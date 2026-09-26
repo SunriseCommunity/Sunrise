@@ -56,7 +56,7 @@ public static class ScoreSubmissionUtil
     }
 
     public static string GetScoreSubmitResponse(Beatmap beatmap, UserStats userStats, UserStats prevUserStats,
-        Score newScore,
+        long? previousUserRank, long? newUserRank, Score newScore, int? previousScoreRank, int? newScoreRank,
         UserPersonalBestScores? prevUserPersonalBestScores, string? newAchievements = null)
     {
         var userUrl = $"https://{Configuration.Domain}/user/{userStats.UserId}";
@@ -65,9 +65,9 @@ public static class ScoreSubmissionUtil
         var beatmapInfo =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}";
         var beatmapRanking = $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking";
-        var scoreInfo = string.Join("|", GetChart(prevUserPersonalBestScores?.BestScoreByScoreValue, prevUserPersonalBestScores?.BestScoreForPerformanceCalculation, newScore, dontShowPp));
+        var scoreInfo = string.Join("|", GetChart(prevUserPersonalBestScores?.BestScoreByScoreValue, prevUserPersonalBestScores?.BestScoreForPerformanceCalculation, newScore, previousScoreRank, newScoreRank, dontShowPp));
         var playerInfo = $"chartId:overall|chartUrl:{userUrl}|chartName:Overall Ranking|" +
-                         string.Join("|", GetChart(prevUserStats, null, userStats));
+                         string.Join("|", GetChart(prevUserStats, null, userStats, previousUserRank, newUserRank));
 
         return
             $"{beatmapInfo}\n{beatmapRanking}|{scoreInfo}|onlineScoreId:{newScore.Id}\n{playerInfo}|achievements-new:{newAchievements}";
@@ -84,7 +84,7 @@ public static class ScoreSubmissionUtil
         return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
     }
 
-    private static List<string> GetChart<T>(T before, T? alternativeBeforeForPpEntry, T after, bool dontShowPp = false)
+    private static List<string> GetChart<T>(T? before, T? alternativeBeforeForPpEntry, T after, long? beforeRank, long? afterRank, bool dontShowPp = false)
     {
         string[] chartEntries =
         [
@@ -105,13 +105,16 @@ public static class ScoreSubmissionUtil
             var obj = entry switch
             {
                 "RankedScore" => typeof(T) == typeof(Score) ? "TotalScore" : "RankedScore",
-                "Rank" => typeof(T) == typeof(Score) ? "LocalProperties.LeaderboardPosition" : "LocalProperties.Rank",
                 "Pp" => "PerformancePoints",
                 _ => entry
             };
 
-            var beforeValue = entry == "Pp" && alternativeBeforeForPpEntry != null ? GetPropertyValue(alternativeBeforeForPpEntry, obj) : GetPropertyValue(before, obj);
-            var afterValue = GetPropertyValue(after, obj);
+            var beforeValue = entry == "Rank"
+                ? beforeRank
+                : entry == "Pp" && alternativeBeforeForPpEntry != null
+                    ? GetPropertyValue(alternativeBeforeForPpEntry, obj)
+                    : GetPropertyValue(before, obj);
+            var afterValue = entry == "Rank" ? afterRank : GetPropertyValue(after, obj);
 
             if (dontShowPp && entry == "Pp")
             {

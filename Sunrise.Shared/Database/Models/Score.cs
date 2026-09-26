@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -15,19 +14,12 @@ namespace Sunrise.Shared.Database.Models;
 [Index(nameof(UserId))]
 [Index(nameof(UserId), nameof(BeatmapId))]
 [Index(nameof(UserId), nameof(SubmissionStatus), nameof(BeatmapStatus))]
-[Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
 [Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
 [Index(nameof(UserId), nameof(BeatmapHash), nameof(GameMode))]
 [Index(nameof(ScoreHash), IsUnique = true)]
 public class Score
 {
-    public Score()
-    {
-        // TODO: This doesn't work without explicit call. Please let's deprecate it in favour of dynamic values
-        LocalProperties = new LocalProperties().FromScore(this);
-    }
-
     public int Id { get; set; }
 
     [ForeignKey(nameof(UserId))]
@@ -74,29 +66,4 @@ public class Score
     public double PerformancePoints { get; set; }
     public int TimeElapsed { get; set; }
 
-    [NotMapped]
-    public LocalProperties LocalProperties { get; set; }
-}
-
-public class LocalProperties
-{
-    /**
-     * <summary>
-     *     Simplifies some mods to their base form.
-     *     <example>
-     *         DTNC -> DT
-     *     </example>
-     * </summary>
-     */
-    public Mods SerializedMods { get; set; }
-
-    public bool IsRanked { get; set; } // TODO: Questionable to removal
-    public int? LeaderboardPosition { get; set; } // TODO: Badly called from the graph creation for score submissiion result. Ideally remove
-
-    public LocalProperties FromScore(Score score)
-    {
-        SerializedMods = score.Mods & ~Mods.Nightcore;
-        IsRanked = score.BeatmapStatus.IsRanked();
-        return this;
-    }
 }

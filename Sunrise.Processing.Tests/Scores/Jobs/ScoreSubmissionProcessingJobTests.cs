@@ -91,7 +91,6 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         existingBest.TotalScore = score.TotalScore + 1000;
         existingBest.SubmissionStatus = SubmissionStatus.Best;
 
-        existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);
         await CreateTestScore(existingBest);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
@@ -146,7 +145,6 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         existingBest.GameMode = score.GameMode;
         existingBest.PrepareForSubmission(beatmap);
         existingBest.SubmissionStatus = SubmissionStatus.Best;
-        existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);
         existingBest = await CreateTestScore(existingBest);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
@@ -204,7 +202,6 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         existingBest.PrepareForSubmission(beatmap);
         existingBest.SubmissionStatus = SubmissionStatus.Best;
         existingBest.GameMode = existingBest.GameMode.EnrichWithMods(existingBest.Mods);
-        existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);
         existingBest = await CreateTestScore(existingBest);
 
         var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
@@ -317,7 +314,6 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         score.Mods = Mods.None;
         score.SubmissionStatus = SubmissionStatus.Failed;
         score.CountMiss = Math.Max(score.CountMiss, 1);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.IgnoreBeatmapRanking();

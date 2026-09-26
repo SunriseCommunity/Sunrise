@@ -46,7 +46,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
         score.BeatmapStatus = BeatmapStatus.Pending;
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
@@ -167,7 +166,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(score, user, beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var payload = await CreatePayload(user.Id);
@@ -312,7 +310,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         promotedPeer.PerformancePoints = 150;
         promotedPeer.MaxCombo = 300;
         promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
-        promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
         promotedPeer = await CreateTestScore(promotedPeer);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -321,7 +318,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.PerformancePoints = 200;
         score.MaxCombo = 350;
         score.SubmissionStatus = SubmissionStatus.Best;
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -373,7 +369,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         promotedPeer.PerformancePoints = 150;
         promotedPeer.MaxCombo = 300;
         promotedPeer.SubmissionStatus = SubmissionStatus.Submitted;
-        promotedPeer.LocalProperties = promotedPeer.LocalProperties.FromScore(promotedPeer);
         promotedPeer = await CreateTestScore(promotedPeer);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -382,7 +377,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.PerformancePoints = 200;
         score.MaxCombo = 350;
         score.SubmissionStatus = SubmissionStatus.Best;
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -432,11 +426,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
         score.BeatmapStatus = BeatmapStatus.Pending;
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var rankBefore = userStats.LocalProperties.Rank;
-
         var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
 
         // Act
@@ -466,7 +457,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
         var userStatsA = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
@@ -491,7 +481,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         scoreB.SubmissionStatus = SubmissionStatus.Submitted;
         scoreB.IsScoreable = false;
         scoreB.BeatmapStatus = BeatmapStatus.Pending;
-        scoreB.LocalProperties = scoreB.LocalProperties.FromScore(scoreB);
 
         var (userStatsB, userGradesB) = await LoadUserState(userB, GameMode.Standard);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, scoreB, userB, userStatsB, userGradesB, beatmap);
@@ -536,20 +525,17 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
         // User B: two scores - 200pp best and 50pp fallback on different beatmaps
         var scoreBLow = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreBLow, userB, beatmap2);
         scoreBLow.PerformancePoints = 50;
-        scoreBLow.LocalProperties = scoreBLow.LocalProperties.FromScore(scoreBLow);
         await Database.Scores.AddScore(scoreBLow);
 
         var scoreBHigh = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreBHigh, userB, beatmap);
         scoreBHigh.PerformancePoints = 200;
-        scoreBHigh.LocalProperties = scoreBHigh.LocalProperties.FromScore(scoreBHigh);
         await Database.Scores.AddScore(scoreBHigh);
 
         // Seed user stats with explicit PP values and update ranks
@@ -622,7 +608,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
         var userStatsA = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
@@ -636,7 +621,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 200;
         scoreB.SubmissionStatus = SubmissionStatus.Deleted;
-        scoreB.LocalProperties = scoreB.LocalProperties.FromScore(scoreB);
         await Database.Scores.AddScore(scoreB);
 
         var userStatsB = await Database.Users.Stats.GetUserStats(userB.Id, GameMode.Standard);
@@ -695,7 +679,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var scoreA = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreA, userA, beatmap);
         scoreA.PerformancePoints = 100;
-        scoreA.LocalProperties = scoreA.LocalProperties.FromScore(scoreA);
         await Database.Scores.AddScore(scoreA);
 
         var userStatsA = await Database.Users.Stats.GetUserStats(userA.Id, GameMode.Standard);
@@ -708,7 +691,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var scoreB = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 0;
-        scoreB.LocalProperties = scoreB.LocalProperties.FromScore(scoreB);
         await Database.Scores.AddScore(scoreB);
 
         var userStatsB = await Database.Users.Stats.GetUserStats(userB.Id, GameMode.Standard);
@@ -837,7 +819,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
             score.CountMiss = 1;
         }
 
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         return await CreateTestScore(score);
     }

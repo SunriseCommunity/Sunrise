@@ -114,10 +114,6 @@ public abstract class ScoreHandlerBase(
                 .ToResult<(User, UserStats, UserGrades)>();
         }
 
-        // TODO: Deprecate in favour of just tracking the get user ranks.
-        var (currentRank, _) = await Database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode, ct: ct);
-        userStats.LocalProperties.Rank = currentRank;
-
         return (user, userStats, userGrades);
     }
 

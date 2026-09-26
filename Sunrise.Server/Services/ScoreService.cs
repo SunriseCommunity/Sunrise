@@ -132,7 +132,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             },
             ct);
 
-        var scores = databaseScores.EnrichWithLeaderboardPositions();
+        var scores = databaseScores.WithLeaderboardPositions();
+        var leaderboardPositions = scores.ToDictionary(entry => entry.Score.Id, entry => entry.LeaderboardPosition);
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, retryCount: int.MaxValue, ct: ct);
 
@@ -160,16 +161,18 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         if (scores.Count == 0)
             return string.Join("\n", responses);
 
-        var userPersonalBestScores = scores.GetUserPersonalBestScores(session.UserId);
+        var userPersonalBestScores = scores.Select(entry => entry.Score).ToList().GetUserPersonalBestScores(session.UserId);
 
         var personalBest = userPersonalBestScores?.BestScoreByScoreValue;
-        responses.Add(personalBest != null ? personalBest.GetString() : "");
+        responses.Add(personalBest != null
+            ? personalBest.GetString(leaderboardPositions[personalBest.Id])
+            : "");
 
-        var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);
+        var leaderboardScores = scores.Select(entry => entry.Score).ToList().GetScoresGroupedByUsersBest().Take(50);
 
         foreach (var score in leaderboardScores)
         {
-            responses.Add(score.GetString());
+            responses.Add(score.GetString(leaderboardPositions[score.Id]));
         }
 
         return string.Join("\n", responses);
