@@ -14,19 +14,18 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Services;
 
-public class HttpClientService
+public class HttpClientService(RedisRepository redis, ILogger<HttpClientService> logger)
 {
-    private readonly HttpClient _client = new();
-    private readonly ILogger<HttpClientService> _logger;
-    private readonly RedisRepository _redis;
+    private static readonly HttpClient Client = CreateClient();
 
-    public HttpClientService(RedisRepository redis, ILogger<HttpClientService> logger)
+    private static HttpClient CreateClient()
     {
-        _logger = logger;
-        _redis = redis;
+        var client = new HttpClient();
 
-        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        _client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Sunrise");
+
+        return client;
     }
 
     public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
@@ -38,7 +37,7 @@ public class HttpClientService
                 gameSession.SendRateLimitWarning();
             }
 
-            _logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
+            logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -53,7 +52,7 @@ public class HttpClientService
 
         if (apis is { Count: 0 } or null)
         {
-            _logger.LogWarning("No API servers found for {type}.", type);
+            logger.LogWarning("No API servers found for {type}.", type);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"No API servers found for {type}.",
@@ -83,7 +82,7 @@ public class HttpClientService
             return responseResult;
         }
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Failed to get response from any API server for {type}.",
             type);
 
@@ -103,7 +102,7 @@ public class HttpClientService
                 gameSession.SendRateLimitWarning();
             }
 
-            _logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
+            logger.LogWarning("User {userId} got rate limited. Ignoring request.", session.UserId);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -118,7 +117,7 @@ public class HttpClientService
 
         if (apis is { Count: 0 } or null)
         {
-            _logger.LogWarning("No API servers found for {type}.", type);
+            logger.LogWarning("No API servers found for {type}.", type);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"No API servers found for {type}.",
@@ -132,7 +131,7 @@ public class HttpClientService
         {
             if (args.Length < api.NumberOfRequiredArgs)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Not enough arguments for {type} for {api}. Required {numberOfRequiredArgs}, got {argsLength}.",
                     type,
                     api,
@@ -170,7 +169,7 @@ public class HttpClientService
 
         var badRequestsToCodesString = string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"));
 
-        _logger.LogWarning(
+        logger.LogWarning(
             "Failed to get response from any API server for {type} with args {args}. (Bad requests to codes: {badRequestsToCodes})",
             type,
             string.Join(", ", args),
@@ -185,11 +184,11 @@ public class HttpClientService
 
     private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null, CancellationToken ct = default)
     {
-        var isServerRateLimited = await _redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
+        var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
         if (isServerRateLimited is true)
         {
-            _logger.LogWarning("Server {serverName} is rate limited. Ignoring request.", server);
+            logger.LogWarning("Server {serverName} is rate limited. Ignoring request.", server);
 
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
@@ -216,7 +215,7 @@ public class HttpClientService
                 }
             }
 
-            var response = await _client.SendAsync(request, ct);
+            using var response = await Client.SendAsync(request, ct);
 
             var rateLimit = string.Empty;
             var rateLimitReset = "60";
@@ -232,12 +231,12 @@ public class HttpClientService
                         : "60";
                     break;
                 default:
-                    _logger.LogWarning("Server {serverName} rate limit headers wasn't set. Ignoring rate limit.", server);
+                    logger.LogWarning("Server {serverName} rate limit headers wasn't set. Ignoring rate limit.", server);
                     break;
             }
 
             if (rateLimit is not null && int.TryParse(rateLimit, out var rateLimitInt) && rateLimitInt <= 5)
-                await _redis.Set(RedisKey.ApiServerRateLimited(server),
+                await redis.Set(RedisKey.ApiServerRateLimited(server),
                     true,
                     TimeSpan.FromSeconds(int.TryParse(rateLimitReset, out var rateLimitResetInt)
                         ? rateLimitResetInt
@@ -245,12 +244,12 @@ public class HttpClientService
 
             if (response.StatusCode.Equals(HttpStatusCode.TooManyRequests))
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Request to {serverName} failed with status code {responseStatusCode}. Rate limiting server for 1 minute.",
                     server,
                     response.StatusCode);
 
-                await _redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
+                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
 
                 return Result.Failure<T, ErrorMessage>(new ErrorMessage
                 {
@@ -278,9 +277,10 @@ public class HttpClientService
                 case not null when typeof(T) == typeof(string):
                     return (T)(object)await response.Content.ReadAsStringAsync(ct);
                 default:
+                {
                     var content = await response.Content.ReadAsStringAsync(ct);
 
-                    var jsonDoc = JsonDocument.Parse(content);
+                    using var jsonDoc = JsonDocument.Parse(content);
 
                     if (jsonDoc.RootElement.ValueKind == JsonValueKind.Object && jsonDoc.RootElement.TryGetProperty("status", out var status) && status.ValueKind == JsonValueKind.Number)
                     {
@@ -297,7 +297,7 @@ public class HttpClientService
 
                         if (statusCode != 200)
                         {
-                            _logger.LogError("Failed to process request to {serverName} with uri {requestUri}. Status: {status}", server, requestUri, statusCode);
+                            logger.LogError("Failed to process request to {serverName} with uri {requestUri}. Status: {status}", server, requestUri, statusCode);
                             return Result.Failure<T, ErrorMessage>(new ErrorMessage
                             {
                                 Message = $"Failed to process request to {server} with uri {requestUri}. Status: {status}",
@@ -311,6 +311,7 @@ public class HttpClientService
                         Message = "Exception occurred while deserializing data",
                         Status = HttpStatusCode.BadRequest
                     });
+                }
             }
         }
         catch (OperationCanceledException)
@@ -323,7 +324,7 @@ public class HttpClientService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to process request to {serverName} with uri {requestUri}", server, requestUri);
+            logger.LogError(e, "Failed to process request to {serverName} with uri {requestUri}", server, requestUri);
             return Result.Failure<T, ErrorMessage>(new ErrorMessage
             {
                 Message = $"Failed to process request to {server} with uri {requestUri}",

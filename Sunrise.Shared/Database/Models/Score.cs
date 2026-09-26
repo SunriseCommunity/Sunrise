@@ -1,9 +1,10 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
-using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -13,24 +14,23 @@ namespace Sunrise.Shared.Database.Models;
 [Index(nameof(UserId))]
 [Index(nameof(UserId), nameof(BeatmapId))]
 [Index(nameof(UserId), nameof(SubmissionStatus), nameof(BeatmapStatus))]
-[Index(nameof(BeatmapId), nameof(IsScoreable), nameof(IsPassed), nameof(SubmissionStatus))]
 [Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
+[Index(nameof(UserId), nameof(BeatmapHash), nameof(GameMode))]
+[Index(nameof(ScoreHash), IsUnique = true)]
 public class Score
 {
-    public Score()
-    {
-        LocalProperties = new LocalProperties().FromScore(this);
-    }
-
     public int Id { get; set; }
 
     [ForeignKey(nameof(UserId))]
-    public User User { get; set; }
+    public User? User { get; set; }
 
     public int UserId { get; set; }
     public int BeatmapId { get; set; }
+
+    [MaxLength(32)]
     public string ScoreHash { get; set; }
+
     public string BeatmapHash { get; set; }
 
     [ForeignKey("ReplayFileId")]
@@ -50,8 +50,11 @@ public class Score
     public int CountGeki { get; set; }
     public bool Perfect { get; set; }
     public Mods Mods { get; set; }
-    public string Grade { get; set; }
+    public ScoreGrade Grade { get; set; }
+
     public bool IsPassed { get; set; }
+
+    // TODO: Drop persisted IsScoreable once all score reads derive it from BeatmapStatus.
     public bool IsScoreable { get; set; }
     public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.Unknown;
     public GameMode GameMode { get; set; }
@@ -61,30 +64,6 @@ public class Score
     public DateTime ClientTime { get; set; }
     public double Accuracy { get; set; }
     public double PerformancePoints { get; set; }
+    public int TimeElapsed { get; set; }
 
-    [NotMapped]
-    public LocalProperties LocalProperties { get; set; }
-}
-
-public class LocalProperties
-{
-    /**
-     * <summary>
-     *     Simplifies some mods to their base form.
-     *     <example>
-     *         DTNC -> DT
-     *     </example>
-     * </summary>
-     */
-    public Mods SerializedMods { get; set; }
-
-    public bool IsRanked { get; set; }
-    public int? LeaderboardPosition { get; set; }
-
-    public LocalProperties FromScore(Score score)
-    {
-        SerializedMods = score.Mods & ~Mods.Nightcore;
-        IsRanked = score.BeatmapStatus.IsRanked();
-        return this;
-    }
 }

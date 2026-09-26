@@ -47,7 +47,10 @@ public static class ScoreQueryableExtensions
             .Select(g =>
                 g.OrderByDescending(x =>
                     EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore
-                ).First());
+                )
+                    .ThenBy(x => x.WhenPlayed)
+                    .ThenBy(x => x.Id)
+                    .First());
     }
 
     public static IQueryable<Score> SelectUsersPersonalBestScores(this IQueryable<Score> queryable, bool rankByPerformancePoints = false)
@@ -64,7 +67,10 @@ public static class ScoreQueryableExtensions
             .Select(g =>
                 g.OrderByDescending(x =>
                     rankByPerformancePoints == true || EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore
-                ).First());
+                )
+                    .ThenBy(x => x.WhenPlayed)
+                    .ThenBy(x => x.Id)
+                    .First());
     }
 
     public static IQueryable<Score> OrderByScoreValueDescending(this IQueryable<Score> queryable)
@@ -73,7 +79,8 @@ public static class ScoreQueryableExtensions
 
         return queryable
             .OrderByDescending(x => EF.Constant(gameModesWithoutScoreMultiplier).Contains(x.GameMode) ? x.PerformancePoints : x.TotalScore)
-            .ThenByDescending(x => x.WhenPlayed);
+            .ThenBy(x => x.WhenPlayed)
+            .ThenBy(x => x.Id);
     }
 
     public static IQueryable<BeatmapPlaycount> GroupScoresByBeatmapPlaycount(this IQueryable<Score> queryable)

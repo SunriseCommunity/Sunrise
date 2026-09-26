@@ -1,20 +1,24 @@
 using Microsoft.EntityFrameworkCore;
+using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
-using Sunrise.Shared.Extensions.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Server.Commands.ChatCommands.System;
 
+[Obsolete("While this is very optimised for recalcualtion, I will prefer to deprecate this in favour of a single all score recalcualtions for consistency and to reduce the amount of code that needs to be maintained. This will be removed in a future update.")]
 [ChatCommand("recalculateuserstats", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserStatsCommand : IChatCommand
 {
@@ -132,7 +136,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
             foreach (var score in pageScores)
             {
-                tempUserStats.UpdateWithDbScore(score);
+                UpdateUserStatsWithScore(tempUserStats, score);
             }
 
             if (pageScores.Count < pageSize) break;
@@ -173,5 +177,25 @@ public class RecalculateUserStatsCommand : IChatCommand
         stats.Accuracy = acc;
 
         await database.Users.Stats.UpdateUserStats(stats, user);
+    }
+
+    private static void UpdateUserStatsWithScore(UserStats userStats, Score score)
+    {
+        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+
+        userStats.TotalScore += score.TotalScore;
+        userStats.TotalHits += score.Count300 + score.Count100 + score.Count50;
+        if ((GameMode)score.GameMode.ToVanillaGameMode() is GameMode.Taiko or GameMode.Mania)
+            userStats.TotalHits += score.CountGeki + score.CountKatu;
+        userStats.PlayTime += score.TimeElapsed;
+        userStats.PlayCount++;
+
+        if (isFailed || !score.IsScoreable)
+            return;
+
+        userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
+
+        if (score.SubmissionStatus == SubmissionStatus.Best && score.BeatmapStatus.IsRanked())
+            userStats.RankedScore += score.TotalScore;
     }
 }

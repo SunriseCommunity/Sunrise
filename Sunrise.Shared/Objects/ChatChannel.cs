@@ -5,8 +5,9 @@ using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Shared.Objects;
 
-public class ChatChannel(string name, string description, bool isPublic = true, bool isAbstract = false)
+public class ChatChannel(string name, string description, bool isPublic = true, bool isAbstract = false, string? key = null)
 {
+    public string Key { get; } = key ?? name;
     public string Name { get; } = name;
     public string Description { get; } = description;
     public bool IsPublic { get; } = isPublic;
@@ -23,7 +24,7 @@ public class ChatChannel(string name, string description, bool isPublic = true, 
         UserIds.TryRemove(userId, out _);
 
         if (UserIds.IsEmpty && IsAbstract)
-            ServicesProviderHolder.GetRequiredService<ChatChannelRepository>().RemoveAbstractChannel(Name);
+            ServicesProviderHolder.GetRequiredService<ChatChannelRepository>().RemoveAbstractChannel(Key);
     }
 
     public void SendToChannel(string message, User? senderUser = null)

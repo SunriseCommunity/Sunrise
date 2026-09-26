@@ -51,6 +51,8 @@ public class IntegrationDatabaseFixture : IAsyncLifetime
     public async Task ResetAsync()
     {
         using var scope = App.Server.Services.CreateScope();
+
+        App.MockHttpClient?.ClearMocks();
         
         await ClearSingletonState(scope);
         

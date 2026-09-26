@@ -1,0 +1,72 @@
+using Hangfire;
+using Sunrise.Server.Attributes;
+using Sunrise.Server.Repositories;
+using Sunrise.Shared.Application;
+using Sunrise.Shared.Database;
+using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Services;
+
+namespace Sunrise.Server.Commands.ChatCommands.System;
+
+[ChatCommand("recalculatescore", requiredPrivileges: UserPrivilege.SuperUser)]
+public class RecalculateScoreCommand : IChatCommand
+{
+    public Task Handle(Session session, ChatChannel? channel, string[]? args)
+    {
+        if (args == null || args.Length < 1 || !int.TryParse(args[0], out var scoreId))
+        {
+            ChatCommandRepository.SendMessage(session,
+                $"Usage: {Configuration.BotPrefix}recalculatescore <scoreId>; Example: {Configuration.BotPrefix}recalculatescore 1337");
+            return Task.CompletedTask;
+        }
+
+        BackgroundTaskService.TryStartNewBackgroundJob<RecalculateScoreCommand>(
+            () => RecalculateScore(session.UserId, scoreId, CancellationToken.None),
+            message => ChatCommandRepository.TrySendMessage(session.UserId, message));
+
+        return Task.CompletedTask;
+    }
+
+    [AutomaticRetry(Attempts = 0)]
+    public async Task RecalculateScore(int userId, int scoreId, CancellationToken ct)
+    {
+        await BackgroundTaskService.ExecuteBackgroundTask<RecalculateScoreCommand>(
+            async () =>
+            {
+                using var scope = ServicesProviderHolder.CreateScope();
+                var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+                var score = await database.Scores.GetScore(scoreId, filterValidScores: false, ct: ct);
+
+                if (score == null)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Score {scoreId} was not found.");
+                    return;
+                }
+
+                var task = new ScoreProcessingTask
+                {
+                    TaskType = ScoreTaskType.Recalculation,
+                    ScoreId = score.Id,
+                    Priority = (int)ScoreProcessingPriority.Normal,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(task, ct);
+
+                if (!queued)
+                {
+                    ChatCommandRepository.TrySendMessage(userId, $"Score {scoreId} already has an active queued task.");
+                    return;
+                }
+
+                await database.Events.ScoreProcessing.AddActionRequestedEvent(userId, score.Id, task.Id, ScoreTaskType.Recalculation, task.Priority, ct);
+
+                ChatCommandRepository.TrySendMessage(userId, $"Score {scoreId} was queued for recalculation.");
+            },
+            message => ChatCommandRepository.TrySendMessage(userId, message));
+    }
+}

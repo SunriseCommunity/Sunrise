@@ -26,7 +26,7 @@ public partial class OsuVersion
             stream = "cuttingedge";
             raw = raw[..^"cuttingedge".Length];
         }
-        
+
         if (raw.EndsWith("beta", StringComparison.OrdinalIgnoreCase))
         {
             stream = "stable40";

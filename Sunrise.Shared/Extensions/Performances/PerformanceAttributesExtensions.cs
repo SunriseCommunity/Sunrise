@@ -1,4 +1,5 @@
 ﻿using osu.Shared;
+using Serilog;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -77,6 +78,18 @@ public static class PerformanceAttributesExtensions
             Math.Pow(performance.PerformancePointsFlashlight ?? 0, 1.13),
             1.0 / 1.1
         ) * multi;
+
+        if (double.IsNaN(relaxPp))
+        {
+            Log.Error("RelaxStd pp recalculation resulted in NaN. Aim: {Aim}, Speed: {Speed}, Accuracy: {Accuracy}, Flashlight: {Flashlight}, Multi: {Multi}, AccDepression: {AccDepression}, StreamsNerf: {StreamsNerf}",
+                performance.PerformancePointsAim,
+                performance.PerformancePointsSpeed,
+                performance.PerformancePointsAccuracy,
+                performance.PerformancePointsFlashlight,
+                multi,
+                accDepression,
+                streamsNerf);
+        }
 
         return double.IsNaN(relaxPp) ? 0.0 : relaxPp;
     }

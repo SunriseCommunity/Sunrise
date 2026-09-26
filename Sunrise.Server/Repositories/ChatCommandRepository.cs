@@ -52,7 +52,7 @@ public static class ChatCommandRepository
                 return;
             case null:
             {
-                var possibleCommands = GetAvailableCommands(session)
+                var possibleCommands = (await GetAvailableCommands(session))
                     .Where(x => x.Contains(command))
                     .ToArray();
 
@@ -94,12 +94,12 @@ public static class ChatCommandRepository
         await handler.Handle(session, channel, args);
     }
 
-    public static string[] GetAvailableCommands(Session session)
+    public static async Task<string[]> GetAvailableCommands(Session session)
     {
         using var scope = ServicesProviderHolder.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-        var sessionUser = database.Users.GetUser(session.UserId).Result;
+        var sessionUser = await database.Users.GetUser(session.UserId);
         if (sessionUser == null)
             return [];
 

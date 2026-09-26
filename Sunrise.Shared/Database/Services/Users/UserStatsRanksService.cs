@@ -100,8 +100,8 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 
             await Task.WhenAll(globalRankTask, countryRankTask);
 
-            var globalRank = globalRankTask.Result;
-            var countryRank = countryRankTask.Result;
+            var globalRank = await globalRankTask;
+            var countryRank = await countryRankTask;
 
             try
             {

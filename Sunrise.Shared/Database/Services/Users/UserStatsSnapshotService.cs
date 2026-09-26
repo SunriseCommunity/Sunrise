@@ -20,7 +20,17 @@ public class UserStatsSnapshotService(SunriseDbContext dbContext)
                 UserId = userId,
                 GameMode = mode
             };
-            await AddUserStatsSnapshot(snapshot);
+            var addResult = await AddUserStatsSnapshot(snapshot);
+            if (addResult.IsFailure)
+            {
+                dbContext.Entry(snapshot).State = EntityState.Detached;
+                snapshot = await dbContext.UserStatsSnapshot.FirstOrDefaultAsync(
+                    uss => uss.UserId == userId && uss.GameMode == mode,
+                    ct);
+
+                if (snapshot == null)
+                    throw new ApplicationException(addResult.Error);
+            }
         }
 
         return snapshot;
@@ -40,8 +50,19 @@ public class UserStatsSnapshotService(SunriseDbContext dbContext)
 
         if (missingSnapshots.Count != 0)
         {
-            await AddUserStatsSnapshot(missingSnapshots);
-            snapshots.AddRange(missingSnapshots);
+            var addResult = await AddUserStatsSnapshot(missingSnapshots);
+            if (addResult.IsSuccess)
+            {
+                snapshots.AddRange(missingSnapshots);
+            }
+            else
+            {
+                foreach (var missingSnapshot in missingSnapshots)
+                    dbContext.Entry(missingSnapshot).State = EntityState.Detached;
+
+                foreach (var missingMode in missingModes)
+                    snapshots.Add(await GetUserStatsSnapshot(userId, missingMode, ct));
+            }
         }
 
         return snapshots;
@@ -63,11 +84,22 @@ public class UserStatsSnapshotService(SunriseDbContext dbContext)
         if (missingSnapshots.Count == 0)
             return result;
 
-        await AddUserStatsSnapshot(missingSnapshots);
-
-        foreach (var snapshot in missingSnapshots)
+        var addResult = await AddUserStatsSnapshot(missingSnapshots);
+        if (addResult.IsSuccess)
         {
-            result[snapshot.UserId] = snapshot;
+            foreach (var snapshot in missingSnapshots)
+                result[snapshot.UserId] = snapshot;
+        }
+        else
+        {
+            foreach (var missingSnapshot in missingSnapshots)
+                dbContext.Entry(missingSnapshot).State = EntityState.Detached;
+
+            foreach (var missingUserId in missingUserIds)
+            {
+                var snapshot = await GetUserStatsSnapshot(missingUserId, mode, ct);
+                result[snapshot.UserId] = snapshot;
+            }
         }
 
         return result;

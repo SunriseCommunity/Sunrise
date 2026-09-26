@@ -29,9 +29,10 @@ public class ApiScoreGetScoreTests(IntegrationDatabaseFixture fixture) : ApiTest
         // Assert
         response.EnsureSuccessStatusCode();
         var responseScore = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoreResponse>();
-        var scoreData = new ScoreResponse(Sessions, score);
+        var scoreData = new ScoreResponse(Sessions, score, 1);
 
         Assert.Equivalent(responseScore, scoreData);
+        Assert.Equal(1, responseScore?.LeaderboardRank);
     }
 
     [Theory]

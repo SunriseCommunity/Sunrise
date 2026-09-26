@@ -53,6 +53,11 @@ public static class BeatmapStatusExtensions
         return _statusMap.GetValueOrDefault(statusString, BeatmapStatus.Pending);
     }
 
+    public static string BeatmapStatusToString(this BeatmapStatus statusString)
+    {
+        return _statusMapString.GetValueOrDefault(statusString, "pending");
+    }
+
     public static BeatmapStatusWeb StringToBeatmapStatusSearch(this string statusString)
     {
         return _statusSearchMap.GetValueOrDefault(statusString, BeatmapStatusWeb.Pending);
