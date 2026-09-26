@@ -58,6 +58,7 @@ public class ApiScoreProcessingStatsTests(IntegrationDatabaseFixture fixture) : 
         var tokens = await GetUserAuthTokens(superUser);
         client.UseUserAuthToken(tokens);
 
+        var queueEligibilityTime = DateTime.UtcNow.AddHours(1);
         foreach (var status in new[] { ScoreProcessingStatus.Pending, ScoreProcessingStatus.Pending, ScoreProcessingStatus.Processing, ScoreProcessingStatus.Failed })
         {
             var score = await CreateTestScore();
@@ -67,7 +68,9 @@ public class ApiScoreProcessingStatsTests(IntegrationDatabaseFixture fixture) : 
                 ScoreId = score.Id,
                 Status = status,
                 Priority = (int)ScoreProcessingPriority.Normal,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                NextRetryAt = status == ScoreProcessingStatus.Pending ? queueEligibilityTime : null,
+                LeaseExpiresAt = status == ScoreProcessingStatus.Processing ? queueEligibilityTime : null
             });
         }
 

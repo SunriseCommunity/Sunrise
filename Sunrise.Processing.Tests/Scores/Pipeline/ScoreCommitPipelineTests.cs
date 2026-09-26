@@ -42,7 +42,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(score, user, beatmap);
-        score.Grade = "A";
+        score.Grade = ScoreGrade.A;
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
         score.BeatmapStatus = BeatmapStatus.Pending;
@@ -427,7 +427,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(score, user, beatmap);
-        score.Grade = "S";
+        score.Grade = ScoreGrade.S;
         score.PerformancePoints = 500;
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
@@ -827,7 +827,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var score = _mocker.Score.GetBestScoreableRandomScore();
         EnrichScore(score, user, beatmap);
         score.TotalScore = totalScore;
-        score.Grade = grade;
+        score.Grade = Enum.Parse<ScoreGrade>(grade);
         score.MaxCombo = maxCombo;
         score.SubmissionStatus = submissionStatus;
 
@@ -848,6 +848,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.Mods = mods;
         score.EnrichWithUserData(user);
         score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.ReconcileModsAndGameMode(beatmap);
     }
 }

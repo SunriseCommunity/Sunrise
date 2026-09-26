@@ -31,13 +31,13 @@ public class ApiUserMostPlayedMapsTests(IntegrationDatabaseFixture fixture) : Ap
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         var score1 = _mocker.Score.GetBestScoreableRandomScore();
-        score1.EnrichWithBeatmapData(beatmap);
+        score1.PrepareForSubmission(beatmap);
         score1.EnrichWithUserData(user);
         score1.GameMode = (GameMode)beatmap.ModeInt;
         await CreateTestScore(score1);
 
         var score2 = _mocker.Score.GetBestScoreableRandomScore();
-        score2.EnrichWithBeatmapData(beatmap);
+        score2.PrepareForSubmission(beatmap);
         score2.EnrichWithUserData(user);
         score2.GameMode = (GameMode)beatmap.ModeInt;
         await CreateTestScore(score2);
@@ -76,7 +76,7 @@ public class ApiUserMostPlayedMapsTests(IntegrationDatabaseFixture fixture) : Ap
             await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
             var score = _mocker.Score.GetBestScoreableRandomScore();
-            score.EnrichWithBeatmapData(beatmap);
+            score.PrepareForSubmission(beatmap);
             score.EnrichWithUserData(user);
             score.GameMode = gameMode;
             score.WhenPlayed = DateTime.MinValue.AddSeconds(i);

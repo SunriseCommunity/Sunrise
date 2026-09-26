@@ -28,7 +28,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         await Database.Scores.AddScore(score);
@@ -64,7 +64,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         scoreBestByPerformance.UserId = user.Id;
         scoreBestByPerformance.PerformancePoints = 1000;
         scoreBestByPerformance.TotalScore = 1;
-        scoreBestByPerformance.EnrichWithBeatmapData(beatmap);
+        scoreBestByPerformance.PrepareForSubmission(beatmap);
 
         await Database.Scores.AddScore(scoreBestByPerformance);
 
@@ -72,7 +72,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         scoreBestByTotalScore.UserId = user.Id;
         scoreBestByTotalScore.PerformancePoints = 1;
         scoreBestByTotalScore.TotalScore = 1000;
-        scoreBestByTotalScore.EnrichWithBeatmapData(beatmap);
+        scoreBestByTotalScore.PrepareForSubmission(beatmap);
         scoreBestByTotalScore.GameMode = scoreBestByPerformance.GameMode;
         await Database.Scores.AddScore(scoreBestByTotalScore);
 
@@ -109,7 +109,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
             var user = await CreateTestUser();
             var score = _mocker.Score.GetBestScoreableRandomScore();
             score.UserId = user.Id;
-            score.EnrichWithBeatmapData(beatmap);
+            score.PrepareForSubmission(beatmap);
 
             score.Mods = i % 2 == 0 ? Mods.Hidden : Mods.None;
 

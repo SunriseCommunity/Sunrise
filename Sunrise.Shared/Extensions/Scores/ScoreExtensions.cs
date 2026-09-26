@@ -9,6 +9,7 @@ using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
+using Sunrise.Shared.Utils;
 using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Shared.Utils.Converters;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
@@ -144,24 +145,27 @@ public static class ScoreExtensions
                 BeatmapHash = string.IsNullOrWhiteSpace(split[0]) ? throw new Exception("Beatmap hash is empty") : split[0],
                 PlayerUsername = string.IsNullOrWhiteSpace(split[1]) ? throw new Exception("Player username is empty") : split[1],
                 ScoreHash = string.IsNullOrWhiteSpace(split[2]) ? throw new Exception("Score hash is empty") : split[2],
-                Count300 = int.Parse(split[3]),
-                Count100 = int.Parse(split[4]),
-                Count50 = int.Parse(split[5]),
-                CountGeki = int.Parse(split[6]),
-                CountKatu = int.Parse(split[7]),
-                CountMiss = int.Parse(split[8]),
-                TotalScore = long.Parse(split[9]),
-                MaxCombo = int.Parse(split[10]),
+                Count300 = ParseStableInt(split[3], nameof(SubmittedScore.Count300)),
+                Count100 = ParseStableInt(split[4], nameof(SubmittedScore.Count100)),
+                Count50 = ParseStableInt(split[5], nameof(SubmittedScore.Count50)),
+                CountGeki = ParseStableInt(split[6], nameof(SubmittedScore.CountGeki)),
+                CountKatu = ParseStableInt(split[7], nameof(SubmittedScore.CountKatu)),
+                CountMiss = ParseStableInt(split[8], nameof(SubmittedScore.CountMiss)),
+                TotalScore = ParseStableInt(split[9], nameof(SubmittedScore.TotalScore)),
+                MaxCombo = ParseStableInt(split[10], nameof(SubmittedScore.MaxCombo)),
                 Perfect = bool.Parse(split[11]),
-                Grade = string.IsNullOrWhiteSpace(split[12]) ? throw new Exception("Grade is empty") : split[12], // TODO: This probably should be validated more strictly.
+                Grade = ScoreGradeUtil.TryParse(split[12], out var grade) ? grade : throw new Exception("Invalid grade"),
                 Mods = (Mods)int.Parse(split[13]),
                 IsPassed = bool.Parse(split[14]),
-                GameMode = (GameMode)int.Parse(split[15]),
+                GameMode = ParseVanillaGameMode(split[15]),
                 WhenPlayed = scoreSubmittedAt,
                 OsuVersion = string.IsNullOrWhiteSpace(split[17]) ? throw new Exception("Osu version is empty") : split[17].Trim(),
                 ClientTime = DateTime.ParseExact(split[16], "yyMMddHHmmss", null),
                 Accuracy = 0
             };
+
+            if (!ScoreSubmissionVersionValidator.IsValid(score.OsuVersion))
+                throw new Exception("Invalid osu! version");
 
             score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
             score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
@@ -172,6 +176,21 @@ public static class ScoreExtensions
         {
             return Result.Failure<SubmittedScore>($"Error parsing score string: {ex.Message}");
         }
+    }
+
+    private static int ParseStableInt(string value, string fieldName)
+    {
+        return int.TryParse(value, out var parsed) && parsed >= 0
+            ? parsed
+            : throw new Exception($"{fieldName} must be between 0 and {int.MaxValue}");
+    }
+
+    private static GameMode ParseVanillaGameMode(string value)
+    {
+        if (!int.TryParse(value, out var parsed) || parsed is < 0 or > 3)
+            throw new Exception("Unsupported game mode");
+
+        return (GameMode)parsed;
     }
 
     public static string ToScoreString(this Score score, string userUsername)

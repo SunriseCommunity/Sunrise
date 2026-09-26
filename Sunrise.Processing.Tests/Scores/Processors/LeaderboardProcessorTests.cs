@@ -238,7 +238,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
             CountGeki = 0,
             Perfect = false,
             Mods = Mods.None,
-            Grade = isPassed ? "A" : "F",
+            Grade = isPassed ? ScoreGrade.A : ScoreGrade.F,
             IsPassed = isPassed,
             IsScoreable = true,
             SubmissionStatus = submissionStatus,
@@ -251,7 +251,7 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
         };
 
         score.EnrichWithUserData(user);
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }

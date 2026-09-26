@@ -109,18 +109,15 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
-        sameModsBest.EnrichWithBeatmapData(beatmap);
-        sameModsBest.GameMode = sameModsBest.GameMode.EnrichWithMods(sameModsBest.Mods);
+        sameModsBest.PrepareForSubmission(beatmap);
         sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
 
         var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
-        overallBest.EnrichWithBeatmapData(beatmap);
-        overallBest.GameMode = overallBest.GameMode.EnrichWithMods(overallBest.Mods);
+        overallBest.PrepareForSubmission(beatmap);
         overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
 
         var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
-        score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -413,18 +410,15 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var beatmap = beatmapSet.Beatmaps!.First();
 
         var sameModsBest = CreateScore(user, totalScore: 700, performancePoints: 70, maxCombo: 250);
-        sameModsBest.EnrichWithBeatmapData(beatmap);
-        sameModsBest.GameMode = sameModsBest.GameMode.EnrichWithMods(sameModsBest.Mods);
+        sameModsBest.PrepareForSubmission(beatmap);
         sameModsBest.LocalProperties = sameModsBest.LocalProperties.FromScore(sameModsBest);
 
         var overallBest = CreateScore(user, totalScore: 900, performancePoints: 90, maxCombo: 300, mods: Mods.Hidden);
-        overallBest.EnrichWithBeatmapData(beatmap);
-        overallBest.GameMode = overallBest.GameMode.EnrichWithMods(overallBest.Mods);
+        overallBest.PrepareForSubmission(beatmap);
         overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
 
         var score = CreateScore(user, totalScore: 1000, performancePoints: 100, maxCombo: 400);
-        score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -645,8 +639,8 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var promotedPeer = await CreatePersistedScore(user, 1200, 90, 450, gameMode: GameMode.Standard, mods: Mods.Relax);
-        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, gameMode: GameMode.Standard, mods: Mods.Relax, submissionStatus: SubmissionStatus.Best);
+        var promotedPeer = await CreatePersistedScore(user, 1200, 90, 450, gameMode: GameMode.RelaxStandard, mods: Mods.Relax);
+        var score = CreateScore(user, totalScore: 1500, performancePoints: 100, maxCombo: 500, gameMode: GameMode.RelaxStandard, mods: Mods.Relax, submissionStatus: SubmissionStatus.Best);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         Assert.Equal(GameMode.RelaxStandard, score.GameMode);
@@ -845,8 +839,8 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         var calculator = Scope.ServiceProvider.GetRequiredService<CalculatorService>();
         var processor = new UserStatsScoreProcessor(Database, calculator);
 
-        var existingBest = await CreatePersistedScore(user, 1200, 90, 450, submissionStatus: SubmissionStatus.Submitted, gameMode: GameMode.Standard, mods: Mods.Relax);
-        var score = await CreatePersistedScore(user, 1500, 100, 500, gameMode: GameMode.Standard, mods: Mods.Relax, beatmapPeer: existingBest);
+        var existingBest = await CreatePersistedScore(user, 1200, 90, 450, submissionStatus: SubmissionStatus.Submitted, gameMode: GameMode.RelaxStandard, mods: Mods.Relax);
+        var score = await CreatePersistedScore(user, 1500, 100, 500, gameMode: GameMode.RelaxStandard, mods: Mods.Relax, beatmapPeer: existingBest);
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
 
         Assert.Equal(GameMode.RelaxStandard, score.GameMode);
@@ -964,7 +958,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = countGeki,
             Perfect = false,
             Mods = mods,
-            Grade = isPassed ? "A" : "F",
+            Grade = isPassed ? ScoreGrade.A : ScoreGrade.F,
             IsPassed = isPassed,
             IsScoreable = isScoreable,
             SubmissionStatus = submissionStatus,
@@ -979,7 +973,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
 
         score.EnrichWithUserData(user);
         score.EnrichWithBeatmapData(beatmap);
-        score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
+        score.ReconcileModsAndGameMode(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }

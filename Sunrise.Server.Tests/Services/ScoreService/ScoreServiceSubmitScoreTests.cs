@@ -14,6 +14,8 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Utils;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
@@ -66,7 +68,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -106,7 +108,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.ScoreHash = score.ComputeOnlineHash(usernameInUpperCaseAndUsedInGameSession.Trim(), session.Attributes.UserHash, null);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.StatusString = "ranked";
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.StatusString = "ranked";
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
@@ -119,7 +123,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -179,7 +183,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -236,7 +240,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -283,7 +287,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -328,7 +332,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -377,9 +381,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -397,7 +401,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -409,7 +413,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(userGrades);
-        Assert.Equal(1, userGrades.CountS);
+        Assert.Equal(1, userGrades.CountA);
+        Assert.Equal(0, userGrades.CountS);
     }
 
     [Fact]
@@ -441,7 +446,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -491,7 +496,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -536,7 +541,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -583,7 +588,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -637,7 +642,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -678,7 +683,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -718,7 +723,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -753,7 +758,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(1),
             null
@@ -795,7 +800,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             timeElapsed,
             timeElapsed,
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -847,7 +852,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -888,7 +893,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             null,
             null
@@ -941,7 +946,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1005,7 +1010,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1080,7 +1085,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
@@ -1109,7 +1114,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Submitted,
@@ -1153,7 +1158,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
             IsScoreable = true,
             GameMode = gameMode,
@@ -1167,6 +1172,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         submitScore.EnrichWithSessionData(session);
         submitScore.LocalProperties = submitScore.LocalProperties.FromScore(submitScore);
+
+        beatmap.EnrichWithScoreData(submitScore);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockPerformanceCalculation(491.98253750654084, 5.5);
 
@@ -1249,7 +1257,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
@@ -1278,7 +1286,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
                 IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Failed,
@@ -1322,7 +1330,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
             IsScoreable = true,
             GameMode = gameMode,
@@ -1336,6 +1344,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         submitScore.EnrichWithSessionData(session);
         submitScore.LocalProperties = submitScore.LocalProperties.FromScore(submitScore);
+
+        beatmap.EnrichWithScoreData(submitScore);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockPerformanceCalculation(491.98253750654084, 5.5);
 
@@ -1376,11 +1387,20 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
-        oldScore.Grade = "A";
+        oldScore.Grade = ScoreGrade.A;
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.None;
         oldScore.GameMode = GameMode.Standard;
+        oldScore.Count300 = 85;
+        oldScore.Count100 = 15;
+        oldScore.Count50 = 0;
+        oldScore.CountMiss = 0;
+        oldScore.CountKatu = 0;
+        oldScore.CountGeki = 0;
+        oldScore.Accuracy = PerformanceCalculator.CalculateAccuracy(oldScore);
+        oldScore.Grade = ScoreGradeUtil.Calculate(oldScore);
+        Assert.Equal(ScoreGrade.A, oldScore.Grade);
 
         oldScore.EnrichWithSessionData(session);
 
@@ -1402,7 +1422,15 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = oldScore.Mods;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = "B";
+        score.Count300 = 75;
+        score.Count100 = 25;
+        score.Count50 = 0;
+        score.CountMiss = 0;
+        score.CountKatu = 0;
+        score.CountGeki = 0;
+        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+        score.Grade = ScoreGradeUtil.Calculate(score);
+        Assert.Equal(ScoreGrade.B, score.Grade);
 
         score.TotalScore = oldScore.TotalScore + 1;
 
@@ -1424,7 +1452,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1453,7 +1481,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
-        oldScore.Grade = "A";
+        oldScore.Grade = ScoreGrade.A;
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.Hidden;
@@ -1479,7 +1507,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = Mods.DoubleTime;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = "B";
+        score.Grade = ScoreGrade.B;
 
         score.TotalScore = oldScore.TotalScore - 1;
 
@@ -1501,7 +1529,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1559,7 +1587,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1623,7 +1651,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1653,10 +1681,18 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
-        moddedBestScore.Grade = "S";
         moddedBestScore.SubmissionStatus = SubmissionStatus.Best;
         moddedBestScore.Mods = Mods.None;
         moddedBestScore.GameMode = GameMode.Standard;
+        moddedBestScore.Count300 = 91;
+        moddedBestScore.Count100 = 9;
+        moddedBestScore.Count50 = 0;
+        moddedBestScore.CountMiss = 0;
+        moddedBestScore.CountKatu = 0;
+        moddedBestScore.CountGeki = 0;
+        moddedBestScore.Accuracy = PerformanceCalculator.CalculateAccuracy(moddedBestScore);
+        moddedBestScore.Grade = ScoreGradeUtil.Calculate(moddedBestScore);
+        Assert.Equal(ScoreGrade.S, moddedBestScore.Grade);
         moddedBestScore.EnrichWithSessionData(session);
 
         await Database.Scores.AddScore(moddedBestScore);
@@ -1670,9 +1706,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -1690,7 +1726,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1702,7 +1738,12 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var newUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(newUserGrades);
-        Assert.Equal(1, newUserGrades.CountS);
+        Assert.Equal(1, newUserGrades.CountA);
+        Assert.Equal(0, newUserGrades.CountS);
+
+        var standardUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, GameMode.Standard);
+        Assert.NotNull(standardUserGrades);
+        Assert.Equal(1, standardUserGrades.CountS);
     }
 
     [Theory]
@@ -1739,11 +1780,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         score.EnrichWithSessionData(session);
 
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
-        beatmap.EnrichWithScoreData(score);
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        var (beatmapSet, beatmap) = await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(moddedScore);
@@ -1755,7 +1792,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1827,7 +1864,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             scoreB.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            scoreB.OsuVersion,
             sessionB.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1950,7 +1987,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             scoreB2.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            scoreB2.OsuVersion,
             sessionB.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -2006,7 +2043,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -2067,7 +2104,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -2147,7 +2184,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null

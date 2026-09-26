@@ -1,5 +1,6 @@
 ﻿using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Tests.Extensions;
 using Beatmap = Sunrise.Shared.Objects.Serializable.Beatmap;
@@ -92,29 +93,29 @@ public class MockBeatmapService(MockService service)
             Id = service.GetRandomInteger(),
             BeatmapsetId = beatmapSet.Id,
             DifficultyRating = service.GetRandomInteger(10),
-            Mode = Enum.GetValues<GameMode>().GetValue(service.GetRandomInteger(Enum.GetValues<GameMode>().Length))?.ToString()?.ToLower() ?? "osu",
+            Mode = GameMode.Standard.ToString().ToLower(),
             StatusString = service.GetRandomString(),
-            TotalLength = service.GetRandomInteger(),
+            TotalLength = service.GetRandomInteger(minInt: 30, maxInt: 600),
             UserId = beatmapSet.UserId,
             Version = service.GetRandomString(),
             Accuracy = service.GetRandomInteger(10),
             AR = service.GetRandomInteger(10),
             BPM = service.GetRandomInteger(length: 2),
             Convert = convert,
-            CountCircles = service.GetRandomInteger(),
-            CountSliders = service.GetRandomInteger(),
-            CountSpinners = service.GetRandomInteger(),
+            CountCircles = service.GetRandomInteger(maxInt: 2000),
+            CountSliders = service.GetRandomInteger(maxInt: 2000),
+            CountSpinners = service.GetRandomInteger(maxInt: 200),
             CS = service.GetRandomInteger(10),
             Drain = service.GetRandomInteger(10),
             HitLength = service.GetRandomInteger(),
             LastUpdated = beatmapSet.LastUpdated,
-            ModeInt = service.GetRandomInteger(3),
+            ModeInt = (int)GameMode.Standard,
             Passcount = beatmapSet.PlayCount,
             Playcount = beatmapSet.PlayCount,
             Ranked = beatmapSet.Ranked,
             Url = service.GetRandomString(),
             Checksum = service.GetRandomString(),
-            MaxCombo = service.GetRandomInteger()
+            MaxCombo = service.GetRandomInteger(maxInt: 4000)
         };
     }
 

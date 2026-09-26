@@ -18,32 +18,6 @@ public static class UserGradesExtensions
         if (score.SubmissionStatus != SubmissionStatus.Best || !score.BeatmapStatus.IsRanked())
             return;
 
-        switch (score.Grade)
-        {
-            case "XH":
-                userGrades.CountXH++;
-                break;
-            case "X":
-                userGrades.CountX++;
-                break;
-            case "SH":
-                userGrades.CountSH++;
-                break;
-            case "S":
-                userGrades.CountS++;
-                break;
-            case "A":
-                userGrades.CountA++;
-                break;
-            case "B":
-                userGrades.CountB++;
-                break;
-            case "C":
-                userGrades.CountC++;
-                break;
-            case "D":
-                userGrades.CountD++;
-                break;
-        }
+        userGrades.UpdateGradeCount(score.Grade, 1);
     }
 }

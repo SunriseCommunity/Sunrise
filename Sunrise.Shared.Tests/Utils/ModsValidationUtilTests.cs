@@ -92,4 +92,22 @@ public class ModsValidationUtilTests : BaseTest
         // Assert
         Assert.True(result.IsFailure);
     }
+
+    [Fact]
+    public void AllowedModDoesNotMaskModForbiddenForGameMode()
+    {
+        var result = ModsValidationUtil.ValidateMods(Mods.Hidden | Mods.Key4, GameMode.Standard);
+
+        Assert.True(result.IsFailure);
+    }
+
+    [Theory]
+    [InlineData(GameMode.Taiko, Mods.Relax2)]
+    [InlineData(GameMode.Mania, Mods.Relax)]
+    public void ModeChangingModMustHaveCorrespondingInternalGameMode(GameMode gameMode, Mods mods)
+    {
+        var result = ModsValidationUtil.ValidateMods(mods, gameMode);
+
+        Assert.True(result.IsFailure);
+    }
 }

@@ -69,6 +69,10 @@ public class SunriseDbContext : DbContext
             .HasForeignKey(ur => ur.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Score>()
+            .Property(score => score.Grade)
+            .HasConversion<string>();
+
         modelBuilder.Entity<UserRelationship>()
             .HasOne(ur => ur.Target)
             .WithMany(u => u.UserReceivedRelationships)

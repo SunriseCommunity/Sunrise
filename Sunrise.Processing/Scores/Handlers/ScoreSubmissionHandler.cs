@@ -8,7 +8,6 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
-using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
@@ -67,16 +66,35 @@ public class ScoreSubmissionHandler(
 
         var (submittedScore, score) = buildScoreCandidateResult.Value;
 
-        if (Configuration.EnforceLatestClientVersion)
-            await CheckScoreClientVersion(score.OsuVersion, queueEntry.OsuVersion, ct);
-
-        var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap.Checksum ?? string.Empty);
+        var validateBuiltScoreResult = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, score, submittedScore, beatmap);
 
         if (validateBuiltScoreResult.IsFailure)
         {
             await RestrictUserIfErrorCodeIsBannable(score.UserId, validateBuiltScoreResult.Error.Code);
             return validateBuiltScoreResult.Error.ToResult<ScorePrepareContext>();
         }
+
+        if (score is { IsPassed: true, ReplayFileId: not null })
+        {
+            var replay = await Database.Scores.Files.GetReplayFile(score.ReplayFileId.Value, ct);
+            if (replay == null)
+                return new ScoreProcessingError(ScoreProcessingErrorCode.InvalidReplay, "Replay file could not be loaded").ToResult<ScorePrepareContext>();
+
+            var replayValidation = ReplayValidationUtil.ValidateHeader(replay);
+
+            if (replayValidation.IsFailure)
+            {
+                Log.Warning("Replay validation failed for score {ScoreId} submitted by user {UserId} on beatmap {BeatmapHash}: {Error}",
+                    score.Id,
+                    score.UserId,
+                    score.BeatmapHash,
+                    replayValidation.Error);
+                return replayValidation.Error.ToResult<ScorePrepareContext>();
+            }
+        }
+
+        if (Configuration.EnforceLatestClientVersion)
+            await CheckScoreClientVersion(score.OsuVersion, ct);
 
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
         if (scorePerformanceResult.IsFailure)
@@ -118,12 +136,27 @@ public class ScoreSubmissionHandler(
         ScoreProcessingTask? task = null)
     {
         var prepareResult = await PrepareInlineSubmissionAsync(beatmapRatelimitSession, queueEntry, ct);
+
         if (prepareResult.IsFailure)
+        {
+            Log.Error("Failed to prepare inline score submission for user {UserId} on beatmap {BeatmapHash}: {Error}",
+                queueEntry.UserId,
+                queueEntry.BeatmapHash,
+                prepareResult.Error);
             return prepareResult.Error;
+        }
+
 
         var commitResult = await CommitAsync(prepareResult.Value, task, ct);
+
         if (commitResult.IsFailure)
+        {
+            Log.Error("Failed to commit inline score submission for user {UserId} on beatmap {BeatmapHash}: {Error}",
+                queueEntry.UserId,
+                queueEntry.BeatmapHash,
+                commitResult.Error);
             return commitResult.Error;
+        }
 
         var committedCtx = commitResult.Value;
 
@@ -163,12 +196,11 @@ public class ScoreSubmissionHandler(
         return UnitResult.Success<ScoreProcessingError>();
     }
 
-    private async Task CheckScoreClientVersion(string scoreOsuVersion, string formOsuVersion, CancellationToken ct)
+    private async Task CheckScoreClientVersion(string scoreOsuVersion, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
 
-        var versionString = !string.IsNullOrWhiteSpace(scoreOsuVersion) ? scoreOsuVersion : formOsuVersion;
-        var clientVersion = OsuVersion.TryParse(versionString);
+        var clientVersion = OsuVersion.TryParse($"b{scoreOsuVersion}");
         if (clientVersion == null)
             return;
 

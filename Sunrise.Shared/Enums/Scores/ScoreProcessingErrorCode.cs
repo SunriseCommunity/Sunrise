@@ -16,5 +16,7 @@ public enum ScoreProcessingErrorCode
     TransactionFailed = 11,
     ParsedScoreInvalid = 12,
     CancelledByOperator = 13,
-    InvalidScoreState = 14
+    InvalidScoreState = 14,
+    InvalidClientVersion = 15,
+    InvalidReplay = 16
 }

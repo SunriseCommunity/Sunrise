@@ -71,7 +71,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         previousTopScore.EnrichWithUserData(otherUser);
         previousTopScore.Mods = Mods.None;
         previousTopScore.TotalScore = 900;
-        previousTopScore.EnrichWithBeatmapData(beatmap);
+        previousTopScore.PrepareForSubmission(beatmap);
         previousTopScore.LocalProperties = previousTopScore.LocalProperties.FromScore(previousTopScore);
         await CreateTestScore(previousTopScore);
 
@@ -79,7 +79,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = 1000;
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
@@ -127,7 +127,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         existingBest.EnrichWithUserData(user);
         existingBest.Mods = Mods.None;
         existingBest.TotalScore = 900;
-        existingBest.EnrichWithBeatmapData(beatmap);
+        existingBest.PrepareForSubmission(beatmap);
         existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);
         await CreateTestScore(existingBest);
 
@@ -135,7 +135,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.EnrichWithUserData(user);
         score.Mods = Mods.None;
         score.TotalScore = 1000;
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
@@ -181,7 +181,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         overallBest.Mods = Mods.Relax;
         overallBest.TotalScore = 1000;
         overallBest.PerformancePoints = 150;
-        overallBest.EnrichWithBeatmapData(otherBeatmap);
+        overallBest.PrepareForSubmission(otherBeatmap);
         overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
         await CreateTestScore(overallBest);
 
@@ -195,7 +195,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         secondPlace.Mods = Mods.Relax;
         secondPlace.TotalScore = 5000;
         secondPlace.PerformancePoints = 140;
-        secondPlace.EnrichWithBeatmapData(beatmap);
+        secondPlace.PrepareForSubmission(beatmap);
         secondPlace.LocalProperties = secondPlace.LocalProperties.FromScore(secondPlace);
         await CreateTestScore(secondPlace);
 
@@ -205,7 +205,7 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.Mods = Mods.Relax;
         score.TotalScore = 1200;
         score.PerformancePoints = 160;
-        score.EnrichWithBeatmapData(beatmap);
+        score.PrepareForSubmission(beatmap);
         score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 

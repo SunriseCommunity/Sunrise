@@ -42,6 +42,10 @@ public class SunriseMetrics
         "score_processing_entries_total",
         description: "Counts individual queue-entry outcomes, tagged by outcome (success, permanent_failure, retryable_failure, unexpected)");
 
+    private static readonly Counter<long> ScoreSubmissionGradeDiscrepanciesCounter = SunriseMeter.CreateCounter<long>(
+        "score_submission_grade_discrepancies_total",
+        description: "Counts submitted scores whose declared grade differs from the grade calculated from their submitted statistics (audit signal, not a rejection)");
+
     public static readonly Histogram<double> ScoreProcessingTaskDurationHistogram = SunriseMeter.CreateHistogram<double>(
         "score_processing_task_duration_seconds",
         description: "Measures the duration of individual score processing tasks");
@@ -234,6 +238,14 @@ public class SunriseMetrics
             new KeyValuePair<string, object?>("outcome", outcome),
             new KeyValuePair<string, object?>("task_type", taskType.ToString()),
             new KeyValuePair<string, object?>("error_code", code?.ToString() ?? "none"));
+    }
+
+    public static void ScoreSubmissionGradeDiscrepancyCounterInc(GameMode gameMode, ScoreGrade submittedGrade, ScoreGrade expectedGrade)
+    {
+        ScoreSubmissionGradeDiscrepanciesCounter.Add(1,
+            new KeyValuePair<string, object?>("game_mode", gameMode.ToString()),
+            new KeyValuePair<string, object?>("submitted_grade", submittedGrade.ToString()),
+            new KeyValuePair<string, object?>("expected_grade", expectedGrade.ToString()));
     }
 
     public static void RecordScoreProcessingTaskDuration(double seconds, ScoreTaskType taskType)
