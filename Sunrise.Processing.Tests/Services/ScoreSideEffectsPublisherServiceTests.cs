@@ -72,7 +72,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         previousTopScore.Mods = Mods.None;
         previousTopScore.TotalScore = 900;
         previousTopScore.PrepareForSubmission(beatmap);
-        previousTopScore.LocalProperties = previousTopScore.LocalProperties.FromScore(previousTopScore);
         await CreateTestScore(previousTopScore);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -80,7 +79,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.Mods = Mods.None;
         score.TotalScore = 1000;
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -128,7 +126,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         existingBest.Mods = Mods.None;
         existingBest.TotalScore = 900;
         existingBest.PrepareForSubmission(beatmap);
-        existingBest.LocalProperties = existingBest.LocalProperties.FromScore(existingBest);
         await CreateTestScore(existingBest);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -136,7 +133,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.Mods = Mods.None;
         score.TotalScore = 1000;
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -153,6 +149,54 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         // Assert
         Assert.True(result.IsSuccess);
 
+        Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerChatMessage);
+    }
+
+    [Fact]
+    public async Task TestPublishScoreSubmissionSideEffectsWithLaterEqualScoreDoesNotAnnounceFirstPlace()
+    {
+        using var scope = Scope;
+        var service = scope.ServiceProvider.GetRequiredService<ScoreSideEffectsPublisherService>();
+        var channels = scope.ServiceProvider.GetRequiredService<ChatChannelRepository>();
+
+        var user = await CreateTestUser();
+        var session = CreateTestSession(user);
+        channels.JoinChannel("#announce", session);
+        session.GetContent();
+
+        var otherUser = await CreateTestUser();
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        var earlierPlayedAt = DateTime.UtcNow.AddMinutes(-10);
+
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.EnrichWithUserData(otherUser);
+        earlierScore.GameMode = (GameMode)beatmap.ModeInt;
+        earlierScore.Mods = Mods.None;
+        earlierScore.TotalScore = 1000;
+        earlierScore.WhenPlayed = earlierPlayedAt;
+        earlierScore.PrepareForSubmission(beatmap);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await CreateTestScore(earlierScore);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        score.GameMode = earlierScore.GameMode;
+        score.Mods = Mods.None;
+        score.TotalScore = 1000;
+        score.WhenPlayed = earlierPlayedAt.AddMinutes(1);
+        score.PrepareForSubmission(beatmap);
+        score.ScoreHash = Guid.NewGuid().ToString("N");
+        score = await CreateTestScore(score);
+
+        var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
+        ApplyScoreToUserStats(userStats, score);
+        var ctx = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap, beatmapSet);
+
+        var result = await service.PublishScoreSubmissionSideEffects(BaseSession.GenerateServerSession(), ctx, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
         Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerChatMessage);
     }
 
@@ -182,7 +226,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         overallBest.TotalScore = 1000;
         overallBest.PerformancePoints = 150;
         overallBest.PrepareForSubmission(otherBeatmap);
-        overallBest.LocalProperties = overallBest.LocalProperties.FromScore(overallBest);
         await CreateTestScore(overallBest);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -196,7 +239,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         secondPlace.TotalScore = 5000;
         secondPlace.PerformancePoints = 140;
         secondPlace.PrepareForSubmission(beatmap);
-        secondPlace.LocalProperties = secondPlace.LocalProperties.FromScore(secondPlace);
         await CreateTestScore(secondPlace);
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -206,7 +248,6 @@ public class ScoreSideEffectsPublisherServiceTests(IntegrationDatabaseFixture fi
         score.TotalScore = 1200;
         score.PerformancePoints = 160;
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         score = await CreateTestScore(score);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);

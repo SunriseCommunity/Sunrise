@@ -140,9 +140,9 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             },
             ct: ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
+        var scoresWithRanks = await database.Scores.GetScoresWithLeaderboardPositions(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
+        var parsedScores = scoresWithRanks.Select(entry => new ScoreResponse(sessions, entry.Score, entry.LeaderboardPosition)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 

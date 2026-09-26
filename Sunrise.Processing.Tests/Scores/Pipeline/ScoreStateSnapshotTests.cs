@@ -1,4 +1,5 @@
 using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Services.Mock;
 using Xunit;
 
@@ -13,8 +14,6 @@ public class ScoreStateSnapshotTests
     {
         // Arrange
         var score = _mocker.Score.GetRandomScore();
-        score.LocalProperties = score.LocalProperties.FromScore(score);
-
         // Act
         var snapshot = ScoreStateSnapshot.Capture(score);
 
@@ -22,6 +21,6 @@ public class ScoreStateSnapshotTests
         Assert.Equal(score.SubmissionStatus, snapshot.SubmissionStatus);
         Assert.Equal(score.IsScoreable, snapshot.IsScoreable);
         Assert.Equal(score.IsPassed, snapshot.IsPassed);
-        Assert.Equal(score.LocalProperties.IsRanked, snapshot.IsRanked);
+        Assert.Equal(score.BeatmapStatus.IsRanked(), snapshot.IsRanked);
     }
 }

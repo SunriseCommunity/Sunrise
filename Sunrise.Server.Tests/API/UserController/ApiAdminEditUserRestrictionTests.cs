@@ -281,7 +281,6 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             PerformancePoints = 426.69985159889916
         };
 
-        seedScore.LocalProperties = seedScore.LocalProperties.FromScore(seedScore);
         var addScoreResult = await Database.Scores.AddScore(seedScore);
 
         if (addScoreResult.IsFailure)
@@ -476,7 +475,6 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             PerformancePoints = 426.69985159889916
         };
 
-        seedScore.LocalProperties = seedScore.LocalProperties.FromScore(seedScore);
         var addScoreResult = await Database.Scores.AddScore(seedScore);
 
         if (addScoreResult.IsFailure)

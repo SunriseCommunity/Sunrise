@@ -1,4 +1,4 @@
-﻿using osu.Shared;
+using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
@@ -168,7 +168,6 @@ public class MockScoreService(MockService service)
         score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
         score.Grade = ScoreGradeUtil.Calculate(score);
 
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         return score;
     }

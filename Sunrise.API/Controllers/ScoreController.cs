@@ -42,9 +42,9 @@ public class ScoreController(DatabaseService database, SessionRepository session
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score], ct)).First();
+        var scoreWithRank = (await database.Scores.GetScoresWithLeaderboardPositions([score], ct)).First();
 
-        return Ok(new ScoreResponse(sessions, score));
+        return Ok(new ScoreResponse(sessions, scoreWithRank.Score, scoreWithRank.LeaderboardPosition));
     }
 
     [HttpGet("replay")]
@@ -104,9 +104,9 @@ public class ScoreController(DatabaseService database, SessionRepository session
             },
             ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
+        var scoresWithRanks = await database.Scores.GetScoresWithLeaderboardPositions(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
+        var parsedScores = scoresWithRanks.Select(entry => new ScoreResponse(sessions, entry.Score, entry.LeaderboardPosition)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalCount));
     }

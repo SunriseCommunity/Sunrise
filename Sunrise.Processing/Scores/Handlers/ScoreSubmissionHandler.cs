@@ -9,6 +9,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -188,7 +189,7 @@ public class ScoreSubmissionHandler(
         var hasNonStandardModsForBanCheck = score.Mods.TryGetSelectedNotStandardMods() is not Mods.None;
         var isScoreBannable = score.PerformancePoints >= Configuration.BannablePpThreshold
                               && !hasNonStandardModsForBanCheck
-                              && score.LocalProperties.IsRanked;
+                              && score.BeatmapStatus.IsRanked();
 
         if (isScoreBannable)
             return new ScoreProcessingError(ScoreProcessingErrorCode.BannablePpThreshold, "Too many PP - auto-restricted").ToUnit();

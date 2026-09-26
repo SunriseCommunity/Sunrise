@@ -1,4 +1,4 @@
-﻿using Sunrise.Processing.Utils;
+using Sunrise.Processing.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions;
@@ -142,6 +142,36 @@ public class ScoreSubmissionUtilTests : BaseTest
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
     }
 
+    [Theory]
+    [InlineData(GameMode.Standard, Mods.None)]
+    [InlineData(GameMode.RelaxStandard, Mods.Relax)]
+    public void TestEqualTimestampRetainsEarlierPersistedBestBeforeAndAfterInsert(GameMode mode, Mods mods)
+    {
+        var previousBest = _mocker.Score.GetBestScoreableRandomScore();
+        previousBest.Id = 42;
+        previousBest.GameMode = mode;
+        previousBest.Mods = mods;
+        previousBest.TotalScore = 1000;
+        previousBest.PerformancePoints = 100;
+        previousBest.WhenPlayed = new DateTime(2026, 9, 26, 7, 0, 0, DateTimeKind.Utc);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.Id = 0;
+        score.GameMode = mode;
+        score.Mods = mods;
+        score.TotalScore = previousBest.TotalScore;
+        score.PerformancePoints = previousBest.PerformancePoints;
+        score.WhenPlayed = previousBest.WhenPlayed;
+
+        Assert.Same(previousBest, new[] { score, previousBest }.ToList().SortScoresByTheirScoreValue().First());
+
+        score.UpdateSubmissionStatus(previousBest);
+        Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
+
+        score.Id = 43;
+        Assert.Same(previousBest, new[] { score, previousBest }.ToList().SortScoresByTheirScoreValue().First());
+    }
+
     [Fact]
     public void TestGetScoreSubmitResponseWithRankedBeatmapReturnsExpectedResponse()
     {
@@ -152,7 +182,6 @@ public class ScoreSubmissionUtilTests : BaseTest
         var newScore = _mocker.Score.GetBestScoreableRandomScore();
         newScore.EnrichWithUserData(user);
         newScore.PerformancePoints = 200;
-        newScore.LocalProperties.LeaderboardPosition = 1;
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.IgnoreBeatmapRanking();
@@ -163,13 +192,11 @@ public class ScoreSubmissionUtilTests : BaseTest
         previousBeatmapBest.PrepareForSubmission(beatmap);
         previousBeatmapBest.EnrichWithUserData(user);
         previousBeatmapBest.PerformancePoints = 50;
-        previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
 
         var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
         previousPerformanceBest.PrepareForSubmission(beatmap);
         previousPerformanceBest.EnrichWithUserData(user);
         previousPerformanceBest.PerformancePoints = 100;
-        previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;
 
         var userStats = _mocker.User.GetRandomUserStats();
         userStats.EnrichWithUserData(user);
@@ -184,11 +211,11 @@ public class ScoreSubmissionUtilTests : BaseTest
 
         var expectedResponse =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}\n" +
-            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:{previousBeatmapBest.LocalProperties.LeaderboardPosition}|rankAfter:{newScore.LocalProperties.LeaderboardPosition}|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{previousBeatmapBest.PerformancePoints}|ppAfter:{newScore.PerformancePoints}|onlineScoreId:{newScore.Id}\n" +
-            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:{prevUserStats.LocalProperties.Rank}|rankAfter:{userStats.LocalProperties.Rank}|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
+            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:5|rankAfter:1|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{previousBeatmapBest.PerformancePoints}|ppAfter:{newScore.PerformancePoints}|onlineScoreId:{newScore.Id}\n" +
+            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:11|rankAfter:10|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
 
         // Act
-        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores, newAchievements);
+        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, 11, 10, newScore, 5, 1, previousPersonalBestScores, newAchievements);
 
         // Assert
         Assert.Equal(expectedResponse, result);
@@ -204,7 +231,6 @@ public class ScoreSubmissionUtilTests : BaseTest
         var newScore = _mocker.Score.GetBestScoreableRandomScore();
         newScore.EnrichWithUserData(user);
         newScore.PerformancePoints = 200;
-        newScore.LocalProperties.LeaderboardPosition = 1;
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
 
@@ -221,13 +247,11 @@ public class ScoreSubmissionUtilTests : BaseTest
         previousBeatmapBest.PrepareForSubmission(beatmap);
         previousBeatmapBest.EnrichWithUserData(user);
         previousBeatmapBest.PerformancePoints = 50;
-        previousBeatmapBest.LocalProperties.LeaderboardPosition = 5;
 
         var previousPerformanceBest = _mocker.Score.GetBestScoreableRandomScore();
         previousPerformanceBest.PrepareForSubmission(beatmap);
         previousPerformanceBest.EnrichWithUserData(user);
         previousPerformanceBest.PerformancePoints = 100;
-        previousPerformanceBest.LocalProperties.LeaderboardPosition = 6;
 
         var userStats = _mocker.User.GetRandomUserStats();
         userStats.EnrichWithUserData(user);
@@ -244,11 +268,11 @@ public class ScoreSubmissionUtilTests : BaseTest
 
         var expectedResponse =
             $"beatmapId:{beatmap.Id}|beatmapSetId:{beatmap.BeatmapsetId}|beatmapPlaycount:{beatmap.Playcount}|beatmapPasscount:{beatmap.Passcount}|approvedDate:{beatmap.LastUpdated:yyyy-MM-dd}\n" +
-            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:{previousBeatmapBest.LocalProperties.LeaderboardPosition}|rankAfter:{newScore.LocalProperties.LeaderboardPosition}|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{expectedPerformancePoints}|ppAfter:{expectedPerformancePoints}|onlineScoreId:{newScore.Id}\n" +
-            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:{prevUserStats.LocalProperties.Rank}|rankAfter:{userStats.LocalProperties.Rank}|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
+            $"chartId:beatmap|chartUrl:{beatmap.Url}|chartName:Beatmap Ranking|rankBefore:5|rankAfter:1|rankedScoreBefore:{previousBeatmapBest.TotalScore}|rankedScoreAfter:{newScore.TotalScore}|totalScoreBefore:{previousBeatmapBest.TotalScore}|totalScoreAfter:{newScore.TotalScore}|maxComboBefore:{previousBeatmapBest.MaxCombo}|maxComboAfter:{newScore.MaxCombo}|accuracyBefore:{previousBeatmapBest.Accuracy}|accuracyAfter:{newScore.Accuracy}|ppBefore:{expectedPerformancePoints}|ppAfter:{expectedPerformancePoints}|onlineScoreId:{newScore.Id}\n" +
+            $"chartId:overall|chartUrl:https://{Configuration.Domain}/user/{user.Id}|chartName:Overall Ranking|rankBefore:11|rankAfter:10|rankedScoreBefore:{prevUserStats.RankedScore}|rankedScoreAfter:{userStats.RankedScore}|totalScoreBefore:{prevUserStats.TotalScore}|totalScoreAfter:{userStats.TotalScore}|maxComboBefore:{prevUserStats.MaxCombo}|maxComboAfter:{userStats.MaxCombo}|accuracyBefore:{prevUserStats.Accuracy}|accuracyAfter:{userStats.Accuracy}|ppBefore:{prevUserStats.PerformancePoints}|ppAfter:{userStats.PerformancePoints}|achievements-new:{newAchievements}";
 
         // Act
-        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, newScore, previousPersonalBestScores, newAchievements);
+        var result = ScoreSubmissionUtil.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, 11, 10, newScore, 5, 1, previousPersonalBestScores, newAchievements);
 
         // Assert
         Assert.Equal(expectedResponse, result);

@@ -1,4 +1,4 @@
-﻿using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Processing.Scores.Processors;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
@@ -252,7 +252,6 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
 
         score.EnrichWithUserData(user);
         score.PrepareForSubmission(beatmap);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
         return score;
     }
 }

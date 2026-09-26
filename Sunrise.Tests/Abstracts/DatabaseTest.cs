@@ -196,9 +196,9 @@ public abstract class DatabaseTest(IntegrationDatabaseFixture fixture, bool reus
 
         await Database.Scores.AddScore(score);
 
-        var scoreLeaderboardTask = await Database.Scores.EnrichScoresWithLeaderboardPosition([score]);
+        var scoreLeaderboardTask = await Database.Scores.GetScoresWithLeaderboardPositions([score]);
 
-        score = scoreLeaderboardTask.First();
+        score = scoreLeaderboardTask.First().Score;
 
         return score;
     }

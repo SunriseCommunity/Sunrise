@@ -541,7 +541,6 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         score.IsPassed = isPassed;
         score.Mods = mods;
         score.GameMode = score.GameMode.EnrichWithMods(score.Mods);
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         var clientHash = "client-hash";
         score.ScoreHash = score.ComputeOnlineHash(user.Username, clientHash, storyboardHash);

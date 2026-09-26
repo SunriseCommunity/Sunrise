@@ -9,11 +9,6 @@ namespace Sunrise.Shared.Database.Models.Users;
 [Index(nameof(UserId), nameof(GameMode), IsUnique = true)]
 public class UserStats
 {
-    public UserStats()
-    {
-        LocalProperties = new LocalProperties();
-    }
-
     public int Id { get; set; }
 
     [ForeignKey("UserId")]
@@ -45,23 +40,8 @@ public class UserStats
 
     public DateTime? BestCountryRankDate { get; set; }
 
-    [NotMapped]
-    public LocalProperties LocalProperties { get; set; }
-
     public UserStats Clone()
     {
-        var clone = (UserStats)MemberwiseClone();
-
-        clone.LocalProperties = new LocalProperties
-        {
-            Rank = LocalProperties.Rank
-        };
-
-        return clone;
+        return (UserStats)MemberwiseClone();
     }
-}
-
-public class LocalProperties
-{
-    public long? Rank { get; set; }
 }

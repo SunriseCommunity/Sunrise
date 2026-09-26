@@ -329,7 +329,6 @@ public class ScoreDeletionProcessingJobTests(IntegrationDatabaseFixture fixture,
         score.EnrichWithBeatmapData(beatmap);
         score.ReconcileModsAndGameMode(beatmap);
         score.SubmissionStatus = submissionStatus;
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         return await CreateTestScore(score);
     }
