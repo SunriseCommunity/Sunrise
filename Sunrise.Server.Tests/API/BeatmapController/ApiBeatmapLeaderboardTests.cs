@@ -7,6 +7,7 @@ using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.API.BeatmapController;
 
@@ -86,6 +87,57 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         Assert.NotNull(content);
 
         Assert.Contains(content.Scores, s => s.Id == scoreBestByTotalScore.Id); // Even using new performance calculation algorithm, leaderboard should show best by total score
+    }
+
+    [Fact]
+    public async Task TestGetBeatmapLeaderboardEqualScoresKeepsEarlierScoreFirstAndPreservesRankTie()
+    {
+        var client = App.CreateClient().UseClient("api");
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        var earlierUser = await CreateTestUser();
+        var laterUser = await CreateTestUser();
+        var playedAt = DateTime.UtcNow.AddMinutes(-10);
+
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.UserId = earlierUser.Id;
+        earlierScore.GameMode = (GameMode)beatmap.ModeInt;
+        earlierScore.Mods = Mods.None;
+        earlierScore.TotalScore = 1000;
+        earlierScore.WhenPlayed = playedAt;
+        earlierScore.PrepareForSubmission(beatmap);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(earlierScore);
+
+        var laterScore = _mocker.Score.GetBestScoreableRandomScore();
+        laterScore.UserId = laterUser.Id;
+        laterScore.GameMode = earlierScore.GameMode;
+        laterScore.Mods = Mods.None;
+        laterScore.TotalScore = 1000;
+        laterScore.WhenPlayed = playedAt.AddMinutes(1);
+        laterScore.PrepareForSubmission(beatmap);
+        laterScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(laterScore);
+
+        var sameUserLaterScore = _mocker.Score.GetBestScoreableRandomScore();
+        sameUserLaterScore.UserId = earlierUser.Id;
+        sameUserLaterScore.GameMode = earlierScore.GameMode;
+        sameUserLaterScore.Mods = Mods.None;
+        sameUserLaterScore.TotalScore = 1000;
+        sameUserLaterScore.WhenPlayed = playedAt;
+        sameUserLaterScore.PrepareForSubmission(beatmap);
+        sameUserLaterScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(sameUserLaterScore);
+
+        var response = await client.GetAsync($"beatmap/{beatmap.Id}/leaderboard?mode={earlierScore.GameMode}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadFromJsonAsyncWithAppConfig<ScoresResponse>();
+        Assert.NotNull(content);
+        Assert.Equal(new[] { earlierScore.Id, laterScore.Id }, content.Scores.Select(score => score.Id));
+        Assert.Equal(new int?[] { 1, 1 }, content.Scores.Select(score => score.LeaderboardRank));
     }
 
     [Theory]

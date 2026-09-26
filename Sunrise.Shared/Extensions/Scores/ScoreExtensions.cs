@@ -60,19 +60,36 @@ public static class ScoreExtensions
     public static List<T> SortScoresByTotalScore<T>(this List<T> scores) where T : Score
     {
         scores.Sort((x, y) =>
-            y.TotalScore.CompareTo(x.TotalScore) != 0
-                ? y.TotalScore.CompareTo(x.TotalScore)
-                : x.WhenPlayed.CompareTo(y.WhenPlayed));
+        {
+            var scoreComparison = y.TotalScore.CompareTo(x.TotalScore);
+            return scoreComparison != 0 ? scoreComparison : CompareScoreTie(x, y);
+        });
         return scores;
     }
 
     public static List<T> SortScoresByPerformancePoints<T>(this List<T> scores) where T : Score
     {
         scores.Sort((x, y) =>
-            y.PerformancePoints.CompareTo(x.PerformancePoints) != 0
-                ? y.PerformancePoints.CompareTo(x.PerformancePoints)
-                : x.WhenPlayed.CompareTo(y.WhenPlayed));
+        {
+            var performanceComparison = y.PerformancePoints.CompareTo(x.PerformancePoints);
+            return performanceComparison != 0 ? performanceComparison : CompareScoreTie(x, y);
+        });
         return scores;
+    }
+
+    private static int CompareScoreTie(Score x, Score y)
+    {
+        var timeComparison = x.WhenPlayed.CompareTo(y.WhenPlayed);
+        if (timeComparison != 0)
+            return timeComparison;
+
+        if (x.Id <= 0)
+            return y.Id <= 0 ? 0 : 1;
+
+        if (y.Id <= 0)
+            return -1;
+
+        return x.Id.CompareTo(y.Id);
     }
 
     /// <summary>
@@ -122,8 +139,6 @@ public static class ScoreExtensions
             Accuracy = baseScore.Accuracy,
             TimeElapsed = timeElapsed
         };
-
-        score.LocalProperties = score.LocalProperties.FromScore(score);
 
         return score;
     }
@@ -217,14 +232,9 @@ public static class ScoreExtensions
     }
 
 
-    public static List<T> EnrichWithLeaderboardPositions<T>(this List<T> scores) where T : Score
+    public static List<(T Score, int? LeaderboardPosition)> WithLeaderboardPositions<T>(this List<T> scores) where T : Score
     {
-        for (var i = 0; i < scores.Count; i++)
-        {
-            scores[i].LocalProperties.LeaderboardPosition = i + 1;
-        }
-
-        return scores;
+        return scores.Select((score, index) => (score, (int?)(index + 1))).ToList();
     }
 
 
@@ -233,7 +243,7 @@ public static class ScoreExtensions
     /// </summary>
     /// <param name="score"></param>
     /// <returns></returns>
-    public static string GetString(this Score score)
+    public static string GetString(this Score score, int? leaderboardPosition)
     {
         var time = (int)score.WhenPlayed.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;
         var hasReplay = score.ReplayFileId != null ? "1" : "0";
@@ -242,7 +252,7 @@ public static class ScoreExtensions
         var totalScore = score.GameMode.IsGameModeWithoutScoreMultiplier() ? (int)score.PerformancePoints : score.TotalScore;
 
         return
-            $"{score.Id}|{score.User.Username}|{totalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{score.LocalProperties.LeaderboardPosition}|{time}|{hasReplay}";
+            $"{score.Id}|{score.User.Username}|{totalScore}|{score.MaxCombo}|{score.Count50}|{score.Count100}|{score.Count300}|{score.CountMiss}|{score.CountKatu}|{score.CountGeki}|{score.Perfect}|{(int)score.Mods}|{score.UserId}|{leaderboardPosition}|{time}|{hasReplay}";
     }
 
     public static string ComputeOnlineHash(this Score score, string username, string clientHash, string? storyboardHash)

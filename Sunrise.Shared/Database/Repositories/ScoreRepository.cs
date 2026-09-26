@@ -56,7 +56,8 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         var scoresQuery = dbContext.Scores
             .FromSqlRaw(groupedBestScores.ToQueryString())
             .OrderByDescending(x => x.PerformancePoints)
-            .ThenByDescending(x => x.WhenPlayed);
+            .ThenBy(x => x.WhenPlayed)
+            .ThenBy(x => x.Id);
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 
@@ -196,7 +197,8 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             case ScoreTableType.Best:
                 scoresQuery = dbContext.Scores.FromSqlRaw(scoresQuery.ToQueryString())
                     .OrderByDescending(s => s.PerformancePoints)
-                    .ThenByDescending(s => s.WhenPlayed);
+                    .ThenBy(s => s.WhenPlayed)
+                    .ThenBy(s => s.Id);
                 break;
             case ScoreTableType.Top:
                 scoresQuery = dbContext.Scores.FromSqlRaw(scoresQuery.ToQueryString())
@@ -265,7 +267,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
 
         scoresQuery = sort switch
         {
-            ScoreSortType.Performance => scoresQuery.OrderByDescending(s => s.PerformancePoints).ThenByDescending(s => s.WhenPlayed),
+            ScoreSortType.Performance => scoresQuery.OrderByDescending(s => s.PerformancePoints).ThenBy(s => s.WhenPlayed).ThenBy(s => s.Id),
             ScoreSortType.Date => scoresQuery.OrderByDescending(s => s.WhenPlayed),
             _ => scoresQuery
         };
@@ -332,9 +334,9 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         return scoresQuery;
     }
 
-    public async Task<List<Score>> EnrichScoresWithLeaderboardPosition(List<Score> scores, CancellationToken ct = default)
+    public async Task<List<(Score Score, int? LeaderboardPosition)>> GetScoresWithLeaderboardPositions(List<Score> scores, CancellationToken ct = default)
     {
-        if (scores.Count == 0) return scores;
+        if (scores.Count == 0) return [];
 
         var scoresIds = string.Join(",", scores.Select(s => s.Id));
 
@@ -367,15 +369,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             }
         }
 
-        foreach (var score in scores)
-        {
-            if (leaderboardMap.TryGetValue(score.Id, out var position))
-            {
-                score.LocalProperties.LeaderboardPosition = position;
-            }
-        }
-
-        return scores;
+        return scores.Select(score => (score, leaderboardMap.TryGetValue(score.Id, out var position) ? (int?)position : null)).ToList();
     }
 
     public async Task<long> CountScores(CancellationToken ct = default)
@@ -430,11 +424,6 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             .OrderBy(s => s.Id)
             .ForUpdate()
             .ToListAsync(ct);
-
-        foreach (var score in lockedScores)
-        {
-            score.LocalProperties = score.LocalProperties.FromScore(score);
-        }
 
         var targetScore = scoreId.HasValue ? lockedScores.SingleOrDefault(s => s.Id == scoreId.Value) : null;
         var lockedPeers = lockedScores.Where(s => s.Id != scoreId).ToList();
