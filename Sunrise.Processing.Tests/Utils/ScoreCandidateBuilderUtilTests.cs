@@ -4,6 +4,8 @@ using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Utils;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
@@ -72,7 +74,9 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
     [Theory]
     [InlineData("b20260412", "b20260412")]
     [InlineData("20260412.1", "20260412.1")]
-    [InlineData("20260412", "20260413")]
+    [InlineData("20260412", "b20260413.1")]
+    [InlineData("20260412", "b20260412bogus")]
+    [InlineData("20260412", "b20260412.2147483648")]
     [InlineData("20260412", null)]
     public void TestValidateBuiltScoreWithInvalidOrMismatchedSubmissionVersionsReturnsInvalidClientVersion(
         string scoreVersion, string? formVersion)
@@ -92,18 +96,138 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         Assert.Equal(ScoreProcessingErrorCode.InvalidClientVersion, result.Error.Code);
     }
 
-    [Fact]
-    public void TestValidateBuiltScoreWithInvalidGradeReturnsSuccess()
+    [Theory]
+    [InlineData("20260101", "b20260101.1", "stable40")]
+    [InlineData("20240826", "b20240826.2cuttingedge", "cuttingedge")]
+    public void TestValidateBuiltScoreAcceptsSupportedFormClientVersionFormats(
+        string serializedScoreDate, string formVersion, string expectedStream)
     {
-        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry();
+        var parsedVersion = OsuVersion.TryParse(formVersion);
+        Assert.NotNull(parsedVersion);
+        Assert.Contains(parsedVersion.Stream, OsuVersion.SupportedStreams);
+        Assert.Equal(expectedStream, parsedVersion.Stream);
+
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry(clientBuildDate: serializedScoreDate);
         var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
-        buildResult.Value.score.Grade = ScoreGrade.D;
-        buildResult.Value.score.ScoreHash = buildResult.Value.score.ComputeOnlineHash(
-            buildResult.Value.submittedScore.PlayerUsername.Trim(), queueEntry.ClientHash, queueEntry.StoryboardHash);
+        queueEntry.OsuVersion = formVersion;
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(
+            queueEntry,
+            buildResult.Value.score,
+            buildResult.Value.submittedScore,
+            beatmap);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public void TestValidateBuiltScoreAcceptsLegacyFormDatePair()
+    {
+        var (queueEntry, _, beatmap, _, _) = CreateValidQueueEntry(clientBuildDate: "20260412");
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
+        queueEntry.OsuVersion = "20260412";
+
+        Assert.Equal("20260412", buildResult.Value.score.OsuVersion);
+        Assert.True(ScoreSubmissionVersionValidator.MatchesClientVersion(
+            buildResult.Value.score.OsuVersion, queueEntry.OsuVersion));
+
+        var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(
+            queueEntry,
+            buildResult.Value.score,
+            buildResult.Value.submittedScore,
+            beatmap);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public void TestValidateBuiltScoreCanonicalizesMismatchedGradeBeforeScoreCommit()
+    {
+        var (queueEntry, originalScore, beatmap, username, _) = CreateValidQueueEntry();
+        originalScore.Grade = ScoreGrade.A;
+        var verifiedClientHash = originalScore.ComputeOnlineHash(
+            username.Trim(), queueEntry.ClientHash, queueEntry.StoryboardHash);
+        var serializedFields = queueEntry.ScoreSerialized.Split(':');
+        serializedFields[2] = verifiedClientHash;
+        serializedFields[12] = ScoreGrade.A.ToString();
+        queueEntry.ScoreSerialized = string.Join(":", serializedFields);
+        queueEntry.ScoreHash = verifiedClientHash;
+        var persistedQueuePayload = queueEntry.ScoreSerialized;
+        var buildResult = ScoreCandidateBuilderUtil.Build(queueEntry, beatmap);
 
         var result = ScoreCandidateBuilderUtil.ValidateBuiltScore(queueEntry, buildResult.Value.score, buildResult.Value.submittedScore, beatmap);
 
         Assert.True(result.IsSuccess);
+        Assert.Equal(ScoreGrade.A, buildResult.Value.submittedScore.Grade);
+        Assert.Equal(ScoreGrade.X, buildResult.Value.score.Grade);
+        Assert.Equal(verifiedClientHash, buildResult.Value.score.ScoreHash);
+        Assert.Equal(verifiedClientHash, queueEntry.ScoreHash);
+        Assert.Equal(persistedQueuePayload, queueEntry.ScoreSerialized);
+        Assert.NotEqual(buildResult.Value.score.ComputeOnlineHash(
+            buildResult.Value.submittedScore.PlayerUsername.Trim(), queueEntry.ClientHash, queueEntry.StoryboardHash),
+            buildResult.Value.score.ScoreHash);
+    }
+
+    [Fact]
+    public void TestAssertScoreStateAcceptsJudgmentsFromPassedNativeStandardReplay()
+    {
+        var resourcesPath = Path.Combine(Directory.GetCurrentDirectory(), "Sunrise.Tests", "Resources");
+        var replayPath = Directory.GetFiles(Path.Combine(resourcesPath, "Replays"), "*.osr").Single();
+        var beatmapPath = Directory.GetFiles(Path.Combine(resourcesPath, "Beatmaps"), "*.osu").Single();
+        var replayScore = new ReplayFile(replayPath).GetScore();
+        Assert.Equal("20230814", replayScore.OsuVersion);
+        Assert.True(ScoreSubmissionVersionValidator.IsValid(replayScore.OsuVersion));
+        var hitObjectSection = false;
+        var circles = 0;
+        var sliders = 0;
+        var spinners = 0;
+
+        foreach (var line in File.ReadLines(beatmapPath))
+        {
+            if (line.StartsWith('['))
+            {
+                hitObjectSection = line == "[HitObjects]";
+                continue;
+            }
+
+            if (!hitObjectSection || string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var type = int.Parse(line.Split(',')[3]);
+            if ((type & 8) != 0)
+                spinners++;
+            else if ((type & 2) != 0)
+                sliders++;
+            else
+                circles++;
+        }
+
+        var normalizedBeatmapChecksum = System.Convert.ToHexString(
+                System.Security.Cryptography.MD5.HashData(
+                    System.Text.Encoding.UTF8.GetBytes(File.ReadAllText(beatmapPath).ReplaceLineEndings("\r\n"))))
+            .ToLowerInvariant();
+
+        Assert.True(replayScore.IsPassed);
+        Assert.Equal(normalizedBeatmapChecksum, replayScore.BeatmapHash);
+        Assert.Equal(837, circles);
+        Assert.Equal(283, sliders);
+        Assert.Equal(0, spinners);
+        Assert.Equal(1120, circles + sliders + spinners);
+        Assert.Equal(1424, replayScore.MaxCombo);
+        Assert.True(replayScore.MaxCombo > circles + sliders + spinners);
+        Assert.Equal(circles + sliders + spinners,
+            replayScore.Count300 + replayScore.Count100 + replayScore.Count50 + replayScore.CountMiss);
+
+        var beatmap = new Beatmap
+        {
+            Convert = false,
+            ModeInt = (int)Sunrise.Shared.Enums.Beatmaps.GameMode.Standard,
+            CountCircles = circles,
+            CountSliders = sliders,
+            CountSpinners = spinners
+        };
+
+        Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(replayScore, beatmap).IsSuccess);
     }
 
     [Fact]
@@ -394,7 +518,8 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         Mods mods = Mods.None,
         bool isPassed = true,
         int? replayFileId = 1,
-        string? storyboardHash = null)
+        string? storyboardHash = null,
+        string clientBuildDate = "20260412")
     {
         var user = _mocker.User.GetRandomUser();
         var beatmap = _mocker.Beatmap.GetRandomBeatmap();
@@ -411,7 +536,7 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         score.MaxCombo = 100;
         score.Perfect = true;
         score.Grade = isPassed ? ScoreGrade.X : ScoreGrade.F;
-        score.OsuVersion = "20260412";
+        score.OsuVersion = clientBuildDate;
         score.IsScoreable = true;
         score.IsPassed = isPassed;
         score.Mods = mods;

@@ -14,6 +14,8 @@ using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Utils;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
@@ -379,9 +381,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = ScoreGrade.S;
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -411,7 +413,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(userGrades);
-        Assert.Equal(1, userGrades.CountS);
+        Assert.Equal(1, userGrades.CountA);
+        Assert.Equal(0, userGrades.CountS);
     }
 
     [Fact]
@@ -1389,6 +1392,15 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         oldScore.PerformancePoints = -1;
         oldScore.Mods = Mods.None;
         oldScore.GameMode = GameMode.Standard;
+        oldScore.Count300 = 85;
+        oldScore.Count100 = 15;
+        oldScore.Count50 = 0;
+        oldScore.CountMiss = 0;
+        oldScore.CountKatu = 0;
+        oldScore.CountGeki = 0;
+        oldScore.Accuracy = PerformanceCalculator.CalculateAccuracy(oldScore);
+        oldScore.Grade = ScoreGradeUtil.Calculate(oldScore);
+        Assert.Equal(ScoreGrade.A, oldScore.Grade);
 
         oldScore.EnrichWithSessionData(session);
 
@@ -1410,7 +1422,15 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = oldScore.Mods;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = ScoreGrade.B;
+        score.Count300 = 75;
+        score.Count100 = 25;
+        score.Count50 = 0;
+        score.CountMiss = 0;
+        score.CountKatu = 0;
+        score.CountGeki = 0;
+        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+        score.Grade = ScoreGradeUtil.Calculate(score);
+        Assert.Equal(ScoreGrade.B, score.Grade);
 
         score.TotalScore = oldScore.TotalScore + 1;
 
@@ -1661,10 +1681,18 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
-        moddedBestScore.Grade = ScoreGrade.S;
         moddedBestScore.SubmissionStatus = SubmissionStatus.Best;
         moddedBestScore.Mods = Mods.None;
         moddedBestScore.GameMode = GameMode.Standard;
+        moddedBestScore.Count300 = 91;
+        moddedBestScore.Count100 = 9;
+        moddedBestScore.Count50 = 0;
+        moddedBestScore.CountMiss = 0;
+        moddedBestScore.CountKatu = 0;
+        moddedBestScore.CountGeki = 0;
+        moddedBestScore.Accuracy = PerformanceCalculator.CalculateAccuracy(moddedBestScore);
+        moddedBestScore.Grade = ScoreGradeUtil.Calculate(moddedBestScore);
+        Assert.Equal(ScoreGrade.S, moddedBestScore.Grade);
         moddedBestScore.EnrichWithSessionData(session);
 
         await Database.Scores.AddScore(moddedBestScore);
@@ -1678,9 +1706,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = ScoreGrade.S;
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -1710,7 +1738,12 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var newUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(newUserGrades);
-        Assert.Equal(1, newUserGrades.CountS);
+        Assert.Equal(1, newUserGrades.CountA);
+        Assert.Equal(0, newUserGrades.CountS);
+
+        var standardUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, GameMode.Standard);
+        Assert.NotNull(standardUserGrades);
+        Assert.Equal(1, standardUserGrades.CountS);
     }
 
     [Theory]
