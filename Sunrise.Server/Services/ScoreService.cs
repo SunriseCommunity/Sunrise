@@ -74,6 +74,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             WhenPlayed = scoreSubmittedAt
         };
 
+        ScoreProcessingError? processingError = null;
+
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(Configuration.ScoreProcessingTimeoutSeconds));
@@ -82,29 +84,26 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             if (processSubmissionResult.IsSuccess)
                 return processSubmissionResult.Value ?? "error: no";
 
-            var processingError = processSubmissionResult.Error;
-
-            if (processingError.Code == ScoreProcessingErrorCode.DuplicateScore)
+            if (processSubmissionResult.Error.Code == ScoreProcessingErrorCode.DuplicateScore)
                 return "error: no";
 
-            await EnqueueForBackgroundRetry(candidate, session, processingError);
+            processingError = processSubmissionResult.Error;
         }
         catch (OperationCanceledException)
         {
-            await EnqueueForBackgroundRetry(candidate, session);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected exception during sync score submission for user {UserId}", session.UserId);
+        }
 
-            try
-            {
-                await EnqueueForBackgroundRetry(candidate, session);
-            }
-            catch (Exception enqueueEx)
-            {
-                Log.Error(enqueueEx, "Failed to enqueue score for user {UserId} after sync exception", session.UserId);
-            }
+        try
+        {
+            await EnqueueForBackgroundRetry(candidate, session, processingError);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to enqueue score for background retry for user {UserId}", session.UserId);
         }
 
         return "error: no";
