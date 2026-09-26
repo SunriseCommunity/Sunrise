@@ -2,8 +2,8 @@ using osu.Shared;
 using Sunrise.Processing.Utils;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Utils;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Utils;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Xunit;
@@ -36,7 +36,7 @@ public class ScoreEnrichmentTests
             Checksum = "beatmap-checksum",
             StatusString = "ranked",
             Mode = "osu",
-            ModeInt = (int)osu.Shared.GameMode.Standard,
+            ModeInt = (int)GameMode.Standard,
             Convert = false,
             CountCircles = 40,
             CountSliders = 50,
@@ -50,7 +50,7 @@ public class ScoreEnrichmentTests
 
         Assert.True(ScoreCandidateBuilderUtil.AssertScoreState(score, beatmap).IsSuccess);
         Assert.True(ModsValidationUtil.ValidateMods(score.Mods, score.GameMode.ToVanillaGameMode()).IsSuccess);
-        ScoreCandidateBuilderUtil.AssertGrade(score, submittedScore);
+        ScoreCandidateBuilderUtil.CanonicaliseGrade(score, submittedScore);
         Assert.Equal(ScoreGrade.X, score.Grade);
         Assert.Equal(InternalGameMode.ScoreV2Standard, score.GameMode);
         Assert.Equal(10, score.CountGeki);
@@ -74,7 +74,7 @@ public class ScoreEnrichmentTests
             Checksum = "exception-beatmap",
             StatusString = "ranked",
             Mode = "osu",
-            ModeInt = (int)osu.Shared.GameMode.Standard,
+            ModeInt = (int)GameMode.Standard,
             Convert = false,
             CountCircles = 10,
             CountSliders = 10,

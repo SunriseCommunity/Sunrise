@@ -34,8 +34,6 @@ public static class ScoreCandidateBuilderUtil
 
     public static UnitResult<ScoreProcessingError> ValidateBuiltScore(ScoreSubmissionRequest queueEntry, Score score, SubmittedScore submittedScore, Beatmap beatmap)
     {
-        AssertGrade(score, submittedScore); // Grade is an audit signal until historical data supports stricter enforcement.
-
         var failureValidators = new[]
         {
             () => AssertScoreState(score, beatmap),
@@ -59,19 +57,19 @@ public static class ScoreCandidateBuilderUtil
                 return result;
         }
 
+        CanonicaliseGrade(score, submittedScore);
+
         return UnitResult.Success<ScoreProcessingError>();
     }
 
     private static UnitResult<ScoreProcessingError> AssertClientVersions(string scoreVersion, string formVersion)
     {
-        return ScoreSubmissionVersionValidator.IsValid(scoreVersion) &&
-               ScoreSubmissionVersionValidator.IsValid(formVersion) &&
-               scoreVersion == formVersion
+        return ScoreSubmissionVersionValidator.MatchesClientVersion(scoreVersion, formVersion)
             ? UnitResult.Success<ScoreProcessingError>()
             : new ScoreProcessingError(ScoreProcessingErrorCode.InvalidClientVersion, "Invalid osu! client version").ToUnit();
     }
 
-    public static void AssertGrade(Score score, SubmittedScore submittedScore)
+    public static void CanonicaliseGrade(Score score, SubmittedScore submittedScore)
     {
         var expected = ScoreGradeUtil.Calculate(submittedScore);
         if (score.Grade == expected)
@@ -79,6 +77,7 @@ public static class ScoreCandidateBuilderUtil
 
         SunriseMetrics.ScoreSubmissionGradeDiscrepancyCounterInc(score.GameMode, score.Grade, expected);
         Log.Warning("Invalid grade {Grade}; expected {ExpectedGrade} for submitted score by user {UserId}", score.Grade, expected, score.UserId);
+        score.Grade = expected;
     }
 
     public static UnitResult<ScoreProcessingError> AssertScoreState(Score score, Beatmap beatmap)

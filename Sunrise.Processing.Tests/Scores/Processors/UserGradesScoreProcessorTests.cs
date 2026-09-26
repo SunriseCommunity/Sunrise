@@ -1,5 +1,6 @@
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Processing.Scores.Processors;
+using Sunrise.Processing.Utils;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
@@ -42,6 +43,57 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
 
         // Assert
         Assert.Equal(1, userGrades.CountA);
+    }
+
+    [Fact]
+    public async Task TestOnNewSubmissionCanonicalizesMismatchedGradeBeforeUpdatingGradeTotals()
+    {
+        var processor = new UserGradesScoreProcessor(Database);
+        var user = await CreateTestUser();
+        var userStats = await Database.Users.Stats.GetUserStats(user.Id, GameMode.Standard);
+        Assert.NotNull(userStats);
+        var userGrades = new UserGrades
+        {
+            UserId = user.Id,
+            GameMode = GameMode.Standard
+        };
+        var score = CreateScore(user);
+        var submittedScore = new SubmittedScore
+        {
+            PlayerUsername = user.Username,
+            ScoreHash = score.ScoreHash,
+            BeatmapHash = score.BeatmapHash,
+            TotalScore = score.TotalScore,
+            MaxCombo = score.MaxCombo,
+            Count300 = score.Count300,
+            Count100 = score.Count100,
+            Count50 = score.Count50,
+            CountMiss = score.CountMiss,
+            CountKatu = score.CountKatu,
+            CountGeki = score.CountGeki,
+            Perfect = score.Perfect,
+            Mods = score.Mods,
+            Grade = ScoreGrade.A,
+            IsPassed = score.IsPassed,
+            GameMode = score.GameMode,
+            WhenPlayed = score.WhenPlayed,
+            OsuVersion = score.OsuVersion,
+            ClientTime = score.ClientTime,
+            Accuracy = score.Accuracy
+        };
+
+        ScoreCandidateBuilderUtil.CanonicaliseGrade(score, submittedScore);
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission,
+            score,
+            user,
+            userStats,
+            userGrades,
+            originalState: ScoreStateSnapshot.Capture(score));
+        await processor.OnNewSubmission(context);
+
+        Assert.Equal(ScoreGrade.S, score.Grade);
+        Assert.Equal(1, userGrades.CountS);
+        Assert.Equal(0, userGrades.CountA);
     }
 
     [Fact]
