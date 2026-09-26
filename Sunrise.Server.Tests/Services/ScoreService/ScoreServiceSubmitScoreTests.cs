@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using HOPEless.Bancho;
+using HOPEless.Bancho.Objects;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,7 @@ using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Utils;
 using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
@@ -82,6 +85,58 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+    }
+
+    [Fact]
+    public async Task TestSubmittingLaterEqualScoreKeepsEarlierFirstPlaceWithoutAnnouncement()
+    {
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+        var (session, user) = await CreateTestSession();
+        var observer = CreateTestSession(await CreateTestUser());
+        Scope.ServiceProvider.GetRequiredService<ChatChannelRepository>().JoinChannel("#announce", observer);
+        observer.GetContent();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+        var submittedScore = replay.GetScore();
+        submittedScore.BeatmapId = beatmapId;
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(submittedScore);
+        submittedScore.PrepareForSubmission(beatmap);
+        submittedScore.EnrichWithSessionData(session);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        var earlierUser = await CreateTestUser();
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.UserId = earlierUser.Id;
+        earlierScore.GameMode = submittedScore.GameMode;
+        earlierScore.Mods = submittedScore.Mods;
+        earlierScore.TotalScore = submittedScore.TotalScore;
+        earlierScore.PerformancePoints = 500;
+        earlierScore.WhenPlayed = DateTime.UtcNow.AddMinutes(-10);
+        earlierScore.PrepareForSubmission(beatmap);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(earlierScore);
+
+        var result = await scoreService.SubmitScore(session, submittedScore.ToScoreString(user.Username),
+            submittedScore.BeatmapHash, 0, 0, submittedScore.OsuVersion, session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(), null);
+
+        Assert.DoesNotContain("error", result);
+        var savedScore = await Database.Scores.GetScore(submittedScore.ScoreHash);
+        Assert.NotNull(savedScore);
+        Assert.Equal(SubmissionStatus.Best, savedScore.SubmissionStatus);
+
+        var leaderboard = await scoreService.GetBeatmapScores(session, beatmap.BeatmapsetId,
+            (GameMode)submittedScore.GameMode.ToVanillaGameMode(), submittedScore.Mods, LeaderboardType.Global, beatmap.Checksum!, "test.osu");
+        var rows = leaderboard.Split('\n').Skip(5).Select(line => line.Split('|')).ToList();
+        Assert.Equal(new[] { earlierScore.Id, savedScore.Id }, rows.Select(fields => int.Parse(fields[0])));
+        Assert.Equal(new[] { 1, 2 }, rows.Select(fields => int.Parse(fields[13])));
+
+        using var packetBuffer = new MemoryStream(observer.GetContent());
+        Assert.DoesNotContain(BanchoSerializer.DeserializePackets(packetBuffer), packet => packet.Type == PacketType.ServerChatMessage);
     }
 
     [Fact]

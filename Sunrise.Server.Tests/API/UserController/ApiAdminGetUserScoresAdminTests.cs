@@ -7,6 +7,7 @@ using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 using Sunrise.Tests.Utils;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
+using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Server.Tests.API.UserController;
 
@@ -14,6 +15,8 @@ namespace Sunrise.Server.Tests.API.UserController;
 public class ApiAdminGetUserScoresAdminTests(IntegrationDatabaseFixture fixture) : ApiTest(fixture)
 {
     private readonly MockService _mocker = new();
+
+    public static IEnumerable<object[]> GetGameModes() => Enum.GetValues<GameMode>().Select(mode => new object[] { mode });
 
     [Fact]
     public async Task TestGetUserScoresAdminWithoutAuthToken()
@@ -179,5 +182,48 @@ public class ApiAdminGetUserScoresAdminTests(IntegrationDatabaseFixture fixture)
         Assert.NotNull(result);
         Assert.Equal(1, result.TotalCount);
         Assert.Equal(SubmissionStatus.Deleted, result.Scores.Single().SubmissionStatus);
+    }
+
+    [Theory]
+    [MemberData(nameof(GetGameModes))]
+    public async Task TestGetUserScoresAdminPerformanceSortKeepsOlderEqualPpFirst(GameMode mode)
+    {
+        var client = App.CreateClient().UseClient("api");
+        var superUser = _mocker.User.GetRandomUser();
+        superUser.Privilege = UserPrivilege.SuperUser;
+        await CreateTestUser(superUser);
+        client.UseUserAuthToken(await GetUserAuthTokens(superUser));
+
+        var targetUser = await CreateTestUser();
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.EnrichWithUserData(targetUser);
+        earlierScore.GameMode = mode;
+        earlierScore.PerformancePoints = 100;
+        earlierScore.WhenPlayed = DateTime.UtcNow.AddMinutes(-10);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(earlierScore);
+
+        var laterScore = _mocker.Score.GetBestScoreableRandomScore();
+        laterScore.EnrichWithUserData(targetUser);
+        laterScore.GameMode = mode;
+        laterScore.PerformancePoints = earlierScore.PerformancePoints;
+        laterScore.WhenPlayed = earlierScore.WhenPlayed.AddMinutes(1);
+        laterScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(laterScore);
+
+        var lowerScore = _mocker.Score.GetBestScoreableRandomScore();
+        lowerScore.EnrichWithUserData(targetUser);
+        lowerScore.GameMode = mode;
+        lowerScore.PerformancePoints = 50;
+        lowerScore.WhenPlayed = earlierScore.WhenPlayed.AddMinutes(2);
+        lowerScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(lowerScore);
+
+        var response = await client.GetAsync($"user/{targetUser.Id}/scores/admin?mode={(int)mode}&sort=Performance");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsyncWithAppConfig<AdminScoresResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(new[] { earlierScore.Id, laterScore.Id, lowerScore.Id }, result.Scores.Select(score => score.Score.Id));
     }
 }
