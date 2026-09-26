@@ -76,6 +76,10 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 }
             }
         }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            outcome = "timeout";
+        }
         catch (Exception ex)
         {
             outcome = "error";
@@ -172,7 +176,8 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            throw;
+            // The poller tick is shutting down. Leave the entry claimed: its lease expires and a later tick reclaims it.
+            Log.Information("Score task {TaskId} ({TaskType}) was abandoned because the poller tick is shutting down", task.Id, task.TaskType);
         }
         catch (Exception ex)
         {
