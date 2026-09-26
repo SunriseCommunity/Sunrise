@@ -89,10 +89,10 @@ public static class ScoreCandidateBuilderUtil
             error = "Perfect score contains misses";
         else if (mode == GameMode.Standard && beatmap.ModeInt == (int)GameMode.Standard && !beatmap.Convert)
         {
-            var primaryHits = (long)score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
+            var primaryJudgments = (long)score.Count300 + score.Count100 + score.Count50 + score.CountMiss;
             var objectCount = (long)beatmap.CountCircles + beatmap.CountSliders + beatmap.CountSpinners;
 
-            if (primaryHits > objectCount || score.IsPassed && primaryHits != objectCount)
+            if (primaryJudgments > objectCount || score.IsPassed && primaryJudgments != objectCount)
                 error = "Standard judgment count does not match beatmap object count";
             else if (beatmap.MaxCombo is > 0 and var maxCombo && (long)score.MaxCombo > maxCombo)
                 error = "Maximum combo exceeds beatmap maximum combo";
