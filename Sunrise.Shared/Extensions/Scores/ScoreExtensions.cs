@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
@@ -130,11 +131,15 @@ public static class ScoreExtensions
             Grade = baseScore.Grade,
             Mods = baseScore.Mods,
             IsPassed = baseScore.IsPassed,
-            IsScoreable = beatmap.IsScoreable,
             GameMode = baseScore.GameMode,
             WhenPlayed = baseScore.WhenPlayed,
             OsuVersion = baseScore.OsuVersion,
-            BeatmapStatus = beatmap.Status,
+            BeatmapHashStatus = new BeatmapHashStatus
+            {
+                BeatmapHash = beatmap.Checksum!,
+                BeatmapId = beatmap.Id,
+                Status = beatmap.Status
+            },
             ClientTime = baseScore.ClientTime,
             Accuracy = baseScore.Accuracy,
             TimeElapsed = timeElapsed

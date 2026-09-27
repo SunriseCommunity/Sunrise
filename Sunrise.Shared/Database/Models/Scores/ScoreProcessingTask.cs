@@ -9,6 +9,7 @@ namespace Sunrise.Shared.Database.Models.Scores;
 [Index(nameof(Status), nameof(LeaseExpiresAt))]
 [Index(nameof(TaskType), nameof(ScoreId))]
 [Index(nameof(ScoreSubmissionRequestId))]
+[Index(nameof(RunId), nameof(Status))]
 public class ScoreProcessingTask
 {
     public int Id { get; set; }
@@ -24,6 +25,12 @@ public class ScoreProcessingTask
     public Score? Score { get; set; }
 
     public int? ScoreId { get; set; }
+
+    [ForeignKey(nameof(RunId))]
+    public CalculationRun? Run { get; set; }
+
+    public int? RunId { get; set; }
+
     public int Priority { get; set; } = (int)ScoreProcessingPriority.High;
     public ScoreProcessingStatus Status { get; set; } = ScoreProcessingStatus.Pending;
     public DateTime? NextRetryAt { get; set; }

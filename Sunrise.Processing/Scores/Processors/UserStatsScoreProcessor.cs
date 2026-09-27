@@ -40,10 +40,10 @@ public class UserStatsScoreProcessor(
         await IncrementUserStats(ctx);
     }
 
+    // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
+    // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
     protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
-        // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
-        // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
         var updateUserStatsResult = await database.Users.Stats.UpdateUserStats(ctx.UserStats, ctx.User);
         if (updateUserStatsResult.IsFailure)
             throw new ApplicationException("Failed to persist user stats: " + updateUserStatsResult.Error);
@@ -73,12 +73,12 @@ public class UserStatsScoreProcessor(
         userStats.PlayTime += score.TimeElapsed;
         userStats.PlayCount++;
 
-        if (isFailed || !score.IsScoreable)
+        if (isFailed || !ctx.BeatmapStatus.IsScoreable())
             return;
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (!score.BeatmapStatus.IsRanked())
+        if (!ctx.BeatmapStatus.IsRanked())
             return;
 
         if (isBetterTotalScoreValue)
@@ -151,11 +151,7 @@ public class UserStatsScoreProcessor(
 
     private async Task ApplyWeightedRefresh(ScoreCommitContext ctx)
     {
-        var score = ctx.Score;
-        if (!score.BeatmapStatus.IsRanked() || !score.IsScoreable || !score.IsPassed)
-            return;
-
-        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
+        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, ctx.Score.GameMode);
     }
 
     private static void IncreaseTotalHits(UserStats userStats, Score score)

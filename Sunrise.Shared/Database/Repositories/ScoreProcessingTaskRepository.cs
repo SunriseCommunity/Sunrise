@@ -173,10 +173,10 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
                     .SetProperty(t => t.ErrorMessage, error.Message)
                     .SetProperty(t => t.ClaimToken, (string?)null)
                     .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
-                    .SetProperty(t => t.Status, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                    .SetProperty(t => t.Status, t => isPermanent || (t.RunId == null && t.RetryCount + 1 >= maxRetries)
                         ? ScoreProcessingStatus.Failed
                         : ScoreProcessingStatus.Pending)
-                    .SetProperty(t => t.NextRetryAt, t => isPermanent || t.RetryCount + 1 >= maxRetries
+                    .SetProperty(t => t.NextRetryAt, t => isPermanent || (t.RunId == null && t.RetryCount + 1 >= maxRetries)
                         ? null
                         : nextRetryAt),
                 ct);

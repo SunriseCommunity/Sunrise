@@ -44,11 +44,10 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         EnrichScore(score, user, beatmap);
         score.Grade = ScoreGrade.A;
         score.SubmissionStatus = SubmissionStatus.Submitted;
-        score.IsScoreable = false;
-        score.BeatmapStatus = BeatmapStatus.Pending;
+        score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap);
         var (expectedWeightedPerformancePoints, expectedWeightedAccuracy) = (PerformanceCalculator.CalculateUserWeightedPerformance([score]), PerformanceCalculator.CalculateUserWeightedAccuracy([score]));
 
         // Act
@@ -62,8 +61,8 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(persistedScore);
-        Assert.Equal(BeatmapStatus.Ranked, persistedScore.BeatmapStatus);
-        Assert.True(persistedScore.IsScoreable);
+        Assert.Equal(BeatmapStatus.Ranked, persistedScore.BeatmapHashStatus!.Status);
+        Assert.True(persistedScore.BeatmapHashStatus!.Status.IsScoreable());
         Assert.Equal(SubmissionStatus.Best, persistedScore.SubmissionStatus);
 
         var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
@@ -94,7 +93,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         userGrades.CountA = 1;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades);
+        var context = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -132,7 +131,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         userGrades.CountS = 1;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Restore, score, user, userStats, userGrades);
+        var context = new ScoreCommitContext(ScoreTaskType.Restore, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -177,7 +176,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
             ClaimToken = "wrong-token"
         };
 
-        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap);
 
         // Act
         var result = await pipeline.Commit(context, mismatchedTask, CancellationToken.None);
@@ -235,7 +234,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var rankedScoreBefore = userStats.RankedScore;
         var playCountBefore = userStats.PlayCount;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades);
+        var context = new ScoreCommitContext(ScoreTaskType.Delete, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -273,7 +272,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         userStats.PerformancePoints = 999;
         userStats.Accuracy = 50;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades);
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -327,7 +326,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
 
         score.PerformancePoints = 100;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -384,7 +383,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         userStats.PerformancePoints = weightedBefore.PerformancePoints;
         userStats.Accuracy = weightedBefore.Accuracy;
 
-        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -424,11 +423,10 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.Grade = ScoreGrade.S;
         score.PerformancePoints = 500;
         score.SubmissionStatus = SubmissionStatus.Submitted;
-        score.IsScoreable = false;
-        score.BeatmapStatus = BeatmapStatus.Pending;
+        score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
-        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -479,11 +477,10 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 200;
         scoreB.SubmissionStatus = SubmissionStatus.Submitted;
-        scoreB.IsScoreable = false;
-        scoreB.BeatmapStatus = BeatmapStatus.Pending;
+        scoreB.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStatsB, userGradesB) = await LoadUserState(userB, GameMode.Standard);
-        var context = new ScoreCommitContext(ScoreTaskType.Submission, scoreB, userB, userStatsB, userGradesB, beatmap);
+        var context = new ScoreCommitContext(ScoreTaskType.Submission, scoreB, userB, userStatsB, userGradesB, scoreB.BeatmapHashStatus!.Status, beatmap);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -567,7 +564,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Delete User B's high score via pipeline
         var userGradesB = await Database.Users.Grades.GetUserGrades(userB.Id, GameMode.Standard);
         Assert.NotNull(userGradesB);
-        var context = new ScoreCommitContext(ScoreTaskType.Delete, scoreBHigh, userB, userStatsB, userGradesB);
+        var context = new ScoreCommitContext(ScoreTaskType.Delete, scoreBHigh, userB, userStatsB, userGradesB, scoreBHigh.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -642,7 +639,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         // Restore User B's score via pipeline
         var userGradesB = await Database.Users.Grades.GetUserGrades(userB.Id, GameMode.Standard);
         Assert.NotNull(userGradesB);
-        var context = new ScoreCommitContext(ScoreTaskType.Restore, scoreB, userB, userStatsB, userGradesB);
+        var context = new ScoreCommitContext(ScoreTaskType.Restore, scoreB, userB, userStatsB, userGradesB, scoreB.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);
@@ -712,7 +709,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         scoreB.PerformancePoints = 200;
         var userGradesB = await Database.Users.Grades.GetUserGrades(userB.Id, GameMode.Standard);
         Assert.NotNull(userGradesB);
-        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, scoreB, userB, userStatsB, userGradesB);
+        var context = new ScoreCommitContext(ScoreTaskType.Recalculation, scoreB, userB, userStatsB, userGradesB, scoreB.BeatmapHashStatus!.Status);
 
         // Act
         var result = await pipeline.Commit(context, null, CancellationToken.None);

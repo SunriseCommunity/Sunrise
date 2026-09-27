@@ -15,12 +15,12 @@ public class ScoreStateSnapshotTests
         // Arrange
         var score = _mocker.Score.GetRandomScore();
         // Act
-        var snapshot = ScoreStateSnapshot.Capture(score);
+        var snapshot = ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(score.SubmissionStatus, snapshot.SubmissionStatus);
-        Assert.Equal(score.IsScoreable, snapshot.IsScoreable);
+        Assert.Equal(score.BeatmapHashStatus!.Status.IsScoreable(), snapshot.IsScoreable);
         Assert.Equal(score.IsPassed, snapshot.IsPassed);
-        Assert.Equal(score.BeatmapStatus.IsRanked(), snapshot.IsRanked);
+        Assert.Equal(score.BeatmapHashStatus!.Status.IsRanked(), snapshot.IsRanked);
     }
 }

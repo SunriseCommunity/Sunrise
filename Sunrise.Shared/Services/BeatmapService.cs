@@ -23,7 +23,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
     private readonly SemaphoreSlim _dbSemaphore = new(1);
 
     public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
+        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, bool useCache = true, CancellationToken ct = default)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
             return Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
@@ -45,7 +45,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
 
-            var cachedBeatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
+            var cachedBeatmapSet = useCache ? await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId) : null;
 
             if (cachedBeatmapSet != null)
             {
@@ -202,6 +202,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         }
 
         var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
+        await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
 
         if (resetCustomStatus.HasValue)
         {

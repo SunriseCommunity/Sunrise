@@ -1,3 +1,5 @@
+using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Database.Models.Beatmap;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -39,7 +41,23 @@ public static class ScoreExtensions
     {
         score.BeatmapHash = beatmap.Checksum ?? throw new Exception("Beatmap checksum is null");
         score.BeatmapId = beatmap.Id;
-        score.BeatmapStatus = beatmap.Status;
+        score.SetBeatmapStatus(beatmap.Status);
+    }
+
+    public static void SetBeatmapStatus(this Score score, BeatmapStatus status)
+    {
+        if (score.BeatmapHashStatus != null && score.BeatmapHashStatus.BeatmapHash == score.BeatmapHash)
+        {
+            score.BeatmapHashStatus.Status = status;
+            return;
+        }
+
+        score.BeatmapHashStatus = new BeatmapHashStatus
+        {
+            BeatmapHash = score.BeatmapHash,
+            BeatmapId = score.BeatmapId,
+            Status = status
+        };
     }
 
     public static void ReconcileModsAndGameMode(this Score score, Beatmap beatmap)

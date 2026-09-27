@@ -20,7 +20,7 @@ public class MedalScoreProcessor(DatabaseService database) : ScoreEntityProcesso
 
     protected override async Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
-        if (!ctx.Score.IsScoreable)
+        if (!ctx.BeatmapStatus.IsScoreable())
             return;
 
         if (ctx.Beatmap == null)
@@ -31,7 +31,7 @@ public class MedalScoreProcessor(DatabaseService database) : ScoreEntityProcesso
 
     protected override async Task OnRecalculationInternal(ScoreCommitContext ctx)
     {
-        if (!ctx.Score.IsScoreable)
+        if (!ctx.BeatmapStatus.IsScoreable())
             return;
 
         if (ctx.Beatmap == null)

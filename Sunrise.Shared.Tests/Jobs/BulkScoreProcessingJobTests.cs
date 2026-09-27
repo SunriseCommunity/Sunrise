@@ -184,9 +184,9 @@ public class BulkScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : D
         // Arrange
         var user = await CreateTestUser();
         var matchingScore = await CreateConfiguredScore(user,
-            score => score.BeatmapStatus = BeatmapStatus.Ranked);
+            score => score.SetBeatmapStatus(BeatmapStatus.Ranked));
         _ = await CreateConfiguredScore(user,
-            score => score.BeatmapStatus = BeatmapStatus.Loved);
+            score => score.SetBeatmapStatus(BeatmapStatus.Loved));
 
         // Act
         await EnqueueByFilter(
@@ -297,21 +297,21 @@ public class BulkScoreProcessingJobTests(IntegrationDatabaseFixture fixture) : D
             score =>
             {
                 score.GameMode = ScoreGameMode.Standard;
-                score.BeatmapStatus = BeatmapStatus.Ranked;
+                score.SetBeatmapStatus(BeatmapStatus.Ranked);
             });
 
         _ = await CreateConfiguredScore(user,
             score =>
             {
                 score.GameMode = ScoreGameMode.Standard;
-                score.BeatmapStatus = BeatmapStatus.Loved;
+                score.SetBeatmapStatus(BeatmapStatus.Loved);
             });
 
         _ = await CreateConfiguredScore(user,
             score =>
             {
                 score.GameMode = ScoreGameMode.Mania;
-                score.BeatmapStatus = BeatmapStatus.Ranked;
+                score.SetBeatmapStatus(BeatmapStatus.Ranked);
             });
 
         // Act

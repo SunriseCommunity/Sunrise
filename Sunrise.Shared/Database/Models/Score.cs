@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using osu.Shared;
+using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
@@ -13,8 +15,8 @@ namespace Sunrise.Shared.Database.Models;
 [Table("score")]
 [Index(nameof(UserId))]
 [Index(nameof(UserId), nameof(BeatmapId))]
-[Index(nameof(UserId), nameof(SubmissionStatus), nameof(BeatmapStatus))]
-[Index(nameof(GameMode), nameof(SubmissionStatus), nameof(BeatmapStatus), nameof(WhenPlayed))]
+[Index(nameof(UserId), nameof(SubmissionStatus))]
+[Index(nameof(GameMode), nameof(SubmissionStatus), nameof(WhenPlayed))]
 [Index(nameof(BeatmapHash))]
 [Index(nameof(UserId), nameof(BeatmapHash), nameof(GameMode))]
 [Index(nameof(ScoreHash), IsUnique = true)]
@@ -31,7 +33,10 @@ public class Score
     [MaxLength(32)]
     public string ScoreHash { get; set; }
 
+    [MaxLength(255)]
     public string BeatmapHash { get; set; }
+
+    public BeatmapHashStatus? BeatmapHashStatus { get; set; }
 
     [ForeignKey("ReplayFileId")]
     public UserFile? ReplayFile { get; set; }
@@ -54,16 +59,18 @@ public class Score
 
     public bool IsPassed { get; set; }
 
-    // TODO: Drop persisted IsScoreable once all score reads derive it from BeatmapStatus.
-    public bool IsScoreable { get; set; }
     public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.Unknown;
     public GameMode GameMode { get; set; }
     public DateTime WhenPlayed { get; set; }
     public string OsuVersion { get; set; }
-    public BeatmapStatus BeatmapStatus { get; set; }
     public DateTime ClientTime { get; set; }
     public double Accuracy { get; set; }
     public double PerformancePoints { get; set; }
     public int TimeElapsed { get; set; }
+
+    [ForeignKey(nameof(CalculationVersionId))]
+    public CalculationVersion? CalculationVersion { get; set; }
+
+    public int? CalculationVersionId { get; set; }
 
 }

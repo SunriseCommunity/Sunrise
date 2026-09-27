@@ -1,3 +1,5 @@
+using Sunrise.Shared.Database.Models.Beatmap;
+using EFCoreSecondLevelCacheInterceptor;
 using System.Data;
 using CSharpFunctionalExtensions;
 using EntityFrameworkCore.Locking;
@@ -31,6 +33,18 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
+            var beatmapHashStatus = await dbContext.BeatmapHashStatuses.NotCacheable().FirstOrDefaultAsync(h => h.BeatmapHash == score.BeatmapHash)
+                             ?? dbContext.BeatmapHashStatuses.Add(new BeatmapHashStatus
+                             {
+                                 BeatmapHash = score.BeatmapHash,
+                                 BeatmapId = score.BeatmapId,
+                                 CheckedAt = DateTime.UtcNow
+                             }).Entity;
+
+            if (score.BeatmapHashStatus != null)
+                beatmapHashStatus.Status = score.BeatmapHashStatus.Status;
+
+            score.BeatmapHashStatus = beatmapHashStatus;
             dbContext.Scores.Add(score);
             await dbContext.SaveChangesAsync();
         });
@@ -326,7 +340,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         if (startFromId != null) scoresQuery = scoresQuery.Where(s => s.Id >= startFromId);
         if (userId != null) scoresQuery = scoresQuery.Where(s => s.UserId == userId);
         if (submissionStatus != null) scoresQuery = scoresQuery.Where(s => s.SubmissionStatus == submissionStatus);
-        if (beatmapStatus != null) scoresQuery = scoresQuery.Where(s => s.BeatmapStatus == beatmapStatus);
+        if (beatmapStatus != null) scoresQuery = scoresQuery.Where(s => s.BeatmapHashStatus!.Status == beatmapStatus);
         if (submittedFrom != null) scoresQuery = scoresQuery.Where(s => s.WhenPlayed >= submittedFrom);
         if (submittedTo != null) scoresQuery = scoresQuery.Where(s => s.WhenPlayed <= submittedTo);
         if (mods != null) scoresQuery = scoresQuery.Where(s => s.Mods == EF.Constant(mods.Value));
@@ -420,6 +434,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             return (null, new UserBeatmapPeers(null, null));
 
         var lockedScores = await dbContext.Scores
+            .IgnoreAutoIncludes()
             .Where(s => idsToLock.Contains(s.Id))
             .OrderBy(s => s.Id)
             .ForUpdate()

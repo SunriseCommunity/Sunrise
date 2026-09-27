@@ -28,7 +28,7 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
         return client;
     }
 
-    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
+    public virtual async Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, Dictionary<string, string?>? responseHeaders = null, CancellationToken ct = default)
     {
         if (session.IsRateLimited())
         {
@@ -70,7 +70,7 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
                     headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
             }
 
-            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body, ct);
+            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body, responseHeaders, ct);
 
             if (responseResult.IsSuccess) return responseResult;
 
@@ -182,7 +182,7 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
         });
     }
 
-    private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null, CancellationToken ct = default)
+    private async Task<Result<T, ErrorMessage>> SendApiRequest<T>(ApiServer server, string requestUri, Dictionary<string, string>? headers = null, object? body = null, Dictionary<string, string?>? responseHeaders = null, CancellationToken ct = default)
     {
         var isServerRateLimited = await redis.Get<bool?>(RedisKey.ApiServerRateLimited(server));
 
@@ -216,6 +216,9 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
             }
 
             using var response = await Client.SendAsync(request, ct);
+
+            foreach (var name in responseHeaders?.Keys.ToList() ?? [])
+                responseHeaders![name] = response.Headers.TryGetValues(name, out var values) ? values.FirstOrDefault() : null;
 
             var rateLimit = string.Empty;
             var rateLimitReset = "60";

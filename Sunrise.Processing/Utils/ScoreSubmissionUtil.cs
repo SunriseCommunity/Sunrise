@@ -8,6 +8,7 @@ using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
+using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Processing.Utils;
 
@@ -23,7 +24,7 @@ public static class ScoreSubmissionUtil
         return message;
     }
 
-    public static void UpdateSubmissionStatus(this Score score, Score? prevPBest)
+    public static void UpdateSubmissionStatus(this Score score, Score? prevPBest, BeatmapStatus beatmapStatus)
     {
         if (IsScoreFailed(score))
         {
@@ -31,7 +32,7 @@ public static class ScoreSubmissionUtil
             return;
         }
 
-        if (!score.IsScoreable)
+        if (!beatmapStatus.IsScoreable())
         {
             score.SubmissionStatus = SubmissionStatus.Submitted;
             return;

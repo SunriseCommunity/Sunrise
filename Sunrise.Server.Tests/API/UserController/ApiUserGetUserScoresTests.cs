@@ -143,7 +143,7 @@ public class ApiUserGetUserScoresTests(IntegrationDatabaseFixture fixture) : Api
         {
             var score = _mocker.Score.GetBestScoreableRandomScore();
             score.EnrichWithUserData(user);
-            score.BeatmapStatus = BeatmapStatus.Loved;
+            score.SetBeatmapStatus(BeatmapStatus.Loved);
             score.GameMode = gamemode;
 
             await Database.Scores.AddScore(score);
