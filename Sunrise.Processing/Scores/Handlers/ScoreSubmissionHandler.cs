@@ -113,6 +113,7 @@ public class ScoreSubmissionHandler(
                 .ToResult<ScorePrepareContext>();
 
         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+        score.CalculationVersionId = await Database.Calculations.GetOrCreateVersionId(scorePerformanceResult.Value.RosuVersion, ct);
 
         var validateScorePerformanceResult = ValidateScorePerformance(score, ct);
 

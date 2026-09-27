@@ -135,7 +135,13 @@ public class ScoreCommitPipeline
         var originalState = ScoreStateSnapshot.Capture(score);
 
         if (prepareCtx.TaskType != ScoreTaskType.Submission && prepareCtx.NewScorePerformancePointsValue.HasValue)
+        {
             score.PerformancePoints = prepareCtx.NewScorePerformancePointsValue.Value;
+            score.CalculationVersionId = preparedScore.CalculationVersionId;
+        }
+
+        if (prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null)
+            score.BeatmapHashStatus = await _database.Calculations.ApplyHashStatus(score.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct);
 
         var ctx = new ScoreCommitContext(
             prepareCtx.TaskType,
@@ -151,7 +157,8 @@ public class ScoreCommitPipeline
             PreviousUserStatsSnapshot = lockedStats.Clone()
         };
 
-        EnrichScoreWithBeatmapStatus(score, ctx.Beatmap);
+        if (score.BeatmapHashStatus != null)
+            score.IsScoreable = score.BeatmapStatus.IsScoreable();
 
         ctx.UserPersonalBestScores = peers;
 
@@ -165,17 +172,6 @@ public class ScoreCommitPipeline
             throw new ApplicationException(refreshClaimLeaseResult.Error);
 
         return ctx;
-    }
-
-    private static void EnrichScoreWithBeatmapStatus(Score score, Beatmap? beatmap)
-    {
-        var newBeatmapStatus = beatmap?.Status;
-
-        if (!newBeatmapStatus.HasValue || newBeatmapStatus == score.BeatmapStatus)
-            return;
-
-        score.BeatmapStatus = newBeatmapStatus.Value;
-        score.IsScoreable = newBeatmapStatus.Value.IsScoreable();
     }
 
     private async Task<UnitResult<string>> TryRefreshClaimLease(ScoreProcessingTask? task, CancellationToken ct)

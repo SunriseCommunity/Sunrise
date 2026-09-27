@@ -5,6 +5,7 @@ using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -34,6 +35,9 @@ public class ScoreRecalculationHandler(
                     $"Score {task.ScoreId} is deleted; use RestoreScore to bring it back")
                 .ToResult<ScorePrepareContext>();
 
+        if (score.BeatmapStatus == BeatmapStatus.NotSubmitted)
+            return new ScorePrepareContext(ScoreTaskType.Recalculation, score, score.PerformancePoints);
+
         var beatmapRatelimitSession = BaseSession.GenerateServerSession();
 
         var loadBeatmapResult = await ResolveBeatmap(beatmapService, beatmapRatelimitSession, score.BeatmapHash, ct);
@@ -58,6 +62,7 @@ public class ScoreRecalculationHandler(
                 .ToResult<ScorePrepareContext>();
 
         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
+        score.CalculationVersionId = await Database.Calculations.GetOrCreateVersionId(scorePerformanceResult.Value.RosuVersion, ct);
         return new ScorePrepareContext(
             ScoreTaskType.Recalculation,
             score,

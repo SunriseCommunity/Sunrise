@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -48,11 +49,17 @@ public class UserStatsService(
         });
     }
 
-    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default, bool updateRanks = true)
+    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
             dbContext.UpdateEntity(stats);
+
+            var frozenPhase = await databaseService.Value.Calculations.GetFrozenPhase(ct);
+            var updateRanks = frozenPhase == null;
+
+            if (frozenPhase is CalculationRunPhase.Enqueue or CalculationRunPhase.Scores)
+                KeepStoredPerformance(stats);
 
             if (dbContext.Database.CurrentTransaction != null)
             {
@@ -76,6 +83,19 @@ public class UserStatsService(
             if (updateRanksResult.IsFailure)
                 throw new ApplicationException(updateRanksResult.Error);
         });
+    }
+
+    private void KeepStoredPerformance(UserStats stats)
+    {
+        var entry = dbContext.ChangeTracker.Entries<UserStats>().First(e => e.Entity.Id == stats.Id);
+
+        entry.Property(s => s.PerformancePoints).CurrentValue = entry.Property(s => s.PerformancePoints).OriginalValue;
+        entry.Property(s => s.Accuracy).CurrentValue = entry.Property(s => s.Accuracy).OriginalValue;
+        entry.Property(s => s.PerformancePoints).IsModified = false;
+        entry.Property(s => s.Accuracy).IsModified = false;
+
+        stats.PerformancePoints = entry.Entity.PerformancePoints;
+        stats.Accuracy = entry.Entity.Accuracy;
     }
 
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode, CancellationToken ct = default)
