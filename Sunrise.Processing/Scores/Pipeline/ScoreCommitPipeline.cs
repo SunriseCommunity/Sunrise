@@ -10,6 +10,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Processing.Scores.Pipeline;
 
@@ -132,13 +133,14 @@ public class ScoreCommitPipeline
             ? preparedScore
             : lockedScore ?? throw new ApplicationException($"Score {preparedScore.Id} was not found while locking score commit target");
 
-        var beatmapHashStatus = prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null
-            ? await _database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct)
-            : await _database.Calculations.GetBeatmapHashStatus(score.BeatmapHash, ct)
-              ?? throw new ApplicationException($"Beatmap hash status {score.BeatmapHash} was not found while committing score {score.Id}");
+        var beatmapHashStatus = await _database.Calculations.GetBeatmapHashStatus(score.BeatmapHash, ct);
+        var originalState = ScoreStateSnapshot.Capture(score, beatmapHashStatus?.Status ?? BeatmapStatus.Unknown);
 
-        score.BeatmapHashStatus = beatmapHashStatus;
-        var originalState = ScoreStateSnapshot.Capture(score, beatmapHashStatus.Status);
+        if (prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null)
+            beatmapHashStatus = await _database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct);
+
+        score.BeatmapHashStatus = beatmapHashStatus
+                                  ?? throw new ApplicationException($"Beatmap hash status {score.BeatmapHash} was not found while committing score {score.Id}");
 
         if (prepareCtx.TaskType != ScoreTaskType.Submission && prepareCtx.NewScorePerformancePointsValue.HasValue)
         {
@@ -161,7 +163,6 @@ public class ScoreCommitPipeline
             PreviousUserStatsSnapshot = lockedStats.Clone()
         };
 
-        score.IsScoreable = beatmapHashStatus.Status.IsScoreable();
 
         ctx.UserPersonalBestScores = peers;
 

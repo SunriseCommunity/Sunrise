@@ -1,3 +1,4 @@
+using Sunrise.Shared.Extensions.Beatmaps;
 using System.Net;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +52,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         Assert.Equal(BeatmapStatus.Ranked, afterFirstMiss.Status);
 
         Assert.Equal(BeatmapStatus.NotSubmitted, (await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash))!.Status);
-        Assert.False((await ReloadScore(score)).IsScoreable);
+        Assert.False((await ReloadScore(score)).BeatmapHashStatus!.Status.IsScoreable());
         Assert.True((await Database.DbContext.UserStats.NotCacheable().AsNoTracking().SingleAsync(s => s.Id == stats.Id)).PerformancePoints < stats.PerformancePoints);
     }
 
@@ -85,8 +86,6 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         var score = await CreateUserScore();
         await Database.DbContext.BeatmapHashStatuses.Where(h => h.BeatmapHash == score.BeatmapHash)
             .ExecuteUpdateAsync(s => s.SetProperty(h => h.Status, BeatmapStatus.NotSubmitted).SetProperty(h => h.MissCount, 2));
-        await Database.DbContext.Scores.Where(s => s.Id == score.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsScoreable, false));
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps!.First();
@@ -103,7 +102,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         var beatmapHashStatus = await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash);
         Assert.Equal(BeatmapStatus.Ranked, beatmapHashStatus!.Status);
         Assert.Equal(0, beatmapHashStatus.MissCount);
-        Assert.True((await ReloadScore(score)).IsScoreable);
+        Assert.True((await ReloadScore(score)).BeatmapHashStatus!.Status.IsScoreable());
     }
 
     [Fact]

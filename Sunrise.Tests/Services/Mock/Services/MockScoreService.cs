@@ -34,7 +34,6 @@ public class MockScoreService(MockService service)
             CountKatu = service.GetRandomInteger(length: 3),
             CountMiss = service.GetRandomInteger(length: 3),
             Grade = GetRandomScoreGrade(),
-            IsScoreable = service.GetRandomBoolean(),
             Accuracy = service.GetRandomInteger(minInt: 0, maxInt: 100),
             Perfect = service.GetRandomBoolean(),
             GameMode = gameMode,
@@ -157,7 +156,6 @@ public class MockScoreService(MockService service)
         var score = GetRandomScore();
         score.BeatmapHashStatus!.Status = BeatmapStatus.Ranked;
         score.SubmissionStatus = SubmissionStatus.Best;
-        score.IsScoreable = true;
         score.IsPassed = true;
 
         score.Normalize();

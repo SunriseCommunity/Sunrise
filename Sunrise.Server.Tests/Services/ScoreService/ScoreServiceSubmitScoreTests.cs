@@ -299,7 +299,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
         Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapHashStatus!.Status);
-        Assert.True(databaseScore.IsScoreable);
+        Assert.True(databaseScore.BeatmapHashStatus!.Status.IsScoreable());
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         Assert.Equal(SubmissionStatus.Submitted, databaseScore.SubmissionStatus);
         Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapHashStatus!.Status);
-        Assert.False(databaseScore.IsScoreable);
+        Assert.False(databaseScore.BeatmapHashStatus!.Status.IsScoreable());
     }
 
     [Fact]
@@ -881,7 +881,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.IsScoreable = false;
 
         score.EnrichWithSessionData(session);
 
@@ -1189,7 +1188,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 Mods = mods,
                 Grade = ScoreGrade.B,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
@@ -1218,7 +1216,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 Mods = mods,
                 Grade = ScoreGrade.A,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Submitted,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
@@ -1261,7 +1258,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             Mods = mods,
             Grade = ScoreGrade.A,
             IsPassed = true,
-            IsScoreable = true,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
@@ -1359,7 +1355,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 Mods = mods,
                 Grade = ScoreGrade.B,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
@@ -1388,7 +1383,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 Mods = mods,
                 Grade = ScoreGrade.A,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Failed,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
@@ -1431,7 +1425,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             Mods = mods,
             Grade = ScoreGrade.A,
             IsPassed = true,
-            IsScoreable = true,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
@@ -2007,7 +2000,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreA.PerformancePoints = 100;
         scoreA.SubmissionStatus = SubmissionStatus.Best;
         scoreA.SetBeatmapStatus(BeatmapStatus.Ranked);
-        scoreA.IsScoreable = true;
         scoreA.ScoreHash = _mocker.GetRandomString(32);
         scoreA.EnrichWithUserData(userA);
 
@@ -2038,7 +2030,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreB1.PerformancePoints = 100;
         scoreB1.SubmissionStatus = SubmissionStatus.Best;
         scoreB1.SetBeatmapStatus(BeatmapStatus.Ranked);
-        scoreB1.IsScoreable = true;
         scoreB1.ScoreHash = _mocker.GetRandomString(32);
         scoreB1.EnrichWithUserData(userB);
 

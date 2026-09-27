@@ -131,7 +131,6 @@ public static class ScoreExtensions
             Grade = baseScore.Grade,
             Mods = baseScore.Mods,
             IsPassed = baseScore.IsPassed,
-            IsScoreable = beatmap.IsScoreable,
             GameMode = baseScore.GameMode,
             WhenPlayed = baseScore.WhenPlayed,
             OsuVersion = baseScore.OsuVersion,

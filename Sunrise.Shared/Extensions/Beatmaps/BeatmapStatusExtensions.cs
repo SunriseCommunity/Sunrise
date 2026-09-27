@@ -5,6 +5,9 @@ namespace Sunrise.Shared.Extensions.Beatmaps;
 
 public static class BeatmapStatusExtensions
 {
+    public static readonly BeatmapStatus[] RankedStatuses = [BeatmapStatus.Ranked, BeatmapStatus.Approved];
+    public static readonly BeatmapStatus[] ScoreableStatuses = [BeatmapStatus.Ranked, BeatmapStatus.Approved, BeatmapStatus.Qualified, BeatmapStatus.Loved];
+
     private static readonly Dictionary<string, BeatmapStatus> _statusMap = new()
     {
         ["loved"] = BeatmapStatus.Loved,
@@ -70,7 +73,7 @@ public static class BeatmapStatusExtensions
 
     public static bool IsRanked(this BeatmapStatus status)
     {
-        return status is BeatmapStatus.Ranked or BeatmapStatus.Approved;
+        return RankedStatuses.Contains(status);
     }
 
     public static bool IsRanked(this BeatmapStatusWeb status)
@@ -80,7 +83,7 @@ public static class BeatmapStatusExtensions
 
     public static bool IsScoreable(this BeatmapStatus status)
     {
-        return status is BeatmapStatus.Ranked or BeatmapStatus.Approved or BeatmapStatus.Loved or BeatmapStatus.Qualified;
+        return ScoreableStatuses.Contains(status);
     }
 
     public static bool IsScoreable(this BeatmapStatusWeb status)

@@ -938,7 +938,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
         int countKatu = 0)
     {
         var beatmap = _mocker.Beatmap.GetRandomBeatmap();
-        beatmap.StatusString = beatmapStatus.BeatmapStatusToString();
+        beatmap.StatusString = (isScoreable ? beatmapStatus : BeatmapStatus.Pending).BeatmapStatusToString();
         beatmap.ModeInt = (int)gameMode.ToVanillaGameMode();
 
         var score = new Score
@@ -957,7 +957,6 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
             Mods = mods,
             Grade = isPassed ? ScoreGrade.A : ScoreGrade.F,
             IsPassed = isPassed,
-            IsScoreable = isScoreable,
             SubmissionStatus = submissionStatus,
             GameMode = gameMode,
             WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),

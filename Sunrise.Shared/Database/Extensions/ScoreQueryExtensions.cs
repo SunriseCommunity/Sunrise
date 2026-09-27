@@ -25,16 +25,28 @@ public static class ScoreQueryableExtensions
                                     s.BeatmapHashStatus!.Status != BeatmapStatus.Unknown);
     }
 
+    public static IQueryable<Score> FilterRankedBeatmapScores(this IQueryable<Score> queryable)
+    {
+        return queryable.Where(s => EF.Constant(BeatmapStatusExtensions.RankedStatuses).Contains(s.BeatmapHashStatus!.Status));
+    }
+
+    public static IQueryable<Score> FilterScoreableBeatmapScores(this IQueryable<Score> queryable)
+    {
+        return queryable.Where(s => EF.Constant(BeatmapStatusExtensions.ScoreableStatuses).Contains(s.BeatmapHashStatus!.Status));
+    }
+
     public static IQueryable<Score> FilterPassedRankedScores(this IQueryable<Score> queryable)
     {
         return queryable
             .FilterPassedScoreableScores()
-            .Where(s => s.BeatmapHashStatus!.Status == BeatmapStatus.Ranked || s.BeatmapHashStatus!.Status == BeatmapStatus.Approved);
+            .FilterRankedBeatmapScores();
     }
 
     public static IQueryable<Score> FilterPassedScoreableScores(this IQueryable<Score> queryable)
     {
-        return queryable.Where(s => s.IsScoreable && s.IsPassed && s.SubmissionStatus != SubmissionStatus.Failed);
+        return queryable
+            .FilterScoreableBeatmapScores()
+            .Where(s => s.IsPassed && s.SubmissionStatus != SubmissionStatus.Failed);
     }
 
     public static IQueryable<Score> SelectBeatmapsBestScores(this IQueryable<Score> queryable)

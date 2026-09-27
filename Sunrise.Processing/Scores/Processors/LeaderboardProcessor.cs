@@ -61,7 +61,7 @@ public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcess
         var sameModsPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue;
 
         if (score.SubmissionStatus != SubmissionStatus.Deleted)
-            score.UpdateSubmissionStatus(sameModsPeer);
+            score.UpdateSubmissionStatus(sameModsPeer, ctx.BeatmapStatus);
 
         if (score.SubmissionStatus == SubmissionStatus.Best && sameModsPeer != null)
         {

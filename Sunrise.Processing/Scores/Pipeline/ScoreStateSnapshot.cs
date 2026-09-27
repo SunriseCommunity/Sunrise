@@ -15,7 +15,7 @@ public readonly record struct ScoreStateSnapshot(
     {
         return new ScoreStateSnapshot(
             score.SubmissionStatus,
-            score.IsScoreable,
+            beatmapStatus.IsScoreable(),
             score.IsPassed,
             beatmapStatus.IsRanked());
     }

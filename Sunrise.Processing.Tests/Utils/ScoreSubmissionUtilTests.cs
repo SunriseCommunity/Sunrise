@@ -63,7 +63,7 @@ public class ScoreSubmissionUtilTests : BaseTest
         score.Mods = Mods.None;
 
         // Act
-        score.UpdateSubmissionStatus(null);
+        score.UpdateSubmissionStatus(null, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(SubmissionStatus.Failed, score.SubmissionStatus);
@@ -75,11 +75,10 @@ public class ScoreSubmissionUtilTests : BaseTest
         // Arrange
         var score = _mocker.Score.GetBestScoreableRandomScore();
 
-        score.IsScoreable = false;
         score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         // Act
-        score.UpdateSubmissionStatus(null);
+        score.UpdateSubmissionStatus(null, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
@@ -92,7 +91,7 @@ public class ScoreSubmissionUtilTests : BaseTest
         var score = _mocker.Score.GetBestScoreableRandomScore();
 
         // Act
-        score.UpdateSubmissionStatus(null);
+        score.UpdateSubmissionStatus(null, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(SubmissionStatus.Best, score.SubmissionStatus);
@@ -113,7 +112,7 @@ public class ScoreSubmissionUtilTests : BaseTest
         previousBest.TotalScore = 1000;
 
         // Act
-        score.UpdateSubmissionStatus(previousBest);
+        score.UpdateSubmissionStatus(previousBest, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
@@ -136,7 +135,7 @@ public class ScoreSubmissionUtilTests : BaseTest
         previousBest.TotalScore = 500;
 
         // Act
-        score.UpdateSubmissionStatus(previousBest);
+        score.UpdateSubmissionStatus(previousBest, score.BeatmapHashStatus!.Status);
 
         // Assert
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
@@ -165,7 +164,7 @@ public class ScoreSubmissionUtilTests : BaseTest
 
         Assert.Same(previousBest, new[] { score, previousBest }.ToList().SortScoresByTheirScoreValue().First());
 
-        score.UpdateSubmissionStatus(previousBest);
+        score.UpdateSubmissionStatus(previousBest, score.BeatmapHashStatus!.Status);
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
 
         score.Id = 43;

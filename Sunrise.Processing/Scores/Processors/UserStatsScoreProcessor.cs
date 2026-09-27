@@ -73,7 +73,7 @@ public class UserStatsScoreProcessor(
         userStats.PlayTime += score.TimeElapsed;
         userStats.PlayCount++;
 
-        if (isFailed || !score.IsScoreable)
+        if (isFailed || !ctx.BeatmapStatus.IsScoreable())
             return;
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);

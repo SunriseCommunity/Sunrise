@@ -196,7 +196,7 @@ public class RecalculateUserStatsCommand : IChatCommand
         userStats.PlayTime += score.TimeElapsed;
         userStats.PlayCount++;
 
-        if (isFailed || !score.IsScoreable)
+        if (isFailed || !beatmapStatus.IsScoreable())
             return;
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);

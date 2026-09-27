@@ -412,7 +412,6 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             Mods = Mods.None,
             Grade = Enum.Parse<ScoreGrade>(grade),
             IsPassed = isPassed,
-            IsScoreable = isScoreable,
             SubmissionStatus = submissionStatus,
             WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
             OsuVersion = "b20260101.1",

@@ -240,7 +240,6 @@ public class LeaderboardProcessorTests(IntegrationDatabaseFixture fixture) : Dat
             Mods = Mods.None,
             Grade = isPassed ? ScoreGrade.A : ScoreGrade.F,
             IsPassed = isPassed,
-            IsScoreable = true,
             SubmissionStatus = submissionStatus,
             WhenPlayed = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc),
             OsuVersion = "b20260101.1",

@@ -59,8 +59,6 @@ public class Score
 
     public bool IsPassed { get; set; }
 
-    // TODO: Drop persisted IsScoreable once all score reads derive it from BeatmapStatus.
-    public bool IsScoreable { get; set; }
     public SubmissionStatus SubmissionStatus { get; set; } = SubmissionStatus.Unknown;
     public GameMode GameMode { get; set; }
     public DateTime WhenPlayed { get; set; }

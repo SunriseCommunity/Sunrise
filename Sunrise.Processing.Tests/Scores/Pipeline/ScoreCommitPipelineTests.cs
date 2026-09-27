@@ -44,7 +44,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         EnrichScore(score, user, beatmap);
         score.Grade = ScoreGrade.A;
         score.SubmissionStatus = SubmissionStatus.Submitted;
-        score.IsScoreable = false;
         score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -63,7 +62,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
         Assert.NotNull(persistedScore);
         Assert.Equal(BeatmapStatus.Ranked, persistedScore.BeatmapHashStatus!.Status);
-        Assert.True(persistedScore.IsScoreable);
+        Assert.True(persistedScore.BeatmapHashStatus!.Status.IsScoreable());
         Assert.Equal(SubmissionStatus.Best, persistedScore.SubmissionStatus);
 
         var persistedUserStats = await Database.Users.Stats.GetUserStats(user.Id, score.GameMode);
@@ -424,7 +423,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.Grade = ScoreGrade.S;
         score.PerformancePoints = 500;
         score.SubmissionStatus = SubmissionStatus.Submitted;
-        score.IsScoreable = false;
         score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
@@ -479,7 +477,6 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         EnrichScore(scoreB, userB, beatmap);
         scoreB.PerformancePoints = 200;
         scoreB.SubmissionStatus = SubmissionStatus.Submitted;
-        scoreB.IsScoreable = false;
         scoreB.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStatsB, userGradesB) = await LoadUserState(userB, GameMode.Standard);

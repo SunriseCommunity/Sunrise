@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
+using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Processing.Scores.Processors;
 
@@ -53,7 +54,7 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         var previousOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
 
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
-        if (isFailed || !score.IsScoreable || score.SubmissionStatus != SubmissionStatus.Best)
+        if (isFailed || !ctx.BeatmapStatus.IsScoreable() || score.SubmissionStatus != SubmissionStatus.Best)
             return;
 
         if (!IsOverallBestScore(score, previousOverallBest))

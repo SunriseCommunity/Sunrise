@@ -3,6 +3,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.API.Serializable.Response;
 
@@ -18,7 +19,7 @@ public class AdminScoreResponse
         Score = new ScoreResponse(sessionRepository, score);
         SubmissionStatus = score.SubmissionStatus;
         BeatmapStatus = score.BeatmapHashStatus?.Status ?? BeatmapStatus.Unknown;
-        IsScoreable = score.IsScoreable;
+        IsScoreable = score.BeatmapHashStatus?.Status.IsScoreable() ?? false;
         ScoreHash = score.ScoreHash;
     }
 
