@@ -113,19 +113,19 @@ public class CalculationRepository(SunriseDbContext dbContext)
             .AnyAsync(ct);
     }
 
-    public async Task<BeatmapHashStatus?> GetHashStatus(string beatmapHash, CancellationToken ct = default)
+    public async Task<BeatmapHashStatus?> GetBeatmapHashStatus(string beatmapHash, CancellationToken ct = default)
     {
         return await dbContext.BeatmapHashStatuses.NotCacheable()
             .FirstOrDefaultAsync(h => h.BeatmapHash == beatmapHash, ct);
     }
 
-    public async Task<BeatmapHashStatus> ApplyHashStatus(string beatmapHash, int beatmapId, BeatmapStatus status, CancellationToken ct = default)
+    public async Task<BeatmapHashStatus> ApplyBeatmapHashStatus(string beatmapHash, int beatmapId, BeatmapStatus status, CancellationToken ct = default)
     {
-        var hashStatus = await GetHashStatus(beatmapHash, ct);
+        var beatmapHashStatus = await GetBeatmapHashStatus(beatmapHash, ct);
 
-        if (hashStatus == null)
+        if (beatmapHashStatus == null)
         {
-            hashStatus = new BeatmapHashStatus
+            beatmapHashStatus = new BeatmapHashStatus
             {
                 BeatmapHash = beatmapHash,
                 BeatmapId = beatmapId,
@@ -133,25 +133,25 @@ public class CalculationRepository(SunriseDbContext dbContext)
                 CheckedAt = DateTime.UtcNow
             };
 
-            dbContext.BeatmapHashStatuses.Add(hashStatus);
+            dbContext.BeatmapHashStatuses.Add(beatmapHashStatus);
             await dbContext.SaveChangesAsync(ct);
-            return hashStatus;
+            return beatmapHashStatus;
         }
 
-        var isStatusChanged = hashStatus.Status != status;
+        var isStatusChanged = beatmapHashStatus.Status != status;
 
-        hashStatus.BeatmapId = beatmapId;
-        hashStatus.Status = status;
-        hashStatus.MissCount = 0;
+        beatmapHashStatus.BeatmapId = beatmapId;
+        beatmapHashStatus.Status = status;
+        beatmapHashStatus.MissCount = 0;
         await dbContext.SaveChangesAsync(ct);
 
         if (isStatusChanged)
-            await RecalculateHashScores(beatmapHash, ct);
+            await RecalculateBeatmapHashScores(beatmapHash, ct);
 
-        return hashStatus;
+        return beatmapHashStatus;
     }
 
-    public async Task RecalculateHashScores(string beatmapHash, CancellationToken ct = default)
+    public async Task RecalculateBeatmapHashScores(string beatmapHash, CancellationToken ct = default)
     {
         await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
             INSERT IGNORE INTO score_processing_task (TaskType, ScoreId, Priority, Status, RetryCount, CreatedAt)

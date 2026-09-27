@@ -78,7 +78,7 @@ public class UserStatsScoreProcessor(
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (!score.BeatmapStatus.IsRanked())
+        if (!ctx.BeatmapStatus.IsRanked())
             return;
 
         if (isBetterTotalScoreValue)

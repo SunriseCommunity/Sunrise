@@ -35,7 +35,8 @@ public class ScoreRecalculationHandler(
                     $"Score {task.ScoreId} is deleted; use RestoreScore to bring it back")
                 .ToResult<ScorePrepareContext>();
 
-        if (score.BeatmapStatus == BeatmapStatus.NotSubmitted)
+        var beatmapHashStatus = await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash, ct);
+        if (beatmapHashStatus?.Status == BeatmapStatus.NotSubmitted)
             return new ScorePrepareContext(ScoreTaskType.Recalculation, score, score.PerformancePoints);
 
         var beatmapRatelimitSession = BaseSession.GenerateServerSession();

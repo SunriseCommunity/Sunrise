@@ -298,7 +298,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
-        Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapStatus);
+        Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapHashStatus!.Status);
         Assert.True(databaseScore.IsScoreable);
     }
 
@@ -355,7 +355,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Submitted, databaseScore.SubmissionStatus);
-        Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapStatus);
+        Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapHashStatus!.Status);
         Assert.False(databaseScore.IsScoreable);
     }
 

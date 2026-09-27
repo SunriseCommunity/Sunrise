@@ -132,7 +132,13 @@ public class ScoreCommitPipeline
             ? preparedScore
             : lockedScore ?? throw new ApplicationException($"Score {preparedScore.Id} was not found while locking score commit target");
 
-        var originalState = ScoreStateSnapshot.Capture(score);
+        var beatmapHashStatus = prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null
+            ? await _database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct)
+            : await _database.Calculations.GetBeatmapHashStatus(score.BeatmapHash, ct)
+              ?? throw new ApplicationException($"Beatmap hash status {score.BeatmapHash} was not found while committing score {score.Id}");
+
+        score.BeatmapHashStatus = beatmapHashStatus;
+        var originalState = ScoreStateSnapshot.Capture(score, beatmapHashStatus.Status);
 
         if (prepareCtx.TaskType != ScoreTaskType.Submission && prepareCtx.NewScorePerformancePointsValue.HasValue)
         {
@@ -140,15 +146,13 @@ public class ScoreCommitPipeline
             score.CalculationVersionId = preparedScore.CalculationVersionId;
         }
 
-        if (prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null)
-            score.BeatmapHashStatus = await _database.Calculations.ApplyHashStatus(score.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct);
-
         var ctx = new ScoreCommitContext(
             prepareCtx.TaskType,
             score,
             user,
             lockedStats,
             lockedGrades,
+            beatmapHashStatus.Status,
             prepareCtx.Beatmap,
             prepareCtx.BeatmapSet)
         {
@@ -157,8 +161,7 @@ public class ScoreCommitPipeline
             PreviousUserStatsSnapshot = lockedStats.Clone()
         };
 
-        if (score.BeatmapHashStatus != null)
-            score.IsScoreable = score.BeatmapStatus.IsScoreable();
+        score.IsScoreable = beatmapHashStatus.Status.IsScoreable();
 
         ctx.UserPersonalBestScores = peers;
 

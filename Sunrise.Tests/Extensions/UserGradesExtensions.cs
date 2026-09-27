@@ -15,7 +15,7 @@ public static class UserGradesExtensions
         if (isFailed || !score.IsScoreable)
             return;
 
-        if (score.SubmissionStatus != SubmissionStatus.Best || !score.BeatmapStatus.IsRanked())
+        if (score.SubmissionStatus != SubmissionStatus.Best || !score.BeatmapHashStatus!.Status.IsRanked())
             return;
 
         userGrades.UpdateGradeCount(score.Grade, 1);

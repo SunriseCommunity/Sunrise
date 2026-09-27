@@ -21,7 +21,7 @@ public static class ScoreCommitContextFactory
         UserBeatmapPeers? userPersonalBestScores = null,
         ScoreStateSnapshot? originalState = null)
     {
-        var context = new ScoreCommitContext(taskType, score, user, userStats, userGrades, beatmap, beatmapSet);
+        var context = new ScoreCommitContext(taskType, score, user, userStats, userGrades, score.BeatmapHashStatus!.Status, beatmap, beatmapSet);
 
         if (userPersonalBestScores != null)
             SetUserPersonalBestScores(context, userPersonalBestScores);

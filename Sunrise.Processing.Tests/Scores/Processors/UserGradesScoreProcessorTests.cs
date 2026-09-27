@@ -36,7 +36,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard
         };
         var score = CreateScore(user);
-        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnNewSubmission(context);
@@ -88,7 +88,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             user,
             userStats,
             userGrades,
-            originalState: ScoreStateSnapshot.Capture(score));
+            originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
         await processor.OnNewSubmission(context);
 
         Assert.Equal(ScoreGrade.S, score.Grade);
@@ -121,7 +121,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             userStats,
             userGrades,
             userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(previousBest)),
-            originalState: ScoreStateSnapshot.Capture(score));
+            originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnNewSubmission(context);
@@ -159,7 +159,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             userStats,
             userGrades,
             userPersonalBestScores: new UserBeatmapPeers(null, new UserPersonalBestScores(existingOverallBest)),
-            originalState: ScoreStateSnapshot.Capture(score));
+            originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnNewSubmission(context);
@@ -187,7 +187,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountA = 2
         };
         var score = CreateScore(user, isScoreable: isScoreable, isPassed: isPassed, submissionStatus: submissionStatus);
-        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnNewSubmission(context);
@@ -211,7 +211,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountA = 2
         };
         var score = CreateScore(user);
-        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Recalculation, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Recalculation, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnRecalculation(context);
@@ -235,7 +235,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountA = 1
         };
         var score = CreateScore(user);
-        var originalState = ScoreStateSnapshot.Capture(score);
+        var originalState = ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Delete, score, user, userStats, userGrades, originalState: originalState);
 
         // Act
@@ -262,7 +262,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
 
         var promotedReplacement = CreateScore(user, "S", submissionStatus: SubmissionStatus.Best);
         var score = CreateScore(user);
-        var originalState = ScoreStateSnapshot.Capture(score);
+        var originalState = ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status);
 
         var context = ScoreCommitContextFactory.Create(
             ScoreTaskType.Delete,
@@ -298,7 +298,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
 
         var promotedReplacement = CreateScore(user, submissionStatus: SubmissionStatus.Best);
         var score = CreateScore(user);
-        var originalState = ScoreStateSnapshot.Capture(score);
+        var originalState = ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status);
 
         var context = ScoreCommitContextFactory.Create(
             ScoreTaskType.Delete,
@@ -331,7 +331,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             CountA = 1
         };
         var score = CreateScore(user, submissionStatus: SubmissionStatus.Submitted);
-        var originalState = ScoreStateSnapshot.Capture(score);
+        var originalState = ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status);
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Delete, score, user, userStats, userGrades, originalState: originalState);
 
         // Act
@@ -355,7 +355,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
             GameMode = GameMode.Standard
         };
         var score = CreateScore(user);
-        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Restore, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Restore, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act
         await processor.OnRestoration(context);
@@ -379,7 +379,7 @@ public class UserGradesScoreProcessorTests(IntegrationDatabaseFixture fixture) :
         };
         var score = CreateScore(user, submissionStatus: SubmissionStatus.Best);
         score.Grade = (ScoreGrade)999;
-        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
+        var context = ScoreCommitContextFactory.Create(ScoreTaskType.Submission, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => processor.OnNewSubmission(context));

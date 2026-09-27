@@ -7,6 +7,7 @@ using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -134,9 +135,14 @@ public class RecalculateUserStatsCommand : IChatCommand
                 return;
             }
 
+            var pageHashes = pageScores.Select(s => s.BeatmapHash).Distinct().ToList();
+            var beatmapStatuses = await database.DbContext.BeatmapHashStatuses
+                .Where(h => pageHashes.Contains(h.BeatmapHash))
+                .ToDictionaryAsync(h => h.BeatmapHash, h => h.Status);
+
             foreach (var score in pageScores)
             {
-                UpdateUserStatsWithScore(tempUserStats, score);
+                UpdateUserStatsWithScore(tempUserStats, score, beatmapStatuses[score.BeatmapHash]);
             }
 
             if (pageScores.Count < pageSize) break;
@@ -179,7 +185,7 @@ public class RecalculateUserStatsCommand : IChatCommand
         await database.Users.Stats.UpdateUserStats(stats, user);
     }
 
-    private static void UpdateUserStatsWithScore(UserStats userStats, Score score)
+    private static void UpdateUserStatsWithScore(UserStats userStats, Score score, BeatmapStatus beatmapStatus)
     {
         var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
 
@@ -195,7 +201,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (score.SubmissionStatus == SubmissionStatus.Best && score.BeatmapStatus.IsRanked())
+        if (score.SubmissionStatus == SubmissionStatus.Best && beatmapStatus.IsRanked())
             userStats.RankedScore += score.TotalScore;
     }
 }

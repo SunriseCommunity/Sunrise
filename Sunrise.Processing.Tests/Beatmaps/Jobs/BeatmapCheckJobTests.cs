@@ -41,7 +41,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
 
         // Act
         await RunChecks();
-        var afterFirstMiss = await Database.Calculations.GetHashStatus(score.BeatmapHash);
+        var afterFirstMiss = await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash);
 
         await RunChecks();
         await ProcessQueue();
@@ -50,7 +50,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         Assert.Equal(1, afterFirstMiss!.MissCount);
         Assert.Equal(BeatmapStatus.Ranked, afterFirstMiss.Status);
 
-        Assert.Equal(BeatmapStatus.NotSubmitted, (await Database.Calculations.GetHashStatus(score.BeatmapHash))!.Status);
+        Assert.Equal(BeatmapStatus.NotSubmitted, (await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash))!.Status);
         Assert.False((await ReloadScore(score)).IsScoreable);
         Assert.True((await Database.DbContext.UserStats.NotCacheable().AsNoTracking().SingleAsync(s => s.Id == stats.Id)).PerformancePoints < stats.PerformancePoints);
     }
@@ -72,8 +72,8 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         await RunChecks();
 
         // Assert
-        Assert.Equal(BeatmapStatus.Loved, (await Database.Calculations.GetHashStatus(score.BeatmapHash))!.Status);
-        Assert.Equal(BeatmapStatus.Loved, (await ReloadScore(score)).BeatmapStatus);
+        Assert.Equal(BeatmapStatus.Loved, (await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash))!.Status);
+        Assert.Equal(BeatmapStatus.Loved, (await ReloadScore(score)).BeatmapHashStatus!.Status);
         Assert.True(await Database.DbContext.ScoreProcessingTasks.NotCacheable()
             .AnyAsync(t => t.ScoreId == score.Id && t.TaskType == ScoreTaskType.Recalculation && t.Status == ScoreProcessingStatus.Pending));
     }
@@ -100,9 +100,9 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         await ProcessQueue();
 
         // Assert
-        var hashStatus = await Database.Calculations.GetHashStatus(score.BeatmapHash);
-        Assert.Equal(BeatmapStatus.Ranked, hashStatus!.Status);
-        Assert.Equal(0, hashStatus.MissCount);
+        var beatmapHashStatus = await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash);
+        Assert.Equal(BeatmapStatus.Ranked, beatmapHashStatus!.Status);
+        Assert.Equal(0, beatmapHashStatus.MissCount);
         Assert.True((await ReloadScore(score)).IsScoreable);
     }
 
@@ -135,7 +135,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         // Assert
         Assert.True(changeResult.IsSuccess, changeResult.IsFailure ? changeResult.Error : null);
         Assert.True(isDueAfterOverride);
-        Assert.Equal(BeatmapStatus.Loved, (await Database.Calculations.GetHashStatus(score.BeatmapHash))!.Status);
+        Assert.Equal(BeatmapStatus.Loved, (await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash))!.Status);
         Assert.True(await Database.DbContext.ScoreProcessingTasks.NotCacheable()
             .AnyAsync(t => t.ScoreId == score.Id && t.TaskType == ScoreTaskType.Recalculation && t.Status == ScoreProcessingStatus.Pending));
     }

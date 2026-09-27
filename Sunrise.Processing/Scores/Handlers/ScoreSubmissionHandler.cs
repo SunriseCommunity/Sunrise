@@ -8,6 +8,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
@@ -115,7 +116,7 @@ public class ScoreSubmissionHandler(
         score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
         score.CalculationVersionId = await Database.Calculations.GetOrCreateVersionId(scorePerformanceResult.Value.RosuVersion, ct);
 
-        var validateScorePerformanceResult = ValidateScorePerformance(score, ct);
+        var validateScorePerformanceResult = ValidateScorePerformance(score, beatmap.Status);
 
         if (validateScorePerformanceResult.IsFailure)
         {
@@ -185,12 +186,12 @@ public class ScoreSubmissionHandler(
             Log.Warning("Failed to publish post-commit score side effects for score {ScoreId}: {Error}", ctx.Score.Id, publishSideEffectsResult.Error);
     }
 
-    private UnitResult<ScoreProcessingError> ValidateScorePerformance(Score score, CancellationToken ct)
+    private UnitResult<ScoreProcessingError> ValidateScorePerformance(Score score, BeatmapStatus beatmapStatus)
     {
         var hasNonStandardModsForBanCheck = score.Mods.TryGetSelectedNotStandardMods() is not Mods.None;
         var isScoreBannable = score.PerformancePoints >= Configuration.BannablePpThreshold
                               && !hasNonStandardModsForBanCheck
-                              && score.BeatmapStatus.IsRanked();
+                              && beatmapStatus.IsRanked();
 
         if (isScoreBannable)
             return new ScoreProcessingError(ScoreProcessingErrorCode.BannablePpThreshold, "Too many PP - auto-restricted").ToUnit();

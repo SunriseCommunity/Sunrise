@@ -26,7 +26,7 @@ public static class UserStatsExtensions
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (score.SubmissionStatus == SubmissionStatus.Best && score.BeatmapStatus.IsRanked())
+        if (score.SubmissionStatus == SubmissionStatus.Best && score.BeatmapHashStatus!.Status.IsRanked())
             userStats.RankedScore += score.TotalScore;
     }
 

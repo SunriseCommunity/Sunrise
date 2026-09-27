@@ -65,10 +65,6 @@ public class Score
     public GameMode GameMode { get; set; }
     public DateTime WhenPlayed { get; set; }
     public string OsuVersion { get; set; }
-
-    [NotMapped]
-    public BeatmapStatus BeatmapStatus => BeatmapHashStatus?.Status ?? BeatmapStatus.Unknown;
-
     public DateTime ClientTime { get; set; }
     public double Accuracy { get; set; }
     public double PerformancePoints { get; set; }

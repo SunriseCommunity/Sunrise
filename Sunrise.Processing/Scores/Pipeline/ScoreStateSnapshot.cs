@@ -1,4 +1,5 @@
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
@@ -10,12 +11,12 @@ public readonly record struct ScoreStateSnapshot(
     bool IsPassed,
     bool IsRanked)
 {
-    public static ScoreStateSnapshot Capture(Score score)
+    public static ScoreStateSnapshot Capture(Score score, BeatmapStatus beatmapStatus)
     {
         return new ScoreStateSnapshot(
             score.SubmissionStatus,
             score.IsScoreable,
             score.IsPassed,
-            score.BeatmapStatus.IsRanked());
+            beatmapStatus.IsRanked());
     }
 }

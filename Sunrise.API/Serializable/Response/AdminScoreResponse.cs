@@ -17,7 +17,7 @@ public class AdminScoreResponse
     {
         Score = new ScoreResponse(sessionRepository, score);
         SubmissionStatus = score.SubmissionStatus;
-        BeatmapStatus = score.BeatmapStatus;
+        BeatmapStatus = score.BeatmapHashStatus?.Status ?? BeatmapStatus.Unknown;
         IsScoreable = score.IsScoreable;
         ScoreHash = score.ScoreHash;
     }

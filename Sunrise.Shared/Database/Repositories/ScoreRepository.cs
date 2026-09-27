@@ -33,7 +33,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var hashStatus = await dbContext.BeatmapHashStatuses.NotCacheable().FirstOrDefaultAsync(h => h.BeatmapHash == score.BeatmapHash)
+            var beatmapHashStatus = await dbContext.BeatmapHashStatuses.NotCacheable().FirstOrDefaultAsync(h => h.BeatmapHash == score.BeatmapHash)
                              ?? dbContext.BeatmapHashStatuses.Add(new BeatmapHashStatus
                              {
                                  BeatmapHash = score.BeatmapHash,
@@ -42,9 +42,9 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
                              }).Entity;
 
             if (score.BeatmapHashStatus != null)
-                hashStatus.Status = score.BeatmapHashStatus.Status;
+                beatmapHashStatus.Status = score.BeatmapHashStatus.Status;
 
-            score.BeatmapHashStatus = hashStatus;
+            score.BeatmapHashStatus = beatmapHashStatus;
             dbContext.Scores.Add(score);
             await dbContext.SaveChangesAsync();
         });
@@ -439,8 +439,6 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             .OrderBy(s => s.Id)
             .ForUpdate()
             .ToListAsync(ct);
-
-        await dbContext.BeatmapHashStatuses.Where(h => h.BeatmapHash == beatmapHash).LoadAsync(ct);
 
         var targetScore = scoreId.HasValue ? lockedScores.SingleOrDefault(s => s.Id == scoreId.Value) : null;
         var lockedPeers = lockedScores.Where(s => s.Id != scoreId).ToList();
