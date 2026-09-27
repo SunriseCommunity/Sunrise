@@ -1,3 +1,4 @@
+using Sunrise.Shared.Database.Models.Beatmap;
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -37,7 +38,7 @@ public class MockScoreService(MockService service)
             Accuracy = service.GetRandomInteger(minInt: 0, maxInt: 100),
             Perfect = service.GetRandomBoolean(),
             GameMode = gameMode,
-            BeatmapStatus = service.Beatmap.GetRandomBeatmapStatus(),
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = service.Beatmap.GetRandomBeatmapStatus() },
             IsPassed = service.GetRandomBoolean(),
             BeatmapHash = service.GetRandomString(32),
             PerformancePoints = service.GetRandomInteger(length: 3),
@@ -154,7 +155,7 @@ public class MockScoreService(MockService service)
     public Score GetBestScoreableRandomScore()
     {
         var score = GetRandomScore();
-        score.BeatmapStatus = BeatmapStatus.Ranked;
+        score.BeatmapHashStatus!.Status = BeatmapStatus.Ranked;
         score.SubmissionStatus = SubmissionStatus.Best;
         score.IsScoreable = true;
         score.IsPassed = true;
