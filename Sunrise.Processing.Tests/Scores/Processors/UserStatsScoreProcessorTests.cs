@@ -703,7 +703,7 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
     [InlineData(false, true, BeatmapStatus.Ranked)]
     [InlineData(true, false, BeatmapStatus.Ranked)]
     [InlineData(true, true, BeatmapStatus.Loved)]
-    public async Task TestOnRecalculationWithNonRankedOrFailedScoreKeepsWeightedValues(bool isScoreable, bool isPassed, BeatmapStatus beatmapStatus)
+    public async Task TestOnRecalculationWithNonRankedOrFailedScoreRecomputesStaleWeightedValues(bool isScoreable, bool isPassed, BeatmapStatus beatmapStatus)
     {
         // Arrange
         var user = await CreateTestUser();
@@ -718,12 +718,15 @@ public class UserStatsScoreProcessorTests(IntegrationDatabaseFixture fixture) : 
 
         var context = ScoreCommitContextFactory.Create(ScoreTaskType.Recalculation, score, user, userStats, userGrades, originalState: ScoreStateSnapshot.Capture(score));
 
+        var (expectedPerformancePoints, expectedAccuracy) = await calculator.CalculateUserWeightedStats(user, score.GameMode);
+
         // Act
         await processor.OnRecalculation(context);
 
         // Assert
-        Assert.Equal(50, userStats.PerformancePoints, 6);
-        Assert.Equal(90, userStats.Accuracy, 6);
+        Assert.NotEqual(50, expectedPerformancePoints, 6);
+        Assert.Equal(expectedPerformancePoints, userStats.PerformancePoints, 6);
+        Assert.Equal(expectedAccuracy, userStats.Accuracy, 6);
     }
 
     [Fact]

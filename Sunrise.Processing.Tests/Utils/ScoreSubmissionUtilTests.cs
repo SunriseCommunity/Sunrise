@@ -76,7 +76,7 @@ public class ScoreSubmissionUtilTests : BaseTest
         var score = _mocker.Score.GetBestScoreableRandomScore();
 
         score.IsScoreable = false;
-        score.BeatmapStatus = BeatmapStatus.Pending;
+        score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         // Act
         score.UpdateSubmissionStatus(null);

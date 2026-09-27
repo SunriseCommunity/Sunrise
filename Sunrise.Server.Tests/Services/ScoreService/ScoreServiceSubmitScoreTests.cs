@@ -1194,7 +1194,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
                 Accuracy = 91.53845977783203,
                 PerformancePoints = 426.69985159889916
@@ -1223,7 +1223,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:44:36"),
                 Accuracy = 97.69230651855469,
                 PerformancePoints = 554.7153705477176
@@ -1265,7 +1265,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:45:14"),
             Accuracy = 95.12820434570312,
             PerformancePoints = 491.98253750654084
@@ -1364,7 +1364,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
                 Accuracy = 91.53845977783203,
                 PerformancePoints = 426.69985159889916
@@ -1393,7 +1393,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:44:36"),
                 Accuracy = 97.69230651855469,
                 PerformancePoints = 554.7153705477176
@@ -1435,7 +1435,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:45:14"),
             Accuracy = 95.12820434570312,
             PerformancePoints = 491.98253750654084
@@ -2006,7 +2006,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreA.Mods = Mods.None;
         scoreA.PerformancePoints = 100;
         scoreA.SubmissionStatus = SubmissionStatus.Best;
-        scoreA.BeatmapStatus = BeatmapStatus.Ranked;
+        scoreA.SetBeatmapStatus(BeatmapStatus.Ranked);
         scoreA.IsScoreable = true;
         scoreA.ScoreHash = _mocker.GetRandomString(32);
         scoreA.EnrichWithUserData(userA);
@@ -2037,7 +2037,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreB1.Mods = Mods.None;
         scoreB1.PerformancePoints = 100;
         scoreB1.SubmissionStatus = SubmissionStatus.Best;
-        scoreB1.BeatmapStatus = BeatmapStatus.Ranked;
+        scoreB1.SetBeatmapStatus(BeatmapStatus.Ranked);
         scoreB1.IsScoreable = true;
         scoreB1.ScoreHash = _mocker.GetRandomString(32);
         scoreB1.EnrichWithUserData(userB);

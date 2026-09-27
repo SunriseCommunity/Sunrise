@@ -45,7 +45,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.Grade = ScoreGrade.A;
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
-        score.BeatmapStatus = BeatmapStatus.Pending;
+        score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
@@ -425,7 +425,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         score.PerformancePoints = 500;
         score.SubmissionStatus = SubmissionStatus.Submitted;
         score.IsScoreable = false;
-        score.BeatmapStatus = BeatmapStatus.Pending;
+        score.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStats, userGrades) = await LoadUserState(user, score.GameMode);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, score, user, userStats, userGrades, beatmap);
@@ -480,7 +480,7 @@ public class ScoreCommitPipelineTests(IntegrationDatabaseFixture fixture) : Data
         scoreB.PerformancePoints = 200;
         scoreB.SubmissionStatus = SubmissionStatus.Submitted;
         scoreB.IsScoreable = false;
-        scoreB.BeatmapStatus = BeatmapStatus.Pending;
+        scoreB.SetBeatmapStatus(BeatmapStatus.Pending);
 
         var (userStatsB, userGradesB) = await LoadUserState(userB, GameMode.Standard);
         var context = new ScoreCommitContext(ScoreTaskType.Submission, scoreB, userB, userStatsB, userGradesB, beatmap);

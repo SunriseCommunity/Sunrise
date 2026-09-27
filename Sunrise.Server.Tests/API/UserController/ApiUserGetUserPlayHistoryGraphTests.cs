@@ -193,7 +193,7 @@ public class ApiUserGetUserPlayHistoryGraphTests(IntegrationDatabaseFixture fixt
         score.WhenPlayed = whenPlayedUtc;
         score.BeatmapId = Math.Abs(userId * 1000 + beatmapIdSeed);
         score.ScoreHash = _mocker.GetRandomString(32);
-        score.BeatmapStatus = BeatmapStatus.Ranked;
+        score.SetBeatmapStatus(BeatmapStatus.Ranked);
         score.SubmissionStatus = SubmissionStatus.Best;
         score.IsScoreable = true;
         score.IsPassed = true;
