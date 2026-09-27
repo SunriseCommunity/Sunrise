@@ -48,7 +48,7 @@ public class UserStatsService(
         });
     }
 
-    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default)
+    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default, bool updateRanks = true)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
@@ -56,17 +56,21 @@ public class UserStatsService(
 
             if (dbContext.Database.CurrentTransaction != null)
             {
-                databaseService.Value.RegisterAfterCommitAction(async () =>
-                {
-                    var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
-                    if (addOrUpdateUserRanksResult.IsFailure)
-                        _logger.LogWarning("Failed to update user ranks after stats update: {Error}", addOrUpdateUserRanksResult.Error);
-                });
+                if (updateRanks)
+                    databaseService.Value.RegisterAfterCommitAction(async () =>
+                    {
+                        var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+                        if (addOrUpdateUserRanksResult.IsFailure)
+                            _logger.LogWarning("Failed to update user ranks after stats update: {Error}", addOrUpdateUserRanksResult.Error);
+                    });
 
                 return;
             }
 
             await dbContext.SaveChangesAsync(ct);
+
+            if (!updateRanks)
+                return;
 
             var updateRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
             if (updateRanksResult.IsFailure)

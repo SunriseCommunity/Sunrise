@@ -22,14 +22,14 @@ public static class ScoreQueryableExtensions
         return queryable.Where(s => s.User.AccountStatus != UserAccountStatus.Restricted &&
                                     s.SubmissionStatus != SubmissionStatus.Deleted &&
                                     s.SubmissionStatus != SubmissionStatus.Unknown &&
-                                    s.BeatmapStatus != BeatmapStatus.Unknown);
+                                    s.BeatmapHashStatus!.Status != BeatmapStatus.Unknown);
     }
 
     public static IQueryable<Score> FilterPassedRankedScores(this IQueryable<Score> queryable)
     {
         return queryable
             .FilterPassedScoreableScores()
-            .Where(s => s.BeatmapStatus == BeatmapStatus.Ranked || s.BeatmapStatus == BeatmapStatus.Approved);
+            .Where(s => s.BeatmapHashStatus!.Status == BeatmapStatus.Ranked || s.BeatmapHashStatus!.Status == BeatmapStatus.Approved);
     }
 
     public static IQueryable<Score> FilterPassedScoreableScores(this IQueryable<Score> queryable)

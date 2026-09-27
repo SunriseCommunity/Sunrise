@@ -174,6 +174,39 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
             .SortedSetLength(RedisKey.LeaderboardCountry(gameMode, countryCode));
     }
 
+    public async Task RebuildAllUsersRanks(GameMode mode, int branchSize = 1000)
+    {
+        var sets = new Dictionary<string, Dictionary<int, double>>();
+
+        for (var i = 1;; i++)
+        {
+            var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
+                LeaderboardSortType.Pp,
+                options: new QueryOptions(true, new Pagination(i, branchSize))
+                {
+                    QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
+                });
+
+            foreach (var stats in usersStats)
+            {
+                var sortingValue = stats.User.IsRestricted() ? -1 : stats.PerformancePoints;
+
+                foreach (var key in new[] { RedisKey.LeaderboardGlobal(mode), RedisKey.LeaderboardCountry(mode, stats.User.Country) })
+                {
+                    if (!sets.TryGetValue(key, out var set))
+                        sets[key] = set = new Dictionary<int, double>();
+
+                    set[stats.UserId] = sortingValue;
+                }
+            }
+
+            if (usersStats.Count < branchSize)
+                break;
+        }
+
+        await databaseService.Value.Redis.ReplaceSortedSets(sets);
+    }
+
     public async Task<Result> SetAllUsersRanks(GameMode mode, int branchSize = 20)
     {
         var database = databaseService.Value;
