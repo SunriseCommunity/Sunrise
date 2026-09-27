@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -23,6 +24,9 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
     {
         builder.ConfigureTestServices(services =>
         {
+            foreach (var hangfireServer in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationFactory?.Method.DeclaringType?.Namespace == "Hangfire").ToList())
+                services.Remove(hangfireServer);
+
             var dbContextDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<SunriseDbContext>));
             if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
 
