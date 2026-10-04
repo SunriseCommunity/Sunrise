@@ -71,6 +71,8 @@ public class UserAttributes
 
         var userRank = IsBot ? 0 : globalRank;
 
+        var shouldShowUserProfileCountry = !ShowUserLocation && Configuration.UseUserProfileCountryIfLocationHidden;
+
         return new BanchoUserPresence
         {
             UserId = user.Id,
@@ -78,7 +80,9 @@ public class UserAttributes
             Timezone = Timezone,
             Latitude = ShowUserLocation ? Latitude : 0,
             Longitude = ShowUserLocation ? Longitude : 0,
-            CountryCode = byte.Parse((Country ?? (short)user.Country).ToString()),
+            CountryCode = (byte)(shouldShowUserProfileCountry
+                ? (short)user.Country
+                : Country ?? (short)user.Country),
             Permissions = user.GetPrivilegeRank(), // FIXME: Chat color doesn't work
             Rank = (int)userRank,
             PlayMode = GetCurrentGameMode().ToVanillaGameMode(),

@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
@@ -104,7 +105,7 @@ public class UserModerationService(
             if (user == null)
                 throw new ApplicationException(QueryResultError.REQUESTED_RECORD_NOT_FOUND);
 
-            if (user.Privilege >= UserPrivilege.Admin)
+            if (user.Privilege.GetPrivilegeLevel() >= UserPrivilege.Admin.GetPrivilegeLevel())
                 throw new ApplicationException("Cannot restrict an admin or higher privileged user.");
 
             user.AccountStatus = UserAccountStatus.Restricted;

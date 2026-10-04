@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using Sunrise.API.Serializable.Response;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
@@ -25,7 +25,7 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         var beatmapSetFirst = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -67,7 +67,7 @@ public class ApiGetBeatmapSetsEventsTests(IntegrationDatabaseFixture fixture) : 
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         var beatmapSetFirst = _mocker.Beatmap.GetRandomBeatmapSet();

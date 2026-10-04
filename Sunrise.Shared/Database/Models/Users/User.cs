@@ -1,9 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 using PlayerRank = osu.Shared.PlayerRank;
 
 namespace Sunrise.Shared.Database.Models.Users;
@@ -59,7 +60,7 @@ public class User
 
         if (Privilege.HasFlag(UserPrivilege.Developer)) privilegeRank |= PlayerRank.SuperMod;
 
-        if (Privilege.HasFlag(UserPrivilege.Admin) || Privilege.HasFlag(UserPrivilege.Bat))
+        if (Privilege.HasFlag(UserPrivilege.Admin) || Privilege.HasAnyBeatmapApprovalTeamPrivilege())
             privilegeRank |= PlayerRank.Bat;
 
         if (Privilege.HasFlag(UserPrivilege.Supporter)) privilegeRank |= PlayerRank.Supporter;

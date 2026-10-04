@@ -23,6 +23,80 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
     private readonly MockService _mocker = new();
 
     [Theory]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard, GameMode.Standard, HttpStatusCode.OK)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard, GameMode.Taiko, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard, GameMode.CatchTheBeat, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard, GameMode.Mania, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamTaiko, GameMode.Standard, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamTaiko, GameMode.Taiko, HttpStatusCode.OK)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamTaiko, GameMode.CatchTheBeat, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamTaiko, GameMode.Mania, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamCatch, GameMode.Standard, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamCatch, GameMode.Taiko, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamCatch, GameMode.CatchTheBeat, HttpStatusCode.OK)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamCatch, GameMode.Mania, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamMania, GameMode.Standard, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamMania, GameMode.Taiko, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamMania, GameMode.CatchTheBeat, HttpStatusCode.BadRequest)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamMania, GameMode.Mania, HttpStatusCode.OK)]
+    public async Task TestBeatmapApprovalTeamCanOnlyUpdateMatchingGameMode(
+        UserPrivilege privilege,
+        GameMode gameMode,
+        HttpStatusCode expectedStatusCode)
+    {
+        var client = App.CreateClient().UseClient("api");
+        var user = await CreateTestUser();
+        user.Privilege = privilege;
+        await Database.Users.UpdateUser(user);
+        client.UseUserAuthToken(await GetUserAuthTokens(user));
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First();
+        beatmap.ModeInt = (int)gameMode;
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        var response = await client.PostAsJsonAsync("beatmap/update-custom-status",
+            new UpdateBeatmapsCustomStatusRequest
+            {
+                Ids = [beatmap.Id],
+                Status = BeatmapStatusWeb.Loved
+            });
+
+        Assert.Equal(expectedStatusCode, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestMixedModeBatchDoesNotUpdateAnyBeatmapsWhenOneModeIsUnauthorized()
+    {
+        var client = App.CreateClient().UseClient("api");
+        var user = await CreateTestUser();
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard;
+        await Database.Users.UpdateUser(user);
+        client.UseUserAuthToken(await GetUserAuthTokens(user));
+
+        var standardSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var standardBeatmap = standardSet.Beatmaps.First();
+        standardBeatmap.ModeInt = (int)GameMode.Standard;
+        await _mocker.Beatmap.MockBeatmapSet(standardSet);
+
+        var maniaSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var maniaBeatmap = maniaSet.Beatmaps.First();
+        maniaBeatmap.ModeInt = (int)GameMode.Mania;
+        await _mocker.Beatmap.MockBeatmapSet(maniaSet);
+
+        var response = await client.PostAsJsonAsync("beatmap/update-custom-status",
+            new UpdateBeatmapsCustomStatusRequest
+            {
+                Ids = [standardBeatmap.Id, maniaBeatmap.Id],
+                Status = BeatmapStatusWeb.Loved
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(await Database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(standardBeatmap.Checksum!));
+        Assert.Empty((await Database.Events.Beatmaps.GetBeatmapSetEvents(standardSet.Id)).Item1);
+    }
+
+    [Theory]
     [InlineData(true, true)]
     [InlineData(true, false)]
     [InlineData(false, false)]
@@ -36,7 +110,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
@@ -112,7 +186,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
@@ -174,7 +248,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
@@ -255,7 +329,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         var json = $"{{\"ids\":\"[{beatmapId}]\", \"status\":\"{BeatmapStatusWeb.Ranked}\"}}";
@@ -278,7 +352,7 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         // Act

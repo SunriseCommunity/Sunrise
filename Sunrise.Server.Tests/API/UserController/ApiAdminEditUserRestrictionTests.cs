@@ -219,6 +219,26 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
     }
 
     [Fact]
+    public async Task TestAdminCanRestrictBeatmapApprovalTeamUser()
+    {
+        var client = App.CreateClient().UseClient("api");
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = _mocker.User.GetRandomUser();
+        targetUser.Privilege = UserPrivilege.BeatmapApprovalTeamStandard;
+        await CreateTestUser(targetUser);
+
+        client.UseUserAuthToken(await GetUserAuthTokens(adminUser));
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/restriction",
+            new EditUserRestrictionRequest { IsRestrict = true, RestrictionReason = "BAT restriction regression" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(await Database.Users.Moderation.IsUserRestricted(targetUser.Id));
+    }
+
+    [Fact]
     public async Task TestAdminRestrictUserShouldUpdateUserStats()
     {
         // Arrange

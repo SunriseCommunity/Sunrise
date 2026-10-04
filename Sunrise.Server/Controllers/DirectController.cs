@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Services;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
@@ -56,7 +57,7 @@ public class DirectController(DirectService directService, SessionRepository ses
     [HttpGet("/d/{id}")]
     public IActionResult DownloadBeatmapSet(string id)
     {
-        return Redirect($"https://catboy.best/d/{id}");
+        return Redirect($"{Configuration.BeatmapSetDownloadMirrorUrl}{id}");
     }
 }
 

@@ -114,7 +114,7 @@ public class UserService(
             };
 
 
-        if (eventAction.ExecutorUser.Privilege.GetHighestPrivilege() <= updatedPrivileges.GetHighestPrivilege())
+        if (eventAction.ExecutorUser.Privilege.GetPrivilegeLevel() <= updatedPrivileges.GetPrivilegeLevel())
             return new ObjectResult(new ProblemDetails
             {
                 Detail = ApiErrorResponse.Detail.InsufficientPrivileges,
@@ -615,7 +615,7 @@ public class UserService(
         if (user.Privilege.HasFlag(UserPrivilege.Admin))
             badges.Add(UserBadge.Admin);
 
-        if (user.Privilege.HasFlag(UserPrivilege.Bat))
+        if (user.Privilege.HasAnyBeatmapApprovalTeamPrivilege())
             badges.Add(UserBadge.Bat);
 
         if (user.IsUserSunriseBot())
