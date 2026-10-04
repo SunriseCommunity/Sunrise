@@ -109,7 +109,7 @@ public static class ChatCommandRepository
         var shouldShowMultiplayerSpecificCommands = session.Match != null;
 
         return Handlers
-            .Where(x => privilege.HasFlag(x.Value.RequiredPrivileges))
+            .Where(x => privilege.HasRequiredPrivilege(x.Value.RequiredPrivileges))
             .Where(x => !x.Value.Prefix.Contains("mp") || shouldShowMultiplayerSpecificCommands)
             .Where(x => !x.Value.IsHidden)
             .Select(x => x.Key)
