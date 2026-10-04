@@ -41,7 +41,7 @@ public class GiveSelfPrivilegeCommand : IChatCommand
             return;
         }
 
-        if (sessionUser.Privilege.GetHighestPrivilege() <= privilege.Value)
+        if (sessionUser.Privilege.GetPrivilegeLevel() <= privilege.Value.GetPrivilegeLevel())
         {
             ChatCommandRepository.SendMessage(session, "You cannot grant yourself a privilege equal to or higher than your current highest privilege.");
             return;

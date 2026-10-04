@@ -3,6 +3,7 @@ using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 
@@ -42,7 +43,7 @@ public class CountryCommand : IChatCommand
             return;
         }
 
-        if (user.Privilege >= UserPrivilege.Admin)
+        if (user.Privilege.GetPrivilegeLevel() >= UserPrivilege.Admin.GetPrivilegeLevel())
         {
             ChatCommandRepository.SendMessage(session, "You cannot change their country due to their privilege level.");
             return;

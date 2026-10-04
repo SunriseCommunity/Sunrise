@@ -189,7 +189,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return new OkResult();
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/get-hyped-sets")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Returns beatmapsets with active hype train")]
@@ -244,7 +244,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         });
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/{id:int}/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset related events")]
@@ -285,7 +285,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return Ok(new BeatmapSetEventsResponse(events, totalCount));
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapsets related events")]
@@ -366,7 +366,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         });
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpPost("beatmap/update-custom-status")]
     [EndpointDescription("Updates beatmap custom status. Use \'Unknown\' to reset beatmap custom status")]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]
@@ -388,6 +388,26 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
             var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
 
+            if (beatmap == null)
+                return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
+
+            var validation = beatmapService.ValidateBeatmapCustomStatusChange(user, beatmap);
+            if (validation.IsFailure)
+                return Problem(validation.Error, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        // it's fine to have second loop, as it's expected to have <20 maps to check and they are should be already cached from previous get beatmap set request
+        foreach (var id in request.Ids)
+        {
+            var beatmapSetResult = await beatmapService.GetBeatmapSet(session, beatmapId: id);
+            if (beatmapSetResult.IsFailure)
+                return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+            var beatmapSet = beatmapSetResult.Value;
+            if (beatmapSet == null)
+                return ActionResultUtil.ActionErrorResult(beatmapSetResult.Error);
+
+            var beatmap = beatmapSet.Beatmaps.FirstOrDefault(x => x.Id == id);
             if (beatmap == null)
                 return Problem(ApiErrorResponse.Detail.BeatmapNotFound, statusCode: StatusCodes.Status404NotFound);
 

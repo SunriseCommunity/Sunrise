@@ -18,7 +18,7 @@ using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Commands.ChatCommands.Bat;
 
-[ChatCommand("setbeatmapstatus", requiredPrivileges: UserPrivilege.Bat)]
+[ChatCommand("setbeatmapstatus", requiredPrivileges: UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania)]
 public class SetBeatmapStatusCommand : IChatCommand
 {
     public async Task Handle(Session session, ChatChannel? channel, string[]? args)

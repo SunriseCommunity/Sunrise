@@ -241,7 +241,11 @@ public static class Bootstrap
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy("RequireSuperUser", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.SuperUser)))
             .AddPolicy("RequireAdmin", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Admin)))
-            .AddPolicy("RequireBat", policy => policy.Requirements.Add(new UserPrivilegeRequirement(UserPrivilege.Bat)));
+            .AddPolicy("RequireBeatmapApprovalTeam", policy => policy.Requirements.Add(new UserPrivilegeRequirement(
+                UserPrivilege.BeatmapApprovalTeamStandard |
+                UserPrivilege.BeatmapApprovalTeamTaiko |
+                UserPrivilege.BeatmapApprovalTeamCatch |
+                UserPrivilege.BeatmapApprovalTeamMania)));
 
         builder.Services.AddScoped<IAuthorizationHandler, DatabaseAuthorizationHandler>();
         builder.Services.AddScoped<IAuthorizationMiddlewareResultHandler, CustomAuthorizationMiddlewareResultHandler>();
