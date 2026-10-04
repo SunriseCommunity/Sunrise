@@ -30,6 +30,8 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
         beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
@@ -78,6 +80,8 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         var user = await CreateTestUser();
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
+
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
@@ -132,6 +136,8 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
         beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
@@ -168,6 +174,8 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
+        EnvManager.Set("General:IgnoreBeatmapRanking", "false");
+
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         beatmapSet.Id = 1;
         beatmapSet.StatusString = BeatmapStatusWeb.Graveyard.BeatmapStatusWebToString();
@@ -181,7 +189,7 @@ public class ApiAddBeatmapSetHypeTests(IntegrationDatabaseFixture fixture) : Api
 
         await Database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(new CustomBeatmapStatus
         {
-            Status = BeatmapStatusWeb.Ranked,
+            Status = BeatmapStatusWeb.Graveyard,
             BeatmapHash = beatmapSet.Beatmaps.First().Checksum ?? throw new InvalidOperationException(),
             BeatmapSetId = beatmapSet.Id,
             UpdatedByUserId = user.Id

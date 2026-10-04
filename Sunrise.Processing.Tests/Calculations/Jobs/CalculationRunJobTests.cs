@@ -74,6 +74,64 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
     }
 
     [Fact]
+    public async Task TestStatusChangeDuringRunIsAppliedAndRunStillFinishes()
+    {
+        // Arrange
+        var player = await CreatePlayer(100);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+
+        // Act
+        await Database.Calculations.ApplyBeatmapHashStatus(player.Scores[0].BeatmapHash, player.Scores[0].BeatmapId, BeatmapStatus.Pending);
+        await ProcessQueue();
+        await RunJob();
+
+        // Assert
+        Assert.Null(await Database.Calculations.GetFrozenPhase());
+        Assert.Equal(0, (await ReloadStats(player)).PerformancePoints);
+        Assert.Equal(SubmissionStatus.Submitted, (await ReloadScore(player.Scores[0])).SubmissionStatus);
+        Assert.False(await Database.DbContext.ScoreProcessingTasks.NotCacheable().AnyAsync());
+    }
+
+    [Fact]
+    public async Task TestRunFinishesWhenCalculatorReportsDifferentVersionString()
+    {
+        // Arrange
+        await CreatePlayer(100);
+        App.MockHttpClient!.MockResponse(ApiType.GetCalculatorVersion, _ => new CalculatorVersionResponse { Rosu = "3.2.0" });
+        App.MockHttpClient.MockPerformanceCalculation(performancePoints: 300, rosuVersion: "3.2.0-build.7");
+
+        // Act
+        await RunJob();
+        await ProcessQueue();
+        await RunJob();
+
+        // Assert
+        Assert.Null(await Database.Calculations.GetFrozenPhase());
+    }
+
+    [Fact]
+    public async Task TestFinishedRunRecordsNewBestRanks()
+    {
+        // Arrange
+        var leader = await CreatePlayer(200);
+        var climber = await CreatePlayer(50, 50);
+        Assert.NotEqual(1, (await ReloadStats(climber)).BestGlobalRank);
+
+        MockCalculator("3.2.0", 300);
+
+        // Act
+        await RunJob();
+        await ProcessQueue();
+        await RunJob();
+
+        // Assert
+        Assert.Equal(1, await GlobalRank(climber));
+        Assert.Equal(1, (await ReloadStats(climber)).BestGlobalRank);
+        Assert.Equal(1, (await ReloadStats(leader)).BestGlobalRank);
+    }
+
+    [Fact]
     public async Task TestFreezeBlocksLeaderboardAndPpUpdatesFromOtherScoreProcessing()
     {
         // Arrange
