@@ -90,7 +90,7 @@ public class BanchoControllerPostTests(IntegrationDatabaseFixture fixture) : Ban
     [Theory]
     [InlineData(UserPrivilege.User)]
     [InlineData(UserPrivilege.Supporter)]
-    [InlineData(UserPrivilege.Bat)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania)]
     [InlineData(UserPrivilege.Admin)]
     [InlineData(UserPrivilege.Developer)]
     [InlineData(UserPrivilege.SuperUser)]
