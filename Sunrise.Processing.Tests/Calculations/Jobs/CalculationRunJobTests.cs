@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Processing.Calculations.Jobs;
 using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -111,6 +113,84 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
     }
 
     [Fact]
+    public async Task TestRunWaitsForOutdatedScoreBusyWithAnotherTask()
+    {
+        // Arrange
+        var player = await CreatePlayer(100);
+        var otherTask = new ScoreProcessingTask
+        {
+            TaskType = ScoreTaskType.Recalculation,
+            ScoreId = player.Scores[0].Id,
+            Status = ScoreProcessingStatus.Processing,
+            ClaimToken = "other-worker",
+            LeaseExpiresAt = DateTime.UtcNow.AddHours(1)
+        };
+        await Database.ScoreProcessingTasks.AddQueueEntry(otherTask);
+        MockCalculator("3.2.0", 300);
+
+        // Act
+        await RunJob();
+        await RunJob();
+        var phaseWhileBusy = await Database.Calculations.GetFrozenPhase();
+
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == otherTask.Id).ExecuteDeleteAsync();
+        await RunJob();
+        await ProcessQueue();
+        await RunJob();
+
+        // Assert
+        Assert.Equal(CalculationRunPhase.Scores, phaseWhileBusy);
+        Assert.Null(await Database.Calculations.GetFrozenPhase());
+        Assert.Equal(await Database.Calculations.GetOrCreateVersionId("3.2.0"), (await ReloadScore(player.Scores[0])).CalculationVersionId);
+    }
+
+    [Fact]
+    public async Task TestSimultaneousStartsLeaveOneUnfinishedRun()
+    {
+        // Arrange
+        var targetVersionId = (await Database.Calculations.GetOrCreateVersionId("3.2.0"))!.Value;
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            // Act
+            await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+            {
+                try
+                {
+                    using var scope = App.Server.Services.CreateScope();
+                    await scope.ServiceProvider.GetRequiredService<DatabaseService>().Calculations.StartRun(targetVersionId, isForced: true);
+                }
+                catch (Exception ex) when (ex.ToString().Contains("Deadlock"))
+                {
+                    using var retryScope = App.Server.Services.CreateScope();
+                    await retryScope.ServiceProvider.GetRequiredService<DatabaseService>().Calculations.StartRun(targetVersionId, isForced: true);
+                }
+            }));
+
+            // Assert
+            Assert.Equal(1, await Database.DbContext.CalculationRuns.NotCacheable().CountAsync(r => r.FinishedAt == null));
+        }
+    }
+
+    [Fact]
+    public async Task TestRunFinishesWhenItsTaskForAScoreWasCancelled()
+    {
+        // Arrange
+        var player = await CreatePlayer(100);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+        var runTask = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.RunId != null);
+        Assert.True((await Database.ScoreProcessingTasks.CancelTask(runTask.Id)).IsSuccess);
+
+        // Act
+        await RunJob();
+
+        // Assert
+        Assert.Null(await Database.Calculations.GetFrozenPhase());
+        Assert.NotEqual(await Database.Calculations.GetOrCreateVersionId("3.2.0"), (await ReloadScore(player.Scores[0])).CalculationVersionId);
+    }
+
+    [Fact]
     public async Task TestFinishedRunRecordsNewBestRanks()
     {
         // Arrange
@@ -138,7 +218,7 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
         var climber = await CreatePlayer(50, 50);
         var leader = await CreatePlayer(200);
         var targetVersionId = (await Database.Calculations.GetOrCreateVersionId("3.2.0"))!.Value;
-        await Database.Calculations.StartRun(null, targetVersionId);
+        await Database.Calculations.StartRun(targetVersionId);
 
         MockCalculator("3.2.0", 1000);
 
@@ -166,7 +246,7 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
         var climber = await CreatePlayer(50, 50);
         var leader = await CreatePlayer(200);
         var targetVersionId = (await Database.Calculations.GetOrCreateVersionId("3.2.0"))!.Value;
-        var run = await Database.Calculations.StartRun(null, targetVersionId);
+        var run = await Database.Calculations.StartRun(targetVersionId);
         await Database.DbContext.CalculationRuns.Where(r => r.Id == run.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.Phase, CalculationRunPhase.UserStats));
 
@@ -188,7 +268,7 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
         var climber = await CreatePlayer(50, 50);
         var leader = await CreatePlayer(200);
         var targetVersionId = (await Database.Calculations.GetOrCreateVersionId("3.2.0"))!.Value;
-        var run = await Database.Calculations.StartRun(null, targetVersionId);
+        var run = await Database.Calculations.StartRun(targetVersionId);
 
         // Act
         var frozenStats = await ReloadTrackedStats(climber);
@@ -251,7 +331,7 @@ public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : Databa
         MockCalculator("3.2.0", 250);
 
         // Act
-        await Database.Calculations.StartRun(null, versionId, isForced: true);
+        await Database.Calculations.StartRun(versionId, isForced: true);
         await RunJob();
         await ProcessQueue();
         await RunJob();

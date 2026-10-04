@@ -1,4 +1,5 @@
 using Sunrise.Shared.Extensions.Beatmaps;
+using System.Data;
 using System.Net;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
@@ -450,6 +451,68 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
     }
 
     [Fact]
+    public async Task TestCheckWaitingForTheMapLockSeesStatusChangeCommittedMeanwhile()
+    {
+        // Arrange
+        var score = await CreateRankedMapScoreCountedForUser(ScoreGrade.S, 1_000_000);
+        using var submissionScope = App.Server.Services.CreateScope();
+        var submissionDatabase = submissionScope.ServiceProvider.GetRequiredService<DatabaseService>();
+        await using var submission = await submissionDatabase.DbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+        await submissionDatabase.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, score.BeatmapId, BeatmapStatus.Pending);
+
+        await Database.DbContext.Database.OpenConnectionAsync();
+        var checkConnectionId = await GetConnectionId(Database.DbContext);
+
+        // Act
+        var check = Database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, score.BeatmapId, BeatmapStatus.Loved);
+        await WaitUntilConnectionWaitsForALock(checkConnectionId);
+        await submission.CommitAsync();
+        await check;
+        await Database.DbContext.Database.CloseConnectionAsync();
+        Database.DbContext.ChangeTracker.Clear();
+
+        // Assert
+        var hashStatus = (await Database.Calculations.GetBeatmapHashStatus(score.BeatmapHash))!;
+        Assert.Equal((BeatmapStatus.Pending, BeatmapStatus.Ranked), (hashStatus.Status, hashStatus.PreviousStatus));
+    }
+
+    [Fact]
+    public async Task TestStatusChangeTaskCannotBeCancelledButOtherTasksCan()
+    {
+        // Arrange
+        var score = await CreateRankedMapScoreCountedForUser(ScoreGrade.S, 1_000_000);
+        await Database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, score.BeatmapId, BeatmapStatus.Pending);
+        var statusChange = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.TaskType == ScoreTaskType.BeatmapStatusChange);
+        var otherScore = await CreateUserScore();
+        var recalculation = (await Database.ScoreProcessingTasks.BulkAddScoreTasks([otherScore.Id], ScoreTaskType.Recalculation, ScoreProcessingPriority.Low)).Single();
+
+        // Act
+        var statusChangeCancel = await Database.ScoreProcessingTasks.CancelTask(statusChange.Id);
+        var recalculationCancel = await Database.ScoreProcessingTasks.CancelTask(recalculation.Id);
+
+        // Assert
+        Assert.True(statusChangeCancel.IsFailure);
+        Assert.True(recalculationCancel.IsSuccess);
+        Assert.Equal(ScoreProcessingStatus.Pending, (await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.Id == statusChange.Id)).Status);
+    }
+
+    [Fact]
+    public async Task TestBulkActionsQueueScoresWithPendingStatusChangeButSkipBusyScores()
+    {
+        // Arrange
+        var score = await CreateRankedMapScoreCountedForUser(ScoreGrade.S, 1_000_000);
+        await Database.Calculations.ApplyBeatmapHashStatus(score.BeatmapHash, score.BeatmapId, BeatmapStatus.Pending);
+        var busyScore = await CreateUserScore();
+        await Database.ScoreProcessingTasks.BulkAddScoreTasks([busyScore.Id], ScoreTaskType.Recalculation, ScoreProcessingPriority.Low);
+
+        // Act
+        var queued = await Database.ScoreProcessingTasks.BulkAddScoreTasks([score.Id, busyScore.Id], ScoreTaskType.Delete, ScoreProcessingPriority.Normal);
+
+        // Assert
+        Assert.Equal([score.Id], queued.Select(t => t.ScoreId!.Value));
+    }
+
+    [Fact]
     public async Task TestStatusChangeTaskKeepsRetryingPastMaxRetries()
     {
         // Arrange
@@ -570,6 +633,35 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         score.GameMode = GameMode.Standard;
         score.PerformancePoints = 100;
         return await CreateTestScore(score);
+    }
+
+    private static async Task<long> GetConnectionId(SunriseDbContext dbContext)
+    {
+        await using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT CONNECTION_ID()";
+        return Convert.ToInt64(await command.ExecuteScalarAsync());
+    }
+
+    private async Task WaitUntilConnectionWaitsForALock(long connectionId)
+    {
+        using var scope = App.Server.Services.CreateScope();
+        var connection = scope.ServiceProvider.GetRequiredService<SunriseDbContext>().Database.GetDbConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $@"
+            SELECT COUNT(*) FROM performance_schema.data_lock_waits w
+            JOIN performance_schema.threads t ON t.THREAD_ID = w.REQUESTING_THREAD_ID
+            WHERE t.PROCESSLIST_ID = {connectionId}";
+
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            if (Convert.ToInt64(await command.ExecuteScalarAsync()) > 0)
+                return;
+
+            await Task.Delay(50);
+        }
+
+        Assert.Fail($"Connection {connectionId} never started waiting for a lock");
     }
 
     private async Task<Score> CreatePendingMapScore(ScoreGrade grade, long totalScore)

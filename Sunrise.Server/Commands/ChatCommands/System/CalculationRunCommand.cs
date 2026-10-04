@@ -43,7 +43,7 @@ public class CalculationRunCommand : IChatCommand
                 }
 
                 var targetVersionId = await database.Calculations.GetOrCreateVersionId(targetResult.Value);
-                var newRun = await database.Calculations.StartRun(unfinishedRun, targetVersionId!.Value, isForced: true);
+                var newRun = await database.Calculations.StartRun(targetVersionId!.Value, isForced: true);
 
                 ChatCommandRepository.SendMessage(session,
                     $"Started forced calculation run {newRun.Id} for rosu {targetResult.Value}{(unfinishedRun != null ? $", superseded run {unfinishedRun.Id}" : "")}. Scores are enqueued on the next minute tick.");

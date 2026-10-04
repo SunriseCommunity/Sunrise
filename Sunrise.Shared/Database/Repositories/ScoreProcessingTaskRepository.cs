@@ -50,7 +50,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .ToListAsync(ct);
 
         var alreadyActiveScoreIds = await dbContext.ScoreProcessingTasks
-            .Where(task => task.ScoreId != null && scoreIds.Contains(task.ScoreId.Value))
+            .Where(task => task.ScoreId != null && scoreIds.Contains(task.ScoreId.Value) && task.TaskType != ScoreTaskType.BeatmapStatusChange)
             .FilterInProgressTasks()
             .Select(task => task.ScoreId!.Value)
             .ToListAsync(ct);
@@ -196,7 +196,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
     public async Task<UnitResult<string>> CancelTask(int taskId, CancellationToken ct = default)
     {
         var affected = await dbContext.ScoreProcessingTasks
-            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Pending)
+            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Pending && t.TaskType != ScoreTaskType.BeatmapStatusChange)
             .ExecuteUpdateAsync(setters => setters
                     .SetProperty(t => t.Status, ScoreProcessingStatus.Failed)
                     .SetProperty(t => t.ErrorCode, ScoreProcessingErrorCode.CancelledByOperator)

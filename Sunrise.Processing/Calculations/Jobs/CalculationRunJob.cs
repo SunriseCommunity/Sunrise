@@ -36,7 +36,7 @@ public class CalculationRunJob(IServiceScopeFactory scopeFactory)
         if (run == null || run.TargetVersionId != targetVersionId)
         {
             Log.Information("Starting calculation run for rosu version {RosuVersion}", targetResult.Value);
-            run = await database.Calculations.StartRun(run is { FinishedAt: null } ? run : null, targetVersionId, ct: ct);
+            run = await database.Calculations.StartRun(targetVersionId, ct: ct);
         }
 
         if (run.FinishedAt != null)
@@ -51,7 +51,7 @@ public class CalculationRunJob(IServiceScopeFactory scopeFactory)
 
         if (run.Phase == CalculationRunPhase.Scores)
         {
-            if (await database.Calculations.HasActiveRunTasks(run, ct) || !run.IsForced && await database.Calculations.EnqueueRunScores(run, ct) > 0)
+            if (await database.Calculations.HasActiveRunTasks(run, ct) || !run.IsForced && (await database.Calculations.EnqueueRunScores(run, ct) > 0 || await database.Calculations.HasOutdatedScores(run, ct)))
                 return;
 
             run.Phase = CalculationRunPhase.UserStats;

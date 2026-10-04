@@ -1,3 +1,4 @@
+using System.Data;
 using EFCoreSecondLevelCacheInterceptor;
 using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
@@ -49,11 +50,11 @@ public class CalculationRepository(SunriseDbContext dbContext)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<CalculationRun> StartRun(CalculationRun? unfinishedRun, int targetVersionId, bool isForced = false, CancellationToken ct = default)
+    public async Task<CalculationRun> StartRun(int targetVersionId, bool isForced = false, CancellationToken ct = default)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
-        if (unfinishedRun != null)
+        foreach (var unfinishedRun in await dbContext.CalculationRuns.NotCacheable().Where(r => r.FinishedAt == null).ForUpdate().ToListAsync(ct))
         {
             unfinishedRun.IsSuperseded = true;
             await StopRun(unfinishedRun, ct);
@@ -107,6 +108,15 @@ public class CalculationRepository(SunriseDbContext dbContext)
             ct);
     }
 
+    public async Task<bool> HasOutdatedScores(CalculationRun run, CancellationToken ct = default)
+    {
+        return await dbContext.Scores.NotCacheable()
+            .AnyAsync(s => s.SubmissionStatus != SubmissionStatus.Deleted
+                           && s.BeatmapHashStatus!.Status != BeatmapStatus.NotSubmitted
+                           && (s.CalculationVersionId == null || s.CalculationVersionId != run.TargetVersionId)
+                           && !dbContext.ScoreProcessingTasks.Any(t => t.ScoreId == s.Id && t.RunId == run.Id), ct);
+    }
+
     public async Task<bool> HasActiveRunTasks(CalculationRun run, CancellationToken ct = default)
     {
         return await dbContext.ScoreProcessingTasks.NotCacheable()
@@ -134,7 +144,7 @@ public class CalculationRepository(SunriseDbContext dbContext)
 
     public async Task<BeatmapHashStatus> ApplyBeatmapHashStatus(string beatmapHash, int beatmapId, BeatmapStatus status, CancellationToken ct = default)
     {
-        await using var transaction = dbContext.Database.CurrentTransaction == null ? await dbContext.Database.BeginTransactionAsync(ct) : null;
+        await using var transaction = dbContext.Database.CurrentTransaction == null ? await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct) : null;
 
         var beatmapHashStatus = await LockBeatmapHashStatus(beatmapHash, status, ct);
         var previousStatus = beatmapHashStatus?.Status;
