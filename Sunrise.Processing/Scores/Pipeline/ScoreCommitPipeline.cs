@@ -9,7 +9,9 @@ using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Objects.Serializable;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Processing.Scores.Pipeline;
 
@@ -119,6 +121,36 @@ public class ScoreCommitPipeline
 
         var (currentRank, _) = await _database.Users.Stats.Ranks.GetUserRanks(user, lockedStats.GameMode, false, ct);
 
+        var beatmapHashStatus = await _database.Calculations.LockBeatmapHashStatus(preparedScore.BeatmapHash, prepareCtx.TaskType == ScoreTaskType.Submission ? prepareCtx.Beatmap?.Status : null, ct);
+        var originalBeatmapStatus = beatmapHashStatus?.Status ?? BeatmapStatus.Unknown;
+
+        if (prepareCtx.TaskType == ScoreTaskType.Submission && prepareCtx.Beatmap != null)
+            beatmapHashStatus = await _database.Calculations.ApplyBeatmapHashStatus(preparedScore.BeatmapHash, prepareCtx.Beatmap.Id, prepareCtx.Beatmap.Status, ct);
+
+        if (beatmapHashStatus == null)
+            throw new ApplicationException($"Beatmap hash status {preparedScore.BeatmapHash} was not found while committing score {preparedScore.Id}");
+
+        var deletedBeatmapStatusChanges = await _database.ScoreProcessingTasks.DeleteBeatmapStatusChanges(preparedScore.UserId, preparedScore.GameMode, preparedScore.BeatmapHash, task?.Id, ct);
+        if (deletedBeatmapStatusChanges > 0 || prepareCtx.TaskType == ScoreTaskType.BeatmapStatusChange)
+        {
+            var beatmapScores = await _database.Scores.GetUserBeatmapPassedScores(preparedScore.UserId, preparedScore.GameMode, preparedScore.BeatmapHash, ct);
+            var topScore = beatmapScores.SortScoresByTheirScoreValue().FirstOrDefault();
+
+            if (topScore != null)
+            {
+                topScore.BeatmapHashStatus = beatmapHashStatus;
+                var beatmapStatusChangeCtx = new ScoreCommitContext(ScoreTaskType.BeatmapStatusChange, topScore, user, lockedStats, lockedGrades, beatmapHashStatus.Status)
+                {
+                    UserBeatmapPassedScores = beatmapScores
+                };
+
+                foreach (var processor in _processors)
+                {
+                    await processor.OnBeatmapStatusChange(beatmapStatusChangeCtx);
+                }
+            }
+        }
+
         var targetScoreId = prepareCtx.TaskType == ScoreTaskType.Submission ? (int?)null : preparedScore.Id;
         var (lockedScore, peers) = await _database.Scores.GetUserScoreByIdWithBeatmapPeersForUpdate(
             preparedScore.UserId,
@@ -132,10 +164,15 @@ public class ScoreCommitPipeline
             ? preparedScore
             : lockedScore ?? throw new ApplicationException($"Score {preparedScore.Id} was not found while locking score commit target");
 
-        var originalState = ScoreStateSnapshot.Capture(score);
+        score.BeatmapHashStatus = beatmapHashStatus;
+
+        var originalState = ScoreStateSnapshot.Capture(score, originalBeatmapStatus);
 
         if (prepareCtx.TaskType != ScoreTaskType.Submission && prepareCtx.NewScorePerformancePointsValue.HasValue)
+        {
             score.PerformancePoints = prepareCtx.NewScorePerformancePointsValue.Value;
+            score.CalculationVersionId = preparedScore.CalculationVersionId;
+        }
 
         var ctx = new ScoreCommitContext(
             prepareCtx.TaskType,
@@ -143,6 +180,7 @@ public class ScoreCommitPipeline
             user,
             lockedStats,
             lockedGrades,
+            beatmapHashStatus.Status,
             prepareCtx.Beatmap,
             prepareCtx.BeatmapSet)
         {
@@ -151,7 +189,6 @@ public class ScoreCommitPipeline
             PreviousUserStatsSnapshot = lockedStats.Clone()
         };
 
-        EnrichScoreWithBeatmapStatus(score, ctx.Beatmap);
 
         ctx.UserPersonalBestScores = peers;
 
@@ -160,36 +197,26 @@ public class ScoreCommitPipeline
             await DispatchProcessor(processor, ctx);
         }
 
-        var refreshClaimLeaseResult = await TryRefreshClaimLease(task, ct);
-        if (refreshClaimLeaseResult.IsFailure)
-            throw new ApplicationException(refreshClaimLeaseResult.Error);
+        var commitClaimResult = await TryCommitClaim(task, ct);
+        if (commitClaimResult.IsFailure)
+            throw new ApplicationException(commitClaimResult.Error);
 
         return ctx;
     }
 
-    private static void EnrichScoreWithBeatmapStatus(Score score, Beatmap? beatmap)
-    {
-        var newBeatmapStatus = beatmap?.Status;
-
-        if (!newBeatmapStatus.HasValue || newBeatmapStatus == score.BeatmapStatus)
-            return;
-
-        score.BeatmapStatus = newBeatmapStatus.Value;
-        score.IsScoreable = newBeatmapStatus.Value.IsScoreable();
-    }
-
-    private async Task<UnitResult<string>> TryRefreshClaimLease(ScoreProcessingTask? task, CancellationToken ct)
+    private async Task<UnitResult<string>> TryCommitClaim(ScoreProcessingTask? task, CancellationToken ct)
     {
         if (task == null || string.IsNullOrWhiteSpace(task.ClaimToken))
             return UnitResult.Success<string>();
 
         var claimToken = task.ClaimToken;
-        var leaseUntil = DateTime.UtcNow + Configuration.ScoreProcessingBatchLease;
-        var rowsAffected = await _database.ScoreProcessingTasks.RefreshClaimLease(task.Id, claimToken, leaseUntil, ct);
+        var isClaimHeld = task.TaskType == ScoreTaskType.Submission
+            ? await _database.ScoreProcessingTasks.RefreshClaimLease(task.Id, claimToken, DateTime.UtcNow + Configuration.ScoreProcessingBatchLease, ct) > 0
+            : await _database.ScoreProcessingTasks.TryMarkClaimedForDeletion(task.Id, claimToken, ct);
 
-        return rowsAffected == 0
-            ? UnitResult.Failure($"Task {task.Id} claim lost; rolling back")
-            : UnitResult.Success<string>();
+        return isClaimHeld
+            ? UnitResult.Success<string>()
+            : UnitResult.Failure($"Task {task.Id} claim lost; rolling back");
     }
 
     private static async Task DispatchProcessor(IScoreEntityProcessor processor, ScoreCommitContext ctx)
@@ -207,6 +234,8 @@ public class ScoreCommitPipeline
                 break;
             case ScoreTaskType.Restore:
                 await processor.OnRestoration(ctx);
+                break;
+            case ScoreTaskType.BeatmapStatusChange:
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(ctx.TaskType), ctx.TaskType, $"Unhandled task type: {ctx.TaskType}");

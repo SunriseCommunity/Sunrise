@@ -537,7 +537,6 @@ public class ScoreCandidateBuilderUtilTests : BaseTest
         score.Perfect = true;
         score.Grade = isPassed ? ScoreGrade.X : ScoreGrade.F;
         score.OsuVersion = clientBuildDate;
-        score.IsScoreable = true;
         score.IsPassed = isPassed;
         score.Mods = mods;
         score.GameMode = score.GameMode.EnrichWithMods(score.Mods);

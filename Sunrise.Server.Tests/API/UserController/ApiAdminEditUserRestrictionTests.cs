@@ -1,3 +1,4 @@
+using Sunrise.Shared.Database.Models.Beatmap;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -270,12 +271,11 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             Mods = mods,
             Grade = ScoreGrade.B,
             IsPassed = true,
-            IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
             Accuracy = 91.53845977783203,
             PerformancePoints = 426.69985159889916
@@ -464,12 +464,11 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             Mods = mods,
             Grade = ScoreGrade.B,
             IsPassed = true,
-            IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
             Accuracy = 91.53845977783203,
             PerformancePoints = 426.69985159889916

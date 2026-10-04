@@ -26,6 +26,11 @@ public abstract class ScoreEntityProcessorBase : IScoreEntityProcessor
         await Execute(ctx, OnRestorationInternal);
     }
 
+    public async Task OnBeatmapStatusChange(ScoreCommitContext ctx)
+    {
+        await Execute(ctx, OnBeatmapStatusChangeInternal);
+    }
+
     protected virtual Task OnNewSubmissionInternal(ScoreCommitContext ctx)
     {
         throw new InvalidOperationException("OnNewSubmission must be implemented for new submission processing.");
@@ -44,6 +49,11 @@ public abstract class ScoreEntityProcessorBase : IScoreEntityProcessor
     protected virtual Task OnRestorationInternal(ScoreCommitContext ctx)
     {
         throw new InvalidOperationException("OnRestoration must be implemented for new submission processing.");
+    }
+
+    protected virtual Task OnBeatmapStatusChangeInternal(ScoreCommitContext ctx)
+    {
+        return Task.CompletedTask;
     }
 
     protected virtual Task AfterExecution(ScoreCommitContext ctx)

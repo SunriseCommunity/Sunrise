@@ -24,6 +24,7 @@ public sealed class DatabaseService(
     MedalRepository medalRepository,
     ScoreSubmissionRequestRepository scoreSubmissionRequestRepository,
     ScoreProcessingTaskRepository scoreProcessingTaskRepository,
+    CalculationRepository calculationRepository,
     IEFCacheServiceProvider? cacheProvider = null)
 {
 
@@ -35,6 +36,7 @@ public sealed class DatabaseService(
     public readonly ScoreRepository Scores = scoreRepository;
     public readonly ScoreSubmissionRequestRepository ScoreSubmissionRequests = scoreSubmissionRequestRepository;
     public readonly ScoreProcessingTaskRepository ScoreProcessingTasks = scoreProcessingTaskRepository;
+    public readonly CalculationRepository Calculations = calculationRepository;
     public readonly UserRepository Users = userRepository;
     private readonly List<Func<Task>> _afterCommitActions = [];
 
@@ -63,7 +65,7 @@ public sealed class DatabaseService(
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
 
-                await database.Users.Stats.Ranks.SetAllUsersRanks(mode, 100);
+                await database.Users.Stats.Ranks.RebuildAllUsersRanks(mode);
             })
             .ToArray();
 

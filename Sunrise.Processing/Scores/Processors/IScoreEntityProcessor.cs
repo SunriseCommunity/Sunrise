@@ -13,4 +13,6 @@ public interface IScoreEntityProcessor
     Task OnDeletion(ScoreCommitContext ctx);
 
     Task OnRestoration(ScoreCommitContext ctx);
+
+    Task OnBeatmapStatusChange(ScoreCommitContext ctx);
 }

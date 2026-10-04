@@ -33,13 +33,14 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
 
-        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
+        var responseHeaders = new Dictionary<string, string?> { ["X-Rosu-Version"] = null };
+        var performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, responseHeaders: responseHeaders, ct: linkedCts.Token);
 
         while (retryCount > 0 && !linkedCts.IsCancellationRequested && !IsValidResult(performanceResult))
         {
             retryCount--;
 
-            performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, ct: linkedCts.Token);
+            performanceResult = await client.PostRequestWithBody<PerformanceAttributes>(session, ApiType.CalculateScorePerformance, serializedScore, shouldSendRateLimitWarning: shouldSendRateLimitWarning, responseHeaders: responseHeaders, ct: linkedCts.Token);
 
             if (!IsValidResult(performanceResult) && !linkedCts.IsCancellationRequested)
             {
@@ -54,8 +55,25 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
         var performance = performanceResult.Value;
         performance = performance.ApplyNotStandardModRecalculationsIfNeeded(score);
+        performance.RosuVersion = responseHeaders["X-Rosu-Version"];
 
         return performance;
+    }
+
+    public async Task<Result<string, ErrorMessage>> GetTargetRosuVersion(BaseSession session, CancellationToken ct = default)
+    {
+        var versionResult = await client.SendRequest<CalculatorVersionResponse>(session, ApiType.GetCalculatorVersion, [], ct: ct);
+        if (versionResult.IsFailure)
+            return versionResult.ConvertFailure<string>();
+
+        if (string.IsNullOrEmpty(versionResult.Value.Rosu))
+            return Result.Failure<string, ErrorMessage>(new ErrorMessage
+            {
+                Message = "Calculator version response has no rosu version",
+                Status = HttpStatusCode.BadGateway
+            });
+
+        return versionResult.Value.Rosu;
     }
 
     public async Task<Result<PerformanceAttributes, ErrorMessage>> CalculateBeatmapPerformance(BaseSession session, int beatmapId, GameMode mode,

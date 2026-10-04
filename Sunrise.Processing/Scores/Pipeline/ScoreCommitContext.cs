@@ -1,5 +1,6 @@
 ﻿using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
@@ -12,6 +13,7 @@ public sealed class ScoreCommitContext(
     User user,
     UserStats userStats,
     UserGrades userGrades,
+    BeatmapStatus beatmapStatus,
     Beatmap? beatmap = null,
     BeatmapSet? beatmapSet = null)
 {
@@ -21,11 +23,13 @@ public sealed class ScoreCommitContext(
     public UserStats? PreviousUserStatsSnapshot { get; internal set; }
     public UserBeatmapPeers? UserPersonalBestScores { get; internal set; }
     public List<Medal>? UnlockedMedals { get; internal set; }
+    public List<Score> UserBeatmapPassedScores { get; init; } = [];
 
     public Score Score { get; internal set; } = score;
     public User User { get; } = user;
     public UserStats UserStats { get; internal set; } = userStats;
     public UserGrades UserGrades { get; internal set; } = userGrades;
+    public BeatmapStatus BeatmapStatus { get; } = beatmapStatus;
     public Beatmap? Beatmap { get; } = beatmap;
     public BeatmapSet? BeatmapSet { get; } = beatmapSet;
 }

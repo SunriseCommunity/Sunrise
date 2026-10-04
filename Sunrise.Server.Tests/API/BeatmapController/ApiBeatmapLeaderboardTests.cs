@@ -25,6 +25,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
 
         var user = await CreateTestUser();
@@ -55,6 +56,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
 
         EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", "true");
@@ -173,6 +175,7 @@ public class ApiBeatmapLeaderboardTests(IntegrationDatabaseFixture fixture) : Ap
         var client = App.CreateClient().UseClient("api");
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 

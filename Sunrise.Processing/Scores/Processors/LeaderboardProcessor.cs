@@ -3,6 +3,7 @@ using Sunrise.Processing.Utils;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
+using Sunrise.Shared.Extensions.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.Processing.Scores.Processors;
@@ -44,6 +45,20 @@ public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcess
         return Task.CompletedTask;
     }
 
+    protected override Task OnBeatmapStatusChangeInternal(ScoreCommitContext ctx)
+    {
+        foreach (var modsScores in ctx.UserBeatmapPassedScores.GroupBy(s => s.Mods))
+        {
+            var bestScore = modsScores.ToList().SortScoresByTheirScoreValue().First();
+            foreach (var modsScore in modsScores)
+            {
+                modsScore.UpdateSubmissionStatus(modsScore == bestScore ? null : bestScore, ctx.BeatmapStatus);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
         database.DbContext.UpdateEntity(ctx.Score);
@@ -61,7 +76,7 @@ public class LeaderboardProcessor(DatabaseService database) : ScoreEntityProcess
         var sameModsPeer = ctx.UserPersonalBestScores?.SameModsPeer?.BestScoreByScoreValue;
 
         if (score.SubmissionStatus != SubmissionStatus.Deleted)
-            score.UpdateSubmissionStatus(sameModsPeer);
+            score.UpdateSubmissionStatus(sameModsPeer, ctx.BeatmapStatus);
 
         if (score.SubmissionStatus == SubmissionStatus.Best && sameModsPeer != null)
         {

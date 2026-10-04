@@ -17,6 +17,7 @@ using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
+using Sunrise.Shared.Enums.Beatmaps;
 
 namespace Sunrise.Processing.Services;
 
@@ -70,7 +71,7 @@ public class ScoreSideEffectsPublisherService(
         var beatmapSet = ctx.BeatmapSet;
 
         // If score is not scoreable - no side effects will be planned for it
-        if (!IsScoreScoreable(score))
+        if (!IsScoreScoreable(score, ctx.BeatmapStatus))
             return Result.Success();
 
         if (beatmap == null || beatmapSet == null)
@@ -142,9 +143,9 @@ public class ScoreSideEffectsPublisherService(
             .First() == scoreA;
     }
 
-    private static bool IsScoreScoreable(Score score)
+    private static bool IsScoreScoreable(Score score, BeatmapStatus beatmapStatus)
     {
         var isCurrentScoreFailed = ScoreSubmissionUtil.IsScoreFailed(score);
-        return !isCurrentScoreFailed && score.IsScoreable;
+        return !isCurrentScoreFailed && beatmapStatus.IsScoreable();
     }
 }

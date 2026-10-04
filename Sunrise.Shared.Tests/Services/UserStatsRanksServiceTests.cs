@@ -128,7 +128,7 @@ public class UserStatsRanksServiceTests(IntegrationDatabaseFixture fixture) : Da
 
     [Theory]
     [MemberData(nameof(GetGameModes))]
-    public async Task SetAllUsersRanks_SetsRanksForAllUsers(GameMode mode)
+    public async Task RebuildAllUsersRanks_SetsRanksForAllUsers(GameMode mode)
     {
         // Arrange
         var users = await CreateTestUsers(3);
@@ -147,10 +147,9 @@ public class UserStatsRanksServiceTests(IntegrationDatabaseFixture fixture) : Da
         await Database.DbContext.SaveChangesAsync();
 
         // Act
-        var result = await Database.Users.Stats.Ranks.SetAllUsersRanks(mode, 10);
+        await Database.Users.Stats.Ranks.RebuildAllUsersRanks(mode, 10);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
 
         foreach (var user in users)
         {

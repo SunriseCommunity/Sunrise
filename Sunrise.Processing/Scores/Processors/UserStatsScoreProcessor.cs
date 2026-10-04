@@ -30,6 +30,32 @@ public class UserStatsScoreProcessor(
         await ApplyWeightedRefresh(ctx);
     }
 
+    protected override async Task OnBeatmapStatusChangeInternal(ScoreCommitContext ctx)
+    {
+        var score = ctx.Score;
+        var userStats = ctx.UserStats;
+        var previousStatus = score.BeatmapHashStatus?.PreviousStatus;
+
+        if (previousStatus == null)
+            return;
+
+        if (previousStatus.Value.IsScoreable() != ctx.BeatmapStatus.IsScoreable())
+        {
+            var beatmapMaxCombo = ctx.UserBeatmapPassedScores.Max(s => s.MaxCombo);
+
+            if (ctx.BeatmapStatus.IsScoreable())
+                userStats.MaxCombo = Math.Max(userStats.MaxCombo, beatmapMaxCombo);
+            else if (beatmapMaxCombo >= userStats.MaxCombo)
+                userStats.MaxCombo = await database.Scores.GetUserMaxComboExcluding(score.UserId, score.GameMode) ?? 0;
+        }
+
+        if (previousStatus.Value.IsRanked() != ctx.BeatmapStatus.IsRanked())
+        {
+            userStats.RankedScore = Math.Max(0, userStats.RankedScore + (ctx.BeatmapStatus.IsRanked() ? score.TotalScore : -score.TotalScore));
+            await ApplyWeightedRefresh(ctx);
+        }
+    }
+
     protected override async Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         await DecrementUserStats(ctx);
@@ -40,10 +66,10 @@ public class UserStatsScoreProcessor(
         await IncrementUserStats(ctx);
     }
 
+    // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
+    // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
     protected override async Task AfterExecution(ScoreCommitContext ctx)
     {
-        // NOTE: Ideally we should have atomic update here, but we have an assumption that pp calculation and beatmap retrieval would
-        // be the heaviest operations. Thus, just relying on lock FOR UPDATES is enough in this context.
         var updateUserStatsResult = await database.Users.Stats.UpdateUserStats(ctx.UserStats, ctx.User);
         if (updateUserStatsResult.IsFailure)
             throw new ApplicationException("Failed to persist user stats: " + updateUserStatsResult.Error);
@@ -73,12 +99,12 @@ public class UserStatsScoreProcessor(
         userStats.PlayTime += score.TimeElapsed;
         userStats.PlayCount++;
 
-        if (isFailed || !score.IsScoreable)
+        if (isFailed || !ctx.BeatmapStatus.IsScoreable())
             return;
 
         userStats.MaxCombo = Math.Max(userStats.MaxCombo, score.MaxCombo);
 
-        if (!score.BeatmapStatus.IsRanked())
+        if (!ctx.BeatmapStatus.IsRanked())
             return;
 
         if (isBetterTotalScoreValue)
@@ -151,11 +177,7 @@ public class UserStatsScoreProcessor(
 
     private async Task ApplyWeightedRefresh(ScoreCommitContext ctx)
     {
-        var score = ctx.Score;
-        if (!score.BeatmapStatus.IsRanked() || !score.IsScoreable || !score.IsPassed)
-            return;
-
-        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
+        (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, ctx.Score.GameMode);
     }
 
     private static void IncreaseTotalHits(UserStats userStats, Score score)

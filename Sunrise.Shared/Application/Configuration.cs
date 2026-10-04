@@ -300,7 +300,8 @@ public static class Configuration
                 $"http://{ObservatoryUrl}/api/v2/search?query={{0}}&limit={{1}}&offset={{2}}&status={{3}}&mode={{4}}",
                 0,
                 3),
-            new ExternalApi(ApiType.GetObservatoryStats, ApiServer.Observatory, $"http://{ObservatoryUrl}/stats", 0, 0)
+            new ExternalApi(ApiType.GetObservatoryStats, ApiServer.Observatory, $"http://{ObservatoryUrl}/stats", 0, 0),
+            new ExternalApi(ApiType.GetCalculatorVersion, ApiServer.Observatory, $"http://{ObservatoryUrl}/calculator/version", 0, 0)
         ]);
     }
 

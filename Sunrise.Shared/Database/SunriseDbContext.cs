@@ -42,9 +42,12 @@ public class SunriseDbContext : DbContext
     public DbSet<Score> Scores { get; set; }
     public DbSet<ScoreSubmissionRequest> ScoreSubmissionRequests { get; set; }
     public DbSet<ScoreProcessingTask> ScoreProcessingTasks { get; set; }
+    public DbSet<CalculationVersion> CalculationVersions { get; set; }
+    public DbSet<CalculationRun> CalculationRuns { get; set; }
 
     public DbSet<BeatmapHype> BeatmapHypes { get; set; }
     public DbSet<CustomBeatmapStatus> CustomBeatmapStatuses { get; set; }
+    public DbSet<BeatmapHashStatus> BeatmapHashStatuses { get; set; }
 
 
 
@@ -73,6 +76,17 @@ public class SunriseDbContext : DbContext
             .Property(score => score.Grade)
             .HasConversion<string>();
 
+        modelBuilder.Entity<Score>()
+            .HasOne(score => score.BeatmapHashStatus)
+            .WithMany()
+            .HasForeignKey(score => score.BeatmapHash)
+            .HasPrincipalKey(status => status.BeatmapHash)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Score>()
+            .Navigation(score => score.BeatmapHashStatus)
+            .AutoInclude();
+
         modelBuilder.Entity<UserRelationship>()
             .HasOne(ur => ur.Target)
             .WithMany(u => u.UserReceivedRelationships)
@@ -88,7 +102,7 @@ public class SunriseDbContext : DbContext
         modelBuilder.Entity<ScoreProcessingTask>()
             .Property<int?>("ActiveScoreId")
             .HasComputedColumnSql(
-                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskScoreIdColumn} ELSE NULL END",
+                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) AND {scoreTaskTypeColumn} <> {(int)ScoreTaskType.BeatmapStatusChange} THEN {scoreTaskScoreIdColumn} ELSE NULL END",
                 true);
 
         modelBuilder.Entity<ScoreProcessingTask>()

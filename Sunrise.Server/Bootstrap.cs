@@ -32,6 +32,8 @@ using Serilog.Sinks.Grafana.Loki;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Processing.Beatmaps.Jobs;
+using Sunrise.Processing.Calculations.Jobs;
 using Sunrise.Processing.Scores.Handlers;
 using Sunrise.Processing.Scores.Jobs;
 using Sunrise.Processing.Scores.Pipeline;
@@ -452,6 +454,7 @@ public static class Bootstrap
         builder.Services.AddScoped<ScoreRepository>();
         builder.Services.AddScoped<ScoreSubmissionRequestRepository>();
         builder.Services.AddScoped<ScoreProcessingTaskRepository>();
+        builder.Services.AddScoped<CalculationRepository>();
         builder.Services.AddScoped<ScoreFileService>();
 
         builder.Services.AddScoped<OsuVersionRepository>();
@@ -479,7 +482,10 @@ public static class Bootstrap
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreRecalculationHandler>(ScoreTaskType.Recalculation);
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreDeletionHandler>(ScoreTaskType.Delete);
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreRestorationHandler>(ScoreTaskType.Restore);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreBeatmapStatusChangeHandler>(ScoreTaskType.BeatmapStatusChange);
         builder.Services.AddScoped<ScoreProcessingJob>();
+        builder.Services.AddScoped<CalculationRunJob>();
+        builder.Services.AddScoped<BeatmapCheckJob>();
         builder.Services.AddScoped<UserBanchoService>();
 
         builder.Services.AddScoped<UserAuthService>();

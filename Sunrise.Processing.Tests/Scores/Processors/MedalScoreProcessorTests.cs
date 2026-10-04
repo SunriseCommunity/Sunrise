@@ -228,6 +228,6 @@ public class MedalScoreProcessorTests(IntegrationDatabaseFixture fixture) : Data
             userGrades,
             beatmap,
             beatmapSet,
-            originalState: ScoreStateSnapshot.Capture(score));
+            originalState: ScoreStateSnapshot.Capture(score, score.BeatmapHashStatus!.Status));
     }
 }
