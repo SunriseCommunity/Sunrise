@@ -12,6 +12,7 @@ using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 
@@ -189,11 +190,12 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         if (newStatus == null && resetCustomStatus == null)
             return Result.Failure<CustomBeatmapStatus?>("No proper status arguments were specified.");
 
-        var isCanChangeBeatmapStatus = user.Privilege.HasFlag(UserPrivilege.Bat);
+        var beatmapGameMode = (GameMode)beatmap.ModeInt;
+        var requiredPrivilege = UserPrivilegeExtensions.GetBeatmapApprovalTeamPrivilege(beatmapGameMode);
 
-        if (!isCanChangeBeatmapStatus)
+        if (requiredPrivilege == UserPrivilege.User || !user.Privilege.HasFlag(requiredPrivilege))
         {
-            return Result.Failure<CustomBeatmapStatus?>("User cannot change beatmap status.");
+            return Result.Failure<CustomBeatmapStatus?>("User cannot change beatmap status for this gamemode.");
         }
 
         var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
