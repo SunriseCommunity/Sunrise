@@ -102,7 +102,7 @@ public class SunriseDbContext : DbContext
         modelBuilder.Entity<ScoreProcessingTask>()
             .Property<int?>("ActiveScoreId")
             .HasComputedColumnSql(
-                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) THEN {scoreTaskScoreIdColumn} ELSE NULL END",
+                $"CASE WHEN {scoreTaskStatusColumn} IN ({(int)ScoreProcessingStatus.Pending}, {(int)ScoreProcessingStatus.Processing}) AND {scoreTaskTypeColumn} <> {(int)ScoreTaskType.BeatmapStatusChange} THEN {scoreTaskScoreIdColumn} ELSE NULL END",
                 true);
 
         modelBuilder.Entity<ScoreProcessingTask>()
