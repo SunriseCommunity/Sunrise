@@ -65,6 +65,37 @@ public class ApiUpdateBeatmapCustomStatusTests(IntegrationDatabaseFixture fixtur
         Assert.Equal(expectedStatusCode, response.StatusCode);
     }
 
+    [Fact]
+    public async Task TestMixedModeBatchDoesNotUpdateAnyBeatmapsWhenOneModeIsUnauthorized()
+    {
+        var client = App.CreateClient().UseClient("api");
+        var user = await CreateTestUser();
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard;
+        await Database.Users.UpdateUser(user);
+        client.UseUserAuthToken(await GetUserAuthTokens(user));
+
+        var standardSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var standardBeatmap = standardSet.Beatmaps.First();
+        standardBeatmap.ModeInt = (int)GameMode.Standard;
+        await _mocker.Beatmap.MockBeatmapSet(standardSet);
+
+        var maniaSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var maniaBeatmap = maniaSet.Beatmaps.First();
+        maniaBeatmap.ModeInt = (int)GameMode.Mania;
+        await _mocker.Beatmap.MockBeatmapSet(maniaSet);
+
+        var response = await client.PostAsJsonAsync("beatmap/update-custom-status",
+            new UpdateBeatmapsCustomStatusRequest
+            {
+                Ids = [standardBeatmap.Id, maniaBeatmap.Id],
+                Status = BeatmapStatusWeb.Loved
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(await Database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(standardBeatmap.Checksum!));
+        Assert.Empty((await Database.Events.Beatmaps.GetBeatmapSetEvents(standardSet.Id)).Item1);
+    }
+
     [Theory]
     [InlineData(true, true)]
     [InlineData(true, false)]
