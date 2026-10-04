@@ -190,13 +190,9 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         if (newStatus == null && resetCustomStatus == null)
             return Result.Failure<CustomBeatmapStatus?>("No proper status arguments were specified.");
 
-        var beatmapGameMode = (GameMode)beatmap.ModeInt;
-        var requiredPrivilege = UserPrivilegeExtensions.GetBeatmapApprovalTeamPrivilege(beatmapGameMode);
-
-        if (requiredPrivilege == UserPrivilege.User || !user.Privilege.HasFlag(requiredPrivilege))
-        {
-            return Result.Failure<CustomBeatmapStatus?>("User cannot change beatmap status for this gamemode.");
-        }
+        var validation = ValidateBeatmapCustomStatusChange(user, beatmap);
+        if (validation.IsFailure)
+            return Result.Failure<CustomBeatmapStatus?>(validation.Error);
 
         var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
 
@@ -234,6 +230,15 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         }
 
         return Result.Failure<CustomBeatmapStatus?>("Unknown error occurred while changing beatmap status.");
+    }
+
+    public Result ValidateBeatmapCustomStatusChange(User user, Beatmap beatmap)
+    {
+        var requiredPrivilege = UserPrivilegeExtensions.GetBeatmapApprovalTeamPrivilege((GameMode)beatmap.ModeInt);
+
+        return requiredPrivilege != UserPrivilege.User && user.Privilege.HasFlag(requiredPrivilege)
+            ? Result.Success()
+            : Result.Failure("User cannot change beatmap status for this gamemode.");
     }
 
     private bool IsValidResult(Result<BeatmapSet, ErrorMessage> result)
