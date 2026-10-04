@@ -5,5 +5,6 @@ public enum ScoreTaskType
     Submission = 0,
     Recalculation = 1,
     Restore = 2,
-    Delete = 3
+    Delete = 3,
+    BeatmapStatusChange = 4
 }

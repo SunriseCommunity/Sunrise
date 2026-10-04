@@ -30,6 +30,32 @@ public class UserStatsScoreProcessor(
         await ApplyWeightedRefresh(ctx);
     }
 
+    protected override async Task OnBeatmapStatusChangeInternal(ScoreCommitContext ctx)
+    {
+        var score = ctx.Score;
+        var userStats = ctx.UserStats;
+        var previousStatus = score.BeatmapHashStatus?.PreviousStatus;
+
+        if (previousStatus == null)
+            return;
+
+        if (previousStatus.Value.IsScoreable() != ctx.BeatmapStatus.IsScoreable())
+        {
+            var beatmapMaxCombo = ctx.UserBeatmapPassedScores.Max(s => s.MaxCombo);
+
+            if (ctx.BeatmapStatus.IsScoreable())
+                userStats.MaxCombo = Math.Max(userStats.MaxCombo, beatmapMaxCombo);
+            else if (beatmapMaxCombo >= userStats.MaxCombo)
+                userStats.MaxCombo = await database.Scores.GetUserMaxComboExcluding(score.UserId, score.GameMode) ?? 0;
+        }
+
+        if (previousStatus.Value.IsRanked() != ctx.BeatmapStatus.IsRanked())
+        {
+            userStats.RankedScore = Math.Max(0, userStats.RankedScore + (ctx.BeatmapStatus.IsRanked() ? score.TotalScore : -score.TotalScore));
+            await ApplyWeightedRefresh(ctx);
+        }
+    }
+
     protected override async Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         await DecrementUserStats(ctx);

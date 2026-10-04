@@ -23,6 +23,7 @@ public sealed class ScoreCommitContext(
     public UserStats? PreviousUserStatsSnapshot { get; internal set; }
     public UserBeatmapPeers? UserPersonalBestScores { get; internal set; }
     public List<Medal>? UnlockedMedals { get; internal set; }
+    public List<Score> UserBeatmapPassedScores { get; init; } = [];
 
     public Score Score { get; internal set; } = score;
     public User User { get; } = user;

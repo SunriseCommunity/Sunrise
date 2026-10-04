@@ -46,17 +46,14 @@ public class BeatmapCheckJob(IServiceScopeFactory scopeFactory)
         var beatmap = beatmapSetResult.IsSuccess ? beatmapSetResult.Value.Beatmaps?.FirstOrDefault(b => b.Checksum == beatmapHashStatus.BeatmapHash) : null;
 
         beatmapHashStatus.CheckedAt = DateTime.UtcNow;
+        if (beatmap == null)
+            beatmapHashStatus.MissCount++;
 
-        if (beatmap != null)
-        {
-            await database.Calculations.ApplyBeatmapHashStatus(beatmapHashStatus.BeatmapHash, beatmap.Id, beatmap.Status, ct);
-            return true;
-        }
-
-        beatmapHashStatus.MissCount++;
         await database.DbContext.SaveChangesAsync(ct);
 
-        if (beatmapHashStatus.MissCount >= 2 && beatmapHashStatus.Status != BeatmapStatus.NotSubmitted)
+        if (beatmap != null)
+            await database.Calculations.ApplyBeatmapHashStatus(beatmapHashStatus.BeatmapHash, beatmap.Id, beatmap.Status, ct);
+        else if (beatmapHashStatus.MissCount >= 2 && beatmapHashStatus.Status != BeatmapStatus.NotSubmitted)
             await database.Calculations.ApplyBeatmapHashStatus(beatmapHashStatus.BeatmapHash, beatmapHashStatus.BeatmapId, BeatmapStatus.NotSubmitted, ct);
 
         return true;

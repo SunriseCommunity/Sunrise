@@ -16,6 +16,7 @@ public class BeatmapHashStatus
 
     public int BeatmapId { get; set; }
     public BeatmapStatus Status { get; set; }
+    public BeatmapStatus? PreviousStatus { get; set; }
     public DateTime CheckedAt { get; set; }
     public int MissCount { get; set; }
 }

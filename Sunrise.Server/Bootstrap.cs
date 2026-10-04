@@ -482,6 +482,7 @@ public static class Bootstrap
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreRecalculationHandler>(ScoreTaskType.Recalculation);
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreDeletionHandler>(ScoreTaskType.Delete);
         builder.Services.AddKeyedScoped<IScoreHandler, ScoreRestorationHandler>(ScoreTaskType.Restore);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreBeatmapStatusChangeHandler>(ScoreTaskType.BeatmapStatusChange);
         builder.Services.AddScoped<ScoreProcessingJob>();
         builder.Services.AddScoped<CalculationRunJob>();
         builder.Services.AddScoped<BeatmapCheckJob>();

@@ -222,7 +222,7 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             return deletedTask;
         }
 
-        return await database.ScoreProcessingTasks.TryMarkClaimedForDeletion(task.Id, claimToken, ct);
+        return true;
     }
 
     private async Task HandleUnexpectedEntryException(ScoreProcessingTask task, int? affectedUserId, Exception ex)

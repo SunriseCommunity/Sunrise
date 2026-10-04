@@ -26,6 +26,16 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         return Task.CompletedTask;
     }
 
+    protected override Task OnBeatmapStatusChangeInternal(ScoreCommitContext ctx)
+    {
+        var previousStatus = ctx.Score.BeatmapHashStatus?.PreviousStatus;
+
+        if (previousStatus != null && previousStatus.Value.IsScoreable() != ctx.BeatmapStatus.IsScoreable())
+            ctx.UserGrades.UpdateGradeCount(ctx.Score.Grade, ctx.BeatmapStatus.IsScoreable() ? 1 : -1);
+
+        return Task.CompletedTask;
+    }
+
     protected override Task OnDeletionInternal(ScoreCommitContext ctx)
     {
         DecrementWithScore(ctx);
