@@ -189,7 +189,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return new OkResult();
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/get-hyped-sets")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Returns beatmapsets with active hype train")]
@@ -244,7 +244,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         });
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/{id:int}/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapset related events")]
@@ -285,7 +285,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         return Ok(new BeatmapSetEventsResponse(events, totalCount));
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpGet("beatmapset/events")]
     [ResponseCache(Duration = 0)]
     [EndpointDescription("Get beatmapsets related events")]
@@ -366,7 +366,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
         });
     }
 
-    [Authorize("RequireBat")]
+    [Authorize("RequireBeatmapApprovalTeam")]
     [HttpPost("beatmap/update-custom-status")]
     [EndpointDescription("Updates beatmap custom status. Use \'Unknown\' to reset beatmap custom status")]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status401Unauthorized)]

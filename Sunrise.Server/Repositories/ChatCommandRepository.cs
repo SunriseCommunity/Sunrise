@@ -7,6 +7,7 @@ using Sunrise.Server.Commands;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Chat;
 using Sunrise.Shared.Objects.Sessions;
@@ -74,7 +75,7 @@ public static class ChatCommandRepository
             return;
         }
 
-        if (!sessionUser.Privilege.HasFlag(handler.RequiredPrivileges))
+        if (!sessionUser.Privilege.HasRequiredPrivilege(handler.RequiredPrivileges))
         {
             SendMessage(session, "You don't have permission to use this command.");
             return;
