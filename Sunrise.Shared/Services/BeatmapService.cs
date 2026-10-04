@@ -202,7 +202,6 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         }
 
         var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
-        await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
 
         if (resetCustomStatus.HasValue)
         {
@@ -211,6 +210,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
             }
 
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return null;
         }
 
@@ -222,6 +222,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 customStatus.UpdatedByUserId = user.Id;
 
                 var updateCustomStatusResult = await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
+                await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
                 return updateCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(updateCustomStatusResult.Error) : customStatus;
             }
 
@@ -234,6 +235,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
             };
 
             var addCustomStatusResult = await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return addCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(addCustomStatusResult.Error) : customStatus;
         }
 

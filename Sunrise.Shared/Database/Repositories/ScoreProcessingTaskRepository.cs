@@ -4,6 +4,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
+using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 
@@ -159,6 +160,14 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return affected == 1;
     }
 
+    public async Task<int> DeleteBeatmapStatusChanges(int userId, GameMode gameMode, string beatmapHash, int? exceptTaskId, CancellationToken ct = default)
+    {
+        return await dbContext.ScoreProcessingTasks
+            .Where(t => t.TaskType == ScoreTaskType.BeatmapStatusChange && t.Status != ScoreProcessingStatus.Failed && t.Id != exceptTaskId
+                        && dbContext.Scores.Any(s => s.Id == t.ScoreId && s.UserId == userId && s.GameMode == gameMode && s.BeatmapHash == beatmapHash))
+            .ExecuteDeleteAsync(ct);
+    }
+
     public async Task<bool> TryMarkClaimedAsFailed(int taskId, string claimToken, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
     {
         var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
@@ -173,10 +182,10 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
                     .SetProperty(t => t.ErrorMessage, error.Message)
                     .SetProperty(t => t.ClaimToken, (string?)null)
                     .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
-                    .SetProperty(t => t.Status, t => isPermanent || (t.RunId == null && t.RetryCount + 1 >= maxRetries)
+                    .SetProperty(t => t.Status, t => isPermanent || (t.RunId == null && t.TaskType != ScoreTaskType.BeatmapStatusChange && t.RetryCount + 1 >= maxRetries)
                         ? ScoreProcessingStatus.Failed
                         : ScoreProcessingStatus.Pending)
-                    .SetProperty(t => t.NextRetryAt, t => isPermanent || (t.RunId == null && t.RetryCount + 1 >= maxRetries)
+                    .SetProperty(t => t.NextRetryAt, t => isPermanent || (t.RunId == null && t.TaskType != ScoreTaskType.BeatmapStatusChange && t.RetryCount + 1 >= maxRetries)
                         ? null
                         : nextRetryAt),
                 ct);

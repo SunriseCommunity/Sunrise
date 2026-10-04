@@ -1,10 +1,12 @@
 using EFCoreSecondLevelCacheInterceptor;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Shared.Database.Repositories;
 
@@ -119,46 +121,67 @@ public class CalculationRepository(SunriseDbContext dbContext)
             .FirstOrDefaultAsync(h => h.BeatmapHash == beatmapHash, ct);
     }
 
+    public async Task<BeatmapHashStatus?> LockBeatmapHashStatus(string beatmapHash, BeatmapStatus? newStatus = null, CancellationToken ct = default)
+    {
+        foreach (var staleEntry in dbContext.ChangeTracker.Entries<BeatmapHashStatus>().Where(e => e.Entity.BeatmapHash == beatmapHash).ToList())
+            staleEntry.State = EntityState.Detached;
+
+        var query = dbContext.BeatmapHashStatuses.NotCacheable().Where(h => h.BeatmapHash == beatmapHash);
+        var isStatusChanging = newStatus != null && await query.AsNoTracking().AnyAsync(h => h.Status != newStatus, ct);
+
+        return await (isStatusChanging ? query.ForUpdate() : query.ForShare()).FirstOrDefaultAsync(ct);
+    }
+
     public async Task<BeatmapHashStatus> ApplyBeatmapHashStatus(string beatmapHash, int beatmapId, BeatmapStatus status, CancellationToken ct = default)
     {
-        var beatmapHashStatus = await GetBeatmapHashStatus(beatmapHash, ct);
+        await using var transaction = dbContext.Database.CurrentTransaction == null ? await dbContext.Database.BeginTransactionAsync(ct) : null;
+
+        var beatmapHashStatus = await LockBeatmapHashStatus(beatmapHash, status, ct);
+        var previousStatus = beatmapHashStatus?.Status;
+
+        if (beatmapHashStatus != null && previousStatus != status && await HasPendingBeatmapStatusChanges(beatmapHash, ct))
+            return beatmapHashStatus;
 
         if (beatmapHashStatus == null)
         {
             beatmapHashStatus = new BeatmapHashStatus
             {
                 BeatmapHash = beatmapHash,
-                BeatmapId = beatmapId,
-                Status = status,
                 CheckedAt = DateTime.UtcNow
             };
 
             dbContext.BeatmapHashStatuses.Add(beatmapHashStatus);
-            await dbContext.SaveChangesAsync(ct);
-            return beatmapHashStatus;
         }
-
-        var isStatusChanged = beatmapHashStatus.Status != status;
+        else if (previousStatus != status)
+        {
+            beatmapHashStatus.PreviousStatus = previousStatus;
+        }
 
         beatmapHashStatus.BeatmapId = beatmapId;
         beatmapHashStatus.Status = status;
         beatmapHashStatus.MissCount = 0;
         await dbContext.SaveChangesAsync(ct);
 
-        if (isStatusChanged)
-            await RecalculateBeatmapHashScores(beatmapHash, ct);
+        if (previousStatus != null && (previousStatus.Value.IsScoreable() != status.IsScoreable() || previousStatus.Value.IsRanked() != status.IsRanked()))
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
+                INSERT INTO score_processing_task (TaskType, ScoreId, Priority, Status, RetryCount, CreatedAt)
+                SELECT {(int)ScoreTaskType.BeatmapStatusChange}, MIN(s.Id), {(int)ScoreProcessingPriority.Medium}, {(int)ScoreProcessingStatus.Pending}, 0, UTC_TIMESTAMP()
+                FROM score s
+                WHERE s.BeatmapHash = {beatmapHash} AND s.SubmissionStatus <> {(int)SubmissionStatus.Deleted}
+                GROUP BY s.UserId, s.GameMode",
+                ct);
+
+        if (transaction != null)
+            await transaction.CommitAsync(ct);
 
         return beatmapHashStatus;
     }
 
-    public async Task RecalculateBeatmapHashScores(string beatmapHash, CancellationToken ct = default)
+    public async Task<bool> HasPendingBeatmapStatusChanges(string beatmapHash, CancellationToken ct = default)
     {
-        await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
-            INSERT IGNORE INTO score_processing_task (TaskType, ScoreId, Priority, Status, RetryCount, CreatedAt)
-            SELECT {(int)ScoreTaskType.Recalculation}, s.Id, {(int)ScoreProcessingPriority.Low}, {(int)ScoreProcessingStatus.Pending}, 0, UTC_TIMESTAMP()
-            FROM score s
-            WHERE s.BeatmapHash = {beatmapHash} AND s.SubmissionStatus <> {(int)SubmissionStatus.Deleted}",
-            ct);
+        return await dbContext.ScoreProcessingTasks.NotCacheable()
+            .AnyAsync(t => t.TaskType == ScoreTaskType.BeatmapStatusChange && t.Status != ScoreProcessingStatus.Failed
+                           && dbContext.Scores.Any(s => s.Id == t.ScoreId && s.BeatmapHash == beatmapHash), ct);
     }
 
     public async Task MarkBeatmapCheckDue(string beatmapHash, CancellationToken ct = default)

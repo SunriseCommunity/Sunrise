@@ -205,35 +205,26 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
         }
 
         await databaseService.Value.Redis.ReplaceSortedSets(sets);
-    }
 
-    public async Task<Result> SetAllUsersRanks(GameMode mode, int branchSize = 20)
-    {
-        var database = databaseService.Value;
-
-        return await database.CommitAsTransactionAsync(async () =>
+        for (var i = 1;; i++)
         {
-            for (var i = 1;; i++)
-            {
-                var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
-                    LeaderboardSortType.Pp,
-                    options: new QueryOptions(new Pagination(i, branchSize))
-                    {
-                        QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
-                    });
-
-                foreach (var stats in usersStats)
+            var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
+                LeaderboardSortType.Pp,
+                options: new QueryOptions(new Pagination(i, branchSize))
                 {
-                    await SortedSetAddOrUpdateUserStats(stats, stats.User);
-                    await UpdateUserStatsBestRanks(stats, stats.User);
-                }
+                    QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
+                });
 
-                await dbContext.SaveChangesAsync();
-
-                if (usersStats.Count < branchSize)
-                    break;
+            foreach (var stats in usersStats)
+            {
+                await UpdateUserStatsBestRanks(stats, stats.User);
             }
-        });
+
+            await dbContext.SaveChangesAsync();
+
+            if (usersStats.Count < branchSize)
+                break;
+        }
     }
 
     private async Task<Result> UpdateUserBestRanks(UserStats stats, User user, long prevGlobalRank, long prevCountryRank)

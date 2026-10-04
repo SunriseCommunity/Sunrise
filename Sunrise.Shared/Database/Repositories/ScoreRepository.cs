@@ -493,6 +493,15 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         return await query.MaxAsync(s => (int?)s.MaxCombo, ct);
     }
 
+    public async Task<List<Score>> GetUserBeatmapPassedScores(int userId, GameMode gameMode, string beatmapHash, CancellationToken ct = default)
+    {
+        return await dbContext.Scores
+            .IgnoreAutoIncludes()
+            .Where(s => s.UserId == userId && s.GameMode == gameMode && s.BeatmapHash == beatmapHash && s.IsPassed
+                        && (s.SubmissionStatus == SubmissionStatus.Best || s.SubmissionStatus == SubmissionStatus.Submitted))
+            .ToListAsync(ct);
+    }
+
     public async Task<int?> GetUserIdByScoreId(int scoreId, CancellationToken ct = default)
     {
         return await dbContext.Scores

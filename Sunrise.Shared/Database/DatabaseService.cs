@@ -65,7 +65,7 @@ public sealed class DatabaseService(
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
 
-                await database.Users.Stats.Ranks.SetAllUsersRanks(mode, 100);
+                await database.Users.Stats.Ranks.RebuildAllUsersRanks(mode);
             })
             .ToArray();
 
