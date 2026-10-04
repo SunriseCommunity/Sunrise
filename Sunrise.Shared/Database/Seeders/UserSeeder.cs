@@ -120,37 +120,45 @@ public static class UserSeeder
 
         var foreignKeys = await FetchUserForeignKeys(context);
 
-        await context.Database.ExecuteSqlRawAsync("SET FOREIGN_KEY_CHECKS=0;");
+        var shouldCloseConnection = context.Database.GetDbConnection().State != System.Data.ConnectionState.Open;
+        if (shouldCloseConnection)
+            await context.Database.OpenConnectionAsync(ct);
 
-        var usersCount = await context.Set<User>().CountAsync(ct);
-
-        var pageSize = 50;
-
-        for (var x = 0;; x++)
+        try
         {
-            var users = context.Set<User>()
-                .OrderByDescending(u => u.Username)
-                .Skip(x * pageSize)
-                .Take(pageSize)
-                .ToList();
+            await context.Database.ExecuteSqlRawAsync("SET FOREIGN_KEY_CHECKS=0;", ct);
 
-            var caseStatements = new StringBuilder();
-            var ids = new List<int>();
+            var usersCount = await context.Set<User>().CountAsync(ct);
 
-            foreach (var user in users)
+            var pageSize = 50;
+
+            for (var x = 0;; x++)
             {
-                var oldId = user.Id;
-                var newId = oldId + 1000;
-                ids.Add(oldId);
+                var users = context.Set<User>()
+                    .OrderByDescending(u => u.Username)
+                    .Skip(x * pageSize)
+                    .Take(pageSize)
+                    .ToList();
 
-                caseStatements.Append($" WHEN {oldId} THEN {newId}");
-            }
+                if (users.Count == 0) break;
 
-            var idsCsv = string.Join(", ", ids);
+                var caseStatements = new StringBuilder();
+                var ids = new List<int>();
 
-            foreach (var key in foreignKeys)
-            {
-                var sql = $@"
+                foreach (var user in users)
+                {
+                    var oldId = user.Id;
+                    var newId = oldId + 1000;
+                    ids.Add(oldId);
+
+                    caseStatements.Append($" WHEN {oldId} THEN {newId}");
+                }
+
+                var idsCsv = string.Join(", ", ids);
+
+                foreach (var key in foreignKeys)
+                {
+                    var sql = $@"
                             UPDATE {key.Item1}
                             SET {key.Item2} = CASE {key.Item2}
                                 {caseStatements}
@@ -159,10 +167,10 @@ public static class UserSeeder
                             WHERE {key.Item2} IN ({idsCsv})
                             ";
 
-                await context.Database.ExecuteSqlRawAsync(sql);
-            }
+                    await context.Database.ExecuteSqlRawAsync(sql, ct);
+                }
 
-            var userUpdateSql = $@"
+                var userUpdateSql = $@"
                                 UPDATE `user`
                                 SET Id = CASE Id
                                     {caseStatements}
@@ -171,14 +179,20 @@ public static class UserSeeder
                                 WHERE Id IN ({idsCsv})
                                 ";
 
-            await context.Database.ExecuteSqlRawAsync(userUpdateSql);
+                await context.Database.ExecuteSqlRawAsync(userUpdateSql, ct);
 
-            logger.Information("Users updated: {usersUpdated} / {usersTotal}.", x * pageSize + users.Count, usersCount);
+                logger.Information("Users updated: {usersUpdated} / {usersTotal}.", x * pageSize + users.Count, usersCount);
 
-            if (users.Count < pageSize) break;
+                if (users.Count < pageSize) break;
+            }
         }
+        finally
+        {
+            await context.Database.ExecuteSqlRawAsync("SET FOREIGN_KEY_CHECKS=1;", ct);
 
-        await context.Database.ExecuteSqlRawAsync("SET FOREIGN_KEY_CHECKS=1;");
+            if (shouldCloseConnection)
+                await context.Database.CloseConnectionAsync();
+        }
 
         logger.Information("All user ids were updated to new ID format.");
 

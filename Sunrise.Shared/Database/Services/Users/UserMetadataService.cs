@@ -49,7 +49,14 @@ public class UserMetadataService(
                 User = user
             };
 
-            await AddUserMetadata(metadata);
+            var addResult = await AddUserMetadata(metadata);
+            if (addResult.IsFailure)
+            {
+                dbContext.Entry(metadata).State = EntityState.Detached;
+                metadata = await dbContext.UserMetadata.FirstOrDefaultAsync(e => e.UserId == userId, ct);
+                if (metadata == null)
+                    throw new ApplicationException(addResult.Error);
+            }
         }
 
         return metadata;

@@ -1,23 +1,26 @@
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
-using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Objects;
 using Mods = osu.Shared.Mods;
-using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using GameModeVanilla = osu.Shared.GameMode;
 
 namespace Sunrise.Shared.Utils.Calculators;
 
 public static class PerformanceCalculator
 {
-    public static double CalculateUserWeightedAccuracy(List<Score> userBestScores, Score? score = null)
+    public static (double PerformancePoints, double Accuracy) CalculateUserWeightedStats(List<Score> userBestScores)
     {
-        if (userBestScores.Count == 0 && score == null) return 0;
+        var pp = CalculateUserWeightedPerformance(userBestScores);
+        var accuracy = CalculateUserWeightedAccuracy(userBestScores);
+
+        return (pp, accuracy);
+    }
+
+    public static double CalculateUserWeightedAccuracy(List<Score> userBestScores)
+    {
+        if (userBestScores.Count == 0) return 0;
 
         if (userBestScores.Count > 100) throw new ArgumentOutOfRangeException(nameof(userBestScores));
-
-        if (score != null)
-        {
-            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
-        }
 
         var top100Scores = userBestScores.Take(100).ToList();
 
@@ -29,16 +32,11 @@ public static class PerformanceCalculator
         return weightedAccuracy * bonusAccuracy / 100;
     }
 
-    public static double CalculateUserWeightedPerformance(List<Score> userBestScores, Score? score = null)
+    public static double CalculateUserWeightedPerformance(List<Score> userBestScores)
     {
-        if (userBestScores.Count == 0 && score == null) return 0;
+        if (userBestScores.Count == 0) return 0;
 
         if (userBestScores.Count > 100) throw new ArgumentOutOfRangeException(nameof(userBestScores));
-
-        if (score != null)
-        {
-            userBestScores = userBestScores.UpsertUserScoreToSortedScores(score).SortScoresByPerformancePoints();
-        }
 
         var top100Scores = userBestScores.Take(100).ToList();
 
@@ -53,30 +51,46 @@ public static class PerformanceCalculator
 
     public static float CalculateAccuracy(Score score)
     {
-        var scoreVanillaGameMode = (GameMode)score.GameMode.ToVanillaGameMode();
+        return CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
+    }
 
-        var totalHits = scoreVanillaGameMode switch
+    public static float CalculateAccuracy(SubmittedScore score)
+    {
+        return CalculateAccuracy(score.Count300, score.Count100, score.Count50, score.CountMiss, score.CountKatu, score.CountGeki, score.GameMode.ToVanillaGameMode(), score.Mods);
+    }
+
+    private static float CalculateAccuracy(
+        int count300,
+        int count100,
+        int count50,
+        int countMiss,
+        int countKatu,
+        int countGeki,
+        GameModeVanilla mode,
+        Mods mods)
+    {
+        var totalHits = mode switch
         {
-            GameMode.Standard => score.Count300 + score.Count100 + score.Count50 + score.CountMiss,
-            GameMode.Taiko => score.Count300 + score.Count100 + score.CountMiss,
-            GameMode.CatchTheBeat => score.Count300 + score.Count100 + score.Count50 + score.CountKatu + score.CountMiss,
-            GameMode.Mania => score.Count300 + score.Count100 + score.Count50 + score.CountGeki + score.CountKatu + score.CountMiss,
-            _ => 0
+            GameModeVanilla.Standard => count300 + count100 + count50 + countMiss,
+            GameModeVanilla.Taiko => count300 + count100 + countMiss,
+            GameModeVanilla.CatchTheBeat => count300 + count100 + count50 + countKatu + countMiss,
+            GameModeVanilla.Mania => count300 + count100 + count50 + countGeki + countKatu + countMiss,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
         };
 
         if (totalHits == 0) return 0;
 
-        return scoreVanillaGameMode switch
+        return mode switch
         {
-            GameMode.Standard => 100f * (score.Count300 * 300f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 300f),
-            GameMode.Taiko => 100f * (score.Count300 + score.Count100 * 0.5f) / totalHits,
-            GameMode.CatchTheBeat => 100f * (score.Count300 + score.Count100 + score.Count50) / totalHits,
-            GameMode.Mania => score.Mods.HasFlag(Mods.ScoreV2) switch
+            GameModeVanilla.Standard => 100f * (count300 * 300f + count100 * 100f + count50 * 50f) / (totalHits * 300f),
+            GameModeVanilla.Taiko => 100f * (count300 + count100 * 0.5f) / totalHits,
+            GameModeVanilla.CatchTheBeat => 100f * (count300 + count100 + count50) / totalHits,
+            GameModeVanilla.Mania => mods.HasFlag(Mods.ScoreV2) switch
             {
-                true => 100f * (score.CountGeki * 305f + score.Count300 * 300f + score.CountKatu * 200f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 305f),
-                false => 100f * ((score.Count300 + score.CountGeki) * 300f + score.CountKatu * 200f + score.Count100 * 100f + score.Count50 * 50f) / (totalHits * 300f)
+                true => 100f * (countGeki * 305f + count300 * 300f + countKatu * 200f + count100 * 100f + count50 * 50f) / (totalHits * 305f),
+                false => 100f * ((count300 + countGeki) * 300f + countKatu * 200f + count100 * 100f + count50 * 50f) / (totalHits * 300f)
             },
-            _ => 0
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
         };
     }
 }

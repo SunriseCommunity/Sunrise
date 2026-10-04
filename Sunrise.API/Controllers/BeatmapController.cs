@@ -140,9 +140,9 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
             },
             ct: ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
+        var scoresWithRanks = await database.Scores.GetScoresWithLeaderboardPositions(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
+        var parsedScores = scoresWithRanks.Select(entry => new ScoreResponse(sessions, entry.Score, entry.LeaderboardPosition)).ToList();
         return Ok(new ScoresResponse(parsedScores, totalScores));
     }
 
@@ -207,7 +207,7 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
 
         var (beatmapSetIdsWithHypeCount, totalCount) = await database.Beatmaps.Hypes.GetHypedBeatmaps(new QueryOptions(true, new Pagination(page, limit)), ct);
 
-        var result = beatmapSetIdsWithHypeCount.Select(async g =>
+        var resultTasks = beatmapSetIdsWithHypeCount.Select(async g =>
         {
             var (beatmapSetId, hypeCount) = g;
 
@@ -216,7 +216,9 @@ public class BeatmapController(DatabaseService database, BeatmapService beatmapS
                 return null;
 
             return new HypedBeatmapSetResponse(sessions, beatmapSetResult.Value, hypeCount);
-        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+        });
+
+        var result = (await Task.WhenAll(resultTasks)).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new HypedBeatmapSetsResponse(result, totalCount));
     }

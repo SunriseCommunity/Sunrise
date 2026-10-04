@@ -8,10 +8,12 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils;
+using Sunrise.Shared.Utils.Calculators;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Objects;
@@ -27,8 +29,8 @@ public class ReplayFile
         if (user == null)
         {
             using var scope = ServicesProviderHolder.CreateScope();
-            var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-            User = database.Users.GetUser(score.UserId).Result;
+            var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
+            User = dbContext.Users.FirstOrDefault(u => u.Id == score.UserId);
         }
 
         if (User == null)
@@ -60,7 +62,8 @@ public class ReplayFile
         reader.ReadString(); // Life graph  
         Score.WhenPlayed = reader.ReadDateTime();
         Data = reader.ReadByteArray(); // Replay data  
-        Score.Grade = "X"; // TODO: Implement grade calculation  
+        Score.Accuracy = PerformanceCalculator.CalculateAccuracy(Score);
+        Score.Grade = ScoreGradeUtil.Calculate(Score);
         int.TryParse(Score.OsuVersion, out var version);
         if (version >= 20140721)
             Score.Id = (int)reader.ReadInt64();

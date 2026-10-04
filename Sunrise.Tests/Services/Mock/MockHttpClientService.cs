@@ -14,14 +14,37 @@ namespace Sunrise.Tests.Services.Mock;
 public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientService> logger) : HttpClientService(redis, logger)
 {
     private readonly Dictionary<ApiType, Func<object, object>> _mockResponses = new();
+    private string? _rosuVersion = "1.0.0";
 
     public void MockResponse<TResponse>(ApiType apiType, Func<object, TResponse> responseFactory)
     {
         _mockResponses[apiType] = args => responseFactory(args)!;
     }
 
-    public void MockPerformanceCalculation(double performancePoints = 500, double difficultyRating = 5.0)
+    public void MockBeatmapSetByBeatmapIdNotFound(int beatmapId)
     {
+        MockResponse<ErrorMessage>(ApiType.BeatmapSetDataByBeatmapId,
+            _ => new ErrorMessage
+            {
+                Message = $"Beatmap set with beatmap ID {beatmapId} not found.",
+                Status = HttpStatusCode.NotFound
+            });
+    }
+
+    public void MockBeatmapSetByHashInternalServerError()
+    {
+        MockResponse<ErrorMessage>(ApiType.BeatmapSetDataByHash,
+            _ => new ErrorMessage
+            {
+                Message = "Internal server error while fetching beatmap set. ",
+                Status = HttpStatusCode.InternalServerError
+            });
+    }
+
+    public void MockPerformanceCalculation(double performancePoints = 500, double difficultyRating = 5.0, string? rosuVersion = "1.0.0")
+    {
+        _rosuVersion = rosuVersion;
+
         MockResponse<PerformanceAttributes>(ApiType.CalculateScorePerformance,
             _ => new PerformanceAttributes
             {
@@ -70,13 +93,16 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             });
     }
 
-    public override Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
+    public override Task<Result<T, ErrorMessage>> PostRequestWithBody<T>(BaseSession session, ApiType type, object body, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, Dictionary<string, string?>? responseHeaders = null, CancellationToken ct = default)
     {
         if (_mockResponses.TryGetValue(type, out var mockResponse))
         {
             try
             {
                 var response = mockResponse(body);
+                if (responseHeaders?.ContainsKey("X-Rosu-Version") == true)
+                    responseHeaders["X-Rosu-Version"] = _rosuVersion;
+
                 return Task.FromResult(Result.Success<T, ErrorMessage>((T)response));
             }
             catch (Exception ex)
@@ -89,7 +115,7 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             }
         }
 
-        return base.PostRequestWithBody<T>(session, type, body, headers, shouldSendRateLimitWarning, ct);
+        return base.PostRequestWithBody<T>(session, type, body, headers, shouldSendRateLimitWarning, responseHeaders, ct);
     }
 
     public override Task<Result<T, ErrorMessage>> SendRequest<T>(BaseSession session, ApiType type, object?[] args, Dictionary<string, string>? headers = null, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
@@ -99,6 +125,9 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             try
             {
                 var response = mockResponse(args);
+                if (response is ErrorMessage error)
+                    return Task.FromResult(Result.Failure<T, ErrorMessage>(error));
+
                 return Task.FromResult(Result.Success<T, ErrorMessage>((T)response));
             }
             catch (Exception ex)

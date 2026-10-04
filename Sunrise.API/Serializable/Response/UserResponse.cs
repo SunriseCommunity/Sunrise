@@ -20,6 +20,9 @@ public class UserResponse
 
     public UserResponse(SessionRepository sessionRepository, User user)
     {
+        if (user == null)
+            throw new ArgumentNullException(nameof(user), "User must be loaded before constructing UserResponse.");
+
         var session = sessionRepository.GetSession(userId: user.Id);
 
         Id = user.Id;

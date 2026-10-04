@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sunrise.Shared.Database;
 
@@ -19,11 +20,50 @@ namespace Sunrise.Shared.Database.Migrations
                 .HasAnnotation("ProductVersion", "8.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.BeatmapHashStatus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BeatmapHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("BeatmapId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CheckedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("MissCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PreviousStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CheckedAt");
+
+                    b.ToTable("beatmap_hash_status");
+                });
+
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Beatmap.BeatmapHype", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("BeatmapSetId")
                         .HasColumnType("int");
@@ -51,6 +91,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("BeatmapHash")
                         .IsRequired()
@@ -82,6 +124,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<int>("BeatmapSetId")
                         .HasColumnType("int");
 
@@ -106,11 +150,50 @@ namespace Sunrise.Shared.Database.Migrations
                     b.ToTable("event_beatmap");
                 });
 
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventScoreProcessing", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ExecutorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("JsonData")
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("ScoreId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Time")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventType");
+
+                    b.HasIndex("ExecutorId");
+
+                    b.HasIndex("ScoreId");
+
+                    b.ToTable("event_score_processing");
+                });
+
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventUser", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("EventType")
                         .HasColumnType("int");
@@ -145,6 +228,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Category")
                         .HasColumnType("int");
@@ -187,6 +272,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -204,6 +291,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime(6)");
@@ -236,17 +325,20 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<double>("Accuracy")
                         .HasColumnType("double");
 
                     b.Property<string>("BeatmapHash")
                         .IsRequired()
+                        .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
                     b.Property<int>("BeatmapId")
                         .HasColumnType("int");
 
-                    b.Property<int>("BeatmapStatus")
+                    b.Property<int?>("CalculationVersionId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("ClientTime")
@@ -280,9 +372,6 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<bool>("IsPassed")
                         .HasColumnType("tinyint(1)");
 
-                    b.Property<bool>("IsScoreable")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<int>("MaxCombo")
                         .HasColumnType("int");
 
@@ -304,9 +393,13 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.Property<string>("ScoreHash")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<int>("SubmissionStatus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TimeElapsed")
                         .HasColumnType("int");
 
                     b.Property<long>("TotalScore")
@@ -322,19 +415,228 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("BeatmapHash");
 
+                    b.HasIndex("CalculationVersionId");
+
                     b.HasIndex("ReplayFileId");
+
+                    b.HasIndex("ScoreHash")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
                     b.HasIndex("UserId", "BeatmapId");
 
-                    b.HasIndex("UserId", "SubmissionStatus", "BeatmapStatus");
+                    b.HasIndex("UserId", "SubmissionStatus");
 
-                    b.HasIndex("BeatmapId", "IsScoreable", "IsPassed", "SubmissionStatus");
+                    b.HasIndex("GameMode", "SubmissionStatus", "WhenPlayed");
 
-                    b.HasIndex("GameMode", "SubmissionStatus", "BeatmapStatus", "WhenPlayed");
+                    b.HasIndex("UserId", "BeatmapHash", "GameMode");
 
                     b.ToTable("score");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.CalculationRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsForced")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsSuperseded")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("Phase")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("TargetVersionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinishedAt");
+
+                    b.HasIndex("TargetVersionId");
+
+                    b.ToTable("calculation_run");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.CalculationVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("RosuVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("SunriseRevision")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RosuVersion", "SunriseRevision")
+                        .IsUnique();
+
+                    b.ToTable("calculation_version");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.ScoreProcessingTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ActiveScoreId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("CASE WHEN Status IN (0, 1) AND TaskType <> 4 THEN ScoreId ELSE NULL END", true);
+
+                    b.Property<int?>("ActiveScoreSubmissionRequestId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("CASE WHEN Status IN (0, 1) THEN ScoreSubmissionRequestId ELSE NULL END", true);
+
+                    b.Property<string>("ClaimToken")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ErrorCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("LeaseExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextRetryAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RunId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ScoreId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ScoreSubmissionRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskType")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveScoreId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_score_processing_task_active_score");
+
+                    b.HasIndex("ActiveScoreSubmissionRequestId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_score_processing_task_active_submission_request");
+
+                    b.HasIndex("ScoreId");
+
+                    b.HasIndex("ScoreSubmissionRequestId");
+
+                    b.HasIndex("RunId", "Status");
+
+                    b.HasIndex("Status", "LeaseExpiresAt");
+
+                    b.HasIndex("TaskType", "ScoreId");
+
+                    b.HasIndex("Status", "Priority", "NextRetryAt");
+
+                    b.ToTable("score_processing_task", t =>
+                        {
+                            t.HasCheckConstraint("CK_score_processing_task_target", "((TaskType = 0 AND ScoreSubmissionRequestId IS NOT NULL AND ScoreId IS NULL) OR (TaskType <> 0 AND ScoreSubmissionRequestId IS NULL AND ScoreId IS NOT NULL))");
+                        });
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.ScoreSubmissionRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BeatmapHash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("ClientHash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("OsuVersion")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int?>("ReplayFileId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScoreHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("ScoreSerialized")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("StoryboardHash")
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("TimeElapsed")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserHash")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("WhenPlayed")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReplayFileId");
+
+                    b.HasIndex("ScoreHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("score_submission_request");
                 });
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Users.User", b =>
@@ -342,6 +644,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccountStatus")
                         .HasColumnType("int");
@@ -400,6 +704,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<int>("BeatmapSetId")
                         .HasColumnType("int");
 
@@ -423,6 +729,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -454,6 +762,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CountA")
                         .HasColumnType("int");
@@ -499,6 +809,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<int>("ItemType")
                         .HasColumnType("int");
 
@@ -522,6 +834,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<int>("MedalId")
                         .HasColumnType("int");
 
@@ -533,7 +847,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex(new[] { "UserId", "MedalId" }, "UX_user_medals_UserId_MedalId")
+                        .IsUnique();
 
                     b.ToTable("user_medals");
                 });
@@ -543,6 +858,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Discord")
                         .IsRequired()
@@ -592,7 +909,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex(new[] { "UserId" }, "UX_user_metadata_UserId")
+                        .IsUnique();
 
                     b.ToTable("user_metadata");
                 });
@@ -602,6 +920,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Relation")
                         .HasColumnType("int");
@@ -616,7 +936,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("TargetId");
 
-                    b.HasIndex("UserId", "TargetId");
+                    b.HasIndex(new[] { "UserId", "TargetId" }, "UX_user_relationship_UserId_TargetId")
+                        .IsUnique();
 
                     b.ToTable("user_relationship");
                 });
@@ -626,6 +947,8 @@ namespace Sunrise.Shared.Database.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<double>("Accuracy")
                         .HasColumnType("double");
@@ -685,6 +1008,8 @@ namespace Sunrise.Shared.Database.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<byte>("GameMode")
                         .HasColumnType("tinyint unsigned");
 
@@ -697,7 +1022,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "GameMode");
+                    b.HasIndex(new[] { "UserId", "GameMode" }, "UX_user_stats_snapshot_UserId_GameMode")
+                        .IsUnique();
 
                     b.ToTable("user_stats_snapshot");
                 });
@@ -733,6 +1059,21 @@ namespace Sunrise.Shared.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Executor");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventScoreProcessing", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "Executor")
+                        .WithMany()
+                        .HasForeignKey("ExecutorId");
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Score", "Score")
+                        .WithMany()
+                        .HasForeignKey("ScoreId");
+
+                    b.Navigation("Executor");
+
+                    b.Navigation("Score");
                 });
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Events.EventUser", b =>
@@ -773,6 +1114,70 @@ namespace Sunrise.Shared.Database.Migrations
                 });
 
             modelBuilder.Entity("Sunrise.Shared.Database.Models.Score", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Beatmap.BeatmapHashStatus", "BeatmapHashStatus")
+                        .WithMany()
+                        .HasForeignKey("BeatmapHash")
+                        .HasPrincipalKey("BeatmapHash")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Scores.CalculationVersion", "CalculationVersion")
+                        .WithMany()
+                        .HasForeignKey("CalculationVersionId");
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.UserFile", "ReplayFile")
+                        .WithMany()
+                        .HasForeignKey("ReplayFileId");
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BeatmapHashStatus");
+
+                    b.Navigation("CalculationVersion");
+
+                    b.Navigation("ReplayFile");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.CalculationRun", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Scores.CalculationVersion", "TargetVersion")
+                        .WithMany()
+                        .HasForeignKey("TargetVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TargetVersion");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.ScoreProcessingTask", b =>
+                {
+                    b.HasOne("Sunrise.Shared.Database.Models.Scores.CalculationRun", "Run")
+                        .WithMany()
+                        .HasForeignKey("RunId");
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Score", "Score")
+                        .WithMany()
+                        .HasForeignKey("ScoreId");
+
+                    b.HasOne("Sunrise.Shared.Database.Models.Scores.ScoreSubmissionRequest", "ScoreSubmissionRequest")
+                        .WithMany()
+                        .HasForeignKey("ScoreSubmissionRequestId");
+
+                    b.Navigation("Run");
+
+                    b.Navigation("Score");
+
+                    b.Navigation("ScoreSubmissionRequest");
+                });
+
+            modelBuilder.Entity("Sunrise.Shared.Database.Models.Scores.ScoreSubmissionRequest", b =>
                 {
                     b.HasOne("Sunrise.Shared.Database.Models.Users.UserFile", "ReplayFile")
                         .WithMany()

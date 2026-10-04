@@ -24,7 +24,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
     private readonly SemaphoreSlim _dbSemaphore = new(1);
 
     public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
+        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, bool useCache = true, CancellationToken ct = default)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
             return Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
@@ -33,7 +33,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 Status = HttpStatusCode.BadRequest
             });
 
-        BeatmapSet? beatmapSet;
+        BeatmapSet beatmapSet;
 
         // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
         // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
@@ -46,8 +46,13 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
 
-            beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
-            if (beatmapSet != null) return beatmapSet;
+            var cachedBeatmapSet = useCache ? await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId) : null;
+
+            if (cachedBeatmapSet != null)
+            {
+                beatmapSet = cachedBeatmapSet;
+                return beatmapSet;
+            }
 
             var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
             {
@@ -116,7 +121,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         var beatmapSetsResults = await Task.WhenAll(beatmapSetsTasks);
 
-        if (beatmapSetsResults.Any(b => b.IsFailure && (ignoreNotFoundBeatmapSets == false || b.Error.Status != HttpStatusCode.NotFound)))
+        if (beatmapSetsResults.Any(b => b.IsFailure && (!ignoreNotFoundBeatmapSets || b.Error.Status != HttpStatusCode.NotFound)))
         {
             return beatmapSetsResults.First(v => v.IsFailure).Error;
         }
@@ -203,6 +208,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
             }
 
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return null;
         }
 
@@ -214,6 +220,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 customStatus.UpdatedByUserId = user.Id;
 
                 var updateCustomStatusResult = await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
+                await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
                 return updateCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(updateCustomStatusResult.Error) : customStatus;
             }
 
@@ -226,6 +233,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
             };
 
             var addCustomStatusResult = await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return addCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(addCustomStatusResult.Error) : customStatus;
         }
 

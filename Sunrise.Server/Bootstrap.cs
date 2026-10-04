@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security.Authentication;
 using System.Transactions;
 using EFCoreSecondLevelCacheInterceptor;
+using EntityFrameworkCore.Locking.MySql;
 using Hangfire;
 using Hangfire.MySql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -31,6 +32,13 @@ using Serilog.Sinks.Grafana.Loki;
 using StackExchange.Redis;
 using Sunrise.API.Controllers;
 using Sunrise.API.Serializable.Response;
+using Sunrise.Processing.Beatmaps.Jobs;
+using Sunrise.Processing.Calculations.Jobs;
+using Sunrise.Processing.Scores.Handlers;
+using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Processing.Scores.Pipeline;
+using Sunrise.Processing.Scores.Processors;
+using Sunrise.Processing.Services;
 using Sunrise.Server.Middlewares;
 using Sunrise.Server.Repositories;
 using Sunrise.Server.Services;
@@ -42,6 +50,7 @@ using Sunrise.Shared.Database.Services;
 using Sunrise.Shared.Database.Services.Beatmaps;
 using Sunrise.Shared.Database.Services.Events;
 using Sunrise.Shared.Database.Services.Users;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Repositories;
@@ -50,6 +59,7 @@ using Sunrise.Shared.Services;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using AssetService = Sunrise.API.Services.AssetService;
 using AuthService = Sunrise.API.Services.AuthService;
+using ScoreProcessingService = Sunrise.API.Services.ScoreProcessingService;
 using UserService = Sunrise.API.Services.UserService;
 using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
@@ -126,7 +136,7 @@ public static class Bootstrap
 
     public static void AddTelemetry(this WebApplicationBuilder builder)
     {
-        if (string.IsNullOrEmpty(Configuration.TempoUri) && Configuration.UseMetrics == false)
+        if (string.IsNullOrEmpty(Configuration.TempoUri) && !Configuration.UseMetrics)
             return;
 
         var openTelemetryBuilder = builder.Services
@@ -348,7 +358,10 @@ public static class Bootstrap
                 .AddInterceptors(new SlowQueryLoggerInterceptor());
 
             optionsBuilder
-                .UseMySQL(Configuration.DatabaseConnectionString);
+                .UseLocking();
+
+            optionsBuilder
+                .UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
         });
     }
 
@@ -402,6 +415,7 @@ public static class Bootstrap
         builder.Services.AddScoped<AuthService>();
         builder.Services.AddScoped<AssetService>();
         builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<ScoreProcessingService>();
     }
 
     public static void AddDatabaseServices(this WebApplicationBuilder builder)
@@ -439,8 +453,12 @@ public static class Bootstrap
         builder.Services.AddScoped<EventRepository>();
         builder.Services.AddScoped<UserEventService>();
         builder.Services.AddScoped<BeatmapEventService>();
+        builder.Services.AddScoped<ScoreProcessingEventService>();
 
         builder.Services.AddScoped<ScoreRepository>();
+        builder.Services.AddScoped<ScoreSubmissionRequestRepository>();
+        builder.Services.AddScoped<ScoreProcessingTaskRepository>();
+        builder.Services.AddScoped<CalculationRepository>();
         builder.Services.AddScoped<ScoreFileService>();
 
         builder.Services.AddScoped<OsuVersionRepository>();
@@ -450,7 +468,6 @@ public static class Bootstrap
     public static void AddServices(this WebApplicationBuilder builder)
     {
         builder.Services.AddScoped<DirectService>();
-        builder.Services.AddScoped<MedalService>();
         builder.Services.AddScoped<AssetBanchoService>();
         builder.Services.AddScoped<Services.AuthService>();
         builder.Services.AddScoped<BanchoService>();
@@ -458,9 +475,22 @@ public static class Bootstrap
         builder.Services.AddScoped<OsuVersionService>();
 
         builder.Services.AddScoped<ScoreService>();
+        builder.Services.AddScoped<ScoreCommitPipeline>();
+        builder.Services.AddScoped<IScoreEntityProcessor, LeaderboardProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserStatsScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, UserGradesScoreProcessor>();
+        builder.Services.AddScoped<IScoreEntityProcessor, MedalScoreProcessor>();
+        builder.Services.AddScoped<ScoreSideEffectsPublisherService>();
+        builder.Services.AddScoped<ScoreSubmissionHandler>();
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreSubmissionHandler>(ScoreTaskType.Submission);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRecalculationHandler>(ScoreTaskType.Recalculation);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreDeletionHandler>(ScoreTaskType.Delete);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreRestorationHandler>(ScoreTaskType.Restore);
+        builder.Services.AddKeyedScoped<IScoreHandler, ScoreBeatmapStatusChangeHandler>(ScoreTaskType.BeatmapStatusChange);
+        builder.Services.AddScoped<ScoreProcessingJob>();
+        builder.Services.AddScoped<CalculationRunJob>();
+        builder.Services.AddScoped<BeatmapCheckJob>();
         builder.Services.AddScoped<UserBanchoService>();
-
-        builder.Services.AddScoped<Services.AuthService>();
 
         builder.Services.AddScoped<UserAuthService>();
         builder.Services.AddScoped<RegionService>();
@@ -512,7 +542,7 @@ public static class Bootstrap
         };
     }
 
-    public static void ApplyDatabaseBootstrapping(this WebApplication app)
+    public static async Task ApplyDatabaseBootstrapping(this WebApplication app)
     {
         using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
@@ -520,7 +550,7 @@ public static class Bootstrap
         if (!Configuration.IsTestingEnv)
             database.DbContext.Database.Migrate();
 
-        DatabaseSeeder.UseAsyncSeeding(database.DbContext).Wait();
+        await DatabaseSeeder.UseAsyncSeeding(database.DbContext);
     }
 
     public static void UseStaticBackgrounds(this WebApplication app)
@@ -594,7 +624,7 @@ public static class Bootstrap
         Configuration.Initialize();
     }
 
-    private class LazilyResolved<T> : Lazy<T>
+    private class LazilyResolved<T> : Lazy<T> where T : notnull
     {
         public LazilyResolved(IServiceProvider serviceProvider)
             : base(serviceProvider.GetRequiredService<T>)

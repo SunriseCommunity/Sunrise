@@ -1,10 +1,12 @@
 using CSharpFunctionalExtensions;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Utils;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
@@ -29,23 +31,71 @@ public class UserStatsService(
             dbContext.UserStats.Add(stats);
             await dbContext.SaveChangesAsync();
 
+            if (dbContext.Database.CurrentTransaction != null)
+            {
+                databaseService.Value.RegisterAfterCommitAction(async () =>
+                {
+                    var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+                    if (addOrUpdateUserRanksResult.IsFailure)
+                        _logger.LogWarning("Failed to add user ranks after stats creation: {Error}", addOrUpdateUserRanksResult.Error);
+                });
+
+                return;
+            }
+
             var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
             if (addOrUpdateUserRanksResult.IsFailure)
                 throw new ApplicationException(addOrUpdateUserRanksResult.Error);
         });
     }
 
-    public async Task<Result> UpdateUserStats(UserStats stats, User user)
+    public async Task<Result> UpdateUserStats(UserStats stats, User user, CancellationToken ct = default)
     {
         return await ResultUtil.TryExecuteAsync(async () =>
         {
-            var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
-            if (addOrUpdateUserRanksResult.IsFailure)
-                throw new ApplicationException(addOrUpdateUserRanksResult.Error);
-
             dbContext.UpdateEntity(stats);
-            await dbContext.SaveChangesAsync();
+
+            var frozenPhase = await databaseService.Value.Calculations.GetFrozenPhase(ct);
+            var updateRanks = frozenPhase == null;
+
+            if (frozenPhase is CalculationRunPhase.Enqueue or CalculationRunPhase.Scores)
+                KeepStoredPerformance(stats);
+
+            if (dbContext.Database.CurrentTransaction != null)
+            {
+                if (updateRanks)
+                    databaseService.Value.RegisterAfterCommitAction(async () =>
+                    {
+                        var addOrUpdateUserRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+                        if (addOrUpdateUserRanksResult.IsFailure)
+                            _logger.LogWarning("Failed to update user ranks after stats update: {Error}", addOrUpdateUserRanksResult.Error);
+                    });
+
+                return;
+            }
+
+            await dbContext.SaveChangesAsync(ct);
+
+            if (!updateRanks)
+                return;
+
+            var updateRanksResult = await Ranks.AddOrUpdateUserRanks(stats, user);
+            if (updateRanksResult.IsFailure)
+                throw new ApplicationException(updateRanksResult.Error);
         });
+    }
+
+    private void KeepStoredPerformance(UserStats stats)
+    {
+        var entry = dbContext.ChangeTracker.Entries<UserStats>().First(e => e.Entity.Id == stats.Id);
+
+        entry.Property(s => s.PerformancePoints).CurrentValue = entry.Property(s => s.PerformancePoints).OriginalValue;
+        entry.Property(s => s.Accuracy).CurrentValue = entry.Property(s => s.Accuracy).OriginalValue;
+        entry.Property(s => s.PerformancePoints).IsModified = false;
+        entry.Property(s => s.Accuracy).IsModified = false;
+
+        stats.PerformancePoints = entry.Entity.PerformancePoints;
+        stats.Accuracy = entry.Entity.Accuracy;
     }
 
     public async Task<UserStats?> GetUserStats(int userId, GameMode mode, CancellationToken ct = default)
@@ -69,6 +119,18 @@ public class UserStatsService(
         }
 
         return stats;
+    }
+
+    public async Task<UserStats?> LockUserStatsForUpdate(UserStats stats, CancellationToken ct = default)
+    {
+        dbContext.Entry(stats).State = EntityState.Detached;
+
+        return await dbContext.UserStats
+            .Where(us => stats.Id != 0
+                ? us.Id == stats.Id
+                : us.UserId == stats.UserId && us.GameMode == stats.GameMode)
+            .ForUpdate()
+            .SingleOrDefaultAsync(ct);
     }
 
     public async Task<List<UserStats>> GetUsersStats(GameMode mode, LeaderboardSortType leaderboardSortType, List<int>? userIds = null, QueryOptions? options = null, bool addMissingUserStats = true, CancellationToken ct = default)

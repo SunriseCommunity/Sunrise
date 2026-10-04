@@ -100,8 +100,8 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
 
             await Task.WhenAll(globalRankTask, countryRankTask);
 
-            var globalRank = globalRankTask.Result;
-            var countryRank = countryRankTask.Result;
+            var globalRank = await globalRankTask;
+            var countryRank = await countryRankTask;
 
             try
             {
@@ -174,33 +174,57 @@ public class UserStatsRanksService(Lazy<DatabaseService> databaseService, Sunris
             .SortedSetLength(RedisKey.LeaderboardCountry(gameMode, countryCode));
     }
 
-    public async Task<Result> SetAllUsersRanks(GameMode mode, int branchSize = 20)
+    public async Task RebuildAllUsersRanks(GameMode mode, int branchSize = 1000)
     {
-        var database = databaseService.Value;
+        var sets = new Dictionary<string, Dictionary<int, double>>();
 
-        return await database.CommitAsTransactionAsync(async () =>
+        for (var i = 1;; i++)
         {
-            for (var i = 1;; i++)
-            {
-                var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
-                    LeaderboardSortType.Pp,
-                    options: new QueryOptions(new Pagination(i, branchSize))
-                    {
-                        QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
-                    });
-
-                foreach (var stats in usersStats)
+            var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
+                LeaderboardSortType.Pp,
+                options: new QueryOptions(true, new Pagination(i, branchSize))
                 {
-                    await SortedSetAddOrUpdateUserStats(stats, stats.User);
-                    await UpdateUserStatsBestRanks(stats, stats.User);
+                    QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
+                });
+
+            foreach (var stats in usersStats)
+            {
+                var sortingValue = stats.User.IsRestricted() ? -1 : stats.PerformancePoints;
+
+                foreach (var key in new[] { RedisKey.LeaderboardGlobal(mode), RedisKey.LeaderboardCountry(mode, stats.User.Country) })
+                {
+                    if (!sets.TryGetValue(key, out var set))
+                        sets[key] = set = new Dictionary<int, double>();
+
+                    set[stats.UserId] = sortingValue;
                 }
-
-                await dbContext.SaveChangesAsync();
-
-                if (usersStats.Count < branchSize)
-                    break;
             }
-        });
+
+            if (usersStats.Count < branchSize)
+                break;
+        }
+
+        await databaseService.Value.Redis.ReplaceSortedSets(sets);
+
+        for (var i = 1;; i++)
+        {
+            var usersStats = await databaseService.Value.Users.Stats.GetUsersStats(mode,
+                LeaderboardSortType.Pp,
+                options: new QueryOptions(new Pagination(i, branchSize))
+                {
+                    QueryModifier = q => q.Cast<UserStats>().Include(us => us.User)
+                });
+
+            foreach (var stats in usersStats)
+            {
+                await UpdateUserStatsBestRanks(stats, stats.User);
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            if (usersStats.Count < branchSize)
+                break;
+        }
     }
 
     private async Task<Result> UpdateUserBestRanks(UserStats stats, User user, long prevGlobalRank, long prevCountryRank)

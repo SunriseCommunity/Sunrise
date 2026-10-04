@@ -79,6 +79,30 @@ public class RedisRepository(ConnectionMultiplexer redisConnection)
         await _generalDatabase.KeyDeleteAsync(keys.Select(x => (RedisKey)x).ToArray());
     }
 
+    public async Task ReplaceSortedSets(Dictionary<string, Dictionary<int, double>> sets)
+    {
+        var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        foreach (var (key, values) in sets)
+        {
+            var lookupKey = $"{key}:lookup";
+            var tempKey = $"{key}:rebuild";
+            var tempLookupKey = $"{tempKey}:lookup";
+
+            var existing = (await _sortedSetsDatabase.HashGetAllAsync(lookupKey)).ToDictionary(e => e.Name.ToString(), e => e.Value.ToString());
+            var members = values.ToDictionary(v => v.Key, v => existing.GetValueOrDefault(v.Key.ToString()) ?? $"{timestamp}:{v.Key}");
+
+            await _sortedSetsDatabase.KeyDeleteAsync([tempKey, tempLookupKey]);
+            await _sortedSetsDatabase.SortedSetAddAsync(tempKey, members.Select(m => new SortedSetEntry(m.Value, values[m.Key])).ToArray());
+            await _sortedSetsDatabase.HashSetAsync(tempLookupKey, members.Select(m => new HashEntry(m.Key, m.Value)).ToArray());
+
+            var transaction = _sortedSetsDatabase.CreateTransaction();
+            _ = transaction.KeyRenameAsync(tempKey, key);
+            _ = transaction.KeyRenameAsync(tempLookupKey, lookupKey);
+            await transaction.ExecuteAsync();
+        }
+    }
+
     public async Task SortedSetAdd(string key, int value, double score)
     {
         var timestamp = long.MaxValue - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

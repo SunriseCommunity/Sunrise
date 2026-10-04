@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Hangfire;
+using Sunrise.Processing;
 using Sunrise.Server;
 using Sunrise.Server.Middlewares;
 using Sunrise.Shared.Application;
@@ -45,7 +46,7 @@ app.Setup();
 app.UseHealthChecks("/health");
 app.UseScalarApiReference();
 
-app.ApplyDatabaseBootstrapping();
+await app.ApplyDatabaseBootstrapping();
 app.UseStaticBackgrounds();
 
 app.UseExceptionHandler();
@@ -56,19 +57,20 @@ app.Configure();
 
 app.WarmUpSingletons();
 RecurringJobs.Initialize();
+ProcessingJobs.Initialize();
 
 if (Configuration.ClearCacheOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-    database.FlushAndUpdateRedisCache(false).Wait();
+    await database.FlushAndUpdateRedisCache(false);
 }
 
 var sessions = app.Services.GetRequiredService<SessionRepository>();
-sessions.AddBotToSession().Wait();
-RecurringJobs.RefreshServerBotAccount(CancellationToken.None).Wait();
+await sessions.AddBotToSession();
+await RecurringJobs.RefreshServerBotAccount(CancellationToken.None);
 
-app.Run();
+await app.RunAsync();
 
 namespace Sunrise.Server
 {

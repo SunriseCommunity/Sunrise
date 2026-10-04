@@ -21,7 +21,7 @@ public class BatPrivilegeRegressionTests(IntegrationDatabaseFixture fixture) : D
         var session = CreateTestSession(user);
 
         ChatCommandRepository.GetHandlers();
-        var commands = ChatCommandRepository.GetAvailableCommands(session);
+        var commands = await ChatCommandRepository.GetAvailableCommands(session);
 
         Assert.Contains("setbeatmapstatus", commands);
         Assert.Contains("setbeatmapsetstatus", commands);

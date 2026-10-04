@@ -27,7 +27,7 @@ public class BanchoService
         catch (Exception e)
         {
             var errorMessage = $"Failed to process Bancho packet: {e.Message}";
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BanchoProcess, session, errorMessage);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BanchoProcess, session.UserId, errorMessage);
             logger.LogError(e, errorMessage);
         }
     }
