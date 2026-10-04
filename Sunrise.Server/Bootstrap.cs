@@ -548,7 +548,10 @@ public static class Bootstrap
         var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
         if (!Configuration.IsTestingEnv)
+        {
+            database.DbContext.Database.SetCommandTimeout(TimeSpan.FromHours(1));
             database.DbContext.Database.Migrate();
+        }
 
         await DatabaseSeeder.UseAsyncSeeding(database.DbContext);
     }
