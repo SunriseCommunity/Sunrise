@@ -574,7 +574,7 @@ public class BeatmapCheckJobTests(IntegrationDatabaseFixture fixture) : Database
         var score = await CreateUserScore();
 
         var batUser = await CreateTestUser();
-        batUser.Privilege = UserPrivilege.Bat;
+        batUser.Privilege = UserPrivilege.BeatmapApprovalTeamStandard;
         await Database.Users.UpdateUser(batUser);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
