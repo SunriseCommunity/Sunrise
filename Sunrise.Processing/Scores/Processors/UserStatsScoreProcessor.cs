@@ -1,5 +1,4 @@
-﻿using osu.Shared;
-using Sunrise.Processing.Scores.Pipeline;
+﻿using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
@@ -92,7 +91,7 @@ public class UserStatsScoreProcessor(
                 ? score.PerformancePoints > personalBestScores?.BestScoreForPerformanceCalculation.PerformancePoints
                 : isBetterTotalScoreValue);
 
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !score.IsPassed;
 
         userStats.TotalScore += score.TotalScore;
         IncreaseTotalHits(userStats, score);
@@ -129,7 +128,7 @@ public class UserStatsScoreProcessor(
         var overallPeerForPromotion = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
         var isGloballyBestTotalScore = IsBestByScoreValue(score, overallPeerForPromotion);
 
-        var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !original.IsPassed;
 
         userStats.TotalScore = Math.Max(0, userStats.TotalScore - score.TotalScore);
         DecreaseTotalHits(userStats, score);

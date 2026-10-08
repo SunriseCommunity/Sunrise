@@ -1,12 +1,10 @@
-﻿using osu.Shared;
-using Sunrise.Processing.Scores.Pipeline;
+﻿using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
-using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Processing.Scores.Processors;
 
@@ -63,7 +61,7 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         var userGrades = ctx.UserGrades;
         var previousOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
 
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !score.IsPassed;
         if (isFailed || !ctx.BeatmapStatus.IsScoreable() || score.SubmissionStatus != SubmissionStatus.Best)
             return;
 
@@ -87,7 +85,7 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
         var original = ctx.OriginalState;
         var promotedOverallBest = ctx.UserPersonalBestScores?.OverallPeer?.BestScoreByScoreValue;
 
-        var isFailed = !original.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !original.IsPassed;
         if (isFailed || !original.IsScoreable || original.SubmissionStatus != SubmissionStatus.Best)
             return;
 
@@ -117,5 +115,4 @@ public class UserGradesScoreProcessor(DatabaseService database) : ScoreEntityPro
             .SortScoresByTheirScoreValue()
             .First() == score;
     }
-
 }

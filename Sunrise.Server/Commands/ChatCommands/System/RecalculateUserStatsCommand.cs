@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using osu.Shared;
 using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
@@ -116,8 +115,9 @@ public class RecalculateUserStatsCommand : IChatCommand
         {
             GameMode = stats.GameMode
         };
-        
+
         var user = stats.User;
+
         if (user == null)
         {
             await database.DbContext.Entry(stats).Reference(s => s.User).LoadAsync();
@@ -187,7 +187,7 @@ public class RecalculateUserStatsCommand : IChatCommand
 
     private static void UpdateUserStatsWithScore(UserStats userStats, Score score, BeatmapStatus beatmapStatus)
     {
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !score.IsPassed;
 
         userStats.TotalScore += score.TotalScore;
         userStats.TotalHits += score.Count300 + score.Count100 + score.Count50;

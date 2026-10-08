@@ -1,4 +1,3 @@
-using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
@@ -10,7 +9,7 @@ public static class UserGradesExtensions
 {
     public static void UpdateWithDbScore(this UserGrades userGrades, Score score)
     {
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !score.IsPassed;
 
         if (isFailed || !score.BeatmapHashStatus!.Status.IsScoreable())
             return;
