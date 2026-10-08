@@ -162,13 +162,23 @@ public class ScoreSubmissionUtilTests : BaseTest
         score.PerformancePoints = previousBest.PerformancePoints;
         score.WhenPlayed = previousBest.WhenPlayed;
 
-        Assert.Same(previousBest, new[] { score, previousBest }.ToList().SortScoresByTheirScoreValue().First());
+        Assert.Same(previousBest,
+            new[]
+            {
+                score,
+                previousBest
+            }.ToList().SortScoresByTheirScoreValue().First());
 
         score.UpdateSubmissionStatus(previousBest, score.BeatmapHashStatus!.Status);
         Assert.Equal(SubmissionStatus.Submitted, score.SubmissionStatus);
 
         score.Id = 43;
-        Assert.Same(previousBest, new[] { score, previousBest }.ToList().SortScoresByTheirScoreValue().First());
+        Assert.Same(previousBest,
+            new[]
+            {
+                score,
+                previousBest
+            }.ToList().SortScoresByTheirScoreValue().First());
     }
 
     [Fact]
@@ -317,7 +327,7 @@ public class ScoreSubmissionUtilTests : BaseTest
     }
 
     [Fact]
-    public void TestGetTimeElapsedWithNoFailScoreReturnsScoreTime()
+    public void TestGetTimeElapsedWithNoFailScoreReturnsScoreFailTime()
     {
         // Arrange
         var score = _mocker.Score.GetBestScoreableRandomScore();
@@ -333,36 +343,6 @@ public class ScoreSubmissionUtilTests : BaseTest
         var result = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
 
         // Assert
-        Assert.Equal(scoreTime, result);
-    }
-
-    [Fact]
-    public void TestIsScoreFailedWithFailedScoreReturnsTrue()
-    {
-        // Arrange
-        var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.Mods = Mods.None;
-        score.IsPassed = false;
-
-        // Act
-        var result = ScoreSubmissionUtil.IsScoreFailed(score);
-
-        // Assert
-        Assert.True(result);
-    }
-
-    [Fact]
-    public void TestIsScoreFailedWithNoFailScoreReturnsFalse()
-    {
-        // Arrange
-        var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.Mods = Mods.NoFail;
-        score.IsPassed = false;
-
-        // Act
-        var result = ScoreSubmissionUtil.IsScoreFailed(score);
-
-        // Assert
-        Assert.False(result);
+        Assert.Equal(scoreFailTime, result);
     }
 }

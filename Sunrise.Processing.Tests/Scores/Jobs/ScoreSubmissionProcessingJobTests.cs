@@ -44,10 +44,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -99,10 +99,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -153,10 +153,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -210,10 +210,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -246,10 +246,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -280,19 +280,19 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 200);
 
         var firstResult = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
         Assert.True(firstResult.IsSuccess);
 
         // Act
         var duplicateResult = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -331,10 +331,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert
@@ -344,6 +344,46 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
         Assert.NotNull(persistedScore);
         Assert.False(persistedScore.IsPassed);
         Assert.Equal(SubmissionStatus.Failed, persistedScore.SubmissionStatus);
+    }
+
+    [Fact]
+    public async Task TestSubmissionOfFailedNoFailScoreWithoutReplayIsProcessed()
+    {
+        var (session, user) = await CreateTestSession();
+        var (replay, beatmapId) = GetValidTestReplay();
+        var score = replay.GetScore();
+        score.BeatmapId = beatmapId;
+        score.EnrichWithSessionData(session);
+        score.IsPassed = false;
+        score.Grade = ScoreGrade.F;
+        score.Mods = Mods.NoFail;
+        score.CountMiss = Math.Max(score.CountMiss, 1);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(score);
+        score.PrepareForSubmission(beatmap);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+
+        var queueEntry = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: null);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(queueEntry);
+
+        App.MockHttpClient?.MockPerformanceCalculation(performancePoints: 0);
+
+        var handler = Scope.ServiceProvider.GetRequiredService<ScoreSubmissionHandler>();
+        var result = await handler.ExecuteAsync(new ScoreProcessingTask
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess, result.IsFailure ? result.Error.ToString() : null);
+        var persistedScore = await Database.Scores.GetScore(score.ScoreHash);
+        Assert.NotNull(persistedScore);
+        Assert.False(persistedScore.IsPassed);
+        Assert.Equal(Mods.NoFail | Mods.ScoreV2, persistedScore.Mods);
     }
 
     [Fact]
@@ -371,10 +411,10 @@ public class ScoreSubmissionProcessingJobTests(IntegrationDatabaseFixture fixtur
 
         // Act
         var result = await handler.ExecuteAsync(new ScoreProcessingTask
-        {
-            TaskType = ScoreTaskType.Submission,
-            ScoreSubmissionRequestId = queueEntry.Id
-        },
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequestId = queueEntry.Id
+            },
             CancellationToken.None);
 
         // Assert

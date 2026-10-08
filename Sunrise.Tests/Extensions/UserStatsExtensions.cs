@@ -14,7 +14,7 @@ public static class UserStatsExtensions
         if (score.SubmissionStatus == SubmissionStatus.Deleted)
             return;
 
-        var isFailed = !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        var isFailed = !score.IsPassed;
 
         userStats.TotalScore += score.TotalScore;
         IncreaseTotalHits(userStats, score);

@@ -1,14 +1,13 @@
-using osu.Shared;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
 using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Serializable;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
-using Sunrise.Shared.Extensions.Beatmaps;
 
 namespace Sunrise.Processing.Utils;
 
@@ -76,13 +75,13 @@ public static class ScoreSubmissionUtil
 
     public static int GetTimeElapsed(SubmittedScore score, int scoreTime, int scoreFailTime)
     {
-        var isPassed = score.IsPassed || score.Mods.HasFlag(Mods.NoFail);
+        var isPassed = score.IsPassed;
         return isPassed ? scoreTime : scoreFailTime;
     }
 
     public static bool IsScoreFailed(Score score)
     {
-        return !score.IsPassed && !score.Mods.HasFlag(Mods.NoFail);
+        return !score.IsPassed;
     }
 
     private static List<string> GetChart<T>(T? before, T? alternativeBeforeForPpEntry, T after, long? beforeRank, long? afterRank, bool dontShowPp = false)
