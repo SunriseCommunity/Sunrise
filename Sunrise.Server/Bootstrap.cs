@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using MySql.Data.MySqlClient;
@@ -355,7 +356,9 @@ public static class Bootstrap
                 optionsBuilder.AddInterceptors(serviceProvider.GetRequiredService<SecondLevelCacheInterceptor>());
 
             optionsBuilder
-                .AddInterceptors(new SlowQueryLoggerInterceptor());
+                .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.ConnectionError))
+                .AddInterceptors(new SlowQueryLoggerInterceptor(),
+                    new ConnectionErrorLoggerInterceptor(serviceProvider.GetRequiredService<ILoggerFactory>()));
 
             optionsBuilder
                 .UseLocking();
@@ -606,6 +609,8 @@ public static class Bootstrap
                 diag.Set("RequestPathWithQuery", http.Request.Path + query);
             };
         });
+
+        app.UseMiddleware<RequestCancellationMiddleware>();
 
         app.UseRouting();
 
