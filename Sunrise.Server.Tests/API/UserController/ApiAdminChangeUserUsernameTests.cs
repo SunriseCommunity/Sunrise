@@ -115,7 +115,6 @@ public class ApiAdminChangeUserUsernameTests(IntegrationDatabaseFixture fixture)
 
     [Theory]
     [InlineData("1")]
-    [InlineData("peppy")]
     [InlineData("テスト")]
     [InlineData("username ")]
     [InlineData("user+name")]
@@ -183,6 +182,38 @@ public class ApiAdminChangeUserUsernameTests(IntegrationDatabaseFixture fixture)
         Assert.NotNull(updatedUser);
 
         Assert.Equal(updatedUser.Username, newUsername);
+    }
+
+    [Theory]
+    [InlineData("peppy")]
+    [InlineData("chocomint")]
+    [InlineData("mrekk")]
+    public async Task TestAdminChangeUserUsernameSkipsBannedUsernameCheck(string newUsername)
+    {
+        var client = App.CreateClient().UseClient("api");
+
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = await CreateTestUser();
+
+        var tokens = await GetUserAuthTokens(adminUser);
+        client.UseUserAuthToken(tokens);
+
+        Assert.False(newUsername.IsValidUsername().Item1);
+
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/username/change",
+            new UsernameChangeRequest
+            {
+                NewUsername = newUsername
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updatedUser = await Database.Users.GetUser(targetUser.Id);
+        Assert.NotNull(updatedUser);
+        Assert.Equal(newUsername, updatedUser.Username);
     }
 
     [Fact]
