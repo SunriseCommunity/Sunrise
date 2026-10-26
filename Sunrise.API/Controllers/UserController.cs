@@ -1076,7 +1076,8 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
     {
         var currentUser = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
-        return await userService.ChangeUserUsername(new UserEventAction(currentUser, ip.ToString(), id), request.NewUsername, true);
+        return await userService.ChangeUserUsername(new UserEventAction(currentUser, ip.ToString(), id), request.NewUsername,
+            skipCooldownCheck: true, skipBannedUsernameCheck: true);
     }
 
     [HttpPost(RequestType.UsernameChange)]

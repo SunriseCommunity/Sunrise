@@ -28,7 +28,7 @@ public class UsernameCommand : IChatCommand
 
         var username = string.Join(" ", args[1..]);
 
-        var (isUsernameValid, error) = username.IsValidUsername();
+        var (isUsernameValid, error) = username.IsValidUsername(skipBannedUsernameCheck: true);
 
         if (!isUsernameValid && args[1] != "filter")
         {
