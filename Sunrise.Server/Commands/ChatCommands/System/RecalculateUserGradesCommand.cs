@@ -11,9 +11,11 @@ using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sunrise.Server.Commands.ChatCommands.System;
 
+[Obsolete("While this is very optimised for recalcualtion, I will prefer to deprecate this in favour of a single all score recalcualtions for consistency and to reduce the amount of code that needs to be maintained. This will be removed in a future update.")]
 [ChatCommand("recalculateusergrades", requiredPrivileges: UserPrivilege.SuperUser)]
 public class RecalculateUserGradesCommand : IChatCommand
 {
@@ -116,9 +118,14 @@ public class RecalculateUserGradesCommand : IChatCommand
                 return;
             }
 
+            var pageHashes = pageScores.Select(s => s.BeatmapHash).Distinct().ToList();
+            var beatmapStatuses = await database.DbContext.BeatmapHashStatuses
+                .Where(h => pageHashes.Contains(h.BeatmapHash))
+                .ToDictionaryAsync(h => h.BeatmapHash, h => h.Status);
+
             foreach (var score in pageScores)
             {
-                userGrades.UpdateWithScore(score);
+                userGrades.UpdateWithScore(score, beatmapStatuses[score.BeatmapHash]);
             }
 
             if (pageScores.Count < pageSize) break;

@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    mem_limit: ${SUNRISE_MEM_LIMIT:-768m}
     ports:
       - ${SUNRISE_PORT:-443}:443
       - 5147:5147
@@ -29,6 +30,8 @@ services:
       HANGFIRE_PORT: ${HANGFIRE_PORT}
       HANGFIRE_USER: ${MYSQL_USER}
       HANGFIRE_PASSWORD: ${MYSQL_PASSWORD}
+      DOTNET_GCHeapHardLimitPercent: 70
+      DOTNET_GCConserveMemory: 1
     networks:
       - container_network
     depends_on:

@@ -13,6 +13,7 @@ namespace Sunrise.Shared.Objects.Multiplayer;
 public class MultiplayerMatch
 {
     private readonly int _roomCreatorId;
+    public readonly DateTime CreatedAt = DateTime.UtcNow;
 
     public MultiplayerMatch(MatchRepository matches, BanchoMultiplayerMatch newMatch)
     {
@@ -93,12 +94,12 @@ public class MultiplayerMatch
         ApplyNewChanges();
     }
 
-    public void AddPlayer(Session session)
+    public bool TryAddPlayer(Session session)
     {
         if (session.Match != null || Players.ContainsKey(session.UserId))
         {
             session.SendMultiMatchJoinFail();
-            return;
+            return false;
         }
 
         var openSlot = GetSlot(MultiSlotStatus.Open);
@@ -106,10 +107,14 @@ public class MultiplayerMatch
         if (openSlot == null)
         {
             session.SendMultiMatchJoinFail();
-            return;
+            return false;
         }
 
-        Players.TryAdd(session.UserId, session);
+        if (!Players.TryAdd(session.UserId, session))
+        {
+            session.SendMultiMatchJoinFail();
+            return false;
+        }
 
         openSlot.AddPlayer(session.UserId);
 
@@ -119,6 +124,7 @@ public class MultiplayerMatch
         chatChannels.JoinChannel($"#multiplayer_{Match.MatchId}", session, true);
 
         ApplyNewChanges();
+        return true;
     }
 
     public void RemovePlayer(Session session, bool forced = false)

@@ -1,3 +1,4 @@
+using Sunrise.Shared.Database.Models.Beatmap;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -11,6 +12,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Events;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Tests.Abstracts;
@@ -217,6 +219,26 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
     }
 
     [Fact]
+    public async Task TestAdminCanRestrictBeatmapApprovalTeamUser()
+    {
+        var client = App.CreateClient().UseClient("api");
+        var adminUser = _mocker.User.GetRandomUser();
+        adminUser.Privilege = UserPrivilege.Admin;
+        await CreateTestUser(adminUser);
+
+        var targetUser = _mocker.User.GetRandomUser();
+        targetUser.Privilege = UserPrivilege.BeatmapApprovalTeamStandard;
+        await CreateTestUser(targetUser);
+
+        client.UseUserAuthToken(await GetUserAuthTokens(adminUser));
+        var response = await client.PostAsJsonAsync($"user/{targetUser.Id}/edit/restriction",
+            new EditUserRestrictionRequest { IsRestrict = true, RestrictionReason = "BAT restriction regression" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(await Database.Users.Moderation.IsUserRestricted(targetUser.Id));
+    }
+
+    [Fact]
     public async Task TestAdminRestrictUserShouldUpdateUserStats()
     {
         // Arrange
@@ -267,20 +289,18 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             CountGeki = 17,
             Perfect = false,
             Mods = mods,
-            Grade = "B",
+            Grade = ScoreGrade.B,
             IsPassed = true,
-            IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
             Accuracy = 91.53845977783203,
             PerformancePoints = 426.69985159889916
         };
 
-        seedScore.LocalProperties = seedScore.LocalProperties.FromScore(seedScore);
         var addScoreResult = await Database.Scores.AddScore(seedScore);
 
         if (addScoreResult.IsFailure)
@@ -462,20 +482,18 @@ public class ApiAdminEditUserRestrictionTests(IntegrationDatabaseFixture fixture
             CountGeki = 17,
             Perfect = false,
             Mods = mods,
-            Grade = "B",
+            Grade = ScoreGrade.B,
             IsPassed = true,
-            IsScoreable = true,
             SubmissionStatus = SubmissionStatus.Best,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
             Accuracy = 91.53845977783203,
             PerformancePoints = 426.69985159889916
         };
 
-        seedScore.LocalProperties = seedScore.LocalProperties.FromScore(seedScore);
         var addScoreResult = await Database.Scores.AddScore(seedScore);
 
         if (addScoreResult.IsFailure)

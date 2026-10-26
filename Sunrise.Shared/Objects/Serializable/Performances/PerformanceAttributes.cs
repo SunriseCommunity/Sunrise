@@ -84,4 +84,7 @@ public class PerformanceAttributes
      */
     [JsonPropertyName("state")]
     public ScoreState State { get; set; }
+
+    [JsonIgnore]
+    public string? RosuVersion { get; set; }
 }

@@ -19,7 +19,7 @@ public class MockUserService(MockService service)
         return new UserStats
         {
             UserId = service.GetRandomInteger(length: 6),
-            GameMode = service.Score.GetRandomGameMode(),
+            GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode.Standard,
             TotalScore = service.GetRandomInteger(length: 6),
             TotalHits = service.GetRandomInteger(length: 3),
             MaxCombo = service.GetRandomInteger(length: 3),

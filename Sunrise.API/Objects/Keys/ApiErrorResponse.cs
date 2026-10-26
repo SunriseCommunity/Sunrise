@@ -15,6 +15,10 @@ public static class ApiErrorResponse
         public const string UnableToRegisterUser = "Unable to register user.";
         public const string UnableToAuthenticate = "Unable to authenticate.";
         public const string UnableToRefreshAuthToken = "Unable to refresh auth token.";
+
+        public const string UnableToQueueScoreProcessing = "Unable to queue score processing.";
+        public const string UnableToCancelScoreTask = "Unable to cancel score task.";
+        public const string UnableToRequeueScoreTask = "Unable to requeue score task.";
     }
 
     public static class Detail
@@ -34,6 +38,11 @@ public static class ApiErrorResponse
         public const string ScoreNotFound = "Score not found.";
         public const string ReplayNotFound = "Replay not found.";
         public const string BeatmapNotFound = "Beatmap not found.";
+
+        public const string ScoreAlreadyQueued = "Score already has an active queued task.";
+        public const string ScoreTaskNotFound = "Score processing task not found.";
+        public const string InvalidScoreProcessingAction = "Invalid score processing action. Allowed actions are recalculation, restore and delete.";
+        public const string TooManyScoreIds = "Too many score ids provided in a single bulk request.";
 
         public const string InsufficientPrivileges = "Insufficient privileges to perform this action.";
 

@@ -47,7 +47,7 @@ public class UsernameCommand : IChatCommand
             return;
         }
 
-        if (user.Privilege >= UserPrivilege.Admin)
+        if (user.Privilege.GetPrivilegeLevel() >= UserPrivilege.Admin.GetPrivilegeLevel())
         {
             ChatCommandRepository.SendMessage(session, "You cannot change their nickname due to their privilege level.");
             return;

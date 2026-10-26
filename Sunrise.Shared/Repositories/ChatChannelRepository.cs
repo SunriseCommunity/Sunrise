@@ -3,7 +3,6 @@ using HOPEless.Bancho;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
@@ -26,7 +25,7 @@ public class ChatChannelRepository
     {
         if (!_channels.TryGetValue(name, out var channel))
         {
-            if (abstractChannel == false)
+            if (!abstractChannel)
             {
                 return;
             }
@@ -50,6 +49,19 @@ public class ChatChannelRepository
         channel.RemoveUser(session.UserId);
     }
 
+    public void RemoveUserFromAllChannels(long userId)
+    {
+        foreach (var channel in _channels.Values)
+        {
+            channel.RemoveUser(userId);
+        }
+    }
+
+    public int GetChannelCount(bool includeAbstract = false)
+    {
+        return includeAbstract ? _channels.Count : _channels.Values.Count(channel => !channel.IsAbstract);
+    }
+
     public void RemoveAbstractChannel(string name)
     {
         if (_channels.TryGetValue(name, out var channel) && channel.IsAbstract)
@@ -62,8 +74,8 @@ public class ChatChannelRepository
     {
         var channel = name switch
         {
-            not null when name.StartsWith("#spectator_") => new ChatChannel("#spectator", "Spectator chat channel.", false, true),
-            not null when name.StartsWith("#multiplayer_") => new ChatChannel("#multiplayer", "Multiplayer chat channel.", false, true),
+            not null when name.StartsWith("#spectator_") => new ChatChannel("#spectator", "Spectator chat channel.", false, true, name),
+            not null when name.StartsWith("#multiplayer_") => new ChatChannel("#multiplayer", "Multiplayer chat channel.", false, true, name),
             _ => throw new InvalidOperationException("Invalid channel name.")
         };
 
@@ -84,19 +96,24 @@ public class ChatChannelRepository
         return channel;
     }
 
+    public ChatChannel? GetScoreAnnouncementChannel()
+    {
+        return _channels.GetValueOrDefault("#announce");
+    }
+
     public List<ChatChannel> GetChannels(Session? session = null)
     {
         if (session == null)
         {
             return _channels.Values.Where(x => x.IsPublic).ToList();
         }
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
 
         var sessionPrivilege = UserPrivilege.User;
 
-        var user = database.Users.GetUser(id: session.UserId, options: new QueryOptions(true)).ConfigureAwait(false).GetAwaiter().GetResult();
+        var user = dbContext.Users.FirstOrDefault(u => u.Id == session.UserId);
         if (user != null)
             sessionPrivilege = user.Privilege;
 

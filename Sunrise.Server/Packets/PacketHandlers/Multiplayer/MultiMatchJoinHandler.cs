@@ -16,7 +16,8 @@ public class MultiMatchJoinHandler : IPacketHandler
 
         var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
-        multiplayerMatches.JoinMatch(session, joinData);
+        // TryJoinMatch sends the SendMultiMatchJoinFail packet if the join fails, so we don't need to handle non-successful joins here
+        multiplayerMatches.TryJoinMatch(session, joinData);
 
         return Task.CompletedTask;
     }

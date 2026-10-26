@@ -15,6 +15,24 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
 {
     private readonly MockService _mocker = new();
 
+    [Theory]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamStandard)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamTaiko)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamCatch)]
+    [InlineData(UserPrivilege.BeatmapApprovalTeamMania)]
+    public async Task TestAnyBeatmapApprovalTeamRoleCanViewHypedRequests(UserPrivilege privilege)
+    {
+        var client = App.CreateClient().UseClient("api");
+        var user = await CreateTestUser();
+        user.Privilege = privilege;
+        await Database.Users.UpdateUser(user);
+        client.UseUserAuthToken(await GetUserAuthTokens(user));
+
+        var response = await client.GetAsync("beatmapset/get-hyped-sets");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task TestGetHypedBeatmapSetsEmpty()
     {
@@ -25,7 +43,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         // Act
@@ -53,7 +71,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -92,7 +110,7 @@ public class ApiGetHypedBeatmapSetsTests(IntegrationDatabaseFixture fixture) : A
         var tokens = await GetUserAuthTokens(user);
         client.UseUserAuthToken(tokens);
 
-        user.Privilege = UserPrivilege.Bat;
+        user.Privilege = UserPrivilege.BeatmapApprovalTeamStandard | UserPrivilege.BeatmapApprovalTeamTaiko | UserPrivilege.BeatmapApprovalTeamCatch | UserPrivilege.BeatmapApprovalTeamMania;
         await Database.Users.UpdateUser(user);
 
         EnvManager.Set("BeatmapHype:HypesToStartHypeTrain", "1");

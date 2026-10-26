@@ -39,12 +39,6 @@ jobs:
           dotnet-version: 8.0.x
       - name: Docker compose test environment
         run: docker compose -f docker-compose.tests.yml up -d
-      - name: Wait for MySQL to be ready
-        run: |
-          while ! docker compose -f docker-compose.tests.yml ps | grep "healthy"; do
-            echo "Waiting for MySQL..."
-            sleep 5
-          done
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
@@ -101,6 +95,12 @@ jobs:
           echo ""
           echo "=== Running Sunrise.Server.Tests ==="
           if ! dotnet test Sunrise.Server.Tests/Sunrise.Server.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
+            FAILED=1
+          fi
+
+          echo ""
+          echo "=== Running Sunrise.Processing.Tests ==="
+          if ! dotnet test Sunrise.Processing.Tests/Sunrise.Processing.Tests.csproj --no-build --verbosity normal --filter "$FILTER" --logger "GitHubActions;summary.includePassedTests=true;summary.includeSkippedTests=true"; then
             FAILED=1
           fi
           

@@ -169,7 +169,7 @@ public sealed class Middleware(
 
                 if (user.AccountStatus == UserAccountStatus.Disabled)
                 {
-                    database.Users.Moderation.EnableUser(user.Id).Wait();
+                    await database.Users.Moderation.EnableUser(user.Id);
                     // TODO: Send message from bot about account being enabled
                 }
             }

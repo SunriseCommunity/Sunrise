@@ -37,14 +37,14 @@ public class ScoreController(DatabaseService database, SessionRepository session
             {
                 QueryModifier = query => query.Cast<Score>().IncludeUser()
             },
-            ct);
+            ct: ct);
 
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
 
-        score = (await database.Scores.EnrichScoresWithLeaderboardPosition([score], ct)).First();
+        var scoreWithRank = (await database.Scores.GetScoresWithLeaderboardPositions([score], ct)).First();
 
-        return Ok(new ScoreResponse(sessions, score));
+        return Ok(new ScoreResponse(sessions, scoreWithRank.Score, scoreWithRank.LeaderboardPosition));
     }
 
     [HttpGet("replay")]
@@ -58,10 +58,12 @@ public class ScoreController(DatabaseService database, SessionRepository session
     {
         var session = HttpContext.GetCurrentSession();
 
-        var score = await database.Scores.GetScore(id, new QueryOptions(true)
-        {
-            QueryModifier = query => query.Cast<Score>().IncludeUser()
-        }, ct);
+        var score = await database.Scores.GetScore(id,
+            new QueryOptions(true)
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            },
+            ct: ct);
 
         if (score == null)
             return Problem(ApiErrorResponse.Detail.ScoreNotFound, statusCode: StatusCodes.Status404NotFound);
@@ -102,9 +104,9 @@ public class ScoreController(DatabaseService database, SessionRepository session
             },
             ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
+        var scoresWithRanks = await database.Scores.GetScoresWithLeaderboardPositions(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score)).ToList();
+        var parsedScores = scoresWithRanks.Select(entry => new ScoreResponse(sessions, entry.Score, entry.LeaderboardPosition)).ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalCount));
     }

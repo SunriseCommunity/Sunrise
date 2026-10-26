@@ -1,12 +1,17 @@
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 COPY ["Sunrise.Server/", "Sunrise.Server/"]
 COPY ["Sunrise.API/", "Sunrise.API/"]
 COPY ["Sunrise.Shared/", "Sunrise.Shared/"]
+COPY ["Sunrise.Processing/", "Sunrise.Processing/"]
 
 RUN dotnet restore "Sunrise.Server/Sunrise.Server.csproj"
 

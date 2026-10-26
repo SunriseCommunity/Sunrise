@@ -1,3 +1,4 @@
+using System.Formats.Tar;
 using System.IO.Compression;
 using CSharpFunctionalExtensions;
 using Hangfire;
@@ -24,7 +25,7 @@ public class RecurringJobs
 
         RecurringJob.AddOrUpdate("Save users stats snapshots", () => SaveUsersStatsSnapshots(CancellationToken.None), "59 23 * * *"); // At 23:59 UTC
 
-        // TODO: Disabling inactive users is not really was thinking through. I would keep it as deprecated for now and maybe revisit it in the future.
+        // TODO: Disabling inactive users wasn't fully thought through. I would keep it as deprecated for now and maybe revisit it in the future.
         // RecurringJob.AddOrUpdate("Disable inactive users", () => DisableInactiveUsers(CancellationToken.None), "0 1 * * *"); // At 01:00 UTC
 
         RecurringJob.AddOrUpdate("Refresh users hypes", () => RefreshUsersHypes(CancellationToken.None), "0 0 * * 1"); // At 00:00 UTC on Monday
@@ -53,7 +54,7 @@ public class RecurringJobs
 
         foreach (var i in Enum.GetValues<GameMode>())
         {
-            for (var x = 1;; x++)
+            for (var x = 1; ; x++)
             {
                 var usersStats = await database.Users.Stats.GetUsersStats(i,
                     LeaderboardSortType.Pp,
@@ -109,7 +110,7 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetValidUsers(options: new QueryOptions(new Pagination(i, pageSize)), ct: ct);
 
@@ -131,12 +132,12 @@ public class RecurringJobs
 
         var pageSize = 50;
 
-        for (var i = 1;; i++)
+        for (var i = 1; ; i++)
         {
             var users = await database.Users.GetUsers(options: new QueryOptions(new Pagination(i, pageSize))
-                {
-                    QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
-                },
+            {
+                QueryModifier = q => q.Cast<User>().Include(x => x.Inventory.Where(y => y.ItemType == ItemType.Hype))
+            },
                 ct: ct);
 
             foreach (var user in users.Where(user =>
@@ -215,7 +216,7 @@ public class RecurringJobs
 
         var databaseBackupFilePath = Path.Combine(Configuration.DataPath, databaseBackupString);
 
-        var zipFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.zip");
+        var archiveFileName = Path.Combine(backupPath, $"Backup_{DateTime.UtcNow:yyyyMMddHHmmss}.tar.gz");
 
         try
         {
@@ -231,9 +232,7 @@ public class RecurringJobs
                 var oldestFile = files.OrderBy(f => new FileInfo(f).CreationTime).First();
                 File.Delete(oldestFile);
             }
-
-            using var zipArchive = ZipFile.Open(zipFileName, ZipArchiveMode.Create);
-
+            
             var backupDatabaseResult = await CreateDatabaseBackup(databaseBackupFilePath, ct);
 
             if (backupDatabaseResult.IsFailure)
@@ -242,20 +241,24 @@ public class RecurringJobs
             backupDatabaseFilePath = backupDatabaseResult.Value;
             var backupDatabaseFilename = Path.GetFileName(backupDatabaseFilePath);
 
-            await CopyFileToZip(zipArchive, backupDatabaseFilePath, backupDatabaseFilename, ct);
+            await using var archiveStream = File.OpenWrite(archiveFileName);
+            await using var gzipStream = new GZipStream(archiveStream, CompressionLevel.Fastest);
+            await using var tarWriter = new TarWriter(gzipStream, TarEntryFormat.Gnu, false);
+            
+            await AddFileToTar(tarWriter, backupDatabaseFilePath, backupDatabaseFilename, ct);
 
             foreach (var filePath in GetFilesRecursively(dataFolderPath, ct))
             {
                 ct.ThrowIfCancellationRequested();
 
-                var relativePath = Path.GetRelativePath(Configuration.DataPath, filePath);
-                await CopyFileToZip(zipArchive, filePath, relativePath, ct);
+                var relativePath = Path.GetRelativePath(Configuration.DataPath, filePath).Replace('\\', '/');
+                await AddFileToTar(tarWriter, filePath, relativePath, ct);
             }
         }
         catch (Exception)
         {
-            if (File.Exists(zipFileName))
-                File.Delete(zipFileName);
+            if (File.Exists(archiveFileName))
+                File.Delete(archiveFileName);
 
             throw;
         }
@@ -266,13 +269,16 @@ public class RecurringJobs
         }
     }
 
-    private static async Task CopyFileToZip(ZipArchive zipArchive, string path, string zipPath, CancellationToken ct = default)
+    private static async Task AddFileToTar(TarWriter tarWriter, string filePath, string entryName, CancellationToken ct = default)
     {
-        var zipEntry = zipArchive.CreateEntry(zipPath);
+        await using var fileStream = File.OpenRead(filePath);
 
-        await using var fileReader = File.OpenRead(path);
-        await using var zipStream = zipEntry.Open();
-        await fileReader.CopyToAsync(zipStream, ct);
+        var entry = new GnuTarEntry(TarEntryType.RegularFile, entryName)
+        {
+            DataStream = fileStream
+        };
+
+        await tarWriter.WriteEntryAsync(entry, ct);
     }
 
     private static async Task<Result<string>> CreateDatabaseBackup(string databaseBackupFilePathString, CancellationToken ct)
@@ -302,20 +308,20 @@ public class RecurringJobs
             ct);
 
         if (await Task.WhenAny(backupDatabaseTask, Task.Delay(60_000, ct)) == backupDatabaseTask)
-            return backupDatabaseTask.Result;
+            return await backupDatabaseTask;
 
         return Result.Failure<string>("Database backup operation timed out");
     }
 
     private static IEnumerable<string> GetFilesRecursively(string directory, CancellationToken ct = default)
     {
-        foreach (var filePath in Directory.GetFiles(directory))
+        foreach (var filePath in Directory.EnumerateFiles(directory))
         {
             ct.ThrowIfCancellationRequested();
             yield return filePath;
         }
 
-        foreach (var subDirectory in Directory.GetDirectories(directory))
+        foreach (var subDirectory in Directory.EnumerateDirectories(directory))
         {
             ct.ThrowIfCancellationRequested();
 

@@ -59,6 +59,7 @@ public class EnvironmentVariableManager : IDisposable
 
         for (var i = 0; i < values.Count; i++)
         {
+            _originalValues.TryAdd($"{key}:{i}", Environment.GetEnvironmentVariable($"{key}:{i}"));
             Environment.SetEnvironmentVariable($"{key}:{i}", values[i]);
         }
 

@@ -246,7 +246,7 @@ public class ApiScoreGetScoreTopTests(IntegrationDatabaseFixture fixture) : ApiT
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.UserId = user.Id;
         score.GameMode = gamemode;
-        score.BeatmapStatus = status;
+        score.SetBeatmapStatus(status);
 
         await Database.Scores.AddScore(score);
 

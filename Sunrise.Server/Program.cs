@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Hangfire;
+using Sunrise.Processing;
 using Sunrise.Server;
 using Sunrise.Server.Middlewares;
 using Sunrise.Shared.Application;
@@ -34,17 +35,18 @@ builder.Configure();
 
 var app = builder.Build();
 
-app.UseHangfireDashboard("/hangfire",
-    new DashboardOptions
-    {
-        Authorization = [new HangfireAuthorizationFilter()]
-    });
+// TODO: Authorisation doesn't work correctly, for security reasons I'm going to disable it completely for now. Thanks to vertexxdev for reporting this.
+// app.UseHangfireDashboard("/hangfire",
+//     new DashboardOptions
+//     {
+//         Authorization = [new HangfireAuthorizationFilter()]
+//     });
 
 app.Setup();
 app.UseHealthChecks("/health");
 app.UseScalarApiReference();
 
-app.ApplyDatabaseBootstrapping();
+await app.ApplyDatabaseBootstrapping();
 app.UseStaticBackgrounds();
 
 app.UseExceptionHandler();
@@ -55,19 +57,20 @@ app.Configure();
 
 app.WarmUpSingletons();
 RecurringJobs.Initialize();
+ProcessingJobs.Initialize();
 
 if (Configuration.ClearCacheOnStartup)
 {
     using var scope = app.Services.CreateScope();
     var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-    database.FlushAndUpdateRedisCache(false).Wait();
+    await database.FlushAndUpdateRedisCache(false);
 }
 
 var sessions = app.Services.GetRequiredService<SessionRepository>();
-sessions.AddBotToSession().Wait();
-RecurringJobs.RefreshServerBotAccount(CancellationToken.None).Wait();
+await sessions.AddBotToSession();
+await RecurringJobs.RefreshServerBotAccount(CancellationToken.None);
 
-app.Run();
+await app.RunAsync();
 
 namespace Sunrise.Server
 {

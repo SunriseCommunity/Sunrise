@@ -22,9 +22,11 @@ services:
       - "3318:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 5s
+      start_period: 20s
+      start_interval: 2s
+      timeout: 3s
+      retries: 10
 
 volumes:
   mysql:

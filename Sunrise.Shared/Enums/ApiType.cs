@@ -20,5 +20,7 @@ public enum ApiType
 
     GetObservatoryStats = 10,
 
-    GetOsuChangelog = 11
+    GetOsuChangelog = 11,
+
+    GetCalculatorVersion = 12
 }

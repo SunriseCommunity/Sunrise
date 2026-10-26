@@ -1,38 +1,30 @@
-using System.Net;
-using CSharpFunctionalExtensions;
-using Microsoft.EntityFrameworkCore;
 using osu.Shared;
 using Serilog;
-using Sunrise.API.Enums;
-using Sunrise.API.Objects;
-using Sunrise.API.Serializable.Response;
-using Sunrise.Server.Services.Helpers.Scores;
+using Sunrise.Processing.Scores.Handlers;
+using Sunrise.Processing.Utils;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Attributes;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Models;
-using Sunrise.Shared.Database.Models.Users;
+using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects;
-using Sunrise.Shared.Objects.Keys;
-using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
-using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
-using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
-using WebSocketManager = Sunrise.API.Managers.WebSocketManager;
 
 namespace Sunrise.Server.Services;
 
-public class ScoreService(BeatmapService beatmapService, DatabaseService database, CalculatorService calculatorService, MedalService medalService, WebSocketManager webSocketManager, SessionRepository sessions, ChatChannelRepository channels, OsuVersionService osuVersionService)
+public class ScoreService(BeatmapService beatmapService, DatabaseService database, ScoreSubmissionHandler submissionTaskHandler)
 {
+    private const int OsuReplayFileHeaderSize = 24;
+
     [TraceExecution]
     public async Task<string> SubmitScore(Session session, string scoreSerialized, string beatmapHash,
         int scoreTime, int scoreFailTime, string osuVersion, string clientHash, IFormFile? replay,
@@ -40,272 +32,81 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
     {
         var scoreSubmittedAt = DateTime.UtcNow;
 
-        var beatmapSetResult = await ExecuteWithRetry(
-            session,
-            scoreSerialized,
-            () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: 3, shouldSendRateLimitWarning: false),
-            () => beatmapService.GetBeatmapSet(session, beatmapHash: beatmapHash, retryCount: int.MaxValue, shouldSendRateLimitWarning: false),
-            null,
-            "BeatmapSet");
+        var parsedScoreResult = scoreSerialized.TryParseBaseScore(scoreSubmittedAt);
 
-        if (beatmapSetResult.IsFailure)
-            return "error: no";
-
-        var beatmapSet = beatmapSetResult.Value;
-
-        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
-
-        if (beatmap == null || beatmapSet == null)
+        if (parsedScoreResult.IsFailure)
         {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid request: BeatmapSet not found");
+            Log.Error("Failed to parse submitted score for user {UserId}: {Error}", session.UserId, parsedScoreResult.Error);
             return "error: no";
         }
 
-        var (score, sessionUsername) = scoreSerialized.TryParseToSubmittedScore(session, beatmap, scoreSubmittedAt);
+        var submittedScore = parsedScoreResult.Value;
 
-        if (Configuration.EnforceLatestClientVersion)
-            await CheckScoreClientVersion(score.OsuVersion, osuVersion);
+        int? replayFileId = null;
 
-        var dbScore = await database.Scores.GetScore(score.ScoreHash); // TODO: Score hash is not indexed, this is heavy performance downside. Consider refactoring to score uploading queue and checking if unique by inserting. (Insert score -> Process -> If in the valid request timeframe (API ratelimits can make score wait in queue), return score submission response)
-
-        if (dbScore != null)
-        {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score with same hash already exists");
-            return "error: no";
-        }
-
-        var scorePerformanceResult = await ExecuteWithRetry(
-            session,
-            scoreSerialized,
-            () => calculatorService.CalculateScorePerformance(session, score, shouldSendRateLimitWarning: false),
-            () => calculatorService.CalculateScorePerformance(session, score, int.MaxValue, false),
-            "While we could find the beatmapset you played on, we couldn't find the beatmap file for it. If you think this is a mistake, please report it to the developer with the beatmap hash: " + beatmapHash,
-            "Beatmap");
-
-        if (scorePerformanceResult.IsFailure)
-            return "error: no";
-
-        if (scorePerformanceResult.Value == null)
-        {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Score performance calculation returned null");
-            return "error: no";
-        }
-
-        score.PerformancePoints = scorePerformanceResult.Value.PerformancePoints;
-
-        if (replay is { Length: >= 24 })
+        if (replay is { Length: >= OsuReplayFileHeaderSize })
         {
             var replayFileResult = await database.Scores.Files.AddReplayFile(session.UserId, replay);
 
             if (replayFileResult.IsFailure)
             {
-                await SaveRejectedScore(score);
-                SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"Couldn't add replay file for score, reason: {replayFileResult.Error}");
+                Log.Error("Failed to save replay file for user {UserId}: {Error}", session.UserId, replayFileResult.Error);
+                throw new Exception($"Failed to save replay for user {session.UserId}: {replayFileResult.Error}"); // Throw to make osu client retry the score submission
+            }
+
+            replayFileId = replayFileResult.Value.Id;
+        }
+
+        var timeElapsed = ScoreSubmissionUtil.GetTimeElapsed(submittedScore, scoreTime, scoreFailTime);
+
+        var candidate = new ScoreSubmissionRequest
+        {
+            UserId = session.UserId,
+            ScoreHash = submittedScore.ScoreHash,
+            ScoreSerialized = scoreSerialized,
+            BeatmapHash = beatmapHash,
+            TimeElapsed = timeElapsed,
+            OsuVersion = osuVersion,
+            ClientHash = clientHash,
+            ReplayFileId = replayFileId,
+            StoryboardHash = storyboardHash,
+            UserHash = session.Attributes.UserHash,
+            WhenPlayed = scoreSubmittedAt
+        };
+
+        ScoreProcessingError? processingError = null;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(Configuration.ScoreProcessingTimeoutSeconds));
+            var processSubmissionResult = await submissionTaskHandler.ExecuteInlineSubmission(session, candidate, cts.Token);
+
+            if (processSubmissionResult.IsSuccess)
+                return processSubmissionResult.Value ?? "error: no";
+
+            if (processSubmissionResult.Error.Code == ScoreProcessingErrorCode.DuplicateScore)
                 return "error: no";
-            }
 
-            score.ReplayFileId = replayFileResult.Value.Id;
+            processingError = processSubmissionResult.Error;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Unexpected exception during sync score submission for user {UserId}", session.UserId);
         }
 
-        var isCurrentScoreFailed = SubmitScoreHelper.IsScoreFailed(score);
-
-        if (!isCurrentScoreFailed && score.ReplayFileId == null)
+        try
         {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Replay file not found for passed score");
-            return "error: no";
+            await EnqueueForBackgroundRetry(candidate, session, processingError);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to enqueue score for background retry for user {UserId}", session.UserId);
         }
 
-        if (SubmitScoreHelper.IsHasInvalidMods(score.Mods))
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid mods");
-            return "error: no";
-        }
-
-        var notStandardMods = score.Mods.TryGetSelectedNotStandardMods();
-
-        var hasNonStandardMods = notStandardMods is not Mods.None;
-        var isHasMoreThanOneNotStandardMod = !notStandardMods.IsSingleMod() && hasNonStandardMods;
-        var isNonSupportedNonStandardMod = (int)score.GameMode < 4 && hasNonStandardMods;
-
-        // Disallow submitting scores with double not standard mods (e.g. ScoreV2 + Relax) or with which we are not supporting (e.g. shouldn't exist)
-        if (isHasMoreThanOneNotStandardMod || isNonSupportedNonStandardMod)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Includes non-standard mod(s), which is not supported for this game mode");
-            return "error: no";
-        }
-
-        // Auto-restrict players who submit scores with too many performance points on standard game modes
-        if (score.PerformancePoints >= Configuration.BannablePpThreshold && !hasNonStandardMods && score.LocalProperties.IsRanked)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Too many performance points. Cheating?");
-            await database.Users.Moderation.RestrictPlayer(session.UserId, null, "Auto-restricted for submitting impossible score");
-            return "error: no";
-        }
-
-        var isScoreValid = SubmitScoreHelper.IsScoreValid(session,
-            score,
-            clientHash,
-            beatmapHash,
-            beatmap.Checksum,
-            storyboardHash,
-            sessionUsername);
-
-        if (!isScoreValid)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Invalid checksums");
-            await database.Users.Moderation.RestrictPlayer(session.UserId, null, "Invalid checksums on score submission");
-            return "error: no";
-        }
-
-        var isScoreScoreable = !isCurrentScoreFailed && score.IsScoreable;
-
-        var (databaseScores, _) = isScoreScoreable
-            ? await database.Scores.GetBeatmapScores(score.BeatmapHash,
-                score.GameMode,
-                options: new QueryOptions
-                {
-                    IgnoreCountQueryIfExists = true
-                })
-            : ([], 0);
-
-        var globalScores = databaseScores.EnrichWithLeaderboardPositions();
-
-        var (databaseScoresWithSameMods, _) = isScoreScoreable
-            ? await database.Scores.GetBeatmapScores(score.BeatmapHash,
-                score.GameMode,
-                LeaderboardType.GlobalWithMods,
-                score.Mods,
-                options: new QueryOptions
-                {
-                    IgnoreCountQueryIfExists = true
-                })
-            : ([], 0);
-
-        var scoresWithSameMods = databaseScoresWithSameMods.EnrichWithLeaderboardPositions();
-
-        var user = await database.Users.GetUser(session.UserId,
-            options: new QueryOptions
-            {
-                QueryModifier = q => q.Cast<User>().Include(u => u.UserStats)
-            });
-
-        if (user == null)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user while submitting score");
-            return "error: no";
-        }
-
-        var userStats = user.UserStats.FirstOrDefault(u => u.GameMode == score.GameMode)
-                        ?? await database.Users.Stats.GetUserStats(user.Id, score.GameMode);
-
-        if (userStats == null)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "User stats not found");
-            return "error: no";
-        }
-
-        var prevUserStats = userStats.Clone();
-
-        var prevUserBeatmapScores = isScoreScoreable
-            ? await database.Scores.GetUserScores(score.UserId,
-                score.GameMode,
-                ScoreTableType.Recent,
-                new QueryOptions
-                {
-                    QueryModifier = x => x.Cast<Score>().Where(x => x.BeatmapHash == score.BeatmapHash).FilterPassedScoreableScores(),
-                    IgnoreCountQueryIfExists = true
-                })
-            : ([], 0);
-
-        var prevUserPersonalBestScores = prevUserBeatmapScores.Scores.GetUserPersonalBestScores(score.UserId);
-
-        var (prevUserGlobalRank, _) = isScoreScoreable ? await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode) : (0, 0);
-        prevUserStats.LocalProperties.Rank = prevUserGlobalRank;
-
-        var timeElapsed = SubmitScoreHelper.GetTimeElapsed(score, scoreTime, scoreFailTime);
-
-        var userGrades = await database.Users.Grades.GetUserGrades(user.Id, userStats.GameMode);
-
-        if (userGrades == null)
-        {
-            await SaveRejectedScore(score);
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Couldn't find user grades while submitting score");
-            return "error: no";
-        }
-
-        var transactionResult = await database.CommitAsTransactionAsync(async () =>
-        {
-            var prevUserPersonalBestScoresWithSameMods = prevUserBeatmapScores.Scores.Where(x => x.Mods == score.Mods).ToList().GetUserPersonalBestScores(score.UserId);
-
-            score.UpdateSubmissionStatus(prevUserPersonalBestScoresWithSameMods?.BestScoreBasedByTotalScore);
-
-            await userStats.UpdateWithScore(score, prevUserPersonalBestScores, timeElapsed);
-            userGrades.UpdateWithScore(score, prevUserPersonalBestScores?.BestScoreBasedByTotalScore);
-
-            if (prevUserPersonalBestScoresWithSameMods?.BestScoreBasedByTotalScore != null && score.SubmissionStatus == SubmissionStatus.Best)
-            {
-                // Best score shouldn't be failed, but adding this check just in case
-                prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore.SubmissionStatus = prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore.IsPassed ? SubmissionStatus.Submitted : SubmissionStatus.Failed;
-                await database.Scores.UpdateScore(prevUserPersonalBestScoresWithSameMods.BestScoreBasedByTotalScore);
-            }
-
-            await database.Scores.AddScore(score);
-            await database.Users.Stats.UpdateUserStats(userStats, user);
-            await database.Users.Grades.UpdateUserGrades(userGrades);
-        });
-
-        if (transactionResult.IsFailure)
-        {
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, "Failed to execute transaction for score submission, reason: " + transactionResult.Error);
-            return "error: no";
-        }
-
-        SunriseMetrics.ScoreSubmittedCounterInc(session, beatmap.Id, score.GameMode, score.Mods, score.PerformancePoints, score.Id);
-
-        if (!isScoreScoreable)
-        {
-            return "error: no"; // No need to create chart/unlock medals for failed or for scores that are not scoreable
-        }
-
-        webSocketManager.BroadcastJsonAsync(new WebSocketMessage(WebSocketEventType.NewScoreSubmitted, new ScoreResponse(sessions, score)));
-
-        // Mods can change difficulty rating, important to recalculate it for right medal unlocking
-        if ((int)score.GameMode != beatmap.ModeInt || (int)score.Mods > 0)
-        {
-            var recalculateBeatmapResult = await calculatorService.CalculateBeatmapPerformance(session, score.BeatmapId, score.GameMode, score.Mods);
-
-            if (recalculateBeatmapResult.IsFailure)
-            {
-                SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.OsuSubmitScore, session, recalculateBeatmapResult.Error.Message);
-            }
-            else
-            {
-                beatmap.UpdateBeatmapWithPerformance(score.Mods, recalculateBeatmapResult.Value);
-            }
-        }
-
-        var updatedScores = globalScores.UpsertUserScoreToSortedScores(score);
-        score = updatedScores.First(s => s.ScoreHash == score.ScoreHash);
-
-        var (newUserRank, _) = await database.Users.Stats.Ranks.GetUserRanks(user, userStats.GameMode);
-        userStats.LocalProperties.Rank = newUserRank;
-
-        if (score.LocalProperties.LeaderboardPosition == 1 && globalScores.Count > 0 && globalScores[0].UserId != score.UserId)
-        {
-            channels.GetChannel(session, "#announce")
-                ?.SendToChannel(SubmitScoreHelper.GetNewFirstPlaceString(session, score, beatmapSet, beatmap));
-        }
-
-        var newAchievements = await medalService.UnlockAndGetNewMedals(score, beatmap, userStats);
-
-        return SubmitScoreHelper.GetScoreSubmitResponse(beatmap, userStats, prevUserStats, score, prevUserPersonalBestScores, newAchievements);
+        return "error: no";
     }
 
     [TraceExecution]
@@ -330,7 +131,8 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
             },
             ct);
 
-        var scores = databaseScores.EnrichWithLeaderboardPositions();
+        var scores = databaseScores.WithLeaderboardPositions();
+        var leaderboardPositions = scores.ToDictionary(entry => entry.Score.Id, entry => entry.LeaderboardPosition);
 
         var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, beatmapHash, retryCount: int.MaxValue, ct: ct);
 
@@ -341,7 +143,7 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
 
         var beatmapSet = beatmapSetResult.Value;
 
-        var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(x => x.Checksum == beatmapHash);
+        var beatmap = beatmapSet?.Beatmaps?.FirstOrDefault(x => x.Checksum == beatmapHash);
 
         if (beatmapSet == null || beatmap == null)
             return $"{(int)BeatmapStatus.NotSubmitted}|false"; // TODO: Check with our db to find out if need's update
@@ -358,90 +160,62 @@ public class ScoreService(BeatmapService beatmapService, DatabaseService databas
         if (scores.Count == 0)
             return string.Join("\n", responses);
 
-        var userPersonalBestScores = scores.GetUserPersonalBestScores(session.UserId);
+        var userPersonalBestScores = scores.Select(entry => entry.Score).ToList().GetUserPersonalBestScores(session.UserId);
 
-        var personalBest = userPersonalBestScores?.BestScoreBasedByTotalScore;
-        responses.Add(personalBest != null ? personalBest.GetString() : "");
+        var personalBest = userPersonalBestScores?.BestScoreByScoreValue;
+        responses.Add(personalBest != null
+            ? personalBest.GetString(leaderboardPositions[personalBest.Id])
+            : "");
 
-        var leaderboardScores = scores.GetScoresGroupedByUsersBest().Take(50);
+        var leaderboardScores = scores.Select(entry => entry.Score).ToList().GetScoresGroupedByUsersBest().Take(50);
 
         foreach (var score in leaderboardScores)
         {
-            responses.Add(score.GetString());
+            responses.Add(score.GetString(leaderboardPositions[score.Id]));
         }
 
         return string.Join("\n", responses);
     }
 
-    private async Task<Result<T, ErrorMessage>> ExecuteWithRetry<T>(
-        Session session,
-        string scoreSerialized,
-        Func<Task<Result<T, ErrorMessage>>> initialCall,
-        Func<Task<Result<T, ErrorMessage>>> retryCall,
-        string? notFoundNotification,
-        string resultInstanceName)
+    private async Task EnqueueForBackgroundRetry(ScoreSubmissionRequest candidate, Session userSession, ScoreProcessingError? error = null)
     {
-        var result = await initialCall();
+        var shouldParkAsFailed = error is { Disposition: ScoreProcessingDisposition.Permanent }
+                                 || error.HasValue && Configuration.ScoreProcessingMaxRetries <= 0;
 
-        if (!result.IsFailure)
-            return result;
+        int? enqueuedTaskId = null;
 
-        var isNotFound = result.Error.Status == HttpStatusCode.NotFound;
-
-        if (isNotFound)
+        var enqueueResult = await database.CommitAsTransactionAsync(async () =>
         {
-            if (notFoundNotification != null)
-                session.SendNotification(notFoundNotification);
+            await database.ScoreSubmissionRequests.AddQueueEntry(candidate);
 
-            SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"Invalid request: {resultInstanceName} not found");
-            return result;
-        }
+            var task = new ScoreProcessingTask
+            {
+                TaskType = ScoreTaskType.Submission,
+                ScoreSubmissionRequest = candidate,
+                Priority = (int)ScoreProcessingPriority.High,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        session.SendNotification("One of your recent score seems to have troubles retrieving the beatmap data from. This score can be missing in your profile or leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
+            if (shouldParkAsFailed && error.HasValue)
+            {
+                var processingError = error.Value;
+                task.Status = ScoreProcessingStatus.Failed;
+                task.ErrorCode = processingError.Code;
+                task.ErrorMessage = processingError.Message;
+            }
 
-        SubmitScoreHelper.ReportRejectionToMetrics(session, scoreSerialized, $"{resultInstanceName} retrieval failed, retrying...");
+            await database.ScoreProcessingTasks.AddQueueEntry(task);
+            enqueuedTaskId = task.Id;
+        });
 
-        result = await retryCall();
+        if (enqueueResult.IsFailure)
+            throw new Exception($"Failed to enqueue score for background retry: {enqueueResult.Error}");
 
-        if (!result.IsFailure)
-            return result;
+        await database.Events.ScoreProcessing.AddSubmissionEnqueuedEvent(candidate.Id, candidate.UserId, enqueuedTaskId);
 
-        isNotFound = result.Error.Status == HttpStatusCode.NotFound;
-
-        SubmitScoreHelper.ReportRejectionToMetrics(session,
-            scoreSerialized,
-            isNotFound
-                ? $"Invalid request: {resultInstanceName} not found"
-                : $"{resultInstanceName} couldn't be retrieved due to ratelimit timeout, please report this to the developer.");
-
-        return result;
-    }
-
-    private async Task SaveRejectedScore(Score score)
-    {
-        score.SubmissionStatus = SubmissionStatus.Deleted;
-        await database.Scores.AddScore(score);
-    }
-
-    private async Task CheckScoreClientVersion(string scoreOsuVersion, string formOsuVersion)
-    {
-        var versionString = !string.IsNullOrWhiteSpace(scoreOsuVersion) ? scoreOsuVersion : formOsuVersion;
-        var clientVersion = OsuVersion.TryParse(versionString);
-
-        if (clientVersion == null)
-            return;
-
-        var latestVersion = await osuVersionService.GetLatestVersion(clientVersion.Stream);
-
-        if (latestVersion == null)
-            return;
-
-        if (clientVersion < latestVersion)
+        if (!shouldParkAsFailed)
         {
-            Log.Warning("Score submitted with outdated osu! client version {ClientVersion} (stream: {Stream}, latest: {LatestVersion})",
-                clientVersion,
-                clientVersion.Stream,
-                latestVersion);
+            userSession.SendNotification("One of your recent scores seems to have trouble retrieving its beatmap data. This score may be missing from your profile or the leaderboards for now, but it will be fixed automatically once we can retrieve the beatmap data.");
         }
     }
 }

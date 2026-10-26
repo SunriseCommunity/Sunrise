@@ -114,7 +114,7 @@ public class UserService(
             };
 
 
-        if (eventAction.ExecutorUser.Privilege.GetHighestPrivilege() <= updatedPrivileges.GetHighestPrivilege())
+        if (eventAction.ExecutorUser.Privilege.GetPrivilegeLevel() <= updatedPrivileges.GetPrivilegeLevel())
             return new ObjectResult(new ProblemDetails
             {
                 Detail = ApiErrorResponse.Detail.InsufficientPrivileges,
@@ -150,7 +150,7 @@ public class UserService(
 
         if (!isSet || error != null)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, null, error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.AvatarUpload, eventAction.TargetUserId, error);
             return new ObjectResult(new ProblemDetails
             {
                 Title = ApiErrorResponse.Title.UnableToChangeAvatar,
@@ -185,7 +185,7 @@ public class UserService(
 
         if (!isSet || error != null)
         {
-            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, null, error);
+            SunriseMetrics.RequestReturnedErrorCounterInc(RequestType.BannerUpload, eventAction.TargetUserId, error);
             return new ObjectResult(new ProblemDetails
             {
                 Title = ApiErrorResponse.Title.UnableToChangeBanner,
@@ -616,7 +616,7 @@ public class UserService(
         if (user.Privilege.HasFlag(UserPrivilege.Admin))
             badges.Add(UserBadge.Admin);
 
-        if (user.Privilege.HasFlag(UserPrivilege.Bat))
+        if (user.Privilege.HasAnyBeatmapApprovalTeamPrivilege())
             badges.Add(UserBadge.Bat);
 
         if (user.IsUserSunriseBot())

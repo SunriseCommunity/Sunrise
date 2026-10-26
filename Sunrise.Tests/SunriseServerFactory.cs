@@ -1,9 +1,11 @@
+using EntityFrameworkCore.Locking.MySql;
 using Hangfire;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
@@ -22,6 +24,9 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
     {
         builder.ConfigureTestServices(services =>
         {
+            foreach (var hangfireServer in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationFactory?.Method.DeclaringType?.Namespace == "Hangfire").ToList())
+                services.Remove(hangfireServer);
+
             var dbContextDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<SunriseDbContext>));
             if (dbContextDescriptor != null) services.Remove(dbContextDescriptor);
 
@@ -29,8 +34,9 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
             {
                 options.EnableServiceProviderCaching(false);
                 options.EnableSensitiveDataLogging();
+                options.UseLocking();
 
-                options.UseMySQL(Configuration.DatabaseConnectionString);
+                options.UseMySql(Configuration.DatabaseConnectionString, ServerVersion.AutoDetect(Configuration.DatabaseConnectionString));
             });
 
             var httpClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(HttpClientService));
@@ -58,7 +64,7 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing == false)
+        if (!disposing)
         {
             base.Dispose(disposing);
             return;

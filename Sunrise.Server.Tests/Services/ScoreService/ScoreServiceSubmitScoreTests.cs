@@ -1,4 +1,8 @@
+using System.Text.RegularExpressions;
+using HOPEless.Bancho;
+using HOPEless.Bancho.Objects;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using osu.Shared;
 using Sunrise.Server.Commands.ChatCommands.System;
@@ -7,15 +11,18 @@ using Sunrise.Shared.Database.Models.Beatmap;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Extensions;
 using Sunrise.Shared.Extensions.Scores;
-using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Utils;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services;
-using Sunrise.Server.Controllers;
 using Sunrise.Tests.Services.Mock;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -65,7 +72,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -78,6 +85,104 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+    }
+
+    [Fact]
+    public async Task TestSubmittingLaterEqualScoreKeepsEarlierFirstPlaceWithoutAnnouncement()
+    {
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+        var (session, user) = await CreateTestSession();
+        var observer = CreateTestSession(await CreateTestUser());
+        Scope.ServiceProvider.GetRequiredService<ChatChannelRepository>().JoinChannel("#announce", observer);
+        observer.GetContent();
+
+        var (replay, beatmapId) = GetValidTestReplay();
+        var submittedScore = replay.GetScore();
+        submittedScore.BeatmapId = beatmapId;
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        beatmap.EnrichWithScoreData(submittedScore);
+        submittedScore.PrepareForSubmission(beatmap);
+        submittedScore.EnrichWithSessionData(session);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        var earlierUser = await CreateTestUser();
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.UserId = earlierUser.Id;
+        earlierScore.GameMode = submittedScore.GameMode;
+        earlierScore.Mods = submittedScore.Mods;
+        earlierScore.TotalScore = submittedScore.TotalScore;
+        earlierScore.PerformancePoints = 500;
+        earlierScore.WhenPlayed = DateTime.UtcNow.AddMinutes(-10);
+        earlierScore.PrepareForSubmission(beatmap);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        await Database.Scores.AddScore(earlierScore);
+
+        var result = await scoreService.SubmitScore(session, submittedScore.ToScoreString(user.Username),
+            submittedScore.BeatmapHash, 0, 0, submittedScore.OsuVersion, session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(), null);
+
+        Assert.DoesNotContain("error", result);
+        var savedScore = await Database.Scores.GetScore(submittedScore.ScoreHash);
+        Assert.NotNull(savedScore);
+        Assert.Equal(SubmissionStatus.Best, savedScore.SubmissionStatus);
+
+        var leaderboard = await scoreService.GetBeatmapScores(session, beatmap.BeatmapsetId,
+            (GameMode)submittedScore.GameMode.ToVanillaGameMode(), submittedScore.Mods, LeaderboardType.Global, beatmap.Checksum!, "test.osu");
+        var rows = leaderboard.Split('\n').Skip(5).Select(line => line.Split('|')).ToList();
+        Assert.Equal(new[] { earlierScore.Id, savedScore.Id }, rows.Select(fields => int.Parse(fields[0])));
+        Assert.Equal(new[] { 1, 2 }, rows.Select(fields => int.Parse(fields[13])));
+
+        using var packetBuffer = new MemoryStream(observer.GetContent());
+        Assert.DoesNotContain(BanchoSerializer.DeserializePackets(packetBuffer), packet => packet.Type == PacketType.ServerChatMessage);
+    }
+
+    [Fact]
+    public async Task TestGetBeatmapScoresReturnsEarlierEqualScoreFirstInBanchoResponse()
+    {
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+        var (session, user) = await CreateTestSession();
+        var otherUser = await CreateTestUser();
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.IgnoreBeatmapRanking();
+        var beatmap = beatmapSet.Beatmaps!.First();
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        var playedAt = DateTime.UtcNow.AddMinutes(-10);
+
+        var earlierScore = _mocker.Score.GetBestScoreableRandomScore();
+        earlierScore.UserId = otherUser.Id;
+        earlierScore.GameMode = (GameMode)beatmap.ModeInt;
+        earlierScore.Mods = Mods.None;
+        earlierScore.TotalScore = 1000;
+        earlierScore.WhenPlayed = playedAt;
+        earlierScore.PrepareForSubmission(beatmap);
+        earlierScore.ScoreHash = Guid.NewGuid().ToString("N");
+        earlierScore = await CreateTestScore(earlierScore);
+
+        var laterScore = _mocker.Score.GetBestScoreableRandomScore();
+        laterScore.UserId = user.Id;
+        laterScore.GameMode = earlierScore.GameMode;
+        laterScore.Mods = Mods.None;
+        laterScore.TotalScore = 1000;
+        laterScore.WhenPlayed = playedAt.AddMinutes(1);
+        laterScore.PrepareForSubmission(beatmap);
+        laterScore.ScoreHash = Guid.NewGuid().ToString("N");
+        laterScore = await CreateTestScore(laterScore);
+
+        var response = await scoreService.GetBeatmapScores(
+            session,
+            beatmap.BeatmapsetId,
+            earlierScore.GameMode,
+            Mods.None,
+            LeaderboardType.Global,
+            beatmap.Checksum!,
+            "test.osu");
+
+        var scores = response.Split('\n').Skip(5).Select(line => line.Split('|')).ToList();
+        Assert.Equal(new[] { earlierScore.Id, laterScore.Id }, scores.Select(fields => int.Parse(fields[0])));
+        Assert.Equal(new[] { 1, 2 }, scores.Select(fields => int.Parse(fields[13])));
     }
 
     [Fact]
@@ -105,7 +210,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.ScoreHash = score.ComputeOnlineHash(usernameInUpperCaseAndUsedInGameSession.Trim(), session.Attributes.UserHash, null);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.StatusString = "ranked";
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.StatusString = "ranked";
         beatmap.EnrichWithScoreData(score);
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
@@ -118,7 +225,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -178,7 +285,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -191,8 +298,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
-        Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapStatus);
-        Assert.True(databaseScore.IsScoreable);
+        Assert.Equal(BeatmapStatus.Ranked, databaseScore.BeatmapHashStatus!.Status);
+        Assert.True(databaseScore.BeatmapHashStatus!.Status.IsScoreable());
     }
 
     [Fact]
@@ -235,7 +342,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -248,8 +355,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         Assert.NotNull(databaseScore);
 
         Assert.Equal(SubmissionStatus.Submitted, databaseScore.SubmissionStatus);
-        Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapStatus);
-        Assert.False(databaseScore.IsScoreable);
+        Assert.Equal(BeatmapStatus.Pending, databaseScore.BeatmapHashStatus!.Status);
+        Assert.False(databaseScore.BeatmapHashStatus!.Status.IsScoreable());
     }
 
     [Fact]
@@ -282,7 +389,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -318,7 +425,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         beatmap.DifficultyRating = 5.0;
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        App.MockHttpClient?.MockPerformanceCalculation(500, 5.0);
+        App.MockHttpClient?.MockPerformanceCalculation();
 
         // Act
         var resultString = await scoreService.SubmitScore(
@@ -327,7 +434,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -336,7 +443,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         // Assert
         Assert.DoesNotContain("error", resultString);
 
-        var achievementsMatch = System.Text.RegularExpressions.Regex.Match(resultString, @"achievements-new:(.*)");
+        var achievementsMatch = Regex.Match(resultString, @"achievements-new:(.*)");
         Assert.True(achievementsMatch.Success, "Response should contain achievements-new section");
 
         var achievementsRaw = achievementsMatch.Groups[1].Value.Trim();
@@ -376,9 +483,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -396,7 +503,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -408,7 +515,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var userGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(userGrades);
-        Assert.Equal(1, userGrades.CountS);
+        Assert.Equal(1, userGrades.CountA);
+        Assert.Equal(0, userGrades.CountS);
     }
 
     [Fact]
@@ -440,7 +548,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -490,7 +598,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -535,7 +643,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -582,7 +690,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -636,7 +744,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -677,7 +785,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -717,7 +825,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -752,7 +860,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(1),
             null
@@ -773,13 +881,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         EnvManager.Set("General:IgnoreBeatmapRanking", "false");
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
-        score.IsScoreable = false;
 
         score.EnrichWithSessionData(session);
 
         var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
         var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
         beatmap.EnrichWithScoreData(score);
+        beatmap.StatusString = BeatmapStatusWeb.Pending.BeatmapStatusWebToString();
 
         await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
         App.MockHttpClient?.MockPerformanceCalculation();
@@ -793,7 +901,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             timeElapsed,
             timeElapsed,
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -845,7 +953,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -859,6 +967,44 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         var restrictionReason = await Database.Users.Moderation.GetActiveRestrictionReason(session.UserId);
         Assert.Contains("Invalid checksums on score submission", restrictionReason);
+    }
+
+    [Fact]
+    public async Task TestMissingReplayDoesNotRestrictUser()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            score.OsuVersion,
+            session.Attributes.UserHash,
+            null,
+            null
+        );
+
+        // Assert
+        Assert.Contains("error", resultString);
+
+        var isRestricted = await Database.Users.Moderation.IsUserRestricted(session.UserId);
+        Assert.False(isRestricted);
     }
 
     [Fact]
@@ -901,7 +1047,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -965,7 +1111,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1040,14 +1186,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
                 Accuracy = 91.53845977783203,
                 PerformancePoints = 426.69985159889916
@@ -1069,14 +1214,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Submitted,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:44:36"),
                 Accuracy = 97.69230651855469,
                 PerformancePoints = 554.7153705477176
@@ -1085,7 +1229,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         foreach (var s in seedScores)
         {
-            s.LocalProperties = s.LocalProperties.FromScore(s);
             var addScoreResult = await Database.Scores.AddScore(s);
 
             if (addScoreResult.IsFailure)
@@ -1113,20 +1256,21 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
-            IsScoreable = true,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:45:14"),
             Accuracy = 95.12820434570312,
             PerformancePoints = 491.98253750654084
         };
 
         submitScore.EnrichWithSessionData(session);
-        submitScore.LocalProperties = submitScore.LocalProperties.FromScore(submitScore);
+
+        beatmap.EnrichWithScoreData(submitScore);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockPerformanceCalculation(491.98253750654084, 5.5);
 
@@ -1209,14 +1353,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 17,
                 Perfect = false,
                 Mods = mods,
-                Grade = "B",
+                Grade = ScoreGrade.B,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Best,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:39:31.755556"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:39:31"),
                 Accuracy = 91.53845977783203,
                 PerformancePoints = 426.69985159889916
@@ -1238,14 +1381,13 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
                 CountGeki = 22,
                 Perfect = false,
                 Mods = mods,
-                Grade = "A",
+                Grade = ScoreGrade.A,
                 IsPassed = true,
-                IsScoreable = true,
                 SubmissionStatus = SubmissionStatus.Failed,
                 GameMode = gameMode,
                 WhenPlayed = DateTime.Parse("2025-10-09 19:44:36.562856"),
                 OsuVersion = osuVersion,
-                BeatmapStatus = BeatmapStatus.Ranked,
+                BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
                 ClientTime = DateTime.Parse("2025-10-09 19:44:36"),
                 Accuracy = 97.69230651855469,
                 PerformancePoints = 554.7153705477176
@@ -1254,7 +1396,6 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         foreach (var s in seedScores)
         {
-            s.LocalProperties = s.LocalProperties.FromScore(s);
             var addScoreResult = await Database.Scores.AddScore(s);
 
             if (addScoreResult.IsFailure)
@@ -1282,20 +1423,21 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             CountGeki = 20,
             Perfect = false,
             Mods = mods,
-            Grade = "A",
+            Grade = ScoreGrade.A,
             IsPassed = true,
-            IsScoreable = true,
             GameMode = gameMode,
             WhenPlayed = DateTime.Parse("2025-10-09 19:45:15.477433"),
             OsuVersion = osuVersion,
-            BeatmapStatus = BeatmapStatus.Ranked,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = BeatmapStatus.Ranked },
             ClientTime = DateTime.Parse("2025-10-09 19:45:14"),
             Accuracy = 95.12820434570312,
             PerformancePoints = 491.98253750654084
         };
 
         submitScore.EnrichWithSessionData(session);
-        submitScore.LocalProperties = submitScore.LocalProperties.FromScore(submitScore);
+
+        beatmap.EnrichWithScoreData(submitScore);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
 
         App.MockHttpClient?.MockPerformanceCalculation(491.98253750654084, 5.5);
 
@@ -1336,9 +1478,20 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var oldScore = _mocker.Score.GetBestScoreableRandomScore();
-        oldScore.Grade = "A";
+        oldScore.Grade = ScoreGrade.A;
         oldScore.SubmissionStatus = SubmissionStatus.Best;
         oldScore.PerformancePoints = -1;
+        oldScore.Mods = Mods.None;
+        oldScore.GameMode = GameMode.Standard;
+        oldScore.Count300 = 85;
+        oldScore.Count100 = 15;
+        oldScore.Count50 = 0;
+        oldScore.CountMiss = 0;
+        oldScore.CountKatu = 0;
+        oldScore.CountGeki = 0;
+        oldScore.Accuracy = PerformanceCalculator.CalculateAccuracy(oldScore);
+        oldScore.Grade = ScoreGradeUtil.Calculate(oldScore);
+        Assert.Equal(ScoreGrade.A, oldScore.Grade);
 
         oldScore.EnrichWithSessionData(session);
 
@@ -1360,7 +1513,15 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         score.Mods = oldScore.Mods;
         score.BeatmapId = oldScore.BeatmapId;
         score.BeatmapHash = oldScore.BeatmapHash;
-        score.Grade = "B";
+        score.Count300 = 75;
+        score.Count100 = 25;
+        score.Count50 = 0;
+        score.CountMiss = 0;
+        score.CountKatu = 0;
+        score.CountGeki = 0;
+        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+        score.Grade = ScoreGradeUtil.Calculate(score);
+        Assert.Equal(ScoreGrade.B, score.Grade);
 
         score.TotalScore = oldScore.TotalScore + 1;
 
@@ -1382,7 +1543,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1403,6 +1564,80 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
+    public async Task TestUponSubmittingBestScoreInModsButWorseThanBestOverallDontUpdateUserGrades()
+    {
+        // Arrange
+        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
+
+        var (session, user) = await CreateTestSession();
+
+        var oldScore = _mocker.Score.GetBestScoreableRandomScore();
+        oldScore.Grade = ScoreGrade.A;
+        oldScore.SubmissionStatus = SubmissionStatus.Best;
+        oldScore.PerformancePoints = -1;
+        oldScore.Mods = Mods.Hidden;
+        oldScore.GameMode = GameMode.Standard;
+
+        oldScore.EnrichWithSessionData(session);
+
+
+        var userGrades = await Database.Users.Grades.GetUserGrades(oldScore.UserId, oldScore.GameMode);
+        if (userGrades == null)
+            throw new Exception("UserGrades is null");
+
+        userGrades = _mocker.User.SetRandomUserGrades(userGrades);
+        userGrades.CountA++;
+
+        var arrangeUserGradesResult = await Database.Users.Grades.UpdateUserGrades(userGrades);
+
+        if (arrangeUserGradesResult.IsFailure)
+            throw new Exception(arrangeUserGradesResult.Error);
+
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.GameMode = oldScore.GameMode;
+        score.Mods = Mods.DoubleTime;
+        score.BeatmapId = oldScore.BeatmapId;
+        score.BeatmapHash = oldScore.BeatmapHash;
+        score.Grade = ScoreGrade.B;
+
+        score.TotalScore = oldScore.TotalScore - 1;
+
+        score.EnrichWithSessionData(session);
+
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
+        beatmap.EnrichWithScoreData(score);
+
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient?.MockPerformanceCalculation();
+
+        await Database.Scores.AddScore(oldScore);
+
+        // Act
+        var resultString = await scoreService.SubmitScore(
+            session,
+            score.ToScoreString(user.Username),
+            score.BeatmapHash,
+            _mocker.GetRandomInteger(),
+            _mocker.GetRandomInteger(),
+            score.OsuVersion,
+            session.Attributes.UserHash,
+            _replayService.GenerateReplayFormFile(),
+            null
+        );
+
+        // Assert
+        Assert.DoesNotContain("error", resultString);
+
+        var updatedUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, oldScore.GameMode);
+
+        Assert.NotNull(updatedUserGrades);
+        userGrades.User = null!; // Ignore for comparison
+
+        Assert.Equivalent(userGrades, updatedUserGrades);
+    }
+
+    [Fact]
     public async Task TestUponSubmittingEqualScoreThanPreviousOneUpdateSubmissionStatus()
     {
         // Arrange
@@ -1414,6 +1649,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         oldScore.SubmissionStatus = SubmissionStatus.Best;
 
         oldScore.EnrichWithSessionData(session);
+        oldScore.WhenPlayed = DateTime.UtcNow.AddMinutes(-5);
+        oldScore.ClientTime = oldScore.WhenPlayed;
 
         var score = _mocker.Score.GetBestScoreableRandomScore();
         score.GameMode = oldScore.GameMode;
@@ -1441,7 +1678,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1505,7 +1742,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1535,10 +1772,18 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (session, user) = await CreateTestSession();
 
         var moddedBestScore = _mocker.Score.GetBestScoreableRandomScore();
-        moddedBestScore.Grade = "S";
         moddedBestScore.SubmissionStatus = SubmissionStatus.Best;
         moddedBestScore.Mods = Mods.None;
         moddedBestScore.GameMode = GameMode.Standard;
+        moddedBestScore.Count300 = 91;
+        moddedBestScore.Count100 = 9;
+        moddedBestScore.Count50 = 0;
+        moddedBestScore.CountMiss = 0;
+        moddedBestScore.CountKatu = 0;
+        moddedBestScore.CountGeki = 0;
+        moddedBestScore.Accuracy = PerformanceCalculator.CalculateAccuracy(moddedBestScore);
+        moddedBestScore.Grade = ScoreGradeUtil.Calculate(moddedBestScore);
+        Assert.Equal(ScoreGrade.S, moddedBestScore.Grade);
         moddedBestScore.EnrichWithSessionData(session);
 
         await Database.Scores.AddScore(moddedBestScore);
@@ -1552,9 +1797,9 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var (replay, beatmapId) = GetValidTestReplay();
 
         var score = replay.GetScore();
-        score.Grade = "S";
         score.BeatmapId = beatmapId;
         score.Mods |= Mods.DoubleTime;
+        Assert.Equal(ScoreGrade.A, ScoreGradeUtil.Calculate(score));
 
         score.EnrichWithSessionData(session);
 
@@ -1572,7 +1817,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1584,7 +1829,12 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         var newUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, score.GameMode);
 
         Assert.NotNull(newUserGrades);
-        Assert.Equal(1, newUserGrades.CountS);
+        Assert.Equal(1, newUserGrades.CountA);
+        Assert.Equal(0, newUserGrades.CountS);
+
+        var standardUserGrades = await Database.Users.Grades.GetUserGrades(session.UserId, GameMode.Standard);
+        Assert.NotNull(standardUserGrades);
+        Assert.Equal(1, standardUserGrades.CountS);
     }
 
     [Theory]
@@ -1621,11 +1871,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
 
         score.EnrichWithSessionData(session);
 
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
-        beatmap.EnrichWithScoreData(score);
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        var (beatmapSet, beatmap) = await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(score);
         App.MockHttpClient?.MockPerformanceCalculation();
 
         await Database.Scores.AddScore(moddedScore);
@@ -1637,7 +1883,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1684,7 +1930,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsA == null)
             throw new Exception("User stats are null");
 
-        await userStatsA.UpdateWithScore(scoreA, null, 0);
+        userStatsA.UpdateWithDbScore(scoreA);
         await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
 
         // Create User B and submit score with 100pp
@@ -1709,7 +1955,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             scoreB.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            scoreB.OsuVersion,
             sessionB.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1753,10 +1999,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreA.Mods = Mods.None;
         scoreA.PerformancePoints = 100;
         scoreA.SubmissionStatus = SubmissionStatus.Best;
-        scoreA.BeatmapStatus = BeatmapStatus.Ranked;
-        scoreA.IsScoreable = true;
+        scoreA.SetBeatmapStatus(BeatmapStatus.Ranked);
         scoreA.ScoreHash = _mocker.GetRandomString(32);
-        scoreA.LocalProperties.FromScore(scoreA);
         scoreA.EnrichWithUserData(userA);
 
         var beatmapSetA = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -1773,7 +2017,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsA == null)
             throw new Exception("User stats are null");
 
-        await userStatsA.UpdateWithScore(scoreA, null, 1);
+        userStatsA.UpdateWithDbScore(scoreA);
         await Database.Users.Stats.UpdateUserStats(userStatsA, userA);
 
         // Create User B with 100pp
@@ -1785,10 +2029,8 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         scoreB1.Mods = Mods.None;
         scoreB1.PerformancePoints = 100;
         scoreB1.SubmissionStatus = SubmissionStatus.Best;
-        scoreB1.BeatmapStatus = BeatmapStatus.Ranked;
-        scoreB1.IsScoreable = true;
+        scoreB1.SetBeatmapStatus(BeatmapStatus.Ranked);
         scoreB1.ScoreHash = _mocker.GetRandomString(32);
-        scoreB1.LocalProperties.FromScore(scoreB1);
         scoreB1.EnrichWithUserData(userB);
 
         var beatmapSetB1 = _mocker.Beatmap.GetRandomBeatmapSet();
@@ -1801,7 +2043,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
         if (userStatsB == null)
             throw new Exception("User stats are null");
 
-        await userStatsB.UpdateWithScore(scoreB1, null, 0);
+        userStatsB.UpdateWithDbScore(scoreB1);
         await Database.Users.Stats.UpdateUserStats(userStatsB, userB);
 
         // Verify initial ranks: User A should be rank 1, User B should be rank 2
@@ -1832,7 +2074,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             scoreB2.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            scoreB2.OsuVersion,
             sessionB.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1888,7 +2130,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
@@ -1910,7 +2152,7 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
-    public async Task TestSuccessfulSubmitScoreWithBeatmapSetRetrievalFallback()
+    public async Task TestScoreQueuedWhenBeatmapRetrievalFails()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
@@ -1949,23 +2191,27 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
         );
 
         // Assert
-        Assert.DoesNotContain("error", resultString);
+        Assert.Equal("error: no", resultString);
 
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
+        var queueEntry = await Database.DbContext.ScoreProcessingTasks
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+        Assert.NotNull(queueEntry);
+        Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
+        Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
+        Assert.NotNull(queueEntry.ScoreSubmissionRequestId);
     }
 
     [Fact]
-    public async Task TestSuccessfulSubmitScoreWithPerformanceCalculationFallback()
+    public async Task TestScoreQueuedWhenPerformanceCalculationFails()
     {
         // Arrange
         var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
@@ -2025,81 +2271,22 @@ public class ScoreServiceSubmitScoreTests(IntegrationDatabaseFixture fixture) : 
             score.BeatmapHash,
             _mocker.GetRandomInteger(),
             _mocker.GetRandomInteger(),
-            _mocker.GetRandomString(),
+            score.OsuVersion,
             session.Attributes.UserHash,
             _replayService.GenerateReplayFormFile(),
             null
         );
 
         // Assert
-        Assert.DoesNotContain("error", resultString);
+        Assert.Equal("error: no", resultString);
 
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
+        var queueEntry = await Database.DbContext.ScoreProcessingTasks
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
 
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
-
-        Assert.Equal(500, databaseScore.PerformancePoints);
-    }
-
-    [Fact]
-    public async Task TestDuplicateScoreSubmissionIsRejectedWhileOriginalIsProcessed()
-    {
-        // Arrange
-        var scoreService = Scope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-        
-        var secondScope = App.Server.Services.CreateScope();
-        var secondScoreService = secondScope.ServiceProvider.GetRequiredService<Server.Services.ScoreService>();
-
-        var (session, user) = await CreateTestSession();
-
-        var (replay, beatmapId) = GetValidTestReplay();
-
-        var score = replay.GetScore();
-        score.BeatmapId = beatmapId;
-
-        score.EnrichWithSessionData(session);
-
-        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
-        var beatmap = beatmapSet.Beatmaps.First() ?? throw new Exception("Beatmap is null");
-        beatmap.EnrichWithScoreData(score);
-
-        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
-        App.MockHttpClient?.MockPerformanceCalculation();
-
-        // Act
-        var results = await Task.WhenAll(scoreService.SubmitScore(
-                session,
-                score.ToScoreString(user.Username),
-                score.BeatmapHash,
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomString(),
-                session.Attributes.UserHash,
-                _replayService.GenerateReplayFormFile(),
-                null
-            ),
-            secondScoreService.SubmitScore(
-                session,
-                score.ToScoreString(user.Username),
-                score.BeatmapHash,
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomInteger(),
-                _mocker.GetRandomString(),
-                session.Attributes.UserHash,
-                _replayService.GenerateReplayFormFile(),
-                null
-            ));
-
-        // Assert
-        var processedCount = results.Count(r => !r.Contains("error"));
-        var errorCount = results.Count(r => r.Contains("error"));
-        Assert.Equal(1, processedCount);
-        Assert.Equal(1, errorCount);
-
-        var databaseScore = await Database.Scores.GetScore(score.ScoreHash);
-        Assert.NotNull(databaseScore);
-
-        Assert.Equal(SubmissionStatus.Best, databaseScore.SubmissionStatus);
+        Assert.NotNull(queueEntry);
+        Assert.Equal(ScoreProcessingStatus.Pending, queueEntry!.Status);
+        Assert.Equal(ScoreTaskType.Submission, queueEntry.TaskType);
+        Assert.NotNull(queueEntry.ScoreSubmissionRequestId);
     }
 }

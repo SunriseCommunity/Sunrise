@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
+using Sunrise.Shared.Repositories.Multiplayer;
 using Sunrise.Tests.Manager;
 using Sunrise.Tests.Utils;
 
@@ -50,6 +51,8 @@ public class IntegrationDatabaseFixture : IAsyncLifetime
     public async Task ResetAsync()
     {
         using var scope = App.Server.Services.CreateScope();
+
+        App.MockHttpClient?.ClearMocks();
         
         await ClearSingletonState(scope);
         
@@ -131,6 +134,7 @@ public class IntegrationDatabaseFixture : IAsyncLifetime
     {
         var sessions = scope.ServiceProvider.GetRequiredService<SessionRepository>();
         var channels = scope.ServiceProvider.GetRequiredService<ChatChannelRepository>();
+        var matches = scope.ServiceProvider.GetRequiredService<MatchRepository>();
         
         var existingSessions = sessions.GetSessions().ToList();
         await Task.WhenAll(
@@ -140,6 +144,12 @@ public class IntegrationDatabaseFixture : IAsyncLifetime
         Parallel.ForEach(existingChannels, channel =>
         {
             channels.RemoveAbstractChannel(channel.Name);
+        });
+        
+        var existingMatches = matches.GetMatches().ToList();
+        Parallel.ForEach(existingMatches, match =>
+        {
+            matches.RemoveMatch(match.Match.MatchId, true);
         });
     }
     

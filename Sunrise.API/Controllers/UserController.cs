@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using osu.Shared;
 using Sunrise.API.Attributes;
 using Sunrise.API.Extensions;
 using Sunrise.API.Objects.Keys;
@@ -18,13 +19,16 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Leaderboards;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Objects.Serializable.Events;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
+using BeatmapStatus = Sunrise.Shared.Enums.Beatmaps.BeatmapStatus;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
+using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
 
 namespace Sunrise.API.Controllers;
 
@@ -375,12 +379,62 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             },
             ct);
 
-        scores = await database.Scores.EnrichScoresWithLeaderboardPosition(scores, ct);
+        var scoresWithRanks = await database.Scores.GetScoresWithLeaderboardPositions(scores, ct);
 
-        var parsedScores = scores.Select(score => new ScoreResponse(sessions, score))
+        var parsedScores = scoresWithRanks.Select(entry => new ScoreResponse(sessions, entry.Score, entry.LeaderboardPosition))
             .ToList();
 
         return Ok(new ScoresResponse(parsedScores, totalScores));
+    }
+
+    [HttpGet]
+    [Authorize("RequireSuperUser")]
+    [Route("{id:int}/scores/admin")]
+    [EndpointDescription("Admin: list all raw user scores (no dedup, includes deleted/failed)")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(AdminScoresResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUserScoresAdmin(
+        [Range(1, int.MaxValue)] int id,
+        [FromQuery(Name = "mode")] GameMode? mode = null,
+        [FromQuery(Name = "mods")] IEnumerable<Mods>? mods = null,
+        [FromQuery(Name = "submission_status")]
+        SubmissionStatus? submissionStatus = null,
+        [FromQuery(Name = "beatmap_status")] BeatmapStatus? beatmapStatus = null,
+        [FromQuery(Name = "submitted_from")] DateTime? submittedFrom = null,
+        [FromQuery(Name = "submitted_to")] DateTime? submittedTo = null,
+        [FromQuery(Name = "sort")] ScoreSortType sort = ScoreSortType.Date,
+        [Range(1, 100)] [FromQuery(Name = "limit")]
+        int limit = 25,
+        [Range(1, int.MaxValue)] [FromQuery(Name = "page")]
+        int page = 1,
+        CancellationToken ct = default)
+    {
+        var user = await database.Users.GetUser(id, options: new QueryOptions(true), ct: ct);
+        if (user == null)
+            return Problem(ApiErrorResponse.Detail.UserNotFound, statusCode: StatusCodes.Status404NotFound);
+
+        var modsEnum = (mods ?? Array.Empty<Mods>()).Aggregate(Mods.None, (current, mod) => current | mod);
+
+        var (scores, totalCount) = await database.Scores.GetScores(
+            mode,
+            new QueryOptions(true, new Pagination(page, limit))
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            },
+            null,
+            user.Id,
+            mods != null ? modsEnum : null,
+            submissionStatus,
+            beatmapStatus,
+            submittedFrom,
+            submittedTo,
+            sort,
+            false,
+            ct);
+
+        var parsedScores = scores.Select(score => new AdminScoreResponse(sessions, score)).ToList();
+
+        return Ok(new AdminScoresResponse(parsedScores, totalCount));
     }
 
     [HttpGet]
@@ -408,7 +462,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var (beatmapsIds, totalIdsCount) = await database.Scores.GetUserMostPlayedBeatmapIds(id, mode, new QueryOptions(true, new Pagination(page, limit)), ct);
 
-        var parsedBeatmaps = beatmapsIds.Select(async pair =>
+        var parsedBeatmapsTasks = beatmapsIds.Select(async pair =>
         {
             var bId = pair.Key;
             var count = pair.Value;
@@ -419,10 +473,12 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
             var beatmapSet = beatmapSetResult.Value;
 
-            var beatmap = beatmapSet?.Beatmaps.FirstOrDefault(b => b.Id == bId);
+            var beatmap = beatmapSet?.Beatmaps?.FirstOrDefault(b => b.Id == bId);
 
             return beatmap == null ? null : new MostPlayedBeatmapResponse(sessions, beatmap, count, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+        });
+
+        var parsedBeatmaps = (await Task.WhenAll(parsedBeatmapsTasks)).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new MostPlayedResponse(parsedBeatmaps, totalIdsCount));
     }
@@ -451,7 +507,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var (favourites, favouritesCount) = await database.Users.Favourites.GetUserFavouriteBeatmapIds(id, new QueryOptions(true, new Pagination(page, limit)), ct);
 
-        var parsedFavourites = favourites.Select(async setId =>
+        var parsedFavouritesTasks = favourites.Select(async setId =>
         {
             var beatmapSetResult = await beatmapService.GetBeatmapSet(session, setId, ct: ct);
             if (beatmapSetResult.IsFailure)
@@ -460,7 +516,9 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
             var beatmapSet = beatmapSetResult.Value;
 
             return beatmapSet == null ? null : new BeatmapSetResponse(sessions, beatmapSet);
-        }).Select(task => task.Result).Where(x => x != null).Select(x => x!).ToList();
+        });
+
+        var parsedFavourites = (await Task.WhenAll(parsedFavouritesTasks)).Where(x => x != null).Select(x => x!).ToList();
 
         return Ok(new BeatmapSetsResponse(parsedFavourites, favouritesCount));
     }
@@ -912,7 +970,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -931,7 +989,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeAvatar, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -955,7 +1013,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
 
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)
@@ -974,7 +1032,7 @@ public class UserController(BeatmapService beatmapService, DatabaseService datab
         var user = HttpContext.GetCurrentUserOrThrow();
         var ip = RegionService.GetUserIpAddress(Request);
 
-        if (Request.HasFormContentType == false)
+        if (!Request.HasFormContentType)
             return Problem(title: ApiErrorResponse.Title.UnableToChangeBanner, detail: ApiErrorResponse.Detail.InvalidContentType, statusCode: StatusCodes.Status400BadRequest);
 
         if (Request.Form.Files.Count == 0)

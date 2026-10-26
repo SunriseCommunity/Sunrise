@@ -1,4 +1,5 @@
 using CSharpFunctionalExtensions;
+using EntityFrameworkCore.Locking;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sunrise.Shared.Database.Extensions;
@@ -31,6 +32,17 @@ public class UserGradesService(
             dbContext.UpdateEntity(userGrades);
             await dbContext.SaveChangesAsync();
         });
+    }
+
+    public async Task<UserGrades?> LockUserGradesForUpdate(UserGrades userGrades, CancellationToken ct = default)
+    {
+        dbContext.Entry(userGrades).State = EntityState.Detached;
+        return await dbContext.UserGrades
+            .Where(ug => userGrades.Id != 0
+                ? ug.Id == userGrades.Id
+                : ug.UserId == userGrades.UserId && ug.GameMode == userGrades.GameMode)
+            .ForUpdate()
+            .SingleOrDefaultAsync(ct);
     }
 
     public async Task<UserGrades?> GetUserGrades(int userId, GameMode mode, CancellationToken ct = default)

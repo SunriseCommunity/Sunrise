@@ -26,14 +26,7 @@ public class MultiMatchCreateHandler : IPacketHandler
 
         var multiplayerMatches = ServicesProviderHolder.GetRequiredService<MatchRepository>();
 
-        multiplayerMatches.CreateMatch(match);
-
-        multiplayerMatches.JoinMatch(session,
-            new BanchoMultiplayerJoin
-            {
-                MatchId = match.MatchId,
-                Password = match.GamePassword
-            });
+        multiplayerMatches.CreateMatchWithHost(session, match);
 
         return Task.CompletedTask;
     }

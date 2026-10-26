@@ -16,14 +16,12 @@ public class ChatRateLimiter(int messagesLimit, TimeSpan timeWindow, bool action
     public new bool CanSend(BaseSession session)
     {
         var canSend = base.CanSend(session);
-        
+
         using var scope = ServicesProviderHolder.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
-        
-        var user = database.Users
-            .GetUser(id: session.UserId, options: new QueryOptions(true))
-            .ConfigureAwait(false).GetAwaiter().GetResult();
-        
+        var dbContext = scope.ServiceProvider.GetRequiredService<SunriseDbContext>();
+
+        var user = dbContext.Users.FirstOrDefault(u => u.Id == session.UserId);
+
         if (user == null)
             return false;
 

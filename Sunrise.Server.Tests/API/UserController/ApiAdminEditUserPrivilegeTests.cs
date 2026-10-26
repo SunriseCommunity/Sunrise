@@ -169,11 +169,18 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
         var tokens = await GetUserAuthTokens(adminUser);
         client.UseUserAuthToken(tokens);
 
-        var combinedPrivilege = UserPrivilege.Supporter | UserPrivilege.Bat;
+        var combinedPrivilege = UserPrivilege.Supporter |
+                                UserPrivilege.BeatmapApprovalTeamStandard |
+                                UserPrivilege.BeatmapApprovalTeamTaiko |
+                                UserPrivilege.BeatmapApprovalTeamCatch |
+                                UserPrivilege.BeatmapApprovalTeamMania;
         var expectedPrivilege = JsonStringFlagEnumHelper.CombineFlags(new[]
         {
             UserPrivilege.Supporter,
-            UserPrivilege.Bat
+            UserPrivilege.BeatmapApprovalTeamStandard,
+            UserPrivilege.BeatmapApprovalTeamTaiko,
+            UserPrivilege.BeatmapApprovalTeamCatch,
+            UserPrivilege.BeatmapApprovalTeamMania
         });
 
         // Act
@@ -183,7 +190,10 @@ public class ApiAdminEditUserPrivilegeTests(IntegrationDatabaseFixture fixture) 
                 Privilege = new[]
                 {
                     UserPrivilege.Supporter,
-                    UserPrivilege.Bat
+                    UserPrivilege.BeatmapApprovalTeamStandard,
+                    UserPrivilege.BeatmapApprovalTeamTaiko,
+                    UserPrivilege.BeatmapApprovalTeamCatch,
+                    UserPrivilege.BeatmapApprovalTeamMania
                 }
             });
 

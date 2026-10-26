@@ -1,7 +1,14 @@
-﻿using osu.Shared;
+using Sunrise.Shared.Database.Models.Beatmap;
+using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Enums.Beatmaps;
+using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Extensions.Beatmaps;
+using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Utils;
+using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Extensions;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -10,15 +17,13 @@ namespace Sunrise.Tests.Services.Mock.Services;
 
 public class MockScoreService(MockService service)
 {
-    private static readonly string[] BeatmapGradeChars = ["F", "D", "C", "B", "A", "S", "SH", "X", "XH"];
-
     /// <summary>
     ///     Returns a random score.
     ///     Keep in mind that this score is not normalized, thus it may contain invalid values.
     /// </summary>
-    public Score GetRandomScore()
+    public Score GetRandomScore(GameMode gameMode = GameMode.Standard)
     {
-        return new Score
+        var score = new Score
         {
             UserId = service.GetRandomInteger(length: 6),
             BeatmapId = service.GetRandomInteger(length: 6),
@@ -28,13 +33,11 @@ public class MockScoreService(MockService service)
             CountGeki = service.GetRandomInteger(length: 3),
             CountKatu = service.GetRandomInteger(length: 3),
             CountMiss = service.GetRandomInteger(length: 3),
-            Grade = GetRandomBeatmapGrade(),
-            IsScoreable = service.GetRandomBoolean(),
-            Mods = GetRandomMods(),
-            Accuracy = service.GetRandomInteger(length: 2),
+            Grade = GetRandomScoreGrade(),
+            Accuracy = service.GetRandomInteger(minInt: 0, maxInt: 100),
             Perfect = service.GetRandomBoolean(),
-            GameMode = GetRandomGameMode(),
-            BeatmapStatus = service.Beatmap.GetRandomBeatmapStatus(),
+            GameMode = gameMode,
+            BeatmapHashStatus = new BeatmapHashStatus { BeatmapHash = string.Empty, Status = service.Beatmap.GetRandomBeatmapStatus() },
             IsPassed = service.GetRandomBoolean(),
             BeatmapHash = service.GetRandomString(32),
             PerformancePoints = service.GetRandomInteger(length: 3),
@@ -43,10 +46,61 @@ public class MockScoreService(MockService service)
             TotalScore = service.GetRandomInteger(length: 6),
             WhenPlayed = service.GetRandomDateTime(),
             ClientTime = service.GetRandomDateTime(),
-            OsuVersion = service.GetRandomInteger(length: 6).ToString()
+            OsuVersion = service.GetRandomInteger(length: 8).ToString()
         };
+
+        score.Mods = GetRandomMods(score.GameMode);
+
+        return score;
     }
 
+    /// <summary>
+    ///     Returns a score built from random inputs but with dependent values reconciled against the supplied beatmap,
+    ///     so it satisfies the production admission rules. Use this instead of <see cref="GetRandomScore" /> when a test
+    ///     needs a valid score rather than an arbitrary one.
+    /// </summary>
+    public Score GetValidScore(Beatmap beatmap)
+    {
+        var score = GetRandomScore();
+        score.PrepareForSubmission(beatmap);
+
+        return score;
+    }
+
+    public ScoreGrade GetRandomScoreGrade()
+    {
+        var values = Enum.GetValues<ScoreGrade>();
+        return values[Random.Shared.Next(values.Length)];
+    }
+
+    public SubmittedScore GetRandomSubmittedScore(Score score)
+    {
+        var submittedScore = new SubmittedScore
+        {
+            PlayerUsername = service.GetRandomString(),
+            Count300 = score.Count300,
+            Count100 = score.Count100,
+            Count50 = score.Count50,
+            CountGeki = score.CountGeki,
+            CountKatu = score.CountKatu,
+            CountMiss = score.CountMiss,
+            Grade = score.Grade,
+            Accuracy = score.Accuracy,
+            Perfect = score.Perfect,
+            GameMode = score.GameMode,
+            Mods = score.Mods,
+            IsPassed = score.IsPassed,
+            BeatmapHash = score.BeatmapHash,
+            MaxCombo = score.MaxCombo,
+            ScoreHash = score.ScoreHash,
+            TotalScore = score.TotalScore,
+            WhenPlayed = score.WhenPlayed,
+            ClientTime = score.ClientTime,
+            OsuVersion = score.OsuVersion
+        };
+
+        return submittedScore;
+    }
 
     public PerformanceAttributes GetRandomPerformanceAttributes()
     {
@@ -64,7 +118,7 @@ public class MockScoreService(MockService service)
                 HP = service.GetRandomInteger(minInt: 0, maxInt: 10),
                 IsConvert = service.GetRandomBoolean(),
                 MaxCombo = service.GetRandomInteger(),
-                Mode = GetRandomGameMode(),
+                Mode = GameMode.Standard,
                 MonoStaminaFactor = service.GetRandomInteger(minInt: 0, maxInt: 10),
                 NCircles = service.GetRandomInteger(length: 6),
                 NDroplets = service.GetRandomInteger(length: 6),
@@ -100,23 +154,27 @@ public class MockScoreService(MockService service)
     public Score GetBestScoreableRandomScore()
     {
         var score = GetRandomScore();
-        score.BeatmapStatus = BeatmapStatus.Ranked;
+        score.BeatmapHashStatus!.Status = BeatmapStatus.Ranked;
         score.SubmissionStatus = SubmissionStatus.Best;
-        score.IsScoreable = true;
         score.IsPassed = true;
 
         score.Normalize();
 
-        score.LocalProperties = score.LocalProperties.FromScore(score);
+        score.OsuVersion = score.ClientTime.ToString("yyyyMMdd");
+        if (score.CountMiss > 0)
+            score.Perfect = false;
+
+        score.Accuracy = PerformanceCalculator.CalculateAccuracy(score);
+        score.Grade = ScoreGradeUtil.Calculate(score);
+
 
         return score;
     }
 
     public GameMode GetRandomGameMode()
     {
-        var random = new Random();
         var values = Enum.GetValues(typeof(GameMode));
-        return (GameMode)values.GetValue(random.Next(values.Length))!;
+        return (GameMode)values.GetValue(Random.Shared.Next(values.Length))!;
     }
 
     public int GetRandomAccuracy()
@@ -124,15 +182,32 @@ public class MockScoreService(MockService service)
         return service.GetRandomInteger(minInt: 0, maxInt: 100);
     }
 
-    public string GetRandomBeatmapGrade()
+    public Mods GetRandomMods(GameMode gameMode)
     {
-        return BeatmapGradeChars[new Random().Next(0, BeatmapGradeChars.Length)];
-    }
+        var random = Random.Shared;
+        var vanillaMode = gameMode.ToVanillaGameMode();
+        var selectedMods = gameMode.GetGamemodeMods();
+        var supportedMods = ModsValidationUtil.SupportedMods[vanillaMode];
+        var modsInConflictGroups = ModsValidationUtil.MutuallyExclusiveGroups
+            .SelectMany(group => group)
+            .ToHashSet();
 
-    public Mods GetRandomMods()
-    {
-        var random = new Random();
-        var values = Enum.GetValues(typeof(Mods));
-        return (Mods)values.GetValue(random.Next(values.Length))!;
+        foreach (var group in ModsValidationUtil.MutuallyExclusiveGroups)
+        {
+            var compatibleChoices = group
+                .Where(supportedMods.Contains)
+                .ToArray();
+
+            if (compatibleChoices.Length > 0 && random.Next(compatibleChoices.Length + 1) > 0)
+                selectedMods |= compatibleChoices[random.Next(compatibleChoices.Length)];
+        }
+
+        foreach (var mod in supportedMods.Where(mod => !modsInConflictGroups.Contains(mod)))
+        {
+            if (random.Next(2) == 1)
+                selectedMods |= mod;
+        }
+
+        return selectedMods;
     }
 }

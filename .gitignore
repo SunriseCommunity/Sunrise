@@ -129,6 +129,7 @@ Data.Tests.*
 
 # Temporary files
 *.tmp
+*.csproj.lscache
 
 # Logs
 */logs/*

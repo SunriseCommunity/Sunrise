@@ -12,6 +12,7 @@ using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Users;
 using Sunrise.Shared.Extensions;
+using Sunrise.Shared.Extensions.Users;
 using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Sessions;
 
@@ -23,7 +24,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
     private readonly SemaphoreSlim _dbSemaphore = new(1);
 
     public async Task<Result<BeatmapSet, ErrorMessage>> GetBeatmapSet(BaseSession session, int? beatmapSetId = null,
-        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, CancellationToken ct = default)
+        string? beatmapHash = null, int? beatmapId = null, int? retryCount = 1, bool shouldSendRateLimitWarning = true, bool useCache = true, CancellationToken ct = default)
     {
         if (beatmapSetId == null && beatmapHash == null && beatmapId == null)
             return Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
@@ -32,7 +33,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 Status = HttpStatusCode.BadRequest
             });
 
-        BeatmapSet? beatmapSet;
+        BeatmapSet beatmapSet;
 
         // TODO: Since this logic is only required to not accidentally lose submitted scores if we cant fetch beatmaps (observatory/mirrors are down, etc.), 
         // I would suggest writing scores as is in the database and have a background task that retries fetching beatmaps for scores that dont have them until they are found. (This would also allow the server to be rebooted without losing scores)
@@ -45,8 +46,13 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         {
             await _dbSemaphore.WaitAsync(linkedCts.Token);
 
-            beatmapSet = await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId);
-            if (beatmapSet != null) return beatmapSet;
+            var cachedBeatmapSet = useCache ? await database.Beatmaps.GetCachedBeatmapSet(beatmapSetId, beatmapHash, beatmapId) : null;
+
+            if (cachedBeatmapSet != null)
+            {
+                beatmapSet = cachedBeatmapSet;
+                return beatmapSet;
+            }
 
             var beatmapSetTask = Result.Failure<BeatmapSet, ErrorMessage>(new ErrorMessage
             {
@@ -115,7 +121,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
 
         var beatmapSetsResults = await Task.WhenAll(beatmapSetsTasks);
 
-        if (beatmapSetsResults.Any(b => b.IsFailure && (ignoreNotFoundBeatmapSets == false || b.Error.Status != HttpStatusCode.NotFound)))
+        if (beatmapSetsResults.Any(b => b.IsFailure && (!ignoreNotFoundBeatmapSets || b.Error.Status != HttpStatusCode.NotFound)))
         {
             return beatmapSetsResults.First(v => v.IsFailure).Error;
         }
@@ -189,12 +195,9 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
         if (newStatus == null && resetCustomStatus == null)
             return Result.Failure<CustomBeatmapStatus?>("No proper status arguments were specified.");
 
-        var isCanChangeBeatmapStatus = user.Privilege.HasFlag(UserPrivilege.Bat);
-
-        if (!isCanChangeBeatmapStatus)
-        {
-            return Result.Failure<CustomBeatmapStatus?>("User cannot change beatmap status.");
-        }
+        var validation = ValidateBeatmapCustomStatusChange(user, beatmap);
+        if (validation.IsFailure)
+            return Result.Failure<CustomBeatmapStatus?>(validation.Error);
 
         var customStatus = await database.Beatmaps.CustomStatuses.GetCustomBeatmapStatus(beatmap.Checksum!);
 
@@ -205,6 +208,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 await database.Beatmaps.CustomStatuses.DeleteCustomBeatmapStatus(customStatus);
             }
 
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return null;
         }
 
@@ -216,6 +220,7 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
                 customStatus.UpdatedByUserId = user.Id;
 
                 var updateCustomStatusResult = await database.Beatmaps.CustomStatuses.UpdateCustomBeatmapStatus(customStatus);
+                await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
                 return updateCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(updateCustomStatusResult.Error) : customStatus;
             }
 
@@ -228,10 +233,20 @@ public class BeatmapService(ILogger<BeatmapService> logger, DatabaseService data
             };
 
             var addCustomStatusResult = await database.Beatmaps.CustomStatuses.AddCustomBeatmapStatus(customStatus);
+            await database.Calculations.MarkBeatmapCheckDue(beatmap.Checksum!);
             return addCustomStatusResult.IsFailure ? Result.Failure<CustomBeatmapStatus?>(addCustomStatusResult.Error) : customStatus;
         }
 
         return Result.Failure<CustomBeatmapStatus?>("Unknown error occurred while changing beatmap status.");
+    }
+
+    public Result ValidateBeatmapCustomStatusChange(User user, Beatmap beatmap)
+    {
+        var requiredPrivilege = UserPrivilegeExtensions.GetBeatmapApprovalTeamPrivilege((GameMode)beatmap.ModeInt);
+
+        return requiredPrivilege != UserPrivilege.User && user.Privilege.HasFlag(requiredPrivilege)
+            ? Result.Success()
+            : Result.Failure("User cannot change beatmap status for this gamemode.");
     }
 
     private bool IsValidResult(Result<BeatmapSet, ErrorMessage> result)

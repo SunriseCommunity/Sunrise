@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Sunrise.API.Extensions;
 using Sunrise.Shared.Enums.Users;
+using Sunrise.Shared.Extensions.Users;
 
 namespace Sunrise.Server.Middlewares;
 
@@ -29,7 +30,7 @@ public class DatabaseAuthorizationHandler : IAuthorizationHandler
             {
                 var requiredPrivilege = privilegeRequirement.Privilege;
 
-                if (user.Privilege.HasFlag(requiredPrivilege))
+                if (user.Privilege.HasRequiredPrivilege(requiredPrivilege))
                 {
                     context.Succeed(requirement);
                 }

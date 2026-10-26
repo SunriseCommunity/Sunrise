@@ -48,7 +48,7 @@ public class SilenceCommand : IChatCommand
             return;
         }
 
-        if (sessionUser.Privilege.GetHighestPrivilege() <= user.Privilege.GetHighestPrivilege())
+        if (sessionUser.Privilege.GetPrivilegeLevel() <= user.Privilege.GetPrivilegeLevel())
         {
             ChatCommandRepository.SendMessage(session, "You cannot silence this user due to their privilege level.");
             return;

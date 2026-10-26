@@ -1,5 +1,6 @@
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Beatmap;
+using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Objects.Serializable;
@@ -20,9 +21,7 @@ public static class BeatmapSetExtensions
 
         if (customSetStatus != null)
         {
-            beatmapSet.StatusString = customSetStatus.Status.BeatmapStatusWebToString();
-            beatmapSet.Ranked = (int)customSetStatus.Status;
-            beatmapSet.BeatmapNominatorUser = customSetStatus.UpdatedByUser;
+            beatmapSet.UpdateBeatmapRanking(customSetStatus.Status, customSetStatus.UpdatedByUser);
         }
 
         foreach (var beatmap in beatmapSet.Beatmaps)
@@ -38,12 +37,18 @@ public static class BeatmapSetExtensions
     {
         var status = BeatmapStatusWeb.Ranked;
 
-        beatmapSet.StatusString = status.BeatmapStatusWebToString();
-        beatmapSet.Ranked = (int)status;
+        beatmapSet.UpdateBeatmapRanking(status);
 
         foreach (var beatmap in beatmapSet.Beatmaps)
         {
             beatmap.UpdateBeatmapRanking(status);
         }
+    }
+
+    public static void UpdateBeatmapRanking(this BeatmapSet beatmapSet, BeatmapStatusWeb beatmapStatus, User? beatmapNominator = null)
+    {
+        beatmapSet.StatusString = beatmapStatus.BeatmapStatusWebToString();
+        beatmapSet.Ranked = (int)beatmapStatus;
+        beatmapSet.BeatmapNominatorUser = beatmapNominator;
     }
 }
