@@ -18,7 +18,7 @@ public static class UsernameExtensions
         return $"{username}_old";
     }
 
-    public static (bool, string?) IsValidUsername(this string str)
+    public static (bool, string?) IsValidUsername(this string str, bool skipBannedUsernameCheck = false)
     {
         var isLengthValid = str.Length is >= 2 and <= 32;
 
@@ -32,7 +32,7 @@ public static class UsernameExtensions
             return (false, "Username contains unallowed strings, please remove them and try again.");
         }
 
-        if (IsUsernameDisallowed(str).Result)
+        if (!skipBannedUsernameCheck && IsUsernameDisallowed(str).Result)
         {
             return (false, "Username contains unallowed strings, try to come up with a harmless and original nickname.");
         }

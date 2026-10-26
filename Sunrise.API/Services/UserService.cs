@@ -252,7 +252,8 @@ public class UserService(
     public async Task<IActionResult> ChangeUserUsername(
         UserEventAction eventAction,
         string newUsername,
-        bool skipCooldownCheck = false)
+        bool skipCooldownCheck = false,
+        bool skipBannedUsernameCheck = false)
     {
         var user = eventAction.TargetUser ?? await database.Users.GetUser(eventAction.TargetUserId);
         if (user == null)
@@ -265,7 +266,7 @@ public class UserService(
                 StatusCode = StatusCodes.Status404NotFound
             };
 
-        var (isUsernameValid, error) = newUsername.IsValidUsername();
+        var (isUsernameValid, error) = newUsername.IsValidUsername(skipBannedUsernameCheck);
         if (!isUsernameValid)
             return new ObjectResult(new ProblemDetails
             {
