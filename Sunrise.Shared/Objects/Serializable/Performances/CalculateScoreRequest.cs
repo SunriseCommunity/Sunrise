@@ -2,6 +2,7 @@
 using osu.Shared;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Extensions.Beatmaps;
+using SunriseGameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 
 namespace Sunrise.Shared.Objects.Serializable.Performances;
 
@@ -36,6 +37,14 @@ public class CalculateScoreRequest(Score score)
 
     [JsonPropertyName("misses")]
     public int CountMiss { get; set; } = score.CountMiss;
+
+    [JsonPropertyName("legacyTotalScore")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long? LegacyTotalScore { get; set; } = score.GameMode == SunriseGameMode.Standard
+        && (score.Mods & (Mods.Relax | Mods.Relax2 | Mods.ScoreV2)) == Mods.None
+        && score.TotalScore is >= 0 and <= uint.MaxValue
+            ? score.TotalScore
+            : null;
 
     [JsonPropertyName("mode")]
     public GameMode GameMode { get; set; } = score.GameMode.ToVanillaGameMode();
