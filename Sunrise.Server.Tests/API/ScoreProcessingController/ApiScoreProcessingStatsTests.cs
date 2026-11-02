@@ -46,7 +46,7 @@ public class ApiScoreProcessingStatsTests(IntegrationDatabaseFixture fixture) : 
     }
 
     [Fact]
-    public async Task TestGetStatsReturnsCountsAndEta()
+    public async Task TestGetStatsReturnsCountsWithoutInventingEtaBeforeProgress()
     {
         // Arrange
         var client = App.CreateClient().UseClient("api");
@@ -85,8 +85,7 @@ public class ApiScoreProcessingStatsTests(IntegrationDatabaseFixture fixture) : 
         Assert.Equal(2, stats.Pending);
         Assert.Equal(1, stats.Processing);
         Assert.Equal(1, stats.Failed);
-        Assert.NotNull(stats.EstimatedPendingCompletionSeconds);
-        Assert.True(stats.EstimatedPendingCompletionSeconds > 0);
+        Assert.Null(stats.EstimatedPendingCompletionSeconds);
     }
 
     [Fact]

@@ -573,6 +573,9 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("Status", "Priority", "NextRetryAt");
 
+                    b.HasIndex(new[] { "Priority", "CreatedAt", "Id", "Status", "NextRetryAt", "LeaseExpiresAt" }, "IX_score_processing_task_claim_order")
+                        .IsDescending(true, false, false, false, false, false);
+
                     b.ToTable("score_processing_task", t =>
                         {
                             t.HasCheckConstraint("CK_score_processing_task_target", "((TaskType = 0 AND ScoreSubmissionRequestId IS NOT NULL AND ScoreId IS NULL) OR (TaskType <> 0 AND ScoreSubmissionRequestId IS NULL AND ScoreId IS NOT NULL))");

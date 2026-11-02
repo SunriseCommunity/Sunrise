@@ -5,6 +5,7 @@ using Sunrise.Processing.Scores.Handlers;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Scores;
+using Sunrise.Shared.Database.Repositories;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
 using Sunrise.Shared.Repositories;
@@ -15,17 +16,18 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 {
     private const int DefaultBackoffMinutes = 1;
 
-    [DisableConcurrentExecution(timeoutInSeconds: 120)]
     [AutomaticRetry(Attempts = 0)]
     public async Task ProcessQueue(CancellationToken ct)
     {
+        using var ownershipScope = scopeFactory.CreateScope();
+        var ownershipDatabase = ownershipScope.ServiceProvider.GetRequiredService<DatabaseService>();
+        if (!await ownershipDatabase.ScoreProcessingTasks.TryAcquireQueueLock(ct))
+            return;
+        using var ownershipCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var ownershipHeartbeat = MaintainQueueOwnership(ownershipDatabase.ScoreProcessingTasks, ownershipCts, TimeSpan.FromSeconds(30));
         var runStart = DateTime.UtcNow;
         var totalProcessed = 0;
         var outcome = "drained";
-
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(TimeSpan.FromSeconds(55));
-        var token = timeoutCts.Token;
 
         Log.Information("Score queue poller tick starting (max concurrency {MaxConcurrency}, batch lease {Lease}s)",
             Configuration.ScoreProcessingMaxConcurrency,
@@ -33,52 +35,22 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
 
         try
         {
-            while (!token.IsCancellationRequested)
-            {
-                List<ScoreProcessingTask> claimed;
-
-                using (var claimScope = scopeFactory.CreateScope())
+            totalProcessed = await ScoreProcessingDispatcher.Drain(
+                async (available, activeIds, token) =>
                 {
+                    using var claimScope = scopeFactory.CreateScope();
                     var database = claimScope.ServiceProvider.GetRequiredService<DatabaseService>();
-                    claimed = await database.ScoreProcessingTasks.ClaimPendingBatch(
-                        Configuration.ScoreProcessingMaxConcurrency,
-                        Configuration.ScoreProcessingBatchLease,
-                        token);
-                }
+                    return await database.ScoreProcessingTasks.ClaimPendingBatch(available, Configuration.ScoreProcessingBatchLease, token, activeIds);
+                },
+                ProcessEntry,
+                Math.Max(1, Configuration.ScoreProcessingMaxConcurrency),
+                ownershipCts.Token);
 
-                if (claimed.Count == 0)
-                {
-                    if (totalProcessed == 0)
-                        outcome = "empty";
-                    break;
-                }
-
-                Log.Information("Processing batch of {Count} queued score entries", claimed.Count);
-
-                await Parallel.ForEachAsync(claimed,
-                    new ParallelOptions
-                    {
-                        MaxDegreeOfParallelism = Configuration.ScoreProcessingMaxConcurrency,
-                        CancellationToken = token
-                    },
-                    async (entry, innerCt) => await ProcessEntry(entry, innerCt));
-
-                totalProcessed += claimed.Count;
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(Configuration.ScoreProcessingPollerInterBatchDelaySeconds), token);
-                }
-                catch (OperationCanceledException)
-                {
-                    outcome = "cancelled";
-                    break;
-                }
-            }
+            outcome = totalProcessed == 0 ? "empty" : "drained";
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        catch (OperationCanceledException) when (ownershipCts.IsCancellationRequested)
         {
-            outcome = "timeout";
+            outcome = ct.IsCancellationRequested ? "cancelled" : "ownership_lost";
         }
         catch (Exception ex)
         {
@@ -88,12 +60,42 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
         finally
         {
+            await ownershipCts.CancelAsync();
+            try
+            {
+                await ownershipHeartbeat;
+            }
+            finally
+            {
+                await ownershipDatabase.ScoreProcessingTasks.ReleaseQueueLock();
+            }
             var elapsed = (DateTime.UtcNow - runStart).TotalMilliseconds;
             SunriseMetrics.ScoreProcessingPollerRunCounterInc(outcome, totalProcessed);
             Log.Information("Score queue poller tick finished: outcome={Outcome}, processed={Processed}, elapsed_ms={ElapsedMs}",
                 outcome,
                 totalProcessed,
                 (long)elapsed);
+        }
+    }
+
+    internal static async Task MaintainQueueOwnership(ScoreProcessingTaskRepository tasks, CancellationTokenSource ownershipCts, TimeSpan interval)
+    {
+        using var timer = new PeriodicTimer(interval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ownershipCts.Token))
+            {
+                if (!await tasks.IsQueueLockHeld(ownershipCts.Token))
+                    throw new InvalidOperationException("Score queue ownership was lost");
+            }
+        }
+        catch (OperationCanceledException) when (ownershipCts.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            await ownershipCts.CancelAsync();
+            throw;
         }
     }
 
@@ -176,8 +178,12 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // The poller tick is shutting down. Leave the entry claimed: its lease expires and a later tick reclaims it.
-            Log.Information("Score task {TaskId} ({TaskType}) was abandoned because the poller tick is shutting down", task.Id, task.TaskType);
+            using var releaseScope = scopeFactory.CreateScope();
+            var database = releaseScope.ServiceProvider.GetRequiredService<DatabaseService>();
+            if (task.ClaimToken != null)
+                await database.ScoreProcessingTasks.ReleaseClaim(task.Id, task.ClaimToken);
+
+            Log.Information("Released score task {TaskId} ({TaskType}) because the worker is shutting down", task.Id, task.TaskType);
         }
         catch (Exception ex)
         {

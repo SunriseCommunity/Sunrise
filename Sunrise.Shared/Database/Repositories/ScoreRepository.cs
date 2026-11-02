@@ -188,6 +188,10 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             .FilterValidScores()
             .Where(s => s.GameMode == EF.Constant(mode));
 
+        // Top must still select each beatmap's winner across all users.
+        if (type != ScoreTableType.Top)
+            scoresQuery = scoresQuery.Where(s => s.UserId == EF.Constant(userId));
+
         switch (type)
         {
             case ScoreTableType.Best:
@@ -226,7 +230,8 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
-        scoresQuery = scoresQuery.Where(s => s.UserId == userId); // We are adding user id query only after forming sqlRaw query to get proper beatmaps top plays
+        if (type == ScoreTableType.Top)
+            scoresQuery = scoresQuery.Where(s => s.UserId == userId);
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await scoresQuery.CountAsync(cancellationToken: ct);
 

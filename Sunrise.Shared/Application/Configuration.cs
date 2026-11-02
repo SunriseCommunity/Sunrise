@@ -202,11 +202,6 @@ public static class Configuration
     public static int ScoreProcessingMaxConcurrency =>
         Config.GetSection("ScoreProcessing").GetValue<int?>("MaxConcurrency") ?? 8;
 
-    public static int ScoreProcessingPollerInterBatchDelaySeconds =>
-        Config.GetSection("ScoreProcessing").GetValue<int?>("PollerInterBatchDelaySeconds")
-        ?? Config.GetSection("ScoreProcessing").GetValue<int?>("PollerIntervalSeconds")
-        ?? 1;
-
     public static int ScoreProcessingMaxRetries =>
         Config.GetSection("ScoreProcessing").GetValue<int?>("MaxRetries") ?? 10;
 

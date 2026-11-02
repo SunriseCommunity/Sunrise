@@ -10,6 +10,8 @@ namespace Sunrise.Shared.Database.Models.Scores;
 [Index(nameof(TaskType), nameof(ScoreId))]
 [Index(nameof(ScoreSubmissionRequestId))]
 [Index(nameof(RunId), nameof(Status))]
+[Index(nameof(Priority), nameof(CreatedAt), nameof(Id), nameof(Status), nameof(NextRetryAt), nameof(LeaseExpiresAt),
+    Name = "IX_score_processing_task_claim_order", IsDescending = new[] { true, false, false, false, false, false })]
 public class ScoreProcessingTask
 {
     public int Id { get; set; }

@@ -6,6 +6,7 @@ using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Extensions.Beatmaps;
 using Sunrise.Shared.Extensions.Scores;
+using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Services;
 using GameMode = Sunrise.Shared.Enums.Beatmaps.GameMode;
 using SubmissionStatus = Sunrise.Shared.Enums.Scores.SubmissionStatus;
@@ -115,7 +116,7 @@ public class UserStatsScoreProcessor(
 
         if (isBetterPerformanceValue)
         {
-            (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
+            await ApplyWeightedRefresh(ctx);
         }
     }
 
@@ -157,7 +158,7 @@ public class UserStatsScoreProcessor(
             userStats.RankedScore = Math.Max(0, userStats.RankedScore - rankedDecrement);
         }
 
-        (userStats.PerformancePoints, userStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, score.GameMode);
+        await ApplyWeightedRefresh(ctx);
     }
 
     private static bool IsBestByScoreValue(Score score, Score? competingScore)
@@ -176,6 +177,10 @@ public class UserStatsScoreProcessor(
 
     private async Task ApplyWeightedRefresh(ScoreCommitContext ctx)
     {
+        // The final run phase calculates these values after all scores have their new PP.
+        if (await database.Calculations.GetFrozenPhase() is CalculationRunPhase.Enqueue or CalculationRunPhase.Scores)
+            return;
+
         (ctx.UserStats.PerformancePoints, ctx.UserStats.Accuracy) = await calculatorService.CalculateUserWeightedStats(ctx.User, ctx.Score.GameMode);
     }
 
