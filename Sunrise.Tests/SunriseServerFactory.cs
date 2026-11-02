@@ -11,6 +11,7 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
+using Sunrise.Processing.Scores.Jobs;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
 
@@ -24,6 +25,9 @@ public class SunriseServerFactory : WebApplicationFactory<Server.Program>, IDisp
     {
         builder.ConfigureTestServices(services =>
         {
+            foreach (var worker in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType == typeof(ScoreProcessingWorker)).ToList())
+                services.Remove(worker);
+
             foreach (var hangfireServer in services.Where(d => d.ServiceType == typeof(IHostedService) && d.ImplementationFactory?.Method.DeclaringType?.Namespace == "Hangfire").ToList())
                 services.Remove(hangfireServer);
 

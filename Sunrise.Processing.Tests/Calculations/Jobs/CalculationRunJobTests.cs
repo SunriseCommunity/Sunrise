@@ -16,6 +16,7 @@ using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 using Xunit;
 using Mods = osu.Shared.Mods;
 
@@ -25,6 +26,32 @@ namespace Sunrise.Processing.Tests.Calculations.Jobs;
 public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture, true)
 {
     private readonly MockService _mocker = new();
+
+    [Fact]
+    public async Task TestGlobalScorePhaseDefersWeightedQueriesUntilFinalStatsPhase()
+    {
+        var player = await CreatePlayer(100, 150);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+
+        using (var scoreQueries = new SqlCommandCapture())
+        {
+            await ProcessQueue();
+            Assert.DoesNotContain(scoreQueries.Commands, sql => sql.Contains("ROW_NUMBER()"));
+        }
+
+        Assert.Equal(300, (await ReloadScore(player.Scores[0])).PerformancePoints);
+        Assert.Equal(player.Stats.PerformancePoints, (await ReloadStats(player)).PerformancePoints);
+
+        using (var finalQueries = new SqlCommandCapture())
+        {
+            await RunJob();
+            Assert.Contains(finalQueries.Commands, sql => sql.Contains("ROW_NUMBER()"));
+        }
+
+        Assert.Null(await Database.Calculations.GetFrozenPhase());
+        Assert.True((await ReloadStats(player)).PerformancePoints > player.Stats.PerformancePoints);
+    }
 
     [Fact]
     public async Task TestRunFreezesUserStatsUntilFinished()

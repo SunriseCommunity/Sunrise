@@ -7,6 +7,7 @@ using Serilog;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Objects;
 using Sunrise.Shared.Objects.Sessions;
 using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Repositories.Multiplayer;
@@ -36,7 +37,7 @@ public class SunriseMetrics
 
     private static readonly Counter<long> ScoreProcessingPollerRunsCounter = SunriseMeter.CreateCounter<long>(
         "score_processing_poller_runs_total",
-        description: "Counts each Hangfire ProcessQueue tick, tagged by outcome (empty, drained, cancelled, error)");
+        description: "Counts each score worker drain, tagged by outcome (empty, drained, cancelled, error)");
 
     private static readonly Counter<long> ScoreProcessingEntriesCounter = SunriseMeter.CreateCounter<long>(
         "score_processing_entries_total",
@@ -72,7 +73,7 @@ public class SunriseMetrics
         "score_processing_last_run_age_seconds",
         GetSecondsSinceLastPollerRun,
         "seconds",
-        "Seconds since the Hangfire ProcessQueue job last completed; alert if this grows unbounded");
+        "Seconds since the score worker last completed a task or drain; alert if this grows unbounded");
 
     private static readonly ObservableGauge<int> CurrentMatchesGauge = SunriseMeter.CreateObservableGauge(
         "current_matches_count",
@@ -187,8 +188,8 @@ public class SunriseMetrics
     private static int _cachedTotalRestrictedUsers;
     private static Dictionary<GameMode, long> _cachedScoresByGameMode = new();
     private static Dictionary<ScoreProcessingStatus, long> _cachedQueueDepthByStatus = new();
-    private static DateTime? _lastPollerRunCompletedAt;
-    private static double _cachedAverageTaskDurationSeconds;
+    private static long _lastScoreProcessingActivityTicks;
+    private static readonly ScoreProcessingProgressEstimator ScoreProcessingProgress = new(TimeProvider.System);
 
     public SunriseMetrics()
     {
@@ -222,11 +223,13 @@ public class SunriseMetrics
         _cachedTotalRestrictedUsers = restrictedUsers;
         _cachedScoresByGameMode = scoresByMode;
         _cachedQueueDepthByStatus = queueDepth;
+        EstimateScoreProcessingCompletionSeconds(queueDepth.GetValueOrDefault(ScoreProcessingStatus.Pending)
+                                                 + queueDepth.GetValueOrDefault(ScoreProcessingStatus.Processing));
     }
 
     public static void ScoreProcessingPollerRunCounterInc(string outcome, int batchCount)
     {
-        _lastPollerRunCompletedAt = DateTime.UtcNow;
+        Interlocked.Exchange(ref _lastScoreProcessingActivityTicks, DateTime.UtcNow.Ticks);
         ScoreProcessingPollerRunsCounter.Add(1,
             new KeyValuePair<string, object?>("outcome", outcome),
             new KeyValuePair<string, object?>("batch_count", batchCount));
@@ -250,23 +253,23 @@ public class SunriseMetrics
 
     public static void RecordScoreProcessingTaskDuration(double seconds, ScoreTaskType taskType)
     {
+        Interlocked.Exchange(ref _lastScoreProcessingActivityTicks, DateTime.UtcNow.Ticks);
         ScoreProcessingTaskDurationHistogram.Record(seconds,
             new KeyValuePair<string, object?>("task_type", taskType.ToString()));
-
-        _cachedAverageTaskDurationSeconds = _cachedAverageTaskDurationSeconds * 0.8 + seconds * 0.2;
     }
 
-    public static double GetEstimatedAverageTaskDurationSeconds()
+    public static double? EstimateScoreProcessingCompletionSeconds(long outstanding)
     {
-        return _cachedAverageTaskDurationSeconds > 0 ? _cachedAverageTaskDurationSeconds : 0;
+        return ScoreProcessingProgress.EstimateSeconds(outstanding);
     }
 
     private static long GetSecondsSinceLastPollerRun()
     {
-        if (_lastPollerRunCompletedAt == null)
+        var ticks = Interlocked.Read(ref _lastScoreProcessingActivityTicks);
+        if (ticks == 0)
             return -1;
 
-        return (long)(DateTime.UtcNow - _lastPollerRunCompletedAt.Value).TotalSeconds;
+        return Math.Max(0, (DateTime.UtcNow.Ticks - ticks) / TimeSpan.TicksPerSecond);
     }
 
     public static void PacketHandlingCounterInc(BanchoPacket packet, Session session)

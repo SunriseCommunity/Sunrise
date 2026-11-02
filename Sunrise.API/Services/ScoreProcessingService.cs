@@ -221,7 +221,8 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         var processing = counts.GetValueOrDefault(ScoreProcessingStatus.Processing);
         var failed = counts.GetValueOrDefault(ScoreProcessingStatus.Failed);
 
-        return new OkObjectResult(new ScoreProcessingStatsResponse(pending, processing, failed, EstimatePendingCompletionSeconds(pending)));
+        return new OkObjectResult(new ScoreProcessingStatsResponse(pending, processing, failed,
+            SunriseMetrics.EstimateScoreProcessingCompletionSeconds(pending + processing)));
     }
 
     public async Task<IActionResult> GetEvents(int page, int limit, List<ScoreProcessingEventType>? types, int? scoreId, CancellationToken ct = default)
@@ -235,20 +236,5 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         var parsed = events.Select(scoreProcessingEvent => new EventScoreProcessingResponse(sessions, scoreProcessingEvent)).ToList();
 
         return new OkObjectResult(new EventScoreProcessingListResponse(parsed, totalCount));
-    }
-
-    private static double? EstimatePendingCompletionSeconds(long pending)
-    {
-        if (pending <= 0)
-            return null;
-
-        var concurrency = Math.Max(1, Configuration.ScoreProcessingMaxConcurrency);
-        var batches = Math.Ceiling(pending / (double)concurrency);
-
-        var avgTaskDuration = SunriseMetrics.GetEstimatedAverageTaskDurationSeconds();
-        var secondsPerTask = avgTaskDuration > 0 ? avgTaskDuration : Configuration.ScoreProcessingTimeoutSeconds;
-        var secondsPerBatch = secondsPerTask + Configuration.ScoreProcessingPollerInterBatchDelaySeconds;
-
-        return batches * secondsPerBatch;
     }
 }

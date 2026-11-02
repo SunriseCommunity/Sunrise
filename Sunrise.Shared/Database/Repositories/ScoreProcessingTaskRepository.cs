@@ -12,6 +12,30 @@ namespace Sunrise.Shared.Database.Repositories;
 
 public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 {
+    public async Task<bool> TryAcquireQueueLock(CancellationToken ct = default)
+    {
+        // Keep this connection open for the owner's lifetime; the lock is scoped to the score database.
+        await dbContext.Database.OpenConnectionAsync(ct);
+        using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT GET_LOCK(SHA2(CONCAT(DATABASE(), ':score-processing'), 256), 0)";
+        return Convert.ToInt32(await command.ExecuteScalarAsync(ct)) == 1;
+    }
+
+    public async Task ReleaseQueueLock()
+    {
+        using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT RELEASE_LOCK(SHA2(CONCAT(DATABASE(), ':score-processing'), 256))";
+        await command.ExecuteScalarAsync();
+        await dbContext.Database.CloseConnectionAsync();
+    }
+
+    public async Task<bool> IsQueueLockHeld(CancellationToken ct = default)
+    {
+        using var command = dbContext.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "SELECT COALESCE(IS_USED_LOCK(SHA2(CONCAT(DATABASE(), ':score-processing'), 256)) = CONNECTION_ID(), 0)";
+        return Convert.ToInt32(await command.ExecuteScalarAsync(ct)) == 1;
+    }
+
     public async Task AddQueueEntry(ScoreProcessingTask task, CancellationToken ct = default)
     {
         dbContext.ScoreProcessingTasks.Add(task);
@@ -78,27 +102,38 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return tasks;
     }
 
-    public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default)
+    public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default, IReadOnlyCollection<int>? activeTaskIds = null)
     {
         var claimToken = Guid.NewGuid().ToString("N");
         var leaseUntil = DateTime.UtcNow.Add(lease);
+        List<object> parameters = [(int)ScoreProcessingStatus.Pending, (int)ScoreProcessingStatus.Processing, limit,
+            (int)ScoreProcessingStatus.Processing, claimToken, leaseUntil];
+        var activeExclusion = "";
+        if (activeTaskIds is { Count: > 0 })
+        {
+            var placeholders = Enumerable.Range(parameters.Count, activeTaskIds.Count).Select(index => "{" + index + "}");
+            activeExclusion = "AND Id NOT IN (" + string.Join(", ", placeholders) + ")";
+            parameters.AddRange(activeTaskIds.Cast<object>());
+        }
 
-        await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
+        await dbContext.Database.ExecuteSqlRawAsync($@"
             UPDATE score_processing_task AS target
             JOIN (
                 SELECT Id
                 FROM score_processing_task
                 WHERE (
-                        Status = {(int)ScoreProcessingStatus.Pending}
-                        OR (Status = {(int)ScoreProcessingStatus.Processing} AND LeaseExpiresAt < UTC_TIMESTAMP())
+                        Status = {{0}}
+                        OR (Status = {{1}} AND LeaseExpiresAt < UTC_TIMESTAMP())
                       )
                   AND (NextRetryAt IS NULL OR NextRetryAt <= UTC_TIMESTAMP())
+                  {activeExclusion}
                 ORDER BY Priority DESC, CreatedAt, Id
-                LIMIT {limit}
+                LIMIT {{2}}
             ) AS picked ON picked.Id = target.Id
-            SET target.Status = {(int)ScoreProcessingStatus.Processing},
-                target.ClaimToken = {claimToken},
-                target.LeaseExpiresAt = {leaseUntil}",
+            SET target.Status = {{3}},
+                target.ClaimToken = {{4}},
+                target.LeaseExpiresAt = {{5}}",
+            parameters,
             ct);
 
         return await dbContext.ScoreProcessingTasks
@@ -321,6 +356,17 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             .Where(task => task.Id == taskId && task.ClaimToken == claimToken)
             .ExecuteUpdateAsync(setters => setters
                     .SetProperty(task => task.LeaseExpiresAt, leaseUntil),
+                ct);
+    }
+
+    public async Task ReleaseClaim(int taskId, string claimToken, CancellationToken ct = default)
+    {
+        await dbContext.ScoreProcessingTasks
+            .Where(task => task.Id == taskId && task.ClaimToken == claimToken && task.Status == ScoreProcessingStatus.Processing)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(task => task.Status, ScoreProcessingStatus.Pending)
+                    .SetProperty(task => task.ClaimToken, (string?)null)
+                    .SetProperty(task => task.LeaseExpiresAt, (DateTime?)null),
                 ct);
     }
 
