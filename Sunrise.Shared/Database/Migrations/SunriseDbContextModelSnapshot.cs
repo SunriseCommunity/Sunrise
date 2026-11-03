@@ -432,6 +432,8 @@ namespace Sunrise.Shared.Database.Migrations
 
                     b.HasIndex("UserId", "BeatmapHash", "GameMode");
 
+                    b.HasIndex("UserId", "GameMode", "WhenPlayed");
+
                     b.ToTable("score");
                 });
 
