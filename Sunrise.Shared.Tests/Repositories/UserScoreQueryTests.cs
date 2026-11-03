@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
@@ -17,6 +18,79 @@ namespace Sunrise.Shared.Tests.Repositories;
 public class UserScoreQueryTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture, true)
 {
     private readonly MockService _mocker = new();
+
+    [Theory]
+    [InlineData(false, GameMode.Standard)]
+    [InlineData(true, GameMode.Standard)]
+    [InlineData(false, GameMode.RelaxStandard)]
+    [InlineData(true, GameMode.RelaxStandard)]
+    public async Task GlobalTopScoresPreserveWinnersTiesAndPagination(bool rankByPp, GameMode mode)
+    {
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", rankByPp.ToString());
+        var user = await CreateTestUser();
+        var beatmapHash = _mocker.GetRandomString(32);
+        var time = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        async Task<Score> Add(double pp, long value, DateTime playedAt, SubmissionStatus status = SubmissionStatus.Best, bool passed = true)
+        {
+            var score = _mocker.Score.GetBestScoreableRandomScore();
+            score.UserId = user.Id;
+            score.GameMode = mode;
+            score.BeatmapId = 100;
+            score.BeatmapHash = beatmapHash;
+            score.PerformancePoints = pp;
+            score.TotalScore = value;
+            score.WhenPlayed = playedAt;
+            score.SubmissionStatus = status;
+            score.IsPassed = passed;
+            score.SetBeatmapStatus(BeatmapStatus.Ranked);
+            return await CreateTestScore(score);
+        }
+
+        await Add(100, 400, time.AddMinutes(2));
+        var earlier = await Add(100, 400, time.AddMinutes(1));
+        await Add(100, 400, time.AddMinutes(1));
+        var higherPp = await Add(200, 200, time);
+        var submitted = await Add(300, 100, time.AddMinutes(5), SubmissionStatus.Submitted);
+        await Add(999, 999, time, passed: false);
+        await Add(999, 999, time, SubmissionStatus.Deleted);
+
+        var otherUser = await CreateTestUser();
+        var other = await Add(75, 1000, time);
+        other.UserId = otherUser.Id;
+        await Database.Scores.UpdateScore(other);
+
+        var otherMap = await Add(50, 100, time);
+        otherMap.BeatmapId = 101;
+        await Database.Scores.UpdateScore(otherMap);
+
+        var restricted = await CreateTestUser();
+        restricted.AccountStatus = UserAccountStatus.Restricted;
+        await Database.DbContext.SaveChangesAsync();
+        var hidden = await Add(999, 999, time);
+        hidden.UserId = restricted.Id;
+        await Database.Scores.UpdateScore(hidden);
+
+        var winner = rankByPp ? submitted : mode == GameMode.RelaxStandard ? higherPp : earlier;
+        var expected = new[] { winner.Id, other.Id, otherMap.Id };
+        for (var page = 1; page <= 3; page++)
+        {
+            var (scores, count) = await Database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(true, new Pagination(page, 2))
+            {
+                QueryModifier = query => query.Cast<Score>().IncludeUser()
+            });
+            Assert.Equal(3, count);
+            Assert.Equal(expected.Skip((page - 1) * 2).Take(2), scores.Select(s => s.Id));
+            Assert.All(scores, s => Assert.NotNull(s.User));
+        }
+
+        var (withoutCount, ignoredCount) = await Database.Scores.GetBestScoresByGameMode(mode, new QueryOptions(true)
+        {
+            IgnoreCountQueryIfExists = true
+        });
+        Assert.Equal(-1, ignoredCount);
+        Assert.Equal(expected, withoutCount.Select(s => s.Id));
+    }
 
     [Fact]
     public async Task ScoreCountsMatchVisibleScoresAcrossStatusesAndAfterRestriction()

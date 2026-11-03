@@ -62,19 +62,36 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
 
     public async Task<(List<Score>, int)> GetBestScoresByGameMode(GameMode mode, QueryOptions? options = null, CancellationToken ct = default)
     {
-        var candidates = dbContext.Scores
-            .FilterValidScores()
-            .FilterPassedRankedScores()
-            .Where(x => x.GameMode == EF.Constant(mode));
+        var candidates = BuildVisibleScoresQuery(rankedOnly: true)
+            .Where(s => s.IsPassed && s.SubmissionStatus != SubmissionStatus.Failed && s.GameMode == EF.Constant(mode));
+
+        if (!Configuration.UseNewPerformanceCalculationAlgorithm)
+            candidates = candidates.Where(s => s.SubmissionStatus == SubmissionStatus.Best);
 
         var totalCount = options?.IgnoreCountQueryIfExists == true ? -1 : await candidates
-            .Where(s => Configuration.UseNewPerformanceCalculationAlgorithm || s.SubmissionStatus == SubmissionStatus.Best)
             .GroupBy(s => new { s.UserId, s.BeatmapId })
             .CountAsync(ct);
 
-        var groupedBestScores = candidates.SelectUsersPersonalBestScores(Configuration.UseNewPerformanceCalculationAlgorithm);
+        var candidateSql = candidates.Select(s => new { s.Id, s.UserId, s.BeatmapId, s.PerformancePoints, s.TotalScore, s.WhenPlayed }).ToQueryString();
+        var rankingColumn = Configuration.UseNewPerformanceCalculationAlgorithm || GameModeExtensions.GetGameModesWithoutScoreMultiplier().Contains(mode)
+            ? nameof(Score.PerformancePoints)
+            : nameof(Score.TotalScore);
+
+        // Rank only IDs and ordering columns; load full score records after choosing winners.
         var scoresQuery = dbContext.Scores
-            .FromSqlRaw(groupedBestScores.ToQueryString())
+            .FromSqlRaw($"""
+                        SELECT s.* FROM score AS s
+                        INNER JOIN (
+                            SELECT ranked.Id FROM (
+                                SELECT c.Id, ROW_NUMBER() OVER (
+                                    PARTITION BY c.UserId, c.BeatmapId
+                                    ORDER BY c.`{rankingColumn}` DESC, c.WhenPlayed, c.Id
+                                ) AS ScoreRank
+                                FROM ({candidateSql}) AS c
+                            ) AS ranked
+                            WHERE ranked.ScoreRank = 1
+                        ) AS winners ON winners.Id = s.Id
+                        """)
             .OrderByDescending(x => x.PerformancePoints)
             .ThenBy(x => x.WhenPlayed)
             .ThenBy(x => x.Id);
@@ -409,12 +426,12 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
 
     public async Task<long> CountScores(CancellationToken ct = default)
     {
-        return await BuildScoreCountQuery().LongCountAsync(cancellationToken: ct);
+        return await BuildVisibleScoresQuery().LongCountAsync(cancellationToken: ct);
     }
 
     public async Task<Dictionary<GameMode, long>> CountScoresByGameMode(CancellationToken ct = default)
     {
-        return await BuildScoreCountQuery()
+        return await BuildVisibleScoresQuery()
             .GroupBy(s => s.GameMode)
             .Select(g => new
             {
@@ -424,16 +441,19 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             .ToDictionaryAsync(k => k.GameMode, v => v.Count, ct);
     }
 
-    private IQueryable<Score> BuildScoreCountQuery()
+    private IQueryable<Score> BuildVisibleScoresQuery(bool rankedOnly = false)
     {
         var restrictedUsers = dbContext.Users.Where(u => u.AccountStatus == UserAccountStatus.Restricted).Select(u => u.Id);
-        var unknownBeatmaps = dbContext.BeatmapHashStatuses.Where(b => b.Status == BeatmapStatus.Unknown).Select(b => b.BeatmapHash);
+        var invalidBeatmaps = rankedOnly
+            ? dbContext.BeatmapHashStatuses.Where(b => !EF.Constant(BeatmapStatusExtensions.RankedStatuses).Contains(b.Status))
+            : dbContext.BeatmapHashStatuses.Where(b => b.Status == BeatmapStatus.Unknown);
+        var invalidHashes = invalidBeatmaps.Select(b => b.BeatmapHash);
 
         // Foreign keys guarantee both targets exist; exclusions avoid joining them for every score.
         return dbContext.Scores.Where(s => s.SubmissionStatus != SubmissionStatus.Deleted
                                            && s.SubmissionStatus != SubmissionStatus.Unknown
                                            && !restrictedUsers.Contains(s.UserId)
-                                           && !unknownBeatmaps.Contains(s.BeatmapHash));
+                                           && !invalidHashes.Contains(s.BeatmapHash));
     }
 
     public async Task<(Score? Score, UserBeatmapPeers Peers)> GetUserScoreByIdWithBeatmapPeersForUpdate(
