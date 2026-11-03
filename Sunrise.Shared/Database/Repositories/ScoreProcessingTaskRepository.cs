@@ -59,6 +59,23 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         }
     }
 
+    public async Task<int> EnqueueScoreTasks(List<int> scoreIds, ScoreTaskType taskType, ScoreProcessingPriority priority, CancellationToken ct = default)
+    {
+        if (scoreIds.Count == 0)
+            return 0;
+
+        var orderedIds = scoreIds.Distinct().OrderBy(id => id).ToList();
+        List<object> parameters = [(int)taskType, (int)priority, DateTime.UtcNow];
+        var rows = string.Join(",", Enumerable.Range(parameters.Count, orderedIds.Count)
+            .Select(i => $"({{0}}, {{{i}}}, {{1}}, {(int)ScoreProcessingStatus.Pending}, 0, {{2}})"));
+        parameters.AddRange(orderedIds.Cast<object>());
+
+        // The active-target unique index also skips tasks queued by a concurrent producer.
+        return await dbContext.Database.ExecuteSqlRawAsync($@"
+            INSERT IGNORE INTO score_processing_task (TaskType, ScoreId, Priority, Status, RetryCount, CreatedAt)
+            VALUES {rows}", parameters, ct);
+    }
+
     public async Task<List<ScoreProcessingTask>> BulkAddScoreTasks(
         List<int> scoreIds,
         ScoreTaskType taskType,

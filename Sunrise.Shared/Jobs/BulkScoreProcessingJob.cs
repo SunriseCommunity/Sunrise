@@ -11,7 +11,7 @@ namespace Sunrise.Shared.Jobs;
 
 public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
 {
-    private const int PageSize = 100;
+    private const int PageSize = 500;
 
     public async Task EnqueueByFilter(
         int? executorId,
@@ -37,7 +37,8 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 using var scope = scopeFactory.CreateScope();
                 var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                var pageScores = await database.Scores.GetScoresForBulkProcessing(
+                ct.ThrowIfCancellationRequested();
+                var scoreIds = await database.Scores.GetScoreIdsForBulkProcessing(
                     mode,
                     userId,
                     mods,
@@ -46,23 +47,22 @@ public class BulkScoreProcessingJob(IServiceScopeFactory scopeFactory)
                     submittedFrom,
                     submittedTo,
                     lastScoreId != null ? lastScoreId + 1 : null,
-                    PageSize,
-                    ct);
+                    limit: PageSize,
+                    ct: ct);
 
-                if (pageScores.Count == 0)
+                if (scoreIds.Count == 0)
                     break;
 
-                var scoreIds = pageScores.Select(score => score.Id).ToList();
-                var queuedTasks = await database.ScoreProcessingTasks.BulkAddScoreTasks(scoreIds, action, ScoreProcessingPriority.Low, ct);
+                var queuedCount = await database.ScoreProcessingTasks.EnqueueScoreTasks(scoreIds, action, ScoreProcessingPriority.Low, ct);
                 lastScoreId = scoreIds[^1];
 
-                matched += pageScores.Count;
-                queued += queuedTasks.Count;
-                skipped += pageScores.Count - queuedTasks.Count;
+                matched += scoreIds.Count;
+                queued += queuedCount;
+                skipped += scoreIds.Count - queuedCount;
 
                 ct.ThrowIfCancellationRequested();
 
-                if (pageScores.Count < PageSize)
+                if (scoreIds.Count < PageSize || lastScoreId == int.MaxValue)
                     break;
             }
 
