@@ -1,3 +1,4 @@
+using System.Net;
 using CSharpFunctionalExtensions;
 using Sunrise.Processing.Scores.Pipeline;
 using Sunrise.Shared.Database;
@@ -49,7 +50,7 @@ public class ScoreRecalculationHandler(
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
         if (scorePerformanceResult.IsFailure)
             return new ScoreProcessingError(
-                    ScoreProcessingErrorCode.PpCalculationFailed,
+                    scorePerformanceResult.Error.Status == HttpStatusCode.TooManyRequests ? ScoreProcessingErrorCode.RateLimited : ScoreProcessingErrorCode.PpCalculationFailed,
                     "PP calculation failed: " + scorePerformanceResult.Error.Message,
                     ScoreProcessingDisposition.Retryable)
                 .ToResult<ScorePrepareContext>();

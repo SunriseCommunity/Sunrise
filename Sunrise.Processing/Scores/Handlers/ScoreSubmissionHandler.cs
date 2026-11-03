@@ -1,3 +1,4 @@
+using System.Net;
 using CSharpFunctionalExtensions;
 using osu.Shared;
 using Serilog;
@@ -101,7 +102,7 @@ public class ScoreSubmissionHandler(
         var scorePerformanceResult = await calculatorService.CalculateScorePerformance(beatmapRatelimitSession, score, ct: ct);
         if (scorePerformanceResult.IsFailure)
             return new ScoreProcessingError(
-                    ScoreProcessingErrorCode.PpCalculationFailed,
+                    scorePerformanceResult.Error.Status == HttpStatusCode.TooManyRequests ? ScoreProcessingErrorCode.RateLimited : ScoreProcessingErrorCode.PpCalculationFailed,
                     "PP calculation failed: " + scorePerformanceResult.Error.Message,
                     ScoreProcessingDisposition.Retryable)
                 .ToResult<ScorePrepareContext>();

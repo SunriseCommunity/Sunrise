@@ -132,7 +132,7 @@ public abstract class ScoreHandlerBase(
                 ? ScoreProcessingDisposition.Permanent
                 : ScoreProcessingDisposition.Retryable;
 
-            return new ScoreProcessingError(ScoreProcessingErrorCode.BeatmapNotFound,
+            return new ScoreProcessingError(beatmapSetResult.Error.Status == HttpStatusCode.TooManyRequests ? ScoreProcessingErrorCode.RateLimited : ScoreProcessingErrorCode.BeatmapNotFound,
                     $"Failed to fetch beatmap set: {beatmapSetResult.Error.Message}",
                     disposition)
                 .ToResult<(BeatmapSet, Beatmap)>();
