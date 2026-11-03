@@ -73,11 +73,15 @@ public class CalculationRunJob(IServiceScopeFactory scopeFactory)
                 await database.Users.Stats.Ranks.RebuildAllUsersRanks(mode);
             }
 
+            var failedTaskCount = (await database.Calculations.CountRunTasks(run, ct)).GetValueOrDefault(ScoreProcessingStatus.Failed);
             run.Phase = CalculationRunPhase.Finished;
             run.FinishedAt = DateTime.UtcNow;
             await database.DbContext.SaveChangesAsync(ct);
 
-            Log.Information("Finished calculation run {RunId}", run.Id);
+            if (failedTaskCount > 0)
+                Log.Warning("Finished calculation run {RunId} with {FailedTaskCount} failed score tasks", run.Id, failedTaskCount);
+            else
+                Log.Information("Finished calculation run {RunId}", run.Id);
         }
     }
 

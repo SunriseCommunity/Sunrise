@@ -100,6 +100,9 @@ public class MockHttpClientService(RedisRepository redis, ILogger<HttpClientServ
             try
             {
                 var response = mockResponse(body);
+                if (response is ErrorMessage error)
+                    return Task.FromResult(Result.Failure<T, ErrorMessage>(error));
+
                 if (responseHeaders?.ContainsKey("X-Rosu-Version") == true)
                     responseHeaders["X-Rosu-Version"] = _rosuVersion;
 

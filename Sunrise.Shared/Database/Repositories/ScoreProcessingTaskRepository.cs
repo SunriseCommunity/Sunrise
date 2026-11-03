@@ -102,13 +102,16 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return tasks;
     }
 
-    public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default, IReadOnlyCollection<int>? activeTaskIds = null)
+    public async Task<List<ScoreProcessingTask>> ClaimPendingBatch(int limit, TimeSpan lease, CancellationToken ct = default, IReadOnlyCollection<int>? activeTaskIds = null, bool observatoryRateLimited = false)
     {
         var claimToken = Guid.NewGuid().ToString("N");
         var leaseUntil = DateTime.UtcNow.Add(lease);
         List<object> parameters = [(int)ScoreProcessingStatus.Pending, (int)ScoreProcessingStatus.Processing, limit,
             (int)ScoreProcessingStatus.Processing, claimToken, leaseUntil];
         var activeExclusion = "";
+        var observatoryExclusion = observatoryRateLimited
+            ? $"AND TaskType NOT IN ({(int)ScoreTaskType.Submission}, {(int)ScoreTaskType.Recalculation})"
+            : "";
         if (activeTaskIds is { Count: > 0 })
         {
             var placeholders = Enumerable.Range(parameters.Count, activeTaskIds.Count).Select(index => "{" + index + "}");
@@ -116,7 +119,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
             parameters.AddRange(activeTaskIds.Cast<object>());
         }
 
-        await dbContext.Database.ExecuteSqlRawAsync($@"
+        var claimedCount = await dbContext.Database.ExecuteSqlRawAsync($@"
             UPDATE score_processing_task AS target
             JOIN (
                 SELECT Id
@@ -127,6 +130,7 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
                       )
                   AND (NextRetryAt IS NULL OR NextRetryAt <= UTC_TIMESTAMP())
                   {activeExclusion}
+                  {observatoryExclusion}
                 ORDER BY Priority DESC, CreatedAt, Id
                 LIMIT {{2}}
             ) AS picked ON picked.Id = target.Id
@@ -135,6 +139,9 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
                 target.LeaseExpiresAt = {{5}}",
             parameters,
             ct);
+
+        if (claimedCount == 0)
+            return [];
 
         return await dbContext.ScoreProcessingTasks
             .AsNoTracking()
@@ -205,22 +212,26 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
 
     public async Task<bool> TryMarkClaimedAsFailed(int taskId, string claimToken, ScoreProcessingError error, TimeSpan nextRetryDelay, CancellationToken ct = default)
     {
-        var isPermanent = error.Disposition == ScoreProcessingDisposition.Permanent;
+        var isRateLimited = error.Code == ScoreProcessingErrorCode.RateLimited;
+        var isPermanent = !isRateLimited && error.Disposition == ScoreProcessingDisposition.Permanent;
         var maxRetries = Configuration.ScoreProcessingMaxRetries;
-        var nextRetryAt = DateTime.UtcNow + nextRetryDelay;
+        var globalMaxRetries = (long)maxRetries * 2;
+        var nextRetryAt = DateTime.UtcNow + (isRateLimited ? TimeSpan.FromMinutes(1) : nextRetryDelay);
 
         var affected = await dbContext.ScoreProcessingTasks
             .Where(t => t.Id == taskId && t.ClaimToken == claimToken)
             .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(t => t.RetryCount, t => t.RetryCount + 1)
+                    .SetProperty(t => t.RetryCount, t => t.RetryCount + (isRateLimited ? 0 : 1))
                     .SetProperty(t => t.ErrorCode, error.Code)
                     .SetProperty(t => t.ErrorMessage, error.Message)
                     .SetProperty(t => t.ClaimToken, (string?)null)
                     .SetProperty(t => t.LeaseExpiresAt, (DateTime?)null)
-                    .SetProperty(t => t.Status, t => isPermanent || (t.RunId == null && t.TaskType != ScoreTaskType.BeatmapStatusChange && t.RetryCount + 1 >= maxRetries)
+                    .SetProperty(t => t.Status, t => isPermanent || (!isRateLimited && t.TaskType != ScoreTaskType.BeatmapStatusChange
+                        && t.RetryCount + 1 >= (t.RunId != null && t.TaskType == ScoreTaskType.Recalculation ? globalMaxRetries : maxRetries))
                         ? ScoreProcessingStatus.Failed
                         : ScoreProcessingStatus.Pending)
-                    .SetProperty(t => t.NextRetryAt, t => isPermanent || (t.RunId == null && t.TaskType != ScoreTaskType.BeatmapStatusChange && t.RetryCount + 1 >= maxRetries)
+                    .SetProperty(t => t.NextRetryAt, t => isPermanent || (!isRateLimited && t.TaskType != ScoreTaskType.BeatmapStatusChange
+                        && t.RetryCount + 1 >= (t.RunId != null && t.TaskType == ScoreTaskType.Recalculation ? globalMaxRetries : maxRetries))
                         ? null
                         : nextRetryAt),
                 ct);

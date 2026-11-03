@@ -6,8 +6,10 @@ using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Database.Repositories;
+using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Objects;
+using Sunrise.Shared.Objects.Keys;
 using Sunrise.Shared.Repositories;
 
 namespace Sunrise.Processing.Scores.Jobs;
@@ -40,7 +42,9 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
                 {
                     using var claimScope = scopeFactory.CreateScope();
                     var database = claimScope.ServiceProvider.GetRequiredService<DatabaseService>();
-                    return await database.ScoreProcessingTasks.ClaimPendingBatch(available, Configuration.ScoreProcessingBatchLease, token, activeIds);
+                    var redis = claimScope.ServiceProvider.GetRequiredService<RedisRepository>();
+                    var observatoryRateLimited = await redis.Get<bool>(RedisKey.ApiServerRateLimited(ApiServer.Observatory));
+                    return await database.ScoreProcessingTasks.ClaimPendingBatch(available, Configuration.ScoreProcessingBatchLease, token, activeIds, observatoryRateLimited);
                 },
                 ProcessEntry,
                 Math.Max(1, Configuration.ScoreProcessingMaxConcurrency),
@@ -156,6 +160,14 @@ public class ScoreProcessingJob(IServiceScopeFactory scopeFactory)
             if (!await bookkeepingDatabase.ScoreProcessingTasks.TryMarkClaimedAsFailed(task.Id, claimToken, error, GetBackoffDelay(task.RetryCount), ct))
             {
                 Log.Warning("Skipped failure bookkeeping for score task {TaskId} ({TaskType}) because its claim was lost", task.Id, task.TaskType);
+                return;
+            }
+
+            if (error.Code == ScoreProcessingErrorCode.RateLimited)
+            {
+                Log.Information("Deferred rate-limited score task {TaskId} ({TaskType}) for user {UserId}: {Error}",
+                    task.Id, task.TaskType, affectedUserId, error.Message);
+                SunriseMetrics.ScoreProcessingEntryCounterInc("rate_limited", task.TaskType, error.Code);
                 return;
             }
 

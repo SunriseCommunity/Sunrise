@@ -1,8 +1,10 @@
+using System.Net;
 using EFCoreSecondLevelCacheInterceptor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Processing.Calculations.Jobs;
 using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
 using Sunrise.Shared.Database.Models;
 using Sunrise.Shared.Database.Models.Scores;
@@ -10,7 +12,10 @@ using Sunrise.Shared.Database.Models.Users;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
+using Sunrise.Shared.Repositories;
 using Sunrise.Shared.Services;
 using Sunrise.Shared.Utils.Calculators;
 using Sunrise.Tests.Abstracts;
@@ -26,6 +31,171 @@ namespace Sunrise.Processing.Tests.Calculations.Jobs;
 public class CalculationRunJobTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture, true)
 {
     private readonly MockService _mocker = new();
+
+    [Fact]
+    public async Task TestObservatoryCooldownStopsFurtherClaimsAndResumesWhenCleared()
+    {
+        EnvManager.Set("ScoreProcessing:MaxConcurrency", "1");
+        await CreatePlayer(100, 100, 100);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+        var redis = Scope.ServiceProvider.GetRequiredService<RedisRepository>();
+        var requests = 0;
+        App.MockHttpClient!.MockResponse(ApiType.CalculateScorePerformance, _ =>
+        {
+            requests++;
+            redis.Set(RedisKey.ApiServerRateLimited(ApiServer.Observatory), true, TimeSpan.FromMinutes(1)).GetAwaiter().GetResult();
+            return new ErrorMessage("Observatory rate limit reached", HttpStatusCode.TooManyRequests);
+        });
+
+        await ProcessQueue();
+
+        var tasks = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().ToListAsync();
+        Assert.Equal(1, requests);
+        Assert.Equal(3, tasks.Count);
+        Assert.Single(tasks, t => t.ErrorCode == ScoreProcessingErrorCode.RateLimited);
+        Assert.All(tasks, t =>
+        {
+            Assert.Equal(ScoreProcessingStatus.Pending, t.Status);
+            Assert.Equal(0, t.RetryCount);
+            Assert.Null(t.ClaimToken);
+            Assert.Null(t.LeaseExpiresAt);
+        });
+
+        await redis.Remove(RedisKey.ApiServerRateLimited(ApiServer.Observatory));
+        await Database.DbContext.ScoreProcessingTasks.ExecuteUpdateAsync(s => s.SetProperty(t => t.NextRetryAt, (DateTime?)null));
+        MockCalculator("3.2.0", 300);
+        await ProcessQueue();
+        Assert.False(await Database.DbContext.ScoreProcessingTasks.NotCacheable().AnyAsync());
+        await RunJob();
+        Assert.NotNull((await Database.Calculations.GetLastRun())!.FinishedAt);
+    }
+
+    [Theory]
+    [InlineData(2, false)]
+    [InlineData(4, false)]
+    [InlineData(5, true)]
+    [InlineData(25, true)]
+    public async Task TestMissingFileRespectsGlobalRetryLimitAndDoesNotLoseScore(int retries, bool exhausted)
+    {
+        EnvManager.Set("ScoreProcessing:MaxRetries", "3");
+        var player = await CreatePlayer(100);
+        var originalVersion = player.Scores[0].CalculationVersionId;
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+        var run = (await Database.Calculations.GetLastRun())!;
+        var task = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.RunId == run.Id);
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == task.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RetryCount, retries));
+        MockMissingOsuFile();
+
+        await ProcessQueue();
+
+        var failed = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.Id == task.Id);
+        Assert.Equal(retries + 1, failed.RetryCount);
+        Assert.Equal(exhausted ? ScoreProcessingStatus.Failed : ScoreProcessingStatus.Pending, failed.Status);
+        Assert.Equal(ScoreProcessingErrorCode.PpCalculationFailed, failed.ErrorCode);
+        Assert.Equal("PP calculation failed: Osu file not found", failed.ErrorMessage);
+        Assert.Null(failed.ClaimToken);
+        Assert.Null(failed.LeaseExpiresAt);
+        if (exhausted)
+            Assert.Null(failed.NextRetryAt);
+        else
+            Assert.True(failed.NextRetryAt > DateTime.UtcNow);
+
+        var unchanged = await ReloadScore(player.Scores[0]);
+        Assert.Equal(100, unchanged.PerformancePoints);
+        Assert.Equal(originalVersion, unchanged.CalculationVersionId);
+
+        await RunJob();
+
+        if (exhausted)
+        {
+            Assert.Null(await Database.Calculations.GetFrozenPhase());
+            Assert.NotNull((await Database.Calculations.GetLastRun())!.FinishedAt);
+            Assert.Equal(1, (await Database.Calculations.CountRunTasks(run))[ScoreProcessingStatus.Failed]);
+            Assert.Equal(originalVersion, (await ReloadScore(player.Scores[0])).CalculationVersionId);
+        }
+        else
+        {
+            Assert.Equal(CalculationRunPhase.Scores, await Database.Calculations.GetFrozenPhase());
+        }
+    }
+
+    [Fact]
+    public async Task TestExhaustedGlobalTaskCanBeRequeuedWhenFileBecomesAvailable()
+    {
+        var player = await CreatePlayer(100);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+        var task = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.RunId != null);
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == task.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RetryCount, Configuration.ScoreProcessingMaxRetries * 2 - 1));
+        MockMissingOsuFile();
+        await ProcessQueue();
+        await RunJob();
+
+        Assert.True((await Database.ScoreProcessingTasks.TryRequeueFailedTask(task.Id)).IsSuccess);
+        MockCalculator("3.2.0", 300);
+        await ProcessQueue();
+
+        var recovered = await ReloadScore(player.Scores[0]);
+        Assert.Equal(300, recovered.PerformancePoints);
+        Assert.Equal(await Database.Calculations.GetOrCreateVersionId("3.2.0"), recovered.CalculationVersionId);
+        Assert.False(await Database.DbContext.ScoreProcessingTasks.NotCacheable().AnyAsync(t => t.Id == task.Id));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TestRateLimitingDefersGlobalTaskWithoutConsumingRetries(bool metadataRateLimited)
+    {
+        var retries = Configuration.ScoreProcessingMaxRetries * 2;
+        var player = await CreatePlayer(100);
+        MockCalculator("3.2.0", 300);
+        await RunJob();
+        var task = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.RunId != null);
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == task.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RetryCount, retries));
+
+        var requests = 0;
+        if (metadataRateLimited)
+            await Scope.ServiceProvider.GetRequiredService<RedisRepository>().Remove(RedisKey.BeatmapSetIdByHash(player.Scores[0].BeatmapHash));
+        App.MockHttpClient!.MockResponse(metadataRateLimited ? ApiType.BeatmapSetDataByHash : ApiType.CalculateScorePerformance, _ =>
+        {
+            requests++;
+            return new ErrorMessage("Observatory rate limit reached", HttpStatusCode.TooManyRequests);
+        });
+
+        await ProcessQueue();
+
+        var deferred = await Database.DbContext.ScoreProcessingTasks.NotCacheable().AsNoTracking().SingleAsync(t => t.Id == task.Id);
+        Assert.Equal(ScoreProcessingStatus.Pending, deferred.Status);
+        Assert.Equal(retries, deferred.RetryCount);
+        Assert.Equal(ScoreProcessingErrorCode.RateLimited, deferred.ErrorCode);
+        Assert.True(deferred.NextRetryAt > DateTime.UtcNow);
+        Assert.Null(deferred.ClaimToken);
+        Assert.Null(deferred.LeaseExpiresAt);
+        Assert.Equal(1, requests);
+        Assert.Equal(100, (await ReloadScore(player.Scores[0])).PerformancePoints);
+
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == task.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.NextRetryAt, DateTime.UtcNow.AddMinutes(-1)));
+        MockCalculator("3.2.0", 300);
+        await _mocker.Beatmap.MockRankedBeatmapWithSetForScore(player.Scores[0]);
+        await ProcessQueue();
+        Assert.Equal(300, (await ReloadScore(player.Scores[0])).PerformancePoints);
+        Assert.False(await Database.DbContext.ScoreProcessingTasks.NotCacheable().AnyAsync(t => t.Id == task.Id));
+    }
+
+    private void MockMissingOsuFile()
+    {
+        App.MockHttpClient!.MockResponse(ApiType.CalculateScorePerformance, _ => new ErrorMessage
+        {
+            Message = "Osu file not found",
+            Status = HttpStatusCode.NotFound
+        });
+    }
 
     [Fact]
     public async Task TestGlobalScorePhaseDefersWeightedQueriesUntilFinalStatsPhase()

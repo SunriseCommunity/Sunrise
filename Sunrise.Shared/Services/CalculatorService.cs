@@ -172,9 +172,6 @@ public class CalculatorService(Lazy<DatabaseService> database, HttpClientService
 
     private bool IsValidResult<T>(Result<T, ErrorMessage> result)
     {
-        var isNotFoundResult = result.IsFailure && result.Error.Status == HttpStatusCode.NotFound;
-        var isValidResult = result.IsSuccess || isNotFoundResult;
-
-        return isValidResult;
+        return result.IsSuccess || result.Error.Status is HttpStatusCode.NotFound or HttpStatusCode.TooManyRequests;
     }
 }

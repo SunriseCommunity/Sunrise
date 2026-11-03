@@ -1,13 +1,18 @@
+using System.Net;
 using HOPEless.Bancho;
 using Sunrise.Shared.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sunrise.Processing.Scores.Jobs;
+using Sunrise.Shared.Application;
 using Sunrise.Shared.Database.Models.Scores;
 using Sunrise.Shared.Enums;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Objects.Keys;
+using Sunrise.Shared.Objects.Serializable;
 using Sunrise.Shared.Objects.Serializable.Performances;
 using Sunrise.Shared.Objects.Sessions;
+using Sunrise.Shared.Repositories;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
@@ -20,6 +25,73 @@ namespace Sunrise.Processing.Tests.Scores.Jobs;
 public class ScoreProcessingJobTests(IntegrationDatabaseFixture fixture, bool reuseScopeInContext = true) : DatabaseTest(fixture, reuseScopeInContext)
 {
     private readonly MockService _mocker = new();
+
+    [Theory]
+    [InlineData(ScoreTaskType.Submission, false)]
+    [InlineData(ScoreTaskType.Recalculation, false)]
+    [InlineData(ScoreTaskType.Restore, true)]
+    [InlineData(ScoreTaskType.Delete, true)]
+    [InlineData(ScoreTaskType.BeatmapStatusChange, true)]
+    public async Task TestObservatoryCooldownOnlyPausesTasksThatNeedObservatory(ScoreTaskType taskType, bool completes)
+    {
+        var user = await CreateTestUser();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        if (taskType == ScoreTaskType.Restore)
+            score.SubmissionStatus = SubmissionStatus.Deleted;
+        score = await CreateTestScore(score);
+        var task = taskType == ScoreTaskType.Submission
+            ? await CreateTask(taskType, scoreSubmissionRequestId: (await CreateTestScoreSubmissionRequest(score, user)).Id)
+            : await CreateTask(taskType, score.Id);
+        var redis = Scope.ServiceProvider.GetRequiredService<RedisRepository>();
+        await redis.Set(RedisKey.ApiServerRateLimited(ApiServer.Observatory), true, TimeSpan.FromMinutes(1));
+
+        await Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>().ProcessQueue(CancellationToken.None);
+
+        var remaining = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleOrDefaultAsync(t => t.Id == task.Id);
+        if (completes)
+            Assert.Null(remaining);
+        else
+        {
+            Assert.NotNull(remaining);
+            Assert.Equal(ScoreProcessingStatus.Pending, remaining.Status);
+            Assert.Equal(0, remaining.RetryCount);
+            Assert.Null(remaining.ErrorCode);
+            Assert.Null(remaining.ClaimToken);
+            Assert.Null(remaining.LeaseExpiresAt);
+            Assert.Null(remaining.NextRetryAt);
+        }
+    }
+
+    [Fact]
+    public async Task TestRateLimitedSubmissionAtRetryLimitIsDeferredWithoutRejectingPlayer()
+    {
+        var user = await CreateTestUser();
+        var session = CreateTestSession(user);
+        session.GetContent();
+        var score = await CreateTestScore(user);
+        var beatmapSet = _mocker.Beatmap.GetRandomBeatmapSet();
+        beatmapSet.Beatmaps!.First().EnrichWithScoreData(score);
+        var replayFileId = await CreateReplayFileId(user.Id);
+        var payload = ScoreSubmissionRequestTestDataFactory.CreateQueueEntry(score, user.Username, replayFileId: replayFileId);
+        await Database.ScoreSubmissionRequests.AddQueueEntry(payload);
+        await _mocker.Beatmap.MockBeatmapSet(beatmapSet);
+        App.MockHttpClient!.MockResponse(ApiType.CalculateScorePerformance,
+            _ => new ErrorMessage("Observatory rate limit reached", HttpStatusCode.TooManyRequests));
+        var task = await CreateTask(ScoreTaskType.Submission, scoreSubmissionRequestId: payload.Id);
+        await Database.DbContext.ScoreProcessingTasks.Where(t => t.Id == task.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RetryCount, Configuration.ScoreProcessingMaxRetries));
+
+        await Scope.ServiceProvider.GetRequiredService<ScoreProcessingJob>().ProcessQueue(CancellationToken.None);
+
+        var deferred = await Database.DbContext.ScoreProcessingTasks.AsNoTracking().SingleAsync(t => t.Id == task.Id);
+        Assert.Equal(ScoreProcessingStatus.Pending, deferred.Status);
+        Assert.Equal(Configuration.ScoreProcessingMaxRetries, deferred.RetryCount);
+        Assert.Equal(ScoreProcessingErrorCode.RateLimited, deferred.ErrorCode);
+        Assert.True(deferred.NextRetryAt > DateTime.UtcNow);
+        Assert.NotNull(await Database.ScoreSubmissionRequests.GetById(payload.Id));
+        Assert.DoesNotContain(GetSessionPackets(session), packet => packet.Type == PacketType.ServerNotification);
+    }
 
     [Fact]
     public async Task TestOwnershipLossCancelsTheWorker()

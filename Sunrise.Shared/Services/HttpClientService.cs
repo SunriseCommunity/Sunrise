@@ -60,27 +60,36 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
             });
         }
 
+        ErrorMessage? rateLimitError = null;
         foreach (var api in apis)
         {
             SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
 
+            var requestHeaders = new Dictionary<string, string>(headers);
             if (api.Server == ApiServer.Observatory)
             {
                 if (!string.IsNullOrEmpty(Configuration.ObservatoryApiKey))
-                    headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
+                    requestHeaders["Authorization"] = Configuration.ObservatoryApiKey;
             }
 
-            var responseResult = await SendApiRequest<T>(api.Server, api.Url, headers, body, responseHeaders, ct);
+            var responseResult = await SendApiRequest<T>(api.Server, api.Url, requestHeaders, body, responseHeaders, ct);
 
             if (responseResult.IsSuccess) return responseResult;
 
             if (!responseResult.IsFailure)
                 continue;
 
-            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
+            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests)
+            {
+                rateLimitError = responseResult.Error;
+                continue;
+            }
 
             return responseResult;
         }
+
+        if (rateLimitError != null)
+            return rateLimitError;
 
         logger.LogWarning(
             "Failed to get response from any API server for {type}.",
@@ -126,6 +135,7 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
         }
 
         var badRequestsToCodes = new Dictionary<string, string>();
+        ErrorMessage? rateLimitError = null;
 
         foreach (var api in apis)
         {
@@ -145,13 +155,14 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
 
             SunriseMetrics.ExternalApiRequestsCounterInc(type, api.Server, session);
 
+            var requestHeaders = new Dictionary<string, string>(headers);
             if (api.Server == ApiServer.Observatory)
             {
                 if (!string.IsNullOrEmpty(Configuration.ObservatoryApiKey))
-                    headers.Add("Authorization", $"{Configuration.ObservatoryApiKey}");
+                    requestHeaders["Authorization"] = Configuration.ObservatoryApiKey;
             }
 
-            var responseResult = await SendApiRequest<T>(api.Server, requestUri, headers, ct: ct);
+            var responseResult = await SendApiRequest<T>(api.Server, requestUri, requestHeaders, ct: ct);
 
             if (responseResult.IsSuccess) return responseResult;
 
@@ -160,12 +171,19 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
             if (!responseResult.IsFailure)
                 continue;
 
-            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests) continue;
+            if (responseResult.Error.Status == HttpStatusCode.TooManyRequests)
+            {
+                rateLimitError = responseResult.Error;
+                continue;
+            }
 
             responseResult.Error.Message += $" ({string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"))})";
 
             return responseResult;
         }
+
+        if (rateLimitError != null)
+            return rateLimitError;
 
         var badRequestsToCodesString = string.Join(", ", badRequestsToCodes.Select(x => $"{x.Key}: {x.Value}"));
 
@@ -300,6 +318,13 @@ public class HttpClientService(RedisRepository redis, ILogger<HttpClientService>
 
                         if (statusCode != 200)
                         {
+                            if (statusCode == (int)HttpStatusCode.TooManyRequests)
+                            {
+                                await redis.Set(RedisKey.ApiServerRateLimited(server), true, TimeSpan.FromMinutes(1));
+                                logger.LogWarning("Server {serverName} returned a rate limit in its response body", server);
+                                return new ErrorMessage($"Server {server} is rate limited.", HttpStatusCode.TooManyRequests);
+                            }
+
                             logger.LogError("Failed to process request to {serverName} with uri {requestUri}. Status: {status}", server, requestUri, statusCode);
                             return Result.Failure<T, ErrorMessage>(new ErrorMessage
                             {
