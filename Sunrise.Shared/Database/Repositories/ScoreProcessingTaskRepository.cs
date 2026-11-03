@@ -269,6 +269,15 @@ public class ScoreProcessingTaskRepository(SunriseDbContext dbContext)
         return UnitResult.Failure($"Score task {taskId} could not be cancelled.");
     }
 
+    public async Task<bool> TryRetryPendingTask(int taskId, CancellationToken ct = default)
+    {
+        var affected = await dbContext.ScoreProcessingTasks
+            .Where(t => t.Id == taskId && t.Status == ScoreProcessingStatus.Pending)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.NextRetryAt, DateTime.UtcNow), ct);
+
+        return affected == 1;
+    }
+
     public async Task<UnitResult<string>> TryRequeueFailedTask(int taskId, CancellationToken ct = default)
     {
         var task = await dbContext.ScoreProcessingTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, ct);

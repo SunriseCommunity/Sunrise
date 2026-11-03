@@ -18,6 +18,7 @@ public static class ApiErrorResponse
 
         public const string UnableToQueueScoreProcessing = "Unable to queue score processing.";
         public const string UnableToCancelScoreTask = "Unable to cancel score task.";
+        public const string UnableToRetryScoreTask = "Unable to retry score task.";
         public const string UnableToRequeueScoreTask = "Unable to requeue score task.";
     }
 
