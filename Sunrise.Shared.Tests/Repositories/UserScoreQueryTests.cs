@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using Sunrise.Shared.Database.Extensions;
 using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Leaderboards;
 using Sunrise.Shared.Enums.Scores;
+using Sunrise.Shared.Enums.Users;
 using Sunrise.Tests.Abstracts;
 using Sunrise.Tests.Extensions;
 using Sunrise.Tests.Services.Mock;
+using Sunrise.Tests.Utils;
 using Mods = osu.Shared.Mods;
 
 namespace Sunrise.Shared.Tests.Repositories;
@@ -13,6 +17,73 @@ namespace Sunrise.Shared.Tests.Repositories;
 public class UserScoreQueryTests(IntegrationDatabaseFixture fixture) : DatabaseTest(fixture, true)
 {
     private readonly MockService _mocker = new();
+
+    [Fact]
+    public async Task ScoreCountsMatchVisibleScoresAcrossStatusesAndAfterRestriction()
+    {
+        var users = new[] { await CreateTestUser(), await CreateTestUser() };
+        users[1].AccountStatus = UserAccountStatus.Restricted;
+        await Database.DbContext.SaveChangesAsync();
+        foreach (var user in users)
+        foreach (var status in Enum.GetValues<SubmissionStatus>())
+        foreach (var beatmapStatus in new[] { BeatmapStatus.Unknown, BeatmapStatus.Ranked, BeatmapStatus.Loved })
+        {
+            var score = _mocker.Score.GetBestScoreableRandomScore();
+            score.EnrichWithUserData(user);
+            score.GameMode = status == SubmissionStatus.Best ? GameMode.Mania : GameMode.Standard;
+            score.SubmissionStatus = status;
+            score.IsPassed = status != SubmissionStatus.Failed;
+            score.SetBeatmapStatus(beatmapStatus);
+            await CreateTestScore(score);
+        }
+
+        for (var pass = 0; pass < 2; pass++)
+        {
+            var expected = await Database.DbContext.Scores.FilterValidScores()
+                .GroupBy(s => s.GameMode).Select(g => new { Mode = g.Key, Count = g.LongCount() })
+                .ToDictionaryAsync(g => g.Mode, g => g.Count);
+            Assert.Equal(expected.Values.Sum(), await Database.Scores.CountScores());
+            var actual = await Database.Scores.CountScoresByGameMode();
+            Assert.Equal(expected.OrderBy(x => x.Key), actual.OrderBy(x => x.Key));
+
+            users[0].AccountStatus = UserAccountStatus.Restricted;
+            await Database.DbContext.SaveChangesAsync();
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BestScoreCountsDoNotMaterializeScoreRecords(bool rankByPp)
+    {
+        EnvManager.Set("General:UseNewPerformanceCalculationAlgorithm", rankByPp.ToString());
+        var user = await CreateTestUser();
+        var score = _mocker.Score.GetBestScoreableRandomScore();
+        score.EnrichWithUserData(user);
+        score.GameMode = GameMode.Standard;
+        score.SetBeatmapStatus(BeatmapStatus.Ranked);
+        await CreateTestScore(score);
+
+        var submitted = _mocker.Score.GetBestScoreableRandomScore();
+        submitted.EnrichWithUserData(user);
+        submitted.GameMode = GameMode.Standard;
+        submitted.SubmissionStatus = SubmissionStatus.Submitted;
+        submitted.SetBeatmapStatus(BeatmapStatus.Ranked);
+        await CreateTestScore(submitted);
+
+        using var sql = new SqlCommandCapture();
+        var (_, globalCount) = await Database.Scores.GetBestScoresByGameMode(GameMode.Standard);
+        var (_, userCount) = await Database.Scores.GetUserScores(user.Id, GameMode.Standard, ScoreTableType.Best);
+        var (_, beatmapCount) = await Database.Scores.GetBeatmapScores(score.BeatmapHash, GameMode.Standard);
+
+        Assert.Equal(rankByPp ? 2 : 1, globalCount);
+        Assert.Equal(rankByPp ? 2 : 1, userCount);
+        Assert.Equal(1, beatmapCount);
+        var counts = sql.Commands.Where(command => command.StartsWith("SELECT COUNT(*)", StringComparison.Ordinal));
+        Assert.Equal(3, counts.Count());
+        Assert.All(counts, command => Assert.DoesNotContain("`Accuracy`", command));
+        Assert.All(counts, command => Assert.DoesNotContain("ORDER BY", command));
+    }
 
     [Theory]
     [InlineData(false, GameMode.Standard)]
