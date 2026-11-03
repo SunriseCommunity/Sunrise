@@ -3,8 +3,6 @@ using Sunrise.Server.Attributes;
 using Sunrise.Server.Repositories;
 using Sunrise.Shared.Application;
 using Sunrise.Shared.Database;
-using Sunrise.Shared.Database.Models.Scores;
-using Sunrise.Shared.Database.Objects;
 using Sunrise.Shared.Enums.Beatmaps;
 using Sunrise.Shared.Enums.Scores;
 using Sunrise.Shared.Enums.Users;
@@ -63,45 +61,30 @@ public class RecalculateScoresCommand : IChatCommand
             async () =>
             {
 
-                var pageSize = 100;
+                const int pageSize = 500;
                 var scoresReviewedTotal = 0;
                 var scoresSkippedTotal = 0;
 
-                for (var x = 1;; x++)
+                while (true)
                 {
+                    ct.ThrowIfCancellationRequested();
                     using var scope = ServicesProviderHolder.CreateScope();
                     var database = scope.ServiceProvider.GetRequiredService<DatabaseService>();
 
-                    var (pageScores, _) = await database.Scores.GetScores(mode,
-                        new QueryOptions(new Pagination(x, pageSize))
-                        {
-                            IgnoreCountQueryIfExists = true
-                        },
-                        startFromId);
+                    var scoreIds = await database.Scores.GetScoreIdsForBulkProcessing(mode: mode,
+                        startFromId: startFromId, limit: pageSize, filterValidScores: true, ct: ct);
+                    if (scoreIds.Count == 0) break;
 
-                    foreach (var score in pageScores)
-                    {
-                        if (++scoresReviewedTotal % 100 == 0)
-                            ChatCommandRepository.TrySendMessage(userId, $"Scores reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
+                    var queued = await database.ScoreProcessingTasks.EnqueueScoreTasks(scoreIds, ScoreTaskType.Recalculation, ScoreProcessingPriority.Low, ct);
+                    scoresReviewedTotal += scoreIds.Count;
+                    scoresSkippedTotal += scoreIds.Count - queued;
+                    ChatCommandRepository.TrySendMessage(userId, $"Scores reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
 
-                        var queued = await database.ScoreProcessingTasks.TryAddQueueEntry(new ScoreProcessingTask
-                        {
-                            TaskType = ScoreTaskType.Recalculation,
-                            ScoreId = score.Id,
-                            Priority = (int)ScoreProcessingPriority.Low,
-                            CreatedAt = DateTime.UtcNow
-                        }, ct);
-
-                        ct.ThrowIfCancellationRequested();
-
-                        if (!queued)
-                            scoresSkippedTotal++;
-                    }
-
-                    if (pageScores.Count < pageSize) break;
+                    if (scoreIds.Count < pageSize || scoreIds[^1] == int.MaxValue) break;
+                    startFromId = scoreIds[^1] + 1;
                 }
 
-                ChatCommandRepository.TrySendMessage(userId, $"Recalculation finished. Reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
+                ChatCommandRepository.TrySendMessage(userId, $"Finished queueing recalculations. Reviewed: {scoresReviewedTotal}. Queued: {scoresReviewedTotal - scoresSkippedTotal}. Skipped active: {scoresSkippedTotal}");
             },
             message => ChatCommandRepository.TrySendMessage(userId, message));
     }

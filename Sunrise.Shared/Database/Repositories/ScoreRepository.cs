@@ -300,7 +300,7 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         return (scores, totalCount);
     }
 
-    public async Task<List<Score>> GetScoresForBulkProcessing(
+    public async Task<List<int>> GetScoreIdsForBulkProcessing(
         GameMode? mode = null,
         int? userId = null,
         Mods? mods = null,
@@ -309,7 +309,8 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
         DateTime? submittedFrom = null,
         DateTime? submittedTo = null,
         int? startFromId = null,
-        int limit = 100,
+        int limit = 500,
+        bool filterValidScores = false,
         CancellationToken ct = default)
     {
         var scoresQuery = BuildScoresQuery(mode,
@@ -320,10 +321,11 @@ public class ScoreRepository(SunriseDbContext dbContext, ScoreFileService scoreF
             beatmapStatus,
             submittedFrom,
             submittedTo,
-            false);
+            filterValidScores);
 
         return await scoresQuery
             .OrderBy(s => s.Id)
+            .Select(s => s.Id)
             .Take(limit)
             .ToListAsync(ct);
     }

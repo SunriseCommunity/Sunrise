@@ -22,7 +22,7 @@ public sealed class SqlCommandCapture : IObserver<DiagnosticListener>, IObserver
 
     public void OnNext(KeyValuePair<string, object?> value)
     {
-        if (value.Value is CommandEventData data)
+        if (value.Key == RelationalEventId.CommandExecuting.Name && value.Value is CommandEventData data)
             Commands.Enqueue(data.Command.CommandText);
     }
 
