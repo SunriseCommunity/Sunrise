@@ -152,6 +152,22 @@ public class ScoreProcessingService(DatabaseService database, SessionRepository 
         return new OkResult();
     }
 
+    public async Task<IActionResult> RetryTask(int executorId, int taskId, CancellationToken ct = default)
+    {
+        var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct: ct);
+
+        if (task == null)
+            return ApiErrorResponse.Detail.ScoreTaskNotFound.ToProblemResult(HttpStatusCode.NotFound);
+
+        if (!await database.ScoreProcessingTasks.TryRetryPendingTask(taskId, ct))
+            return $"Score task {taskId} is not pending and cannot be retried."
+                .ToProblemResult(HttpStatusCode.Conflict, ApiErrorResponse.Title.UnableToRetryScoreTask);
+
+        await database.Events.ScoreProcessing.AddRequeuedEvent(executorId, taskId, task.ScoreId, task.ErrorCode, task.ErrorMessage, ct);
+
+        return new OkResult();
+    }
+
     public async Task<IActionResult> Requeue(int executorId, int taskId, CancellationToken ct = default)
     {
         var task = await database.ScoreProcessingTasks.GetTaskById(taskId, ct: ct);

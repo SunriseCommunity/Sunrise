@@ -87,6 +87,16 @@ public class ScoreProcessingController(ScoreProcessingService scoreProcessingSer
         return await scoreProcessingService.CancelTask(executorId, id, ct);
     }
 
+    [HttpPost("{id:int}/retry")]
+    [EndpointDescription("Make a pending score processing task eligible for immediate retry")]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RetryTask([Range(1, int.MaxValue)] int id, CancellationToken ct = default)
+    {
+        var executorId = HttpContext.GetCurrentUserOrThrow().Id;
+        return await scoreProcessingService.RetryTask(executorId, id, ct);
+    }
+
     [HttpPost("{id:int}/requeue")]
     [EndpointDescription("Requeue a failed score processing task")]
     [ProducesResponseType(typeof(ProblemDetailsResponseType), StatusCodes.Status404NotFound)]
